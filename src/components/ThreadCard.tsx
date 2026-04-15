@@ -17,10 +17,10 @@ export function ThreadCard({ thread, rank }: Props) {
       href={`/thread/${thread.id}`}
       className="thread-card bg-white hover:bg-gray-50 overflow-hidden border-b border-r border-gray-300 block"
     >
-      {/* ── モバイル: 縦並び ── */}
-      <div className="md:hidden flex flex-col">
-        {/* 画像 */}
-        <div className="relative w-full overflow-hidden bg-gray-100" style={{ height: 72 }}>
+      {/* ── モバイル: 横並び（あにまん式） ── */}
+      <div className="md:hidden flex" style={{ minHeight: 60 }}>
+        {/* 画像（コメント数オーバーレイ付き） */}
+        <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 64, height: 64 }}>
           <img src={thread.image_url ?? PLACEHOLDER} alt="" className="w-full h-full object-cover" />
           {rank !== undefined && (
             <span className="absolute top-0 left-0 bg-gray-800 bg-opacity-80 text-white text-[10px] font-bold px-1 leading-4">
@@ -32,14 +32,14 @@ export function ThreadCard({ thread, rank }: Props) {
               過去
             </span>
           )}
+          {/* コメント数：画像下部に黒半透明オーバーレイ */}
+          <span className="absolute bottom-0 left-0 right-0 text-white text-[9px] font-bold px-1 leading-[14px] flex items-center gap-0.5" style={{ background: 'rgba(0,0,0,0.52)' }}>
+            💬{thread.post_count}
+          </span>
         </div>
-        {/* コメント数バー（画像直下・横長） */}
-        <div className="flex items-center gap-0.5 px-1 text-white text-[10px] font-bold leading-4" style={{ backgroundColor: '#dc3545' }}>
-          💬{thread.post_count}
-        </div>
-        {/* タイトル（カテゴリなし） */}
-        <div className="px-1 py-0.5">
-          <p className="text-[11px] leading-snug text-gray-800 line-clamp-2 break-all">
+        {/* タイトル */}
+        <div className="px-1.5 py-1 flex-1 min-w-0">
+          <p className="text-[11px] leading-snug text-gray-800 line-clamp-4 break-all">
             {thread.title}
           </p>
         </div>

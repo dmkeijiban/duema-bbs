@@ -49,94 +49,83 @@ export function InlineNewThread({ categories }: Props) {
           </div>
 
           {/* フォーム */}
-          <form onSubmit={handleSubmit}>
-            <table className="w-full text-sm border-collapse">
-              <tbody>
-                <tr>
-                  <td className="py-2 pr-3 pl-4 text-right whitespace-nowrap text-gray-600 align-middle"
-                    style={{ width: 80 }}>タイトル</td>
-                  <td className="py-2 pr-4">
-                    <input
-                      type="text"
-                      name="title"
-                      required
-                      maxLength={100}
-                      placeholder="スレッドタイトルを入力(64文字以内)"
-                      className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-2 pr-3 pl-4 text-right text-gray-600 align-middle">カテゴリ</td>
-                  <td className="py-2 pr-4">
-                    <select
-                      name="category_id"
-                      className="border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400"
-                      style={{ minWidth: 200 }}
-                    >
-                      {categories.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-2 pr-3 pl-4 text-right text-gray-600 align-middle">名前</td>
-                  <td className="py-2 pr-4">
-                    <input
-                      type="text"
-                      name="author_name"
-                      maxLength={15}
-                      placeholder="名前を入力(15文字以内・空欄可)"
-                      className="border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400"
-                      style={{ width: 200 }}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-2 pr-3 pl-4 text-right text-gray-600 align-top pt-3">本文</td>
-                  <td className="py-2 pr-4">
-                    <textarea
-                      name="body"
-                      required
-                      rows={10}
-                      placeholder="本文を入力 (最大30行/1000文字まで)"
-                      className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400 resize-y"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-2 pr-3 pl-4 text-right text-gray-600 align-middle">画像</td>
-                  <td className="py-2 pr-4">
-                    <input
-                      type="file"
-                      name="image"
-                      accept="image/jpeg,image/png,image/gif,image/webp"
-                      className="text-sm cursor-pointer file:mr-2 file:px-3 file:py-1 file:border file:border-gray-400 file:bg-gray-200 file:text-gray-700 file:text-sm file:cursor-pointer hover:file:bg-gray-300"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 pl-4 text-right text-gray-600"></td>
-                  <td className="py-3 pr-4">
-                    {error && (
-                      <div className="mb-2 px-3 py-2 text-sm" style={{ background: '#f8d7da', color: '#721c24', border: '1px solid #f5c6cb' }}>
-                        {error}
-                      </div>
-                    )}
-                    <button
-                      type="submit"
-                      disabled={isPending}
-                      id="respost"
-                      className="px-12 py-2 text-white text-sm font-medium disabled:opacity-60"
-                      style={{ backgroundColor: '#0d6efd' }}
-                    >
-                      {isPending ? '投稿中...' : '投稿する'}
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <form onSubmit={handleSubmit} className="text-sm">
+            <div className="grid gap-0" style={{ gridTemplateColumns: '5rem 1fr' }}>
+              {/* タイトル */}
+              <div className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">タイトル</div>
+              <div className="py-2 pr-3 min-w-0">
+                <input
+                  type="text"
+                  name="title"
+                  required
+                  maxLength={100}
+                  placeholder="スレッドタイトルを入力(64文字以内)"
+                  className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400"
+                />
+              </div>
+              {/* カテゴリ */}
+              <div className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">カテゴリ</div>
+              <div className="py-2 pr-3 min-w-0">
+                <select
+                  name="category_id"
+                  className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400"
+                >
+                  {categories.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              {/* 名前 */}
+              <div className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">名前</div>
+              <div className="py-2 pr-3 min-w-0">
+                <input
+                  type="text"
+                  name="author_name"
+                  maxLength={15}
+                  placeholder="名前を入力(15文字以内・空欄可)"
+                  className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400"
+                />
+              </div>
+              {/* 本文 */}
+              <div className="py-2 pr-2 pl-3 text-right text-gray-600 text-xs whitespace-nowrap pt-3">本文</div>
+              <div className="py-2 pr-3 min-w-0">
+                <textarea
+                  name="body"
+                  required
+                  rows={10}
+                  placeholder="本文を入力 (最大30行/1000文字まで)"
+                  className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400 resize-y"
+                />
+              </div>
+              {/* 画像 */}
+              <div className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">画像</div>
+              <div className="py-2 pr-3 min-w-0">
+                <input
+                  type="file"
+                  name="image"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  className="w-full text-sm cursor-pointer file:mr-2 file:px-3 file:py-1 file:border file:border-gray-400 file:bg-gray-200 file:text-gray-700 file:text-sm file:cursor-pointer hover:file:bg-gray-300"
+                />
+              </div>
+              {/* ボタン */}
+              <div></div>
+              <div className="py-3 pr-3 min-w-0">
+                {error && (
+                  <div className="mb-2 px-3 py-2 text-sm" style={{ background: '#f8d7da', color: '#721c24', border: '1px solid #f5c6cb' }}>
+                    {error}
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  id="respost"
+                  className="px-12 py-2 text-white text-sm font-medium disabled:opacity-60"
+                  style={{ backgroundColor: '#0d6efd' }}
+                >
+                  {isPending ? '投稿中...' : '投稿する'}
+                </button>
+              </div>
+            </div>
           </form>
         </>
     </div>
