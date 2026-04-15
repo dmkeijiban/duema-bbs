@@ -65,9 +65,6 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
     }
     return (
       <>
-        <div className="mb-2 px-3 py-1.5 border border-gray-300 bg-white flex items-baseline gap-2">
-          <span className="font-bold text-sm text-gray-800">🎲 ランダム一覧</span>
-        </div>
         <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
           {(allThreads as (Thread & { categories: Category | null })[]).map((thread) => (
             <ThreadCard key={thread.id} thread={thread} />
