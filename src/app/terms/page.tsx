@@ -6,7 +6,7 @@ export const metadata = {
 
 export default function TermsPage() {
   return (
-    <div className="max-w-5xl mx-auto px-3 py-4 text-sm">
+    <div className="max-w-screen-xl mx-auto px-3 py-4 text-sm">
       {/* パンくず */}
       <nav className="text-xs text-gray-500 mb-4">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>

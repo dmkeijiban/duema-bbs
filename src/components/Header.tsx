@@ -29,7 +29,7 @@ export function Header() {
   return (
     <header className="bg-white border-b border-gray-300 sticky top-0 z-50">
       <nav className="w-full">
-        <div className="max-w-5xl mx-auto px-2 flex items-center gap-2" style={{ minHeight: 46 }}>
+        <div className="max-w-screen-xl mx-auto px-2 flex items-center gap-2" style={{ minHeight: 46 }}>
           {/* ロゴ */}
           <Link href="/" className="shrink-0 py-1 flex flex-col leading-tight">
             <span className="font-bold text-lg" style={{ color: '#1a3a6e', lineHeight: 1.1 }}>デュエマ掲示板</span>

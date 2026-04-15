@@ -17,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Header />
           <main className="flex-1">{children}</main>
           <footer className="bg-white border-t border-gray-200 py-3 mt-6">
-            <div className="max-w-5xl mx-auto px-3 text-center text-xs text-gray-500">
+            <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-500">
               ©<Link href="/">デュエマ掲示板</Link> — デュエル・マスターズ専門掲示板
             </div>
           </footer>

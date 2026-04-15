@@ -129,7 +129,7 @@ export default async function Home({
 
   return (
     <div className="w-full px-0 py-0">
-      <div className="max-w-5xl mx-auto px-2 pt-2">
+      <div className="max-w-screen-xl mx-auto px-2 pt-2">
         {/* オススメ */}
         <Suspense fallback={null}>
           <RecommendSection />
@@ -144,7 +144,7 @@ export default async function Home({
       </div>
 
       {/* タブ */}
-      <div className="max-w-5xl mx-auto px-2">
+      <div className="max-w-screen-xl mx-auto px-2">
         <ul className="flex mb-3 mt-2 text-sm" style={{ borderBottom: '1px solid #dee2e6' }}>
           {[
             { label: '更新順',   sort: 'recent',   icon: '↺' },
@@ -188,7 +188,7 @@ export default async function Home({
       </div>
 
       {/* スレッド一覧 */}
-      <div className="max-w-5xl mx-auto px-2">
+      <div className="max-w-screen-xl mx-auto px-2">
         <Suspense fallback={<ThreadListSkeleton />}>
           <ThreadList searchParams={params} />
         </Suspense>

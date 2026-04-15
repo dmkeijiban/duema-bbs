@@ -36,7 +36,7 @@ export async function RecommendSection() {
         <span style={{ color: '#004085', fontSize: 13 }}>🔖</span>
         <span className="font-bold text-sm" style={{ color: '#004085' }}>オススメ</span>
       </div>
-      <div className="grid grid-cols-4 border-l border-t border-gray-300">
+      <div className="grid grid-cols-2 md:grid-cols-4 border-l border-t border-gray-300">
         {threads.map(thread => (
           <Link
             key={thread.id}

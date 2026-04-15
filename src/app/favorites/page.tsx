@@ -15,7 +15,7 @@ export default async function FavoritesPage() {
 
   if (!sessionId) {
     return (
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-screen-xl mx-auto px-4 py-8">
         <EmptyFavorites />
       </div>
     )
@@ -31,7 +31,7 @@ export default async function FavoritesPage() {
 
   if (!favorites || favorites.length === 0) {
     return (
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-screen-xl mx-auto px-4 py-8">
         <EmptyFavorites />
       </div>
     )
@@ -50,7 +50,7 @@ export default async function FavoritesPage() {
     .filter(Boolean) as (Thread & { categories: Category | null })[]
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6">
+    <div className="max-w-screen-xl mx-auto px-4 py-6">
       <div className="mb-4">
         <Link
           href="/"
