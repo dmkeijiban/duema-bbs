@@ -51,10 +51,56 @@ export async function adminDeletePost(formData: FormData) {
   const supabase = await createClient()
 
   await supabase.from('posts').delete().eq('id', postId)
-  // コメント数を再計算
   await supabase.rpc('recalculate_post_count', { p_thread_id: threadId })
 
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/admin')
   redirect(`/admin?thread=${threadId}`)
+}
+
+export async function adminUpdateThread(formData: FormData) {
+  await checkAdmin()
+  const threadId = parseInt(formData.get('threadId') as string)
+  const title = formData.get('title') as string
+  const body = formData.get('body') as string
+  const categoryId = formData.get('category_id') as string
+  const supabase = await createClient()
+
+  await supabase.from('threads').update({
+    title: title.trim(),
+    body: body.trim(),
+    ...(categoryId ? { category_id: parseInt(categoryId) } : {}),
+  }).eq('id', threadId)
+
+  revalidatePath(`/thread/${threadId}`)
+  revalidatePath('/')
+  revalidatePath('/admin')
+  redirect('/admin')
+}
+
+export async function adminUpdatePost(formData: FormData) {
+  await checkAdmin()
+  const postId = parseInt(formData.get('postId') as string)
+  const threadId = parseInt(formData.get('threadId') as string)
+  const body = formData.get('body') as string
+  const supabase = await createClient()
+
+  await supabase.from('posts').update({ body: body.trim() }).eq('id', postId)
+
+  revalidatePath(`/thread/${threadId}`)
+  revalidatePath('/admin')
+  redirect(`/admin?thread=${threadId}`)
+}
+
+export async function adminToggleArchive(formData: FormData) {
+  await checkAdmin()
+  const threadId = parseInt(formData.get('threadId') as string)
+  const current = formData.get('isArchived') === 'true'
+  const supabase = await createClient()
+
+  await supabase.from('threads').update({ is_archived: !current }).eq('id', threadId)
+
+  revalidatePath('/')
+  revalidatePath('/admin')
+  redirect('/admin')
 }
