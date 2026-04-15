@@ -36,5 +36,5 @@ export function formatDateTimeJP(dateStr: string): string {
   const hh = String(d.getHours()).padStart(2, '0')
   const min = String(d.getMinutes()).padStart(2, '0')
   const ss = String(d.getSeconds()).padStart(2, '0')
-  return `${yy}/${mm}/${dd}(${day}) ${hh}:${min}:${ss}`
+  return `${yy}/${mm}/${dd}(${day}) ${hh}:${min}`
 }

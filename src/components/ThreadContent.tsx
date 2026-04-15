@@ -52,19 +52,19 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
       {/* OP post */}
       <div className="border border-gray-300 bg-white">
         <div id="post-1" className="border-b border-gray-200 last:border-b-0">
-          <div className="px-2 py-1 text-xs flex items-center gap-2 flex-wrap" style={{ background: '#f5f5f5' }}>
+          <div className="px-2 py-1 text-xs flex items-center gap-1 flex-wrap" style={{ background: '#f5f5f5' }}>
             <button
               type="button"
               onClick={() => handleAnchorClick(1)}
-              className="font-bold hover:underline cursor-pointer"
+              className="font-bold hover:underline cursor-pointer mr-0.5"
               style={{ color: '#0d6efd' }}
               title=">>1を本文に挿入"
             >
               ▶1
             </button>
-            <span className="inline-block px-1 text-white text-[10px]" style={{ background: '#dc3545' }}>スレ主</span>
+            <span className="inline-block px-0.5 text-white text-[10px] leading-4" style={{ background: '#dc3545' }}>スレ主</span>
             <span className="font-medium text-gray-700">{thread.author_name}</span>
-            <span className="text-gray-400">{formatDateTimeJP(thread.created_at)}</span>
+            <span className="text-gray-400 text-[10px]">{formatDateTimeJP(thread.created_at)}</span>
             <PostLikeButton likeKey={`thread-${thread.id}`} />
             <ReportButton itemType="thread" itemId={thread.id} itemBody={thread.body} />
           </div>
