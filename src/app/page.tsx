@@ -83,14 +83,31 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
     )
   }
 
+  // ソート別ヘッダー
+  const sortHeaders: Record<string, { label: string; sub?: string; icon: string }> = {
+    recent:   { icon: '↺', label: '更新順一覧' },
+    new:      { icon: '⏱', label: '新着スレッド一覧' },
+    popular:  { icon: '📊', label: '人気スレッド', sub: '過去3日間 / 100位まで' },
+    archived: { icon: '📂', label: '過去ログ一覧' },
+  }
+  const hd = sortHeaders[sort]
+
   return (
     <>
+      {/* ソート別ヘッダー */}
+      {hd && !searchQ && (
+        <div className="mb-2 px-3 py-1.5 border border-gray-300 bg-white flex items-baseline gap-2">
+          <span className="font-bold text-sm text-gray-800">{hd.icon} {hd.label}</span>
+          {hd.sub && <span className="text-xs text-gray-500">（{hd.sub}）</span>}
+        </div>
+      )}
+
       {searchQ && (
         <div className="mb-2 px-3 py-1.5 text-xs border border-gray-300 bg-white text-gray-600">
           「{searchQ}」の検索結果：{count}件
         </div>
       )}
-      <div className="grid grid-cols-2 md:grid-cols-5 border-l border-t border-gray-300">
+      <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
         {(threads as (Thread & { categories: Category | null })[]).map((thread, i) => (
           <ThreadCard
             key={thread.id}
@@ -200,7 +217,7 @@ function SetupGuide() {
 
 function ThreadListSkeleton() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 border-l border-t border-gray-300 animate-pulse">
+    <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300 animate-pulse">
       {[...Array(10)].map((_, i) => (
         <div key={i} className="flex border-b border-r border-gray-300 bg-white" style={{ minHeight: 64 }}>
           {/* モバイル: 64px画像 */}

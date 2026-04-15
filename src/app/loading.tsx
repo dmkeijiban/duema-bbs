@@ -7,8 +7,8 @@ export default function HomeLoading() {
           <div className="px-3 py-2 border-b border-gray-300 bg-gray-50" style={{ height: 36 }} />
           <div className="grid grid-cols-2 md:grid-cols-4 border-l border-t border-gray-300">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="flex border-b border-r border-gray-300 bg-white" style={{ height: 55 }}>
-                <div className="bg-gray-200 shrink-0" style={{ width: 55, height: 55 }} />
+              <div key={i} className="flex border-b border-r border-gray-300 bg-white" style={{ height: 44 }}>
+                <div className="bg-gray-200 shrink-0" style={{ width: 44, height: 44 }} />
                 <div className="p-1 flex-1 space-y-1.5 pt-2">
                   <div className="h-2 bg-gray-200 rounded w-full" />
                   <div className="h-2 bg-gray-200 rounded w-4/5" />
@@ -28,10 +28,10 @@ export default function HomeLoading() {
 
       {/* スレッド一覧骨格 */}
       <div className="max-w-screen-xl mx-auto px-2">
-        <div className="grid grid-cols-2 md:grid-cols-5 border-l border-t border-gray-300 animate-pulse">
-          {[...Array(10)].map((_, i) => (
-            <div key={i} className="flex border-b border-r border-gray-300 bg-white" style={{ minHeight: 64 }}>
-              <div className="bg-gray-200 shrink-0" style={{ width: 64, height: 64 }} />
+        <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300 animate-pulse">
+          {[...Array(12)].map((_, i) => (
+            <div key={i} className="flex border-b border-r border-gray-300 bg-white" style={{ minHeight: 52 }}>
+              <div className="bg-gray-200 shrink-0" style={{ width: 52, height: 52 }} />
               <div className="p-1.5 flex-1 space-y-1.5 pt-2">
                 <div className="h-2 bg-gray-200 rounded w-full" />
                 <div className="h-2 bg-gray-200 rounded w-4/5" />

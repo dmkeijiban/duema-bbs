@@ -18,9 +18,9 @@ export function ThreadCard({ thread, rank }: Props) {
       className="thread-card bg-white hover:bg-gray-50 overflow-hidden border-b border-r border-gray-300 block"
     >
       {/* ── モバイル: 横並び（あにまん式） ── */}
-      <div className="md:hidden flex" style={{ minHeight: 60 }}>
+      <div className="md:hidden flex" style={{ minHeight: 52 }}>
         {/* 画像（コメント数オーバーレイ付き） */}
-        <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 64, height: 64 }}>
+        <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 52, height: 52 }}>
           <img src={thread.image_url ?? PLACEHOLDER} alt="" className="w-full h-full object-cover" />
           {rank !== undefined && (
             <span className="absolute top-0 left-0 bg-gray-800 bg-opacity-80 text-white text-[10px] font-bold px-1 leading-4">

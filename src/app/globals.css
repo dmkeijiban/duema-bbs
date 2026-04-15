@@ -28,6 +28,18 @@ body {
 
 /* スレッドカードの画像 */
 .thread-card img {
-  min-width: 80px;
-  min-height: 80px;
+  min-width: unset;
+  min-height: unset;
+}
+
+/* iOS Safari の入力欄ズームイン防止（16px未満でズームする） */
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="search"],
+  input[type="number"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }
