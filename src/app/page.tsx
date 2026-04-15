@@ -161,6 +161,17 @@ export default async function Home({
         </div>
       </div>
 
+      {/* カテゴリフィルター時のパンくず */}
+      {params.category && (
+        <div className="max-w-screen-xl mx-auto px-2 mb-1">
+          <nav className="text-xs text-gray-500 flex items-center gap-x-1">
+            <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
+            <span>{'>'}</span>
+            <span>カテゴリ：{categories?.find(c => c.slug === params.category)?.name ?? params.category}</span>
+          </nav>
+        </div>
+      )}
+
       {/* タブ（クライアント側で即時フィードバック） */}
       <SortTabs currentSort={sort} currentCategory={params.category} categories={categories ?? []} />
 

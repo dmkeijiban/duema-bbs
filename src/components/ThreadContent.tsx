@@ -60,13 +60,13 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
             >
               ▶1
             </button>
-            <span className="inline-block px-1 text-white text-[10px]" style={{ background: '#dc3545' }}>OP</span>
+            <span className="inline-block px-1 text-white text-[10px]" style={{ background: '#dc3545' }}>スレ主</span>
             <span className="font-medium text-gray-700">{thread.author_name}</span>
             <span className="text-gray-400">{formatDateTimeJP(thread.created_at)}</span>
             <span className="text-[13px]" style={{ color: '#e8a0b0' }}>♡</span>
             <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ color: '#9ca3af', border: '1px solid #9ca3af' }}>報告</span>
           </div>
-          <div className="px-3 py-2 text-sm text-gray-800 break-words leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>
+          <div className="px-3 py-3 text-sm text-gray-800 break-words leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>
             {thread.body}
           </div>
           {thread.image_url && (
@@ -150,23 +150,6 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
         </div>
       )}
 
-      {/* 下部ナビ */}
-      <div className="flex mt-4 text-sm border border-gray-300">
-        {[
-          { label: '↺ 更新順一覧', href: '/update' },
-          { label: '⏱ 新着一覧',   href: '/new' },
-          { label: '📊 ランキング', href: '/ranking' },
-          { label: '📂 過去ログ',   href: '/archived' },
-        ].map((btn) => (
-          <Link
-            key={btn.href}
-            href={btn.href}
-            className="flex-1 text-center py-2 hover:bg-gray-50 text-blue-600 border-r border-gray-300 last:border-r-0 text-xs md:text-sm"
-          >
-            {btn.label}
-          </Link>
-        ))}
-      </div>
     </>
   )
 }

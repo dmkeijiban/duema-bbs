@@ -5,7 +5,7 @@ import { Header } from '@/components/Header'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'デュエマ掲示板 - デュエル・マスターズ専門掲示板',
+  title: '【デュエマ掲示板】デュエルマスターズ専門掲示板',
   description: 'デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。',
 }
 

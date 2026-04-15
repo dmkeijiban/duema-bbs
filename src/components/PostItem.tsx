@@ -109,7 +109,7 @@ export function PostItem({ post, allPosts, onAnchorClick, displayNumber, session
     <div id={`post-${displayNumber}`} className="border-b border-gray-200 last:border-b-0">
       {/* ヘッダー行 */}
       <div
-        className="px-2 py-1 text-xs flex items-center gap-2 flex-wrap"
+        className="px-2 py-1.5 text-xs flex items-center gap-2 flex-wrap"
         style={{ background: '#f5f5f5' }}
       >
         <button
@@ -139,7 +139,7 @@ export function PostItem({ post, allPosts, onAnchorClick, displayNumber, session
       </div>
 
       {/* 本文 */}
-      <div className="px-3 py-2 text-sm text-gray-800 break-words leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>
+      <div className="px-3 py-3 text-sm text-gray-800 break-words leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>
         {renderBody(post.body, allPosts)}
       </div>
 

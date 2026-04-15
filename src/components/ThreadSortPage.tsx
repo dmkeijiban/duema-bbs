@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase-server'
-import { ThreadCard } from '@/components/ThreadCard'
+import { ThreadRow } from '@/components/ThreadRow'
 import { RecommendSection } from '@/components/RecommendSection'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'
@@ -46,25 +46,38 @@ async function ThreadList({ sort }: { sort: string }) {
     )
   }
 
+  // 更新順・新着は横長リスト、過去ログはグリッド
+  if (sort === 'archived') {
+    const { ThreadCard } = await import('@/components/ThreadCard')
+    return (
+      <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
+        {(threads as (Thread & { categories: Category | null })[]).map((thread) => (
+          <ThreadCard key={thread.id} thread={thread} />
+        ))}
+      </div>
+    )
+  }
+
   return (
-    <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
+    <div className="border border-gray-300 bg-white">
       {(threads as (Thread & { categories: Category | null })[]).map((thread) => (
-        <ThreadCard key={thread.id} thread={thread} />
+        <ThreadRow key={thread.id} thread={thread} />
       ))}
     </div>
   )
 }
 
-function SkeletonGrid() {
+function SkeletonList() {
   return (
-    <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300 animate-pulse">
+    <div className="border border-gray-300 bg-white animate-pulse">
       {[...Array(12)].map((_, i) => (
-        <div key={i} className="flex border-b border-r border-gray-300 bg-white" style={{ minHeight: 52 }}>
+        <div key={i} className="flex items-center border-b border-gray-200 gap-2 pr-3" style={{ height: 52 }}>
           <div className="bg-gray-200 shrink-0" style={{ width: 52, height: 52 }} />
-          <div className="p-1.5 flex-1 space-y-1.5 pt-2">
-            <div className="h-2 bg-gray-200 rounded w-full" />
-            <div className="h-2 bg-gray-200 rounded w-4/5" />
+          <div className="flex-1 space-y-1.5">
+            <div className="h-2.5 bg-gray-200 rounded w-3/4" />
+            <div className="h-2 bg-gray-100 rounded w-1/2" />
           </div>
+          <div className="bg-gray-100 rounded h-2 w-10 shrink-0" />
         </div>
       ))}
     </div>
@@ -114,7 +127,7 @@ export async function ThreadSortPage({ sort, title, icon }: Props) {
       </div>
 
       <div className="max-w-screen-xl mx-auto px-2">
-        <Suspense fallback={<SkeletonGrid />}>
+        <Suspense fallback={<SkeletonList />}>
           <ThreadList sort={sort} />
         </Suspense>
 
