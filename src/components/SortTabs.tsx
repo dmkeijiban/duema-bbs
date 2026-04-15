@@ -53,17 +53,17 @@ export function SortTabs({ currentSort, currentCategory, categories }: Props) {
             <li key={tab.sort} className="flex-1 min-w-0">
               <button
                 onClick={() => handleClick(tab.sort)}
-                className="w-full text-center py-2 font-medium border border-transparent select-none overflow-hidden"
+                className="w-full text-center py-2 font-medium border border-transparent select-none overflow-hidden text-xs md:text-sm"
                 style={
                   active
-                    ? { background: '#0d6efd', color: '#fff', borderColor: '#0d6efd', borderRadius: '4px 4px 0 0', marginBottom: -1, fontSize: 11 }
-                    : { color: isPending ? '#6c9fef' : '#0d6efd', fontSize: 11 }
+                    ? { background: '#0d6efd', color: '#fff', borderColor: '#0d6efd', borderRadius: '4px 4px 0 0', marginBottom: -1 }
+                    : { color: isPending ? '#6c9fef' : '#0d6efd' }
                 }
               >
                 <span className="opacity-80">{tab.icon}</span>
                 <span className="ml-0.5 hidden md:inline">{tab.label}</span>
                 {/* スマホ: 短縮ラベル */}
-                <span className="ml-0.5 md:hidden text-[10px]">
+                <span className="ml-0.5 md:hidden">
                   {tab.sort === 'recent' ? '更新' : tab.sort === 'new' ? '新着' : tab.sort === 'popular' ? '人気' : 'ランダ'}
                 </span>
               </button>
@@ -74,12 +74,12 @@ export function SortTabs({ currentSort, currentCategory, categories }: Props) {
         <li ref={catRef} className="flex-1 min-w-0 relative">
           <button
             onClick={() => setCatOpen(v => !v)}
-            className="w-full text-center py-2 font-medium select-none overflow-hidden"
-            style={{ color: '#0d6efd', fontSize: 11 }}
+            className="w-full text-center py-2 font-medium select-none overflow-hidden text-xs md:text-sm"
+            style={{ color: '#0d6efd' }}
           >
             <span className="opacity-80">📂</span>
             <span className="ml-0.5 hidden md:inline">カテゴリ {catOpen ? '▴' : '▾'}</span>
-            <span className="ml-0.5 md:hidden text-[10px]">{catOpen ? '▴' : '▾'}</span>
+            <span className="ml-0.5 md:hidden">{catOpen ? '▴' : '▾'}</span>
           </button>
           {catOpen && (
             <div className="absolute right-0 top-full bg-white border border-gray-300 shadow-lg z-50 min-w-max text-sm max-h-64 overflow-y-auto">
