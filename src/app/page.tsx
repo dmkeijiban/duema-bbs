@@ -90,7 +90,7 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
           「{searchQ}」の検索結果：{count}件
         </div>
       )}
-      <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
+      <div className="grid grid-cols-2 md:grid-cols-5 border-l border-t border-gray-300">
         {(threads as (Thread & { categories: Category | null })[]).map((thread, i) => (
           <ThreadCard
             key={thread.id}
@@ -200,14 +200,15 @@ function SetupGuide() {
 
 function ThreadListSkeleton() {
   return (
-    <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300 animate-pulse">
-      {[...Array(15)].map((_, i) => (
-        <div key={i} className="flex border-b border-r border-gray-300 bg-white" style={{ height: 80 }}>
-          <div className="bg-gray-200 shrink-0" style={{ width: 80, height: 80 }} />
-          <div className="p-1.5 flex-1 space-y-1.5">
+    <div className="grid grid-cols-2 md:grid-cols-5 border-l border-t border-gray-300 animate-pulse">
+      {[...Array(10)].map((_, i) => (
+        <div key={i} className="flex border-b border-r border-gray-300 bg-white" style={{ minHeight: 64 }}>
+          {/* モバイル: 64px画像 */}
+          <div className="bg-gray-200 shrink-0" style={{ width: 64, height: 64 }} />
+          <div className="p-1.5 flex-1 space-y-1.5 pt-2">
             <div className="h-2 bg-gray-200 rounded w-full" />
             <div className="h-2 bg-gray-200 rounded w-4/5" />
-            <div className="h-2 bg-gray-100 rounded w-1/3 mt-2" />
+            <div className="h-2 bg-gray-100 rounded w-3/5" />
           </div>
         </div>
       ))}

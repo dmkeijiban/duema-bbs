@@ -7,10 +7,13 @@ const PLACEHOLDER =
 
 type Row = { id: number; title: string; image_url: string | null; post_count: number }
 
-function shuffle<T>(arr: T[]): T[] {
+// 30分ごとに変わるseedで安定シャッフル（タブ切り替えでは変わらない）
+function seededShuffle<T>(arr: T[], seed: number): T[] {
   const a = [...arr]
+  let s = seed
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    s = (s * 1664525 + 1013904223) & 0xffffffff
+    const j = Math.abs(s) % (i + 1);
     [a[i], a[j]] = [a[j], a[i]]
   }
   return a
@@ -28,7 +31,8 @@ export async function RecommendSection() {
   if (!raw || raw.length === 0) return null
 
   const withImages = await withFallbackThumbnails(supabase, raw as Row[])
-  const threads = shuffle(withImages).slice(0, 8)
+  const seed = Math.floor(Date.now() / (1000 * 60 * 30)) // 30分ごとに変化
+  const threads = seededShuffle(withImages, seed).slice(0, 8)
 
   return (
     <div className="mb-2 border border-gray-300 bg-white">
