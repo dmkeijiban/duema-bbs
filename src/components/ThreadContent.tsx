@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { Post, Thread, Category } from '@/types'
 import { PostItem } from './PostItem'
 import { NewPostForm } from './NewPostForm'
+import { PostLikeButton } from './PostLikeButton'
+import { ReportButton } from './ReportButton'
 import { formatDateTimeJP } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -63,8 +65,8 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
             <span className="inline-block px-1 text-white text-[10px]" style={{ background: '#dc3545' }}>スレ主</span>
             <span className="font-medium text-gray-700">{thread.author_name}</span>
             <span className="text-gray-400">{formatDateTimeJP(thread.created_at)}</span>
-            <span className="text-[13px]" style={{ color: '#e8a0b0' }}>♡</span>
-            <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ color: '#9ca3af', border: '1px solid #9ca3af' }}>報告</span>
+            <PostLikeButton likeKey={`thread-${thread.id}`} />
+            <ReportButton itemType="thread" itemId={thread.id} itemBody={thread.body} />
           </div>
           <div className="px-3 py-3 text-sm text-gray-800 break-words leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>
             {thread.body}

@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react'
 import { Post } from '@/types'
 import { formatDateTimeJP } from '@/lib/utils'
 import { deleteOwnPost } from '@/app/actions/delete'
+import { PostLikeButton } from './PostLikeButton'
+import { ReportButton } from './ReportButton'
 
 interface Props {
   post: Post
@@ -123,8 +125,8 @@ export function PostItem({ post, allPosts, onAnchorClick, displayNumber, session
         </button>
         <span className="font-medium text-gray-700">{post.author_name}</span>
         <span className="text-gray-400">{formatDateTimeJP(post.created_at)}</span>
-        <button type="button" className="text-[13px]" style={{ color: '#e8a0b0' }}>♡</button>
-        <button type="button" className="text-[10px] px-1.5 py-0.5 font-medium" style={{ color: '#9ca3af', border: '1px solid #9ca3af', background: '#fff' }}>報告</button>
+        <PostLikeButton likeKey={`post-${post.id}`} />
+        <ReportButton itemType="post" itemId={post.id} itemBody={post.body} />
         {canDelete && (
           <button
             type="button"
