@@ -29,6 +29,7 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
   const searchQ = searchParams.q?.trim()
   const forceArchived = searchParams.archived === '1'
   const isArchived = sort === 'archived' || forceArchived
+  const isRandom = sort === 'random'
 
   let categoryId: number | null = null
   if (categorySlug) {
@@ -38,6 +39,42 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
       .eq('slug', categorySlug)
       .single()
     categoryId = cat?.id ?? null
+  }
+
+  // ランダムモード: 全スレ取得してシャッフル
+  if (isRandom) {
+    let rQuery = supabase
+      .from('threads')
+      .select('*, categories(id,name,slug,color,description,sort_order)')
+      .eq('is_archived', false)
+      .limit(500)
+    if (categoryId !== null) rQuery = rQuery.eq('category_id', categoryId)
+    const { data: rawAll } = await rQuery
+    const allThreads = rawAll ? await withFallbackThumbnails(supabase, rawAll) : []
+    // Fisher-Yates shuffle
+    for (let i = allThreads.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allThreads[i], allThreads[j]] = [allThreads[j], allThreads[i]]
+    }
+    if (allThreads.length === 0) {
+      return (
+        <div className="text-center py-16 text-gray-500 bg-white border border-gray-300">
+          <p>スレッドがまだありません</p>
+        </div>
+      )
+    }
+    return (
+      <>
+        <div className="mb-2 px-3 py-1.5 border border-gray-300 bg-white flex items-baseline gap-2">
+          <span className="font-bold text-sm text-gray-800">🎲 ランダム一覧</span>
+        </div>
+        <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
+          {(allThreads as (Thread & { categories: Category | null })[]).map((thread) => (
+            <ThreadCard key={thread.id} thread={thread} />
+          ))}
+        </div>
+      </>
+    )
   }
 
   let countQuery = supabase
@@ -90,6 +127,7 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
     new:      { icon: '⏱', label: '新着スレッド一覧' },
     popular:  { icon: '📊', label: '人気スレッド', sub: '過去3日間 / 100位まで' },
     archived: { icon: '📂', label: '過去ログ一覧' },
+    random:   { icon: '🎲', label: 'ランダム一覧' },
   }
   const hd = sortHeaders[sort]
 

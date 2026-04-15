@@ -15,7 +15,7 @@ const TABS = [
   { label: '更新順', sort: 'recent',   icon: '↺' },
   { label: '新着',   sort: 'new',      icon: '⏱' },
   { label: '人気',   sort: 'popular',  icon: '📊' },
-  { label: '過去ログ', sort: 'archived', icon: '📂' },
+  { label: 'ランダム', sort: 'random',   icon: '🎲' },
 ]
 
 export function SortTabs({ currentSort, currentCategory, categories }: Props) {
@@ -64,7 +64,7 @@ export function SortTabs({ currentSort, currentCategory, categories }: Props) {
                 <span className="ml-0.5 hidden md:inline">{tab.label}</span>
                 {/* スマホ: 短縮ラベル */}
                 <span className="ml-0.5 md:hidden text-[10px]">
-                  {tab.sort === 'recent' ? '更新' : tab.sort === 'new' ? '新着' : tab.sort === 'popular' ? '人気' : '過去'}
+                  {tab.sort === 'recent' ? '更新' : tab.sort === 'new' ? '新着' : tab.sort === 'popular' ? '人気' : 'ランダ'}
                 </span>
               </button>
             </li>

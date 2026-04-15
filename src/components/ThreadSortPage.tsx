@@ -10,7 +10,7 @@ export const NAV_LINKS = [
   { label: '↺ 更新順一覧', href: '/update' },
   { label: '⏱ 新着一覧',   href: '/new' },
   { label: '📊 ランキング', href: '/ranking' },
-  { label: '📂 過去ログ',   href: '/archived' },
+  { label: '🎲 ランダム',   href: '/?sort=random' },
 ]
 
 interface Props {
