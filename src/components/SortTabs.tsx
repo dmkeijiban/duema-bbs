@@ -1,31 +1,43 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useState, useTransition, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Category } from '@/types'
 
 interface Props {
-  currentSort: string
+  currentSort?: string
   currentCategory?: string
   categories: Category[]
 }
 
 const TABS = [
-  { label: '更新順', sort: 'recent',   icon: '↺', href: (base: string) => `${base}sort=recent` },
-  { label: '新着',   sort: 'new',      icon: '⏱', href: (base: string) => `${base}sort=new` },
-  { label: '人気',   sort: 'popular',  icon: '📊', href: () => '/ranking' },
-  { label: '過去ログ', sort: 'archived', icon: '📂', href: (base: string) => `${base}sort=archived` },
+  { label: '更新順', sort: 'recent',   icon: '↺', href: '/update' },
+  { label: '新着',   sort: 'new',      icon: '⏱', href: '/new' },
+  { label: '人気',   sort: 'popular',  icon: '📊', href: '/ranking' },
+  { label: '過去ログ', sort: 'archived', icon: '📂', href: '/archived' },
 ]
+
+function getActiveSort(pathname: string, currentSort?: string): string {
+  if (pathname === '/update')   return 'recent'
+  if (pathname === '/new')      return 'new'
+  if (pathname === '/ranking')  return 'popular'
+  if (pathname === '/archived') return 'archived'
+  return currentSort ?? 'recent'
+}
 
 export function SortTabs({ currentSort, currentCategory, categories }: Props) {
   const router = useRouter()
-  const [activeSort, setActiveSort] = useState(currentSort)
+  const pathname = usePathname()
+  const [activeSort, setActiveSort] = useState(getActiveSort(pathname, currentSort))
   const [isPending, startTransition] = useTransition()
   const [catOpen, setCatOpen] = useState(false)
   const catRef = useRef<HTMLLIElement>(null)
 
-  const base = currentCategory ? `?category=${currentCategory}&` : '?'
+  // パスが変わったらアクティブを更新
+  useEffect(() => {
+    setActiveSort(getActiveSort(pathname, currentSort))
+  }, [pathname, currentSort])
 
   // ドロップダウン外クリックで閉じる
   useEffect(() => {
@@ -40,11 +52,9 @@ export function SortTabs({ currentSort, currentCategory, categories }: Props) {
   }, [catOpen])
 
   const handleClick = (tab: typeof TABS[number]) => {
-    const url = tab.href(base)
-    if (tab.sort === activeSort && url !== '/ranking') return
     setActiveSort(tab.sort)
     startTransition(() => {
-      router.push(url)
+      router.push(tab.href)
     })
   }
 
@@ -82,7 +92,7 @@ export function SortTabs({ currentSort, currentCategory, categories }: Props) {
           {catOpen && (
             <div className="absolute right-0 top-full bg-white border border-gray-300 shadow-lg z-50 min-w-max text-sm max-h-64 overflow-y-auto">
               <Link
-                href={`/?sort=${activeSort}`}
+                href="/"
                 className="block px-4 py-2 hover:bg-gray-100 text-gray-700 border-b border-gray-100"
                 onClick={() => setCatOpen(false)}
               >
@@ -91,7 +101,7 @@ export function SortTabs({ currentSort, currentCategory, categories }: Props) {
               {categories.map(c => (
                 <Link
                   key={c.slug}
-                  href={`/?category=${c.slug}&sort=${activeSort}`}
+                  href={`/?category=${c.slug}`}
                   className="block px-4 py-2 hover:bg-gray-100 text-gray-700 border-b border-gray-100 last:border-b-0"
                   onClick={() => setCatOpen(false)}
                 >

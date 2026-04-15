@@ -70,7 +70,10 @@ export function InlineNewThread({ categories }: Props) {
                   name="category_id"
                   className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400"
                 >
-                  {categories.map(c => (
+                  {[
+                    ...categories.filter(c => c.name.includes('雑談')),
+                    ...categories.filter(c => !c.name.includes('雑談')),
+                  ].map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>

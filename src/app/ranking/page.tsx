@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase-server'
 import { ThreadCard } from '@/components/ThreadCard'
 import { RecommendSection } from '@/components/RecommendSection'
+import { BottomNav } from '@/components/ThreadSortPage'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
@@ -100,23 +101,7 @@ export default async function RankingPage() {
           <RankingList />
         </Suspense>
 
-        {/* 下部ナビ */}
-        <div className="flex mt-3 text-sm border border-gray-300">
-          {[
-            { label: '↺ 更新順一覧', href: '/?sort=recent' },
-            { label: '⏱ 新着一覧',   href: '/?sort=new' },
-            { label: '📊 ランキング', href: '/ranking' },
-            { label: '📂 過去ログ',   href: '/?sort=archived' },
-          ].map((btn) => (
-            <Link
-              key={btn.href}
-              href={btn.href}
-              className="flex-1 text-center py-2 hover:bg-gray-50 text-blue-600 border-r border-gray-300 last:border-r-0 text-xs md:text-sm"
-            >
-              {btn.label}
-            </Link>
-          ))}
-        </div>
+        <BottomNav current="/ranking" />
 
         <div className="mb-6" />
       </div>

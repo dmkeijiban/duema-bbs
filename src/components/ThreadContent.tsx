@@ -153,10 +153,10 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
       {/* 下部ナビ */}
       <div className="flex mt-4 text-sm border border-gray-300">
         {[
-          { label: '↺ 更新順一覧', href: '/?sort=recent' },
-          { label: '⏱ 新着一覧',   href: '/?sort=new' },
+          { label: '↺ 更新順一覧', href: '/update' },
+          { label: '⏱ 新着一覧',   href: '/new' },
           { label: '📊 ランキング', href: '/ranking' },
-          { label: '📂 過去ログ',   href: '/?sort=archived' },
+          { label: '📂 過去ログ',   href: '/archived' },
         ].map((btn) => (
           <Link
             key={btn.href}
