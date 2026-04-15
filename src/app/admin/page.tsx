@@ -180,19 +180,9 @@ export default async function AdminPage({
                       className="px-2 py-0.5 text-[10px] text-green-700 border border-green-400 hover:bg-green-50">
                       編集
                     </a>
-                    <form action={adminToggleArchive} className="inline">
-                      <input type="hidden" name="threadId" value={t.id} />
-                      <input type="hidden" name="isArchived" value={String(t.is_archived)} />
-                      <button type="submit" className="px-2 py-0.5 text-[10px] border"
-                        style={t.is_archived
-                          ? { color: '#155724', borderColor: '#28a745' }
-                          : { color: '#856404', borderColor: '#ffc107' }}>
-                        {t.is_archived ? '復活' : '過去ログ'}
-                      </button>
-                    </form>
                     <form action={adminDeleteThread} className="inline">
                       <input type="hidden" name="threadId" value={t.id} />
-                      <button type="submit" className="px-2 py-0.5 text-[10px] text-white" style={{ background: '#dc3545' }}>
+                      <button type="submit" className="px-2 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity" style={{ background: '#dc3545' }}>
                         削除
                       </button>
                     </form>
@@ -225,7 +215,7 @@ export default async function AdminPage({
                       <form action={adminDeletePost} className="inline">
                         <input type="hidden" name="postId" value={p.id} />
                         <input type="hidden" name="threadId" value={selectedThread.id} />
-                        <button type="submit" className="px-2 py-0.5 text-[10px] text-white" style={{ background: '#dc3545' }}>
+                        <button type="submit" className="px-2 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity" style={{ background: '#dc3545' }}>
                           削除
                         </button>
                       </form>
