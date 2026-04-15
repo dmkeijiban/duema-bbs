@@ -32,6 +32,12 @@ export default function NewThreadPage() {
             タイトルと本文には日本語を含めてください（スパム対策）
           </p>
         </div>
+        {/* 注意書き */}
+        <div className="mx-6 mt-5 px-4 py-3 bg-sky-50 border border-sky-200 rounded text-xs text-sky-800 space-y-1 leading-relaxed">
+          <p>・重複や似たスレッドがないか必ず確認してください。</p>
+          <p>・単発スレは最終更新から一定時間で落ちます。</p>
+          <p>・画像は権利を侵害しない物を添付してください。</p>
+        </div>
         <NewThreadForm />
       </div>
     </div>
@@ -146,12 +152,15 @@ function NewThreadForm() {
 function CategorySelect() {
   // 静的なカテゴリリスト（Supabaseのデータと合わせる）
   const categories = [
-    { id: 1, name: '総合', slug: 'general' },
-    { id: 2, name: 'デッキ相談', slug: 'deck' },
-    { id: 3, name: 'カード評価', slug: 'card' },
-    { id: 4, name: '大会・環境', slug: 'tournament' },
-    { id: 5, name: '売買・交換', slug: 'trade' },
-    { id: 6, name: '雑談', slug: 'casual' },
+    { id: 1, name: '新カード・カード評価', slug: 'card' },
+    { id: 2, name: 'デッキ関連', slug: 'deck' },
+    { id: 3, name: 'CS大会・環境関係', slug: 'cs' },
+    { id: 4, name: '高騰・下落情報', slug: 'price' },
+    { id: 5, name: 'デュエプレ', slug: 'dueplace' },
+    { id: 6, name: 'アニメ・漫画', slug: 'anime' },
+    { id: 7, name: 'デュエパ等の特殊ルール', slug: 'duepa' },
+    { id: 8, name: 'デュエマクラシック', slug: 'classic' },
+    { id: 9, name: '雑談', slug: 'casual' },
   ]
 
   return (

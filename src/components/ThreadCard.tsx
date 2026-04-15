@@ -1,10 +1,8 @@
 import Link from 'next/link'
 import { Thread } from '@/types'
-import { formatRelativeTime } from '@/lib/utils'
 
-// グレーのプレースホルダー SVG（画像なしスレ用）
 const PLACEHOLDER =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect fill='%23d1d5db' width='4' height='3'/%3E%3Ctext x='2' y='2.1' font-size='1.2' text-anchor='middle' fill='%239ca3af'%3E%F0%9F%83%8F%3C/text%3E%3C/svg%3E"
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3Crect fill='%23e9ecef' width='1' height='1'/%3E%3C/svg%3E"
 
 interface Props {
   thread: Thread
@@ -15,67 +13,52 @@ export function ThreadCard({ thread, rank }: Props) {
   const category = thread.categories
 
   return (
-    <article className="group rounded overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)' }}>
-      <Link href={`/thread/${thread.id}`} className="block">
-        {/* サムネイル */}
-        <div className="relative overflow-hidden bg-gray-100" style={{ aspectRatio: '4/3' }}>
-          <img
-            src={thread.image_url ?? PLACEHOLDER}
-            alt=""
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-
-          {/* レス数バッジ（右上・赤） */}
-          <span
-            className="absolute top-1 right-1 text-white text-xs font-bold px-1.5 py-0.5 rounded leading-none min-w-[1.6rem] text-center"
-            style={{ backgroundColor: 'var(--badge-red)' }}
-            title="レス数"
-          >
-            {thread.post_count}
+    <Link
+      href={`/thread/${thread.id}`}
+      className="thread-card flex bg-white hover:bg-gray-50 overflow-hidden border-b border-r border-gray-300"
+    >
+      {/* サムネイル（左）*/}
+      <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 80, height: 80 }}>
+        <img
+          src={thread.image_url ?? PLACEHOLDER}
+          alt=""
+          className="w-full h-full object-cover"
+        />
+        {rank !== undefined && (
+          <span className="absolute top-0 left-0 bg-gray-800 bg-opacity-80 text-white text-[10px] font-bold px-1 leading-4">
+            {rank}
           </span>
+        )}
+        {thread.is_archived && (
+          <span className="absolute top-0 right-0 bg-gray-600 bg-opacity-80 text-white text-[9px] px-1 leading-4">
+            過去
+          </span>
+        )}
+      </div>
 
-          {/* ランクバッジ（左上） */}
-          {rank !== undefined && (
-            <span
-              className="absolute top-1 left-1 text-white text-xs font-bold w-6 h-6 flex items-center justify-center rounded"
-              style={{ backgroundColor: 'var(--header-bg)' }}
-            >
-              {rank}
-            </span>
-          )}
-
-          {/* カテゴリラベル（左下） */}
+      {/* テキスト（右）*/}
+      <div className="p-1.5 flex-1 min-w-0 relative" style={{ minHeight: 80 }}>
+        <div className="min-w-0">
           {category && (
             <span
-              className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-xs font-medium text-white leading-none"
+              className="inline-block text-[9px] font-bold text-white px-1 leading-4 mb-0.5"
               style={{ backgroundColor: category.color }}
             >
               {category.name}
             </span>
           )}
-
-          {/* 過去ログ */}
-          {thread.is_archived && (
-            <span className="absolute top-1 left-1 bg-gray-600 text-white text-xs px-1.5 py-0.5 rounded leading-none">
-              過去ログ
-            </span>
-          )}
-        </div>
-
-        {/* テキスト情報 */}
-        <div className="p-2">
-          <h2
-            className="text-sm font-medium leading-snug line-clamp-2 min-h-[2.6rem] group-hover:text-blue-700 transition-colors"
-            style={{ color: 'var(--foreground)' }}
-          >
+          <p className="text-[12px] leading-snug text-gray-800 line-clamp-2 break-all">
             {thread.title}
-          </h2>
-          <div className="flex items-center justify-between mt-1 text-xs text-gray-400">
-            <span>{formatRelativeTime(thread.last_posted_at)}</span>
-            <span>{thread.view_count.toLocaleString()}view</span>
-          </div>
+          </p>
         </div>
-      </Link>
-    </article>
+        {/* レス数バッジ（テキスト欄右下） */}
+        <span
+          className="absolute bottom-1 right-1 text-white text-[10px] font-bold px-1 leading-4 flex items-center gap-0.5"
+          style={{ backgroundColor: '#dc3545' }}
+        >
+          💬{thread.post_count}
+        </span>
+      </div>
+    </Link>
   )
 }

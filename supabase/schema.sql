@@ -51,12 +51,15 @@ create index if not exists idx_favorites_session on favorites(session_id);
 
 -- カテゴリ初期データ
 insert into categories (name, slug, description, color, sort_order) values
-  ('総合', 'general', '何でも話せる総合スレ', '#6366f1', 0),
-  ('デッキ相談', 'deck', 'デッキレシピ・構築相談', '#10b981', 1),
-  ('カード評価', 'card', '新弾・既存カードの評価・考察', '#f59e0b', 2),
-  ('大会・環境', 'tournament', '大会結果・環境考察', '#ef4444', 3),
-  ('売買・交換', 'trade', 'カードの売買・交換', '#8b5cf6', 4),
-  ('雑談', 'casual', 'ゲーム外の雑談', '#64748b', 5)
+  ('新カード・カード評価', 'card',     '新弾・既存カードの評価・考察', '#e83e8c', 0),
+  ('デッキ関連',         'deck',     'デッキレシピ・構築相談',     '#007bff', 1),
+  ('CS大会・環境関係',   'cs',       '大会結果・環境考察',         '#fd7e14', 2),
+  ('高騰・下落情報',     'price',    'カード相場・高騰・下落',     '#20c997', 3),
+  ('デュエプレ',         'dueplace', 'デュエルマスターズプレイス', '#6f42c1', 4),
+  ('アニメ・漫画',       'anime',    'アニメ・漫画の話題',         '#dc3545', 5),
+  ('デュエパ等の特殊ルール', 'duepa', 'デュエパーティー等',        '#17a2b8', 6),
+  ('デュエマクラシック', 'classic',  'クラシックフォーマット',     '#795548', 7),
+  ('雑談',               'casual',   'ゲーム外の雑談',             '#6c757d', 8)
 on conflict (slug) do nothing;
 
 -- スレッドのpost_countとlast_posted_atを自動更新するトリガー

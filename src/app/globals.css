@@ -1,13 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f0f2f5;
-  --foreground: #1a1a1a;
-  --header-bg: #1a3a6e;
-  --card-bg: #ffffff;
-  --border: #e0e0e0;
-  --accent: #1d4ed8;
-  --badge-red: #dc2626;
+  --background: #f8f9fa;
+  --foreground: #212529;
+  --border: #dee2e6;
+  --accent: #0d6efd;
+  --badge-red: #dc3545;
+  --header-bg: #0d6efd;
 }
 
 @theme inline {
@@ -26,3 +25,9 @@ body {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #aaa; border-radius: 3px; }
+
+/* スレッドカードの画像 */
+.thread-card img {
+  min-width: 80px;
+  min-height: 80px;
+}

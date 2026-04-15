@@ -6,7 +6,12 @@
       "Bash(npm run:*)",
       "Bash(node:*)",
       "Bash(echo \"EXIT:$?\")",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "WebFetch(domain:bbs.animanch.com)",
+      "Bash(powershell -Command \"Get-Process -Name node -ErrorAction SilentlyContinue | Stop-Process -Force\")",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__navigate",
+      "mcp__Claude_in_Chrome__computer"
     ]
   }
 }

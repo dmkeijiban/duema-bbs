@@ -73,19 +73,35 @@ export async function createThread(formData: FormData) {
     imageUrl = urlData.publicUrl
   }
 
-  const { data: thread, error } = await supabase
+  const sessionId = await getOrCreateSessionId()
+
+  const insertData = {
+    title,
+    body,
+    author_name: authorName,
+    category_id: categoryId ? parseInt(categoryId) : null,
+    image_url: imageUrl,
+    session_id: sessionId,
+  }
+
+  let { data: thread, error } = await supabase
     .from('threads')
-    .insert({
-      title,
-      body,
-      author_name: authorName,
-      category_id: categoryId ? parseInt(categoryId) : null,
-      image_url: imageUrl,
-    })
+    .insert(insertData)
     .select('id')
     .single()
 
-  if (error) {
+  // session_idカラムが存在しない場合はなしで再試行
+  if (error && (error.code === '42703' || error.message?.includes('session_id'))) {
+    const { data: t2, error: e2 } = await supabase
+      .from('threads')
+      .insert({ title, body, author_name: authorName, category_id: categoryId ? parseInt(categoryId) : null, image_url: imageUrl })
+      .select('id')
+      .single()
+    thread = t2
+    error = e2
+  }
+
+  if (error || !thread) {
     console.error('Thread insert error:', error)
     return { error: 'スレッドの作成に失敗しました' }
   }
@@ -145,20 +161,40 @@ export async function createPost(formData: FormData) {
     imageUrl = urlData.publicUrl
   }
 
-  const { error } = await supabase.from('posts').insert({
+  const sessionId = await getOrCreateSessionId()
+
+  // まずsession_id付きで試みる（DBマイグレーション済みの場合）
+  let { error } = await supabase.from('posts').insert({
     thread_id: threadId,
     post_number: nextPostNumber,
     body,
     author_name: authorName,
     image_url: imageUrl,
+    session_id: sessionId,
   })
+
+  // session_idカラムが存在しない場合はなしで再試行
+  if (error && (error.code === '42703' || error.message?.includes('session_id'))) {
+    const { error: e2 } = await supabase.from('posts').insert({
+      thread_id: threadId,
+      post_number: nextPostNumber,
+      body,
+      author_name: authorName,
+      image_url: imageUrl,
+    })
+    error = e2
+  }
 
   if (error) {
     console.error('Post insert error:', error)
     return { error: 'レスの投稿に失敗しました' }
   }
 
+  // スレッドのレス数と最終投稿日時を更新（security definer RPCでRLSを回避）
+  await supabase.rpc('increment_post_count', { p_thread_id: threadId })
+
   revalidatePath(`/thread/${threadId}`)
+  revalidatePath('/')
   return { success: true }
 }
 
