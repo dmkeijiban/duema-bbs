@@ -121,23 +121,13 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
     )
   }
 
-  // ソート別ヘッダー
-  const sortHeaders: Record<string, { label: string; sub?: string; icon: string }> = {
-    recent:   { icon: '↺', label: '更新順一覧' },
-    new:      { icon: '⏱', label: '新着スレッド一覧' },
-    popular:  { icon: '📊', label: '人気スレッド', sub: '過去3日間 / 100位まで' },
-    archived: { icon: '📂', label: '過去ログ一覧' },
-    random:   { icon: '🎲', label: 'ランダム一覧' },
-  }
-  const hd = sortHeaders[sort]
-
   return (
     <>
-      {/* ソート別ヘッダー */}
-      {hd && !searchQ && (
+      {/* 人気のみサブテキスト表示 */}
+      {sort === 'popular' && !searchQ && (
         <div className="mb-2 px-3 py-1.5 border border-gray-300 bg-white flex items-baseline gap-2">
-          <span className="font-bold text-sm text-gray-800">{hd.icon} {hd.label}</span>
-          {hd.sub && <span className="text-xs text-gray-500">（{hd.sub}）</span>}
+          <span className="font-bold text-sm text-gray-800">📊 人気スレッド</span>
+          <span className="text-xs text-gray-500">（過去3日間 / 100位まで）</span>
         </div>
       )}
 

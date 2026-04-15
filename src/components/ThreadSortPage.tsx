@@ -10,11 +10,11 @@ export const NAV_LINKS = [
   { label: '↺ 更新順一覧', href: '/update' },
   { label: '⏱ 新着一覧',   href: '/new' },
   { label: '📊 ランキング', href: '/ranking' },
-  { label: '🎲 ランダム',   href: '/?sort=random' },
+  { label: '🎲 ランダム',   href: '/random' },
 ]
 
 interface Props {
-  sort: 'recent' | 'new' | 'archived'
+  sort: 'recent' | 'new' | 'archived' | 'random'
   title: string
   icon: string
 }
@@ -30,13 +30,21 @@ async function ThreadList({ sort }: { sort: string }) {
 
   if (sort === 'new') {
     query = query.order('created_at', { ascending: false })
-  } else {
+  } else if (sort !== 'random') {
     query = query.order('last_posted_at', { ascending: false })
   }
 
-  query = query.limit(100)
+  query = query.limit(sort === 'random' ? 500 : 100)
   const { data: rawThreads } = await query
-  const threads = rawThreads ? await withFallbackThumbnails(supabase, rawThreads) : []
+  let threads = rawThreads ? await withFallbackThumbnails(supabase, rawThreads) : []
+
+  // ランダムシャッフル
+  if (sort === 'random') {
+    for (let i = threads.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [threads[i], threads[j]] = [threads[j], threads[i]]
+    }
+  }
 
   if (threads.length === 0) {
     return (
@@ -46,7 +54,7 @@ async function ThreadList({ sort }: { sort: string }) {
     )
   }
 
-  // 更新順・新着は横長リスト、過去ログはグリッド
+  // 過去ログはグリッド、それ以外は横長リスト
   if (sort === 'archived') {
     const { ThreadCard } = await import('@/components/ThreadCard')
     return (
@@ -106,7 +114,7 @@ export function BottomNav({ current }: { current?: string }) {
 }
 
 export async function ThreadSortPage({ sort, title, icon }: Props) {
-  const href = sort === 'recent' ? '/update' : sort === 'new' ? '/new' : '/archived'
+  const href = sort === 'recent' ? '/update' : sort === 'new' ? '/new' : sort === 'random' ? '/random' : '/archived'
 
   return (
     <div className="w-full px-0 py-0">
