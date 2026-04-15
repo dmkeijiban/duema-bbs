@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Category } from '@/types'
 
@@ -12,24 +12,39 @@ interface Props {
 }
 
 const TABS = [
-  { label: '更新順', sort: 'recent',   icon: '↺' },
-  { label: '新着',   sort: 'new',      icon: '⏱' },
-  { label: '人気',   sort: 'popular',  icon: '📊' },
-  { label: '過去ログ', sort: 'archived', icon: '📂' },
+  { label: '更新順', sort: 'recent',   icon: '↺', href: (base: string) => `${base}sort=recent` },
+  { label: '新着',   sort: 'new',      icon: '⏱', href: (base: string) => `${base}sort=new` },
+  { label: '人気',   sort: 'popular',  icon: '📊', href: () => '/ranking' },
+  { label: '過去ログ', sort: 'archived', icon: '📂', href: (base: string) => `${base}sort=archived` },
 ]
 
 export function SortTabs({ currentSort, currentCategory, categories }: Props) {
   const router = useRouter()
   const [activeSort, setActiveSort] = useState(currentSort)
   const [isPending, startTransition] = useTransition()
+  const [catOpen, setCatOpen] = useState(false)
+  const catRef = useRef<HTMLLIElement>(null)
 
   const base = currentCategory ? `?category=${currentCategory}&` : '?'
 
-  const handleClick = (sort: string) => {
-    if (sort === activeSort) return
-    setActiveSort(sort)
+  // ドロップダウン外クリックで閉じる
+  useEffect(() => {
+    if (!catOpen) return
+    const handler = (e: MouseEvent) => {
+      if (catRef.current && !catRef.current.contains(e.target as Node)) {
+        setCatOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [catOpen])
+
+  const handleClick = (tab: typeof TABS[number]) => {
+    const url = tab.href(base)
+    if (tab.sort === activeSort && url !== '/ranking') return
+    setActiveSort(tab.sort)
     startTransition(() => {
-      router.push(`${base}sort=${sort}`)
+      router.push(url)
     })
   }
 
@@ -41,7 +56,7 @@ export function SortTabs({ currentSort, currentCategory, categories }: Props) {
           return (
             <li key={tab.sort} className="flex-1">
               <button
-                onClick={() => handleClick(tab.sort)}
+                onClick={() => handleClick(tab)}
                 className="w-full text-center py-2 font-medium transition-colors border border-transparent select-none"
                 style={
                   active
@@ -55,20 +70,36 @@ export function SortTabs({ currentSort, currentCategory, categories }: Props) {
             </li>
           )
         })}
-        {/* カテゴリドロップダウン */}
-        <li className="flex-1 relative group">
-          <button className="w-full text-center py-2 font-medium text-xs md:text-sm" style={{ color: '#0d6efd' }}>
-            📂 カテゴリ ▾
+        {/* カテゴリドロップダウン（クリック式・スマホ対応） */}
+        <li ref={catRef} className="flex-1 relative">
+          <button
+            onClick={() => setCatOpen(v => !v)}
+            className="w-full text-center py-2 font-medium text-xs md:text-sm select-none"
+            style={{ color: '#0d6efd' }}
+          >
+            📂 カテゴリ {catOpen ? '▴' : '▾'}
           </button>
-          <div className="hidden group-hover:block absolute right-0 top-full bg-white border border-gray-300 shadow-lg z-50 min-w-max text-sm">
-            <Link href={`/?sort=${activeSort}`} className="block px-4 py-1.5 hover:bg-gray-100 text-gray-700">すべて</Link>
-            {categories.map(c => (
-              <Link key={c.slug} href={`/?category=${c.slug}&sort=${activeSort}`}
-                className="block px-4 py-1.5 hover:bg-gray-100 text-gray-700">
-                {c.name}
+          {catOpen && (
+            <div className="absolute right-0 top-full bg-white border border-gray-300 shadow-lg z-50 min-w-max text-sm max-h-64 overflow-y-auto">
+              <Link
+                href={`/?sort=${activeSort}`}
+                className="block px-4 py-2 hover:bg-gray-100 text-gray-700 border-b border-gray-100"
+                onClick={() => setCatOpen(false)}
+              >
+                すべて
               </Link>
-            ))}
-          </div>
+              {categories.map(c => (
+                <Link
+                  key={c.slug}
+                  href={`/?category=${c.slug}&sort=${activeSort}`}
+                  className="block px-4 py-2 hover:bg-gray-100 text-gray-700 border-b border-gray-100 last:border-b-0"
+                  onClick={() => setCatOpen(false)}
+                >
+                  {c.name}
+                </Link>
+              ))}
+            </div>
+          )}
         </li>
       </ul>
     </div>

@@ -48,10 +48,13 @@ export async function RecommendSection() {
             className="flex bg-white hover:bg-gray-50 border-b border-r border-gray-300 overflow-hidden"
           >
             <div className="shrink-0 bg-gray-100 overflow-hidden" style={{ width: 44, height: 44 }}>
+              <img src={thread.image_url ?? PLACEHOLDER} alt="" className="w-full h-full object-cover md:hidden" />
+            </div>
+            <div className="hidden md:block shrink-0 bg-gray-100 overflow-hidden" style={{ width: 64, height: 64 }}>
               <img src={thread.image_url ?? PLACEHOLDER} alt="" className="w-full h-full object-cover" />
             </div>
             <div className="px-1 py-0.5 flex-1 min-w-0">
-              <p className="text-[10px] leading-snug text-gray-800 line-clamp-3 break-all">
+              <p className="text-[10px] md:text-[13px] leading-snug text-gray-800 line-clamp-3 break-all">
                 {thread.title}
               </p>
             </div>

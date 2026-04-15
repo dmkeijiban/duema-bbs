@@ -149,6 +149,24 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
           このスレッドは過去ログです。レスできません。
         </div>
       )}
+
+      {/* 下部ナビ */}
+      <div className="flex mt-4 text-sm border border-gray-300">
+        {[
+          { label: '↺ 更新順一覧', href: '/?sort=recent' },
+          { label: '⏱ 新着一覧',   href: '/?sort=new' },
+          { label: '📊 ランキング', href: '/ranking' },
+          { label: '📂 過去ログ',   href: '/?sort=archived' },
+        ].map((btn) => (
+          <Link
+            key={btn.href}
+            href={btn.href}
+            className="flex-1 text-center py-2 hover:bg-gray-50 text-blue-600 border-r border-gray-300 last:border-r-0 text-xs md:text-sm"
+          >
+            {btn.label}
+          </Link>
+        ))}
+      </div>
     </>
   )
 }
