@@ -38,11 +38,11 @@ export function NoticeBlock({ notice }: { notice: Notice }) {
               {/* タイトルオーバーレイ（画像下部に黒透過＋白テキスト）*/}
               {item.title && (
                 <div
-                  className="absolute bottom-0 inset-x-0 px-2 py-1.5 text-white text-xs font-bold leading-snug"
+                  className="absolute bottom-0 inset-x-0 px-2 py-1.5 text-white text-xs font-light leading-snug text-center"
                   style={{ background: 'rgba(0,0,0,0.45)' }}
                 >
                   {item.title}
-                  {item.body && <span className="block text-[10px] font-normal opacity-90 mt-0.5">{item.body}</span>}
+                  {item.body && <span className="block text-[10px] font-light opacity-90 mt-0.5">{item.body}</span>}
                 </div>
               )}
             </div>

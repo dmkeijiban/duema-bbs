@@ -206,8 +206,9 @@ export default async function Home({
         </div>
 
         {/* top お知らせ（緑バナーの下） */}
-        {topNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
-        {isAdmin && <NoticeAdminBar position="top" notices={topNotices} />}
+        {isAdmin
+          ? <NoticeAdminBar position="top" notices={topNotices} />
+          : topNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
       </div>
 
       {/* カテゴリフィルター時のパンくず */}
@@ -227,16 +228,18 @@ export default async function Home({
       {/* スレッド一覧 */}
       <div className="max-w-screen-xl mx-auto px-2">
         {/* mid お知らせ（タブ下・スレ上） */}
-        {midNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
-        {isAdmin && <NoticeAdminBar position="mid" notices={midNotices} />}
+        {isAdmin
+          ? <NoticeAdminBar position="mid" notices={midNotices} />
+          : midNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
 
         <Suspense fallback={<ThreadListSkeleton />}>
           <ThreadList searchParams={params} />
         </Suspense>
 
         {/* bot お知らせ（スレ一覧の下） */}
-        {botNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
-        {isAdmin && <NoticeAdminBar position="bot" notices={botNotices} />}
+        {isAdmin
+          ? <NoticeAdminBar position="bot" notices={botNotices} />
+          : botNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
 
         {/* 下部ナビ（記号付き） */}
         <BottomNav />

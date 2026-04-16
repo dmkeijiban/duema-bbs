@@ -203,16 +203,6 @@ function NoticeModal({
             </div>
           ))}
 
-          {/* 並び順 */}
-          <div>
-            <label className="text-xs text-gray-600 block mb-1">並び順</label>
-            <input
-              type="number"
-              value={sortOrder}
-              onChange={e => setSortOrder(Number(e.target.value))}
-              className="w-24 border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:border-orange-400"
-            />
-          </div>
 
           {/* 表示中 */}
           <div className="flex items-center gap-2">
