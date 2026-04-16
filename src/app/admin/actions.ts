@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase-server'
+import { NoticeItem } from '@/components/NoticeBlock'
 
 const ADMIN_COOKIE = 'admin_auth'
 
@@ -105,113 +106,88 @@ export async function adminToggleArchive(formData: FormData) {
   redirect('/admin')
 }
 
-export async function adminCreateNotice(formData: FormData) {
-  await checkAdmin()
+export async function saveNotice(data: {
+  id?: number
+  position: string
+  sort_order: number
+  header_text: string
+  columns: number
+  items: NoticeItem[]
+  is_active: boolean
+}): Promise<{ error?: string }> {
+  try {
+    await checkAdmin()
+  } catch {
+    return { error: 'Unauthorized' }
+  }
   const supabase = await createClient()
-
-  await supabase.from('notices').insert({
-    title: (formData.get('title') as string)?.trim() ?? '',
-    body: (formData.get('body') as string)?.trim() ?? '',
-    image_url: (formData.get('image_url') as string)?.trim() ?? '',
-    link_url: (formData.get('link_url') as string)?.trim() ?? '',
-    display_type: (formData.get('display_type') as string) ?? 'banner',
-    position: (formData.get('position') as string) ?? 'mid',
-    sort_order: parseInt((formData.get('sort_order') as string) ?? '0') || 0,
-  })
-
+  const payload = {
+    position: data.position,
+    sort_order: data.sort_order,
+    header_text: data.header_text,
+    columns: data.columns,
+    items: data.items,
+    is_active: data.is_active,
+  }
+  if (data.id) {
+    const { error } = await supabase.from('notices').update(payload).eq('id', data.id)
+    if (error) return { error: error.message }
+  } else {
+    const { error } = await supabase.from('notices').insert(payload)
+    if (error) return { error: error.message }
+  }
   revalidatePath('/')
-  revalidatePath('/admin')
-  redirect('/admin')
+  return {}
 }
 
-export async function adminUpdateNotice(formData: FormData) {
-  await checkAdmin()
-  const noticeId = parseInt(formData.get('noticeId') as string)
+export async function deleteNotice(id: number): Promise<{ error?: string }> {
+  try {
+    await checkAdmin()
+  } catch {
+    return { error: 'Unauthorized' }
+  }
   const supabase = await createClient()
-
-  await supabase.from('notices').update({
-    title: (formData.get('title') as string)?.trim() ?? '',
-    body: (formData.get('body') as string)?.trim() ?? '',
-    image_url: (formData.get('image_url') as string)?.trim() ?? '',
-    link_url: (formData.get('link_url') as string)?.trim() ?? '',
-    display_type: (formData.get('display_type') as string) ?? 'banner',
-    position: (formData.get('position') as string) ?? 'mid',
-    sort_order: parseInt((formData.get('sort_order') as string) ?? '0') || 0,
-  }).eq('id', noticeId)
-
+  const { error } = await supabase.from('notices').delete().eq('id', id)
+  if (error) return { error: error.message }
   revalidatePath('/')
-  revalidatePath('/admin')
-  redirect('/admin')
+  return {}
 }
 
-export async function adminDeleteNotice(formData: FormData) {
-  await checkAdmin()
-  const noticeId = parseInt(formData.get('noticeId') as string)
+export async function moveNotice(id: number, direction: 'up' | 'down'): Promise<{ error?: string }> {
+  try {
+    await checkAdmin()
+  } catch {
+    return { error: 'Unauthorized' }
+  }
   const supabase = await createClient()
 
-  await supabase.from('notices').delete().eq('id', noticeId)
+  // 対象 notice を取得
+  const { data: target, error: fetchError } = await supabase
+    .from('notices')
+    .select('id, sort_order, position')
+    .eq('id', id)
+    .single()
+  if (fetchError || !target) return { error: fetchError?.message ?? 'Not found' }
+
+  // 同じ position の notices を sort_order 順で取得
+  const { data: siblings, error: siblingsError } = await supabase
+    .from('notices')
+    .select('id, sort_order')
+    .eq('position', target.position)
+    .order('sort_order', { ascending: true })
+  if (siblingsError || !siblings) return { error: siblingsError?.message ?? 'Failed to fetch' }
+
+  const idx = siblings.findIndex(n => n.id === id)
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+  if (swapIdx < 0 || swapIdx >= siblings.length) return {}
+
+  const swapTarget = siblings[swapIdx]
+  const targetOrder = target.sort_order
+  const swapOrder = swapTarget.sort_order
+
+  await supabase.from('notices').update({ sort_order: swapOrder }).eq('id', id)
+  await supabase.from('notices').update({ sort_order: targetOrder }).eq('id', swapTarget.id)
 
   revalidatePath('/')
-  revalidatePath('/admin')
-  redirect('/admin')
-}
-
-export async function adminToggleNotice(formData: FormData) {
-  await checkAdmin()
-  const noticeId = parseInt(formData.get('noticeId') as string)
-  const current = formData.get('current') === 'true'
-  const supabase = await createClient()
-
-  await supabase.from('notices').update({ is_active: !current }).eq('id', noticeId)
-
-  revalidatePath('/')
-  revalidatePath('/admin')
-  redirect('/admin')
-}
-
-// ホーム画面インライン編集用（redirect なし）
-export async function inlineCreateNotice(formData: FormData) {
-  await checkAdmin()
-  const supabase = await createClient()
-
-  await supabase.from('notices').insert({
-    title: (formData.get('title') as string)?.trim() ?? '',
-    body: (formData.get('body') as string)?.trim() ?? '',
-    image_url: (formData.get('image_url') as string)?.trim() ?? '',
-    link_url: (formData.get('link_url') as string)?.trim() ?? '',
-    display_type: (formData.get('display_type') as string) ?? 'banner',
-    position: (formData.get('position') as string) ?? 'mid',
-    sort_order: parseInt((formData.get('sort_order') as string) ?? '0') || 0,
-    is_active: true,
-  })
-
-  revalidatePath('/')
-}
-
-export async function inlineUpdateNotice(formData: FormData) {
-  await checkAdmin()
-  const noticeId = parseInt(formData.get('noticeId') as string)
-  const supabase = await createClient()
-
-  await supabase.from('notices').update({
-    title: (formData.get('title') as string)?.trim() ?? '',
-    body: (formData.get('body') as string)?.trim() ?? '',
-    image_url: (formData.get('image_url') as string)?.trim() ?? '',
-    link_url: (formData.get('link_url') as string)?.trim() ?? '',
-    display_type: (formData.get('display_type') as string) ?? 'banner',
-    position: (formData.get('position') as string) ?? 'mid',
-    sort_order: parseInt((formData.get('sort_order') as string) ?? '0') || 0,
-  }).eq('id', noticeId)
-
-  revalidatePath('/')
-}
-
-export async function inlineDeleteNotice(formData: FormData) {
-  await checkAdmin()
-  const noticeId = parseInt(formData.get('noticeId') as string)
-  const supabase = await createClient()
-
-  await supabase.from('notices').delete().eq('id', noticeId)
-
-  revalidatePath('/')
+  return {}
 }

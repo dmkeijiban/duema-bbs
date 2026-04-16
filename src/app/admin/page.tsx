@@ -5,7 +5,6 @@ import {
   adminDeleteThread, adminDeletePost,
   adminUpdateThread, adminUpdatePost,
   adminToggleArchive, adminLogin,
-  adminCreateNotice, adminUpdateNotice, adminDeleteNotice, adminToggleNotice,
 } from './actions'
 import { Notice } from '@/components/NoticeBlock'
 
@@ -34,63 +33,11 @@ function LoginPage({ error }: { error?: string }) {
   )
 }
 
-function NoticeFormFields({ notice }: { notice?: Notice }) {
-  return (
-    <div className="space-y-2">
-      <div>
-        <label className="text-xs text-gray-600 block mb-0.5">タイトル</label>
-        <input type="text" name="title" defaultValue={notice?.title ?? ''}
-          className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-orange-400" />
-      </div>
-      <div>
-        <label className="text-xs text-gray-600 block mb-0.5">本文</label>
-        <textarea name="body" rows={3} defaultValue={notice?.body ?? ''}
-          className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-orange-400 resize-y" />
-      </div>
-      <div>
-        <label className="text-xs text-gray-600 block mb-0.5">画像URL</label>
-        <input type="text" name="image_url" defaultValue={notice?.image_url ?? ''}
-          className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-orange-400" />
-      </div>
-      <div>
-        <label className="text-xs text-gray-600 block mb-0.5">リンクURL</label>
-        <input type="text" name="link_url" defaultValue={notice?.link_url ?? ''}
-          className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-orange-400" />
-      </div>
-      <div className="flex gap-3">
-        <div>
-          <label className="text-xs text-gray-600 block mb-0.5">表示タイプ</label>
-          <select name="display_type" defaultValue={notice?.display_type ?? 'banner'}
-            className="border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-orange-400">
-            <option value="banner">横長バナー</option>
-            <option value="text">テキスト</option>
-            <option value="image">画像のみ</option>
-            <option value="card">カード</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-gray-600 block mb-0.5">位置</label>
-          <select name="position" defaultValue={notice?.position ?? 'mid'}
-            className="border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-orange-400">
-            <option value="top">スレ一覧の上</option>
-            <option value="mid">タブ下・スレ上</option>
-            <option value="bot">スレ一覧の下</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-gray-600 block mb-0.5">並び順</label>
-          <input type="number" name="sort_order" defaultValue={notice?.sort_order ?? 0}
-            className="w-20 border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-orange-400" />
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ thread?: string; error?: string; editThread?: string; editPost?: string; editNotice?: string; newNotice?: string }>
+  searchParams: Promise<{ thread?: string; error?: string; editThread?: string; editPost?: string }>
 }) {
   const sp = await searchParams
   if (!(await isAdmin())) return <LoginPage error={sp.error} />
@@ -129,10 +76,6 @@ export default async function AdminPage({
   // 編集対象レス
   const editPostId = sp.editPost ? parseInt(sp.editPost) : null
   const editPost = posts?.find(p => p.id === editPostId)
-
-  // 編集対象お知らせ
-  const editNoticeId = sp.editNotice ? parseInt(sp.editNotice) : null
-  const editNotice = editNoticeId ? (notices as Notice[] | null)?.find(n => n.id === editNoticeId) : null
 
   async function logout() {
     'use server'
@@ -215,42 +158,6 @@ export default async function AdminPage({
         </div>
       )}
 
-      {/* お知らせ編集フォーム */}
-      {editNotice && (
-        <div className="mb-4 border-2 border-orange-400 bg-orange-50 p-4">
-          <h2 className="font-bold text-orange-800 mb-3">✏️ お知らせ編集</h2>
-          <form action={adminUpdateNotice} className="space-y-2">
-            <input type="hidden" name="noticeId" value={editNotice.id} />
-            <NoticeFormFields notice={editNotice} />
-            <div className="flex gap-2 pt-1">
-              <button type="submit" className="px-4 py-1.5 text-white text-xs font-medium" style={{ background: '#fd7e14' }}>
-                保存
-              </button>
-              <a href="/admin" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600">
-                キャンセル
-              </a>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* お知らせ新規作成フォーム */}
-      {sp.newNotice && (
-        <div className="mb-4 border-2 border-orange-400 bg-orange-50 p-4">
-          <h2 className="font-bold text-orange-800 mb-3">➕ お知らせ新規作成</h2>
-          <form action={adminCreateNotice} className="space-y-2">
-            <NoticeFormFields />
-            <div className="flex gap-2 pt-1">
-              <button type="submit" className="px-4 py-1.5 text-white text-xs font-medium" style={{ background: '#fd7e14' }}>
-                作成
-              </button>
-              <a href="/admin" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600">
-                キャンセル
-              </a>
-            </div>
-          </form>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* スレッド一覧 */}
@@ -333,9 +240,8 @@ export default async function AdminPage({
       <div className="mt-6">
         <div className="flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
           <h2 className="font-bold text-gray-700">📢 お知らせ管理</h2>
-          <a href="/admin?newNotice=1"
-            className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#fd7e14' }}>
-            + 新規追加
+          <a href="/" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#fd7e14' }}>
+            ホームで編集
           </a>
         </div>
         {notices && notices.length > 0 ? (
@@ -346,33 +252,18 @@ export default async function AdminPage({
                   {positionLabel[n.position] ?? n.position}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <span className="text-xs font-medium text-gray-800 line-clamp-1">{n.title || '（タイトルなし）'}</span>
-                  <span className="text-[10px] text-gray-400 ml-1">{n.display_type}</span>
+                  <span className="text-xs font-medium text-gray-800 line-clamp-1">
+                    {n.header_text || '（タイトルなし）'}
+                  </span>
+                  <span className="text-[10px] text-gray-400 ml-1">{n.columns}列 / {n.items?.length ?? 0}件</span>
                 </div>
-                <div className="flex gap-1 shrink-0">
-                  {/* トグル */}
-                  <form action={adminToggleNotice} className="inline-flex">
-                    <input type="hidden" name="noticeId" value={n.id} />
-                    <input type="hidden" name="current" value={String(n.is_active)} />
-                    <button type="submit"
-                      className="px-2 py-0.5 text-[10px] border leading-none"
-                      style={n.is_active
-                        ? { color: '#155724', borderColor: '#28a745', background: '#d4edda' }
-                        : { color: '#6c757d', borderColor: '#6c757d', background: '#f8f9fa' }}>
-                      {n.is_active ? '表示中' : '非表示'}
-                    </button>
-                  </form>
-                  <a href={`/admin?editNotice=${n.id}`}
-                    className="px-2 py-0.5 text-[10px] text-orange-700 border border-orange-400 hover:bg-orange-50">
-                    編集
-                  </a>
-                  <form action={adminDeleteNotice} className="inline-flex">
-                    <input type="hidden" name="noticeId" value={n.id} />
-                    <button type="submit" className="px-2 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity leading-none" style={{ background: '#dc3545' }}>
-                      削除
-                    </button>
-                  </form>
-                </div>
+                <span
+                  className="px-2 py-0.5 text-[10px] border leading-none"
+                  style={n.is_active
+                    ? { color: '#155724', borderColor: '#28a745', background: '#d4edda' }
+                    : { color: '#6c757d', borderColor: '#6c757d', background: '#f8f9fa' }}>
+                  {n.is_active ? '表示中' : '非表示'}
+                </span>
               </div>
             ))}
           </div>

@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { Notice } from '@/components/NoticeBlock'
-import { inlineCreateNotice, inlineUpdateNotice, inlineDeleteNotice } from '@/app/admin/actions'
+import { Notice, NoticeItem, NoticeBlock } from '@/components/NoticeBlock'
+import { saveNotice, deleteNotice, moveNotice } from '@/app/admin/actions'
 
 interface Props {
   position: 'top' | 'mid' | 'bot'
@@ -16,35 +16,52 @@ const positionLabel: Record<string, string> = {
   bot: 'bot',
 }
 
-type ModalMode = 'create' | 'edit'
-
-interface ModalState {
-  mode: ModalMode
-  notice?: Notice
-}
+const emptyItem = (): NoticeItem => ({ image_url: '', title: '', body: '', link_url: '' })
 
 function NoticeModal({
   position,
-  modal,
+  editing,
   onClose,
 }: {
   position: 'top' | 'mid' | 'bot'
-  modal: ModalState
+  editing: Partial<Notice> | null
   onClose: () => void
 }) {
   const [isPending, startTransition] = useTransition()
-  const [imageUrl, setImageUrl] = useState(modal.notice?.image_url ?? '')
-  const [uploading, setUploading] = useState(false)
-  const [uploadError, setUploadError] = useState('')
+  const [columns, setColumns] = useState<number>(editing?.columns ?? 1)
+  const [items, setItems] = useState<NoticeItem[]>(
+    editing?.items?.length ? editing.items : [emptyItem()]
+  )
+  const [headerText, setHeaderText] = useState(editing?.header_text ?? '')
+  const [sortOrder, setSortOrder] = useState<number>(editing?.sort_order ?? 0)
+  const [isActive, setIsActive] = useState<boolean>(editing?.is_active ?? true)
+  const [uploading, setUploading] = useState<boolean[]>([])
+  const [uploadErrors, setUploadErrors] = useState<string[]>([])
 
-  const isEdit = modal.mode === 'edit'
-  const notice = modal.notice
+  // columns が変わったら items を調整
+  useEffect(() => {
+    setItems(prev => {
+      const next = [...prev]
+      while (next.length < columns) next.push(emptyItem())
+      return next.slice(0, columns)
+    })
+  }, [columns])
 
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function updateItem(index: number, field: keyof NoticeItem, value: string) {
+    setItems(prev => {
+      const next = [...prev]
+      next[index] = { ...next[index], [field]: value }
+      return next
+    })
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>, index: number) {
     const file = e.target.files?.[0]
     if (!file) return
-    setUploading(true)
-    setUploadError('')
+
+    setUploading(prev => { const n = [...prev]; n[index] = true; return n })
+    setUploadErrors(prev => { const n = [...prev]; n[index] = ''; return n })
+
     try {
       const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -53,154 +70,173 @@ function NoticeModal({
       const path = `notices/${Date.now()}_${file.name}`
       const { error } = await supabase.storage.from('bbs-images').upload(path, file)
       if (error) throw error
-      const publicUrl = supabase.storage.from('bbs-images').getPublicUrl(path).data.publicUrl
-      setImageUrl(publicUrl)
+      const { data: { publicUrl } } = supabase.storage.from('bbs-images').getPublicUrl(path)
+      updateItem(index, 'image_url', publicUrl)
     } catch (err) {
-      setUploadError('画像アップロードに失敗しました')
+      setUploadErrors(prev => { const n = [...prev]; n[index] = '画像アップロードに失敗しました'; return n })
       console.error(err)
     } finally {
-      setUploading(false)
+      setUploading(prev => { const n = [...prev]; n[index] = false; return n })
     }
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = e.currentTarget
-    const formData = new FormData(form)
-    // image_url は state から設定
-    formData.set('image_url', imageUrl)
+  function handleSave() {
     startTransition(async () => {
-      if (isEdit) {
-        await inlineUpdateNotice(formData)
-      } else {
-        await inlineCreateNotice(formData)
-      }
+      await saveNotice({
+        id: editing?.id,
+        position,
+        sort_order: sortOrder,
+        header_text: headerText,
+        columns,
+        items,
+        is_active: isActive,
+      })
       onClose()
     })
   }
 
-  function handleDelete() {
-    if (!notice) return
-    if (!confirm('このお知らせを削除しますか？')) return
-    const formData = new FormData()
-    formData.set('noticeId', String(notice.id))
-    startTransition(async () => {
-      await inlineDeleteNotice(formData)
-      onClose()
-    })
-  }
+  const isUploading = uploading.some(Boolean)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }}>
-      <div className="max-w-md w-full mx-3 p-5 bg-white border border-gray-300 overflow-y-auto" style={{ maxHeight: '90vh' }}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.4)' }}
+    >
+      <div
+        className="max-w-lg w-full mx-3 p-5 bg-white border border-gray-300 overflow-y-auto"
+        style={{ maxHeight: '90vh' }}
+      >
         <h2 className="font-bold text-sm text-orange-800 mb-4">
-          {isEdit ? '✏️ お知らせを編集' : '➕ お知らせを追加'} ({positionLabel[position]})
+          {editing?.id ? '✏️ お知らせを編集' : '➕ お知らせを追加'} ({positionLabel[position]})
         </h2>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          {isEdit && notice && (
-            <input type="hidden" name="noticeId" value={notice.id} />
-          )}
-          <input type="hidden" name="position" value={position} />
 
-          {/* 画像 */}
+        <div className="space-y-4">
+          {/* セクションタイトル */}
           <div>
-            <label className="text-xs text-gray-600 block mb-1">画像アップロード</label>
-            {imageUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={imageUrl} alt="プレビュー" className="mb-2 max-h-32 object-contain border border-gray-200" />
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              disabled={uploading}
-              className="block w-full text-xs text-gray-600 file:mr-3 file:py-1 file:px-2 file:border file:border-gray-300 file:text-xs file:bg-gray-50"
-            />
-            {uploading && <p className="text-xs text-orange-600 mt-1">アップロード中...</p>}
-            {uploadError && <p className="text-xs text-red-500 mt-1">{uploadError}</p>}
-          </div>
-
-          {/* リンクURL */}
-          <div>
-            <label className="text-xs text-gray-600 block mb-1">リンクURL（任意）</label>
+            <label className="text-xs text-gray-600 block mb-1">セクションタイトル（任意）</label>
             <input
               type="text"
-              name="link_url"
-              defaultValue={notice?.link_url ?? ''}
-              placeholder="画像・全体をクリックした時のURL（アフィリエイトリンク等）"
+              value={headerText}
+              onChange={e => setHeaderText(e.target.value)}
+              placeholder="PR新商品予約リンク↓（任意）"
               className="w-full border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:border-orange-400"
             />
           </div>
 
-          {/* タイトル */}
+          {/* 列数 */}
           <div>
-            <label className="text-xs text-gray-600 block mb-1">タイトル（任意）</label>
-            <input
-              type="text"
-              name="title"
-              defaultValue={notice?.title ?? ''}
-              className="w-full border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:border-orange-400"
-            />
-          </div>
-
-          {/* 本文 */}
-          <div>
-            <label className="text-xs text-gray-600 block mb-1">本文（任意）</label>
-            <textarea
-              name="body"
-              rows={3}
-              defaultValue={notice?.body ?? ''}
-              className="w-full border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:border-orange-400 resize-y"
-            />
-          </div>
-
-          {/* 表示タイプ */}
-          <div>
-            <label className="text-xs text-gray-600 block mb-1">表示タイプ</label>
+            <label className="text-xs text-gray-600 block mb-1">列数</label>
             <select
-              name="display_type"
-              defaultValue={notice?.display_type ?? 'banner'}
-              className="w-full border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:border-orange-400"
+              value={columns}
+              onChange={e => setColumns(Number(e.target.value))}
+              className="border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:border-orange-400"
             >
-              <option value="banner">横長バナー</option>
-              <option value="text">テキスト</option>
-              <option value="image">画像のみ</option>
-              <option value="card">カード</option>
+              <option value={1}>1列</option>
+              <option value={2}>2列</option>
+              <option value={3}>3列</option>
+              <option value={4}>4列</option>
             </select>
           </div>
+
+          {/* 各列フォーム */}
+          {items.map((item, i) => (
+            <div key={i} className="border border-gray-200 p-3 space-y-2">
+              <p className="text-xs font-bold text-gray-600">{columns > 1 ? `列 ${i + 1}` : '画像・リンク設定'}</p>
+
+              {/* 画像 */}
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">画像アップロード</label>
+                {item.image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={item.image_url}
+                    alt="プレビュー"
+                    className="mb-2 max-h-24 object-contain border border-gray-200"
+                  />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={e => handleFileChange(e, i)}
+                  disabled={uploading[i]}
+                  className="block w-full text-xs text-gray-600 file:mr-2 file:py-1 file:px-2 file:border file:border-gray-300 file:text-xs file:bg-gray-50"
+                />
+                {uploading[i] && <p className="text-xs text-orange-600 mt-1">アップロード中...</p>}
+                {uploadErrors[i] && <p className="text-xs text-red-500 mt-1">{uploadErrors[i]}</p>}
+              </div>
+
+              {/* リンクURL */}
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">リンクURL（任意）</label>
+                <input
+                  type="text"
+                  value={item.link_url}
+                  onChange={e => updateItem(i, 'link_url', e.target.value)}
+                  placeholder="https://..."
+                  className="w-full border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:border-orange-400"
+                />
+              </div>
+
+              {/* タイトル（画像オーバーレイ） */}
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">タイトル（画像に重ねるテキスト・任意）</label>
+                <input
+                  type="text"
+                  value={item.title}
+                  onChange={e => updateItem(i, 'title', e.target.value)}
+                  placeholder="画像に重ねるテキスト（任意）"
+                  className="w-full border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:border-orange-400"
+                />
+              </div>
+
+              {/* 本文 */}
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">補足テキスト（任意）</label>
+                <textarea
+                  rows={2}
+                  value={item.body}
+                  onChange={e => updateItem(i, 'body', e.target.value)}
+                  placeholder="補足テキスト（任意）"
+                  className="w-full border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:border-orange-400 resize-y"
+                />
+              </div>
+            </div>
+          ))}
 
           {/* 並び順 */}
           <div>
             <label className="text-xs text-gray-600 block mb-1">並び順</label>
             <input
               type="number"
-              name="sort_order"
-              defaultValue={notice?.sort_order ?? 0}
+              value={sortOrder}
+              onChange={e => setSortOrder(Number(e.target.value))}
               className="w-24 border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:border-orange-400"
             />
+          </div>
+
+          {/* 表示中 */}
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="is_active_modal"
+              checked={isActive}
+              onChange={e => setIsActive(e.target.checked)}
+              className="w-3.5 h-3.5"
+            />
+            <label htmlFor="is_active_modal" className="text-xs text-gray-600">表示中</label>
           </div>
 
           {/* ボタン */}
           <div className="flex gap-2 pt-1 flex-wrap">
             <button
-              type="submit"
-              disabled={isPending || uploading}
+              type="button"
+              onClick={handleSave}
+              disabled={isPending || isUploading}
               className="px-4 py-1.5 text-white text-xs font-medium disabled:opacity-50"
               style={{ background: '#fd7e14' }}
             >
               {isPending ? '保存中...' : '保存'}
             </button>
-            {isEdit && (
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={isPending}
-                className="px-4 py-1.5 text-white text-xs font-medium disabled:opacity-50"
-                style={{ background: '#dc3545' }}
-              >
-                削除
-              </button>
-            )}
             <button
               type="button"
               onClick={onClose}
@@ -210,28 +246,95 @@ function NoticeModal({
               キャンセル
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   )
 }
 
 export function NoticeAdminBar({ position, notices }: Props) {
-  const [modal, setModal] = useState<ModalState | null>(null)
+  const [isPending, startTransition] = useTransition()
+  const [editingNotice, setEditingNotice] = useState<Partial<Notice> | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+
+  function openCreate() {
+    setEditingNotice(null)
+    setModalOpen(true)
+  }
+
+  function openEdit(notice: Notice) {
+    setEditingNotice(notice)
+    setModalOpen(true)
+  }
+
+  function closeModal() {
+    setModalOpen(false)
+    setEditingNotice(null)
+  }
+
+  function handleDelete(notice: Notice) {
+    if (!confirm('このお知らせを削除しますか？')) return
+    startTransition(async () => {
+      await deleteNotice(notice.id)
+    })
+  }
+
+  function handleMove(notice: Notice, direction: 'up' | 'down') {
+    startTransition(async () => {
+      await moveNotice(notice.id, direction)
+    })
+  }
 
   return (
     <>
-      {/* 既存お知らせの編集ボタン */}
+      {/* 既存お知らせ */}
       {notices.map(n => (
-        <div key={n.id} className="flex items-center gap-1 mb-1 px-2 py-1 text-xs" style={{ background: '#fff3cd', border: '1px dashed #fd7e14' }}>
-          <span className="flex-1 text-gray-700 truncate">{n.title || '（タイトルなし）'} <span className="text-gray-400">({n.display_type})</span></span>
-          <button
-            type="button"
-            onClick={() => setModal({ mode: 'edit', notice: n })}
-            className="px-2 py-0.5 text-[10px] border border-orange-400 text-orange-700 hover:bg-orange-50"
+        <div key={n.id}>
+          {/* 管理バー */}
+          <div
+            className="flex items-center gap-1 px-2 py-1 text-xs mb-0"
+            style={{ background: '#fff3cd', border: '1px dashed #fd7e14' }}
           >
-            ✏️ 編集
-          </button>
+            <button
+              type="button"
+              onClick={() => handleMove(n, 'up')}
+              disabled={isPending}
+              className="px-1.5 py-0.5 text-[10px] border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40"
+              title="上へ"
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              onClick={() => handleMove(n, 'down')}
+              disabled={isPending}
+              className="px-1.5 py-0.5 text-[10px] border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40"
+              title="下へ"
+            >
+              ↓
+            </button>
+            <span className="flex-1 text-gray-700 truncate mx-1">
+              {n.header_text || '（タイトルなし）'}
+            </span>
+            <button
+              type="button"
+              onClick={() => openEdit(n)}
+              disabled={isPending}
+              className="px-2 py-0.5 text-[10px] border border-orange-400 text-orange-700 hover:bg-orange-50 disabled:opacity-40"
+            >
+              ✏️ 編集
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDelete(n)}
+              disabled={isPending}
+              className="px-2 py-0.5 text-[10px] border border-red-400 text-red-600 hover:bg-red-50 disabled:opacity-40"
+            >
+              🗑️ 削除
+            </button>
+          </div>
+          {/* お知らせ本体 */}
+          <NoticeBlock notice={n} />
         </div>
       ))}
 
@@ -239,8 +342,9 @@ export function NoticeAdminBar({ position, notices }: Props) {
       <div className="mb-2">
         <button
           type="button"
-          onClick={() => setModal({ mode: 'create' })}
-          className="w-full text-xs py-1.5 px-3 text-left font-medium hover:opacity-80 transition-opacity"
+          onClick={openCreate}
+          disabled={isPending}
+          className="w-full text-xs py-1.5 px-3 text-left font-medium hover:opacity-80 transition-opacity disabled:opacity-40"
           style={{ background: '#ffe5cc', border: '1px dashed #fd7e14', color: '#c85a00' }}
         >
           ＋ お知らせを追加（{positionLabel[position]}）
@@ -248,11 +352,11 @@ export function NoticeAdminBar({ position, notices }: Props) {
       </div>
 
       {/* モーダル */}
-      {modal && (
+      {modalOpen && (
         <NoticeModal
           position={position}
-          modal={modal}
-          onClose={() => setModal(null)}
+          editing={editingNotice}
+          onClose={closeModal}
         />
       )}
     </>

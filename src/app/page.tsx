@@ -176,11 +176,14 @@ export default async function Home({
     .order('sort_order')
   const sort = params.sort ?? 'recent'
 
-  const { data: noticesData } = await supabase
+  let noticesQuery = supabase
     .from('notices')
     .select('*')
-    .eq('is_active', true)
     .order('sort_order')
+  if (!isAdmin) {
+    noticesQuery = noticesQuery.eq('is_active', true)
+  }
+  const { data: noticesData } = await noticesQuery
 
   const notices = (noticesData as Notice[] | null) ?? []
   const topNotices = notices.filter(n => n.position === 'top')

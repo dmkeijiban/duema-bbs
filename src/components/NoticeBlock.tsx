@@ -1,79 +1,61 @@
-export interface Notice {
-  id: number
+export interface NoticeItem {
+  image_url: string
   title: string
   body: string
-  image_url: string
   link_url: string
-  display_type: string // 'banner' | 'text' | 'image' | 'card'
+}
+
+export interface Notice {
+  id: number
   position: string
   sort_order: number
   is_active: boolean
-}
-
-function NoticeInner({ notice }: { notice: Notice }) {
-  const { display_type, title, body, image_url } = notice
-
-  if (display_type === 'banner') {
-    return (
-      <div className="flex items-center gap-2 border border-gray-300 bg-white px-3 py-2">
-        {image_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={image_url} alt={title} style={{ width: 64, height: 64, objectFit: 'cover', flexShrink: 0 }} />
-        )}
-        <div className="min-w-0">
-          {title && <div className="font-bold text-sm text-gray-800 line-clamp-1">{title}</div>}
-          {body && <div className="text-xs text-gray-600 line-clamp-2 mt-0.5">{body}</div>}
-        </div>
-      </div>
-    )
-  }
-
-  if (display_type === 'text') {
-    return (
-      <div className="border border-gray-300 bg-white px-3 py-2">
-        {title && <div className="font-bold text-sm text-gray-800">{title}</div>}
-        {body && <div className="text-xs text-gray-600 mt-0.5">{body}</div>}
-      </div>
-    )
-  }
-
-  if (display_type === 'image') {
-    if (!image_url) return null
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={image_url} alt={title} className="w-full" />
-    )
-  }
-
-  if (display_type === 'card') {
-    return (
-      <div className="border border-gray-300 bg-white">
-        {image_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={image_url} alt={title} className="w-full object-cover" style={{ maxHeight: 160 }} />
-        )}
-        <div className="px-3 py-2">
-          {title && <div className="font-bold text-sm text-gray-800">{title}</div>}
-          {body && <div className="text-xs text-gray-600 mt-0.5">{body}</div>}
-        </div>
-      </div>
-    )
-  }
-
-  return null
+  header_text: string
+  columns: number
+  items: NoticeItem[]
+  created_at: string
 }
 
 export function NoticeBlock({ notice }: { notice: Notice }) {
-  const inner = <NoticeInner notice={notice} />
-  if (!inner) return null
+  const items = (notice.items as NoticeItem[]) || []
+  if (items.length === 0 && !notice.header_text) return null
 
-  if (notice.link_url) {
-    return (
-      <a href={notice.link_url} target="_blank" rel="noopener noreferrer" className="block mb-2">
-        {inner}
-      </a>
-    )
-  }
-
-  return <div className="mb-2">{inner}</div>
+  return (
+    <div className="mb-2">
+      {/* セクションタイトル */}
+      {notice.header_text && (
+        <p className="text-sm font-bold text-gray-800 mb-1 px-1">{notice.header_text}</p>
+      )}
+      {/* グリッド */}
+      <div className="flex gap-1">
+        {items.map((item, i) => {
+          const inner = (
+            <div className="relative overflow-hidden bg-gray-100" style={{ flex: '1' }}>
+              {item.image_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={item.image_url} alt={item.title || ''} className="w-full block object-cover" />
+              )}
+              {/* タイトルオーバーレイ（画像下部に黒透過＋白テキスト）*/}
+              {item.title && (
+                <div
+                  className="absolute bottom-0 inset-x-0 px-2 py-1.5 text-white text-xs font-bold leading-snug"
+                  style={{ background: 'rgba(0,0,0,0.45)' }}
+                >
+                  {item.title}
+                  {item.body && <span className="block text-[10px] font-normal opacity-90 mt-0.5">{item.body}</span>}
+                </div>
+              )}
+            </div>
+          )
+          return item.link_url ? (
+            <a key={i} href={item.link_url} target="_blank" rel="noopener noreferrer" className="block min-w-0" style={{ flex: 1 }}>
+              {inner}
+            </a>
+          ) : (
+            <div key={i} className="min-w-0" style={{ flex: 1 }}>{inner}</div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
