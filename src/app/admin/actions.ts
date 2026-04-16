@@ -104,3 +104,67 @@ export async function adminToggleArchive(formData: FormData) {
   revalidatePath('/admin')
   redirect('/admin')
 }
+
+export async function adminCreateNotice(formData: FormData) {
+  await checkAdmin()
+  const supabase = await createClient()
+
+  await supabase.from('notices').insert({
+    title: (formData.get('title') as string)?.trim() ?? '',
+    body: (formData.get('body') as string)?.trim() ?? '',
+    image_url: (formData.get('image_url') as string)?.trim() ?? '',
+    link_url: (formData.get('link_url') as string)?.trim() ?? '',
+    display_type: (formData.get('display_type') as string) ?? 'banner',
+    position: (formData.get('position') as string) ?? 'mid',
+    sort_order: parseInt((formData.get('sort_order') as string) ?? '0') || 0,
+  })
+
+  revalidatePath('/')
+  revalidatePath('/admin')
+  redirect('/admin')
+}
+
+export async function adminUpdateNotice(formData: FormData) {
+  await checkAdmin()
+  const noticeId = parseInt(formData.get('noticeId') as string)
+  const supabase = await createClient()
+
+  await supabase.from('notices').update({
+    title: (formData.get('title') as string)?.trim() ?? '',
+    body: (formData.get('body') as string)?.trim() ?? '',
+    image_url: (formData.get('image_url') as string)?.trim() ?? '',
+    link_url: (formData.get('link_url') as string)?.trim() ?? '',
+    display_type: (formData.get('display_type') as string) ?? 'banner',
+    position: (formData.get('position') as string) ?? 'mid',
+    sort_order: parseInt((formData.get('sort_order') as string) ?? '0') || 0,
+  }).eq('id', noticeId)
+
+  revalidatePath('/')
+  revalidatePath('/admin')
+  redirect('/admin')
+}
+
+export async function adminDeleteNotice(formData: FormData) {
+  await checkAdmin()
+  const noticeId = parseInt(formData.get('noticeId') as string)
+  const supabase = await createClient()
+
+  await supabase.from('notices').delete().eq('id', noticeId)
+
+  revalidatePath('/')
+  revalidatePath('/admin')
+  redirect('/admin')
+}
+
+export async function adminToggleNotice(formData: FormData) {
+  await checkAdmin()
+  const noticeId = parseInt(formData.get('noticeId') as string)
+  const current = formData.get('current') === 'true'
+  const supabase = await createClient()
+
+  await supabase.from('notices').update({ is_active: !current }).eq('id', noticeId)
+
+  revalidatePath('/')
+  revalidatePath('/admin')
+  redirect('/admin')
+}

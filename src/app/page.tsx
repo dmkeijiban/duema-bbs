@@ -9,6 +9,7 @@ import { BottomNav } from '@/components/ThreadSortPage'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
+import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 
 const PAGE_SIZE = 100
 
@@ -170,6 +171,17 @@ export default async function Home({
     .order('sort_order')
   const sort = params.sort ?? 'recent'
 
+  const { data: noticesData } = await supabase
+    .from('notices')
+    .select('*')
+    .eq('is_active', true)
+    .order('sort_order')
+
+  const notices = (noticesData as Notice[] | null) ?? []
+  const topNotices = notices.filter(n => n.position === 'top')
+  const midNotices = notices.filter(n => n.position === 'mid')
+  const botNotices = notices.filter(n => n.position === 'bot')
+
   return (
     <div className="w-full px-0 py-0">
       <div className="max-w-screen-xl mx-auto px-2 pt-2">
@@ -184,6 +196,9 @@ export default async function Home({
           デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。
           初めての方は<Link href="/thread/new" className="text-blue-600 hover:underline">スレッドの立て方</Link>をご確認ください。
         </div>
+
+        {/* top お知らせ（緑バナーの下） */}
+        {topNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
       </div>
 
       {/* カテゴリフィルター時のパンくず */}
@@ -202,9 +217,15 @@ export default async function Home({
 
       {/* スレッド一覧 */}
       <div className="max-w-screen-xl mx-auto px-2">
+        {/* mid お知らせ（タブ下・スレ上） */}
+        {midNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
+
         <Suspense fallback={<ThreadListSkeleton />}>
           <ThreadList searchParams={params} />
         </Suspense>
+
+        {/* bot お知らせ（スレ一覧の下） */}
+        {botNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
 
         {/* 下部ナビ（記号付き） */}
         <BottomNav />
