@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase-server'
 import { ThreadCard } from '@/components/ThreadCard'
 import { Pagination } from '@/components/Pagination'
@@ -10,6 +11,7 @@ import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
+import { NoticeAdminBar } from '@/components/NoticeAdminBar'
 
 const PAGE_SIZE = 100
 
@@ -164,6 +166,9 @@ export default async function Home({
     return <SetupGuide />
   }
 
+  const cookieStore = await cookies()
+  const isAdmin = cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+
   const supabase = await createClient()
   const { data: categories } = await supabase
     .from('categories')
@@ -199,6 +204,7 @@ export default async function Home({
 
         {/* top お知らせ（緑バナーの下） */}
         {topNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
+        {isAdmin && <NoticeAdminBar position="top" notices={topNotices} />}
       </div>
 
       {/* カテゴリフィルター時のパンくず */}
@@ -219,6 +225,7 @@ export default async function Home({
       <div className="max-w-screen-xl mx-auto px-2">
         {/* mid お知らせ（タブ下・スレ上） */}
         {midNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
+        {isAdmin && <NoticeAdminBar position="mid" notices={midNotices} />}
 
         <Suspense fallback={<ThreadListSkeleton />}>
           <ThreadList searchParams={params} />
@@ -226,6 +233,7 @@ export default async function Home({
 
         {/* bot お知らせ（スレ一覧の下） */}
         {botNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
+        {isAdmin && <NoticeAdminBar position="bot" notices={botNotices} />}
 
         {/* 下部ナビ（記号付き） */}
         <BottomNav />

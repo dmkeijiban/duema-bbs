@@ -12,7 +12,14 @@
       "mcp__Claude_in_Chrome__tabs_context_mcp",
       "mcp__Claude_in_Chrome__navigate",
       "mcp__Claude_in_Chrome__computer",
-      "Bash(xargs sed:*)"
+      "Bash(xargs sed:*)",
+      "mcp__Control_Chrome__open_url",
+      "mcp__Claude_in_Chrome__find",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "mcp__Claude_in_Chrome__read_page",
+      "mcp__Claude_in_Chrome__javascript_tool",
+      "mcp__Claude_in_Chrome__get_page_text"
     ]
   }
 }
