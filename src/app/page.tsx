@@ -13,6 +13,7 @@ import Link from 'next/link'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { NoticeAdminBar } from '@/components/NoticeAdminBar'
 import { getSetting } from '@/lib/settings'
+import { SettingEditButton } from '@/components/SettingEditButton'
 
 const PAGE_SIZE = 100
 
@@ -191,9 +192,18 @@ export default async function Home({
   const midNotices = notices.filter(n => n.position === 'mid')
   const botNotices = notices.filter(n => n.position === 'bot')
 
+  const NEW_THREAD_RULES_DEFAULT = `1.似たスレッドがないか確認してください。
+2.フライング・リーク情報は禁止です。
+3.タイトルでのネタバレを避けてください。
+4.画像は権利を侵害しない物を添付してください。
+5.ミスで立てたスレは必ず削除を押してください。
+6.他人が不快になるようなタイトルは避けてください。
+7.スレッド作成は承認制とする場合があります。
+8.不適切と判断した場合は削除・ブロックする事があります。`
+
   const [homeBanner, newThreadRules] = await Promise.all([
-    getSetting('home_banner', 'デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。\n初めての方はスレッドの立て方をご確認ください。'),
-    getSetting('new_thread_rules'),
+    getSetting('home_banner', 'デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。'),
+    getSetting('new_thread_rules', NEW_THREAD_RULES_DEFAULT),
   ])
 
   return (
@@ -206,9 +216,14 @@ export default async function Home({
 
 
         {/* 緑のインフォアラート */}
-        {homeBanner && (
-          <div className="mb-2 px-3 py-2 text-sm border" style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb', whiteSpace: 'pre-wrap' }}>
+        {(homeBanner || isAdmin) && (
+          <div className="mb-2 px-3 py-2 text-sm border relative" style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb', whiteSpace: 'pre-wrap' }}>
             {homeBanner}
+            {isAdmin && (
+              <span className="absolute top-1 right-1">
+                <SettingEditButton settingKey="home_banner" initialValue={homeBanner} label="ホーム緑バナー" rows={3} />
+              </span>
+            )}
           </div>
         )}
 
@@ -252,7 +267,7 @@ export default async function Home({
         <BottomNav />
 
         {/* 新規スレッド作成フォーム */}
-        <InlineNewThread categories={categories ?? []} newThreadRules={newThreadRules} />
+        <InlineNewThread categories={categories ?? []} newThreadRules={newThreadRules} isAdmin={isAdmin} />
 
         <div className="mb-6" />
       </div>

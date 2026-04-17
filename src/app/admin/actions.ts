@@ -200,7 +200,7 @@ export async function updateSettingAction(formData: FormData) {
   await supabase
     .from('site_settings')
     .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
-  revalidatePath('/')
+  revalidatePath('/', 'layout')
   revalidatePath('/terms')
   redirect('/admin')
 }

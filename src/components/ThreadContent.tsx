@@ -19,11 +19,12 @@ interface Props {
   sessionId: string
   recommendSlot?: React.ReactNode
   threadRules?: string
+  isAdmin?: boolean
 }
 
 type DisplayPost = Post & { displayNumber: number }
 
-export function ThreadContent({ posts, threadId, thread, isArchived, page, totalPages, sessionId, recommendSlot, threadRules }: Props) {
+export function ThreadContent({ posts, threadId, thread, isArchived, page, totalPages, sessionId, recommendSlot, threadRules, isAdmin }: Props) {
   const [bodyValue, setBodyValue] = useState('')
 
   const handleAnchorClick = (displayNum: number) => {
@@ -144,6 +145,7 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
             bodyValue={bodyValue}
             onBodyChange={setBodyValue}
             rules={threadRules}
+            isAdmin={isAdmin}
           />
         </div>
       )}

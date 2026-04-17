@@ -19,7 +19,8 @@
       "Bash(git push:*)",
       "mcp__Claude_in_Chrome__read_page",
       "mcp__Claude_in_Chrome__javascript_tool",
-      "mcp__Claude_in_Chrome__get_page_text"
+      "mcp__Claude_in_Chrome__get_page_text",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

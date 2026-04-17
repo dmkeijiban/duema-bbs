@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from 'react'
 import { createPost } from '@/app/actions/thread'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
+import { SettingEditButton } from './SettingEditButton'
 
 interface Props {
   threadId: number
@@ -11,9 +12,10 @@ interface Props {
   bodyValue: string
   onBodyChange: (v: string) => void
   rules?: string
+  isAdmin?: boolean
 }
 
-export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules }: Props) {
+export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, isAdmin }: Props) {
   const [authorName, setAuthorName] = useState('')
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -66,9 +68,14 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules }
       </div>
 
       {/* ルール */}
-      {rules && (
-        <div className="px-3 py-2 text-xs" style={{ background: '#d1ecf1', borderBottom: '1px solid #bee5eb', whiteSpace: 'pre-wrap' }}>
+      {(rules || isAdmin) && (
+        <div className="px-3 py-2 text-xs relative" style={{ background: '#d1ecf1', borderBottom: '1px solid #bee5eb', whiteSpace: 'pre-wrap' }}>
           {rules}
+          {isAdmin && (
+            <span className="absolute top-1 right-1">
+              <SettingEditButton settingKey="thread_rules" initialValue={rules ?? ''} label="スレッド内ルール" rows={6} />
+            </span>
+          )}
         </div>
       )}
 

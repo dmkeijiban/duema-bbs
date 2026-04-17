@@ -3,13 +3,15 @@
 import { useTransition, useState } from 'react'
 import { createThread } from '@/app/actions/thread'
 import { Category } from '@/types'
+import { SettingEditButton } from './SettingEditButton'
 
 interface Props {
   categories: Category[]
   newThreadRules?: string
+  isAdmin?: boolean
 }
 
-export function InlineNewThread({ categories, newThreadRules }: Props) {
+export function InlineNewThread({ categories, newThreadRules, isAdmin }: Props) {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
 
@@ -35,10 +37,15 @@ export function InlineNewThread({ categories, newThreadRules }: Props) {
 
       <>
           {/* ルール */}
-          {newThreadRules && (
-            <div className="px-4 py-3 text-xs border-b border-gray-200 leading-relaxed"
+          {(newThreadRules || isAdmin) && (
+            <div className="px-4 py-3 text-xs border-b border-gray-200 leading-relaxed relative"
               style={{ background: '#d1ecf1', color: '#0c5460', whiteSpace: 'pre-wrap' }}>
               {newThreadRules}
+              {isAdmin && (
+                <span className="absolute top-1 right-1">
+                  <SettingEditButton settingKey="new_thread_rules" initialValue={newThreadRules ?? ''} label="新規スレッド作成ルール" rows={8} />
+                </span>
+              )}
             </div>
           )}
 

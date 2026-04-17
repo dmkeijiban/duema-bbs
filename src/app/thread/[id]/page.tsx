@@ -66,11 +66,19 @@ export default async function ThreadPage({ params, searchParams }: Props) {
 
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / POSTS_PER_PAGE))
 
+  const THREAD_RULES_DEFAULT = `1.アンカーはレス番号をクリックで自動入力できます。
+2.誹謗中傷・暴言・煽り・スレッドと無関係な投稿は削除・規制対象です。
+他サイト・特定個人への中傷・暴言は禁止です。
+※規約違反は各レスの「報告」からお知らせください。削除依頼は「お問い合わせ」からお願いします。
+3.二次創作画像は、作者本人でない場合はURLで貼ってください。サムネとリンク先が表示されます。
+4.巻き返し規制を受けている方や荒らしを反省した方はお問い合わせから連絡ください。`
+
   const [cookieStore, threadRules] = await Promise.all([
     cookies(),
-    getSetting('thread_rules'),
+    getSetting('thread_rules', THREAD_RULES_DEFAULT),
   ])
   const sessionId = cookieStore.get('bbs_session')?.value ?? ''
+  const isAdmin = cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
   let isFavorited = false
   if (sessionId) {
     const { data: fav } = await supabase
@@ -125,6 +133,8 @@ export default async function ThreadPage({ params, searchParams }: Props) {
         page={page}
         totalPages={totalPages}
         sessionId={sessionId}
+        threadRules={threadRules}
+        isAdmin={isAdmin}
         recommendSlot={
           <Suspense fallback={null}>
             <RecommendSection />
