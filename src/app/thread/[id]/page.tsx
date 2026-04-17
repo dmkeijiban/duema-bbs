@@ -10,6 +10,7 @@ import { Thread, Post, Category } from '@/types'
 import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { getSetting } from '@/lib/settings'
+import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 
 const POSTS_PER_PAGE = 50
 
@@ -102,10 +103,12 @@ export default async function ThreadPage({ params, searchParams }: Props) {
 3.二次創作画像は、作者本人でない場合はURLで貼ってください。サムネとリンク先が表示されます。
 4.巻き返し規制を受けている方や荒らしを反省した方はお問い合わせから連絡ください。`
 
-  const [cookieStore, threadRules] = await Promise.all([
+  const [cookieStore, threadRules, { data: threadNoticesRaw }] = await Promise.all([
     cookies(),
     getSetting('thread_rules', THREAD_RULES_DEFAULT),
+    supabase.from('notices').select('*').eq('is_active', true).eq('show_in_thread', true).order('sort_order'),
   ])
+  const threadNotices = (threadNoticesRaw as Notice[] | null) ?? []
   const sessionId = cookieStore.get('bbs_session')?.value ?? ''
   const isAdmin = cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
   let isFavorited = false
@@ -152,6 +155,11 @@ export default async function ThreadPage({ params, searchParams }: Props) {
           {typedThread.post_count}件 ／ 閲覧 {typedThread.view_count}
         </div>
       </div>
+
+      {/* お知らせ（ホームと同期・show_in_thread=trueのもの） */}
+      {threadNotices.map(n => (
+        <NoticeBlock key={n.id} notice={n} />
+      ))}
 
       {/* スレ本文・レス一覧・フォーム（クライアント側） */}
       <ThreadContent

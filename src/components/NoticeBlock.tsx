@@ -14,6 +14,7 @@ export interface Notice {
   columns: number
   items: NoticeItem[]
   created_at: string
+  show_in_thread: boolean
 }
 
 export function NoticeBlock({ notice }: { notice: Notice }) {
@@ -35,10 +36,10 @@ export function NoticeBlock({ notice }: { notice: Notice }) {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={item.image_url} alt={item.title || ''} className="w-full block object-cover" />
               )}
-              {/* タイトルオーバーレイ（画像下部に黒透過＋白テキスト）*/}
+              {/* タイトルオーバーレイ（PC表示のみ）*/}
               {item.title && (
                 <div
-                  className="absolute bottom-0 inset-x-0 px-2 py-1.5 text-white text-xs font-light leading-snug text-center"
+                  className="hidden md:block absolute bottom-0 inset-x-0 px-2 py-1.5 text-white text-xs font-light leading-snug text-center"
                   style={{ background: 'rgba(0,0,0,0.45)' }}
                 >
                   {item.title}

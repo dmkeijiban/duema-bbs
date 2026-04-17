@@ -114,6 +114,7 @@ export async function saveNotice(data: {
   columns: number
   items: NoticeItem[]
   is_active: boolean
+  show_in_thread: boolean
 }): Promise<{ error?: string }> {
   try {
     await checkAdmin()
@@ -128,6 +129,7 @@ export async function saveNotice(data: {
     columns: data.columns,
     items: data.items,
     is_active: data.is_active,
+    show_in_thread: data.show_in_thread,
   }
   if (data.id) {
     const { error } = await supabase.from('notices').update(payload).eq('id', data.id)

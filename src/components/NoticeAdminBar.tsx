@@ -35,6 +35,7 @@ function NoticeModal({
   const [headerText, setHeaderText] = useState(editing?.header_text ?? '')
   const [sortOrder, setSortOrder] = useState<number>(editing?.sort_order ?? 0)
   const [isActive, setIsActive] = useState<boolean>(editing?.is_active ?? true)
+  const [showInThread, setShowInThread] = useState<boolean>(editing?.show_in_thread ?? false)
   const [uploading, setUploading] = useState<boolean[]>([])
   const [uploadErrors, setUploadErrors] = useState<string[]>([])
 
@@ -90,6 +91,7 @@ function NoticeModal({
         columns,
         items,
         is_active: isActive,
+        show_in_thread: showInThread,
       })
       onClose()
     })
@@ -204,16 +206,28 @@ function NoticeModal({
           ))}
 
 
-          {/* 表示中 */}
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="is_active_modal"
-              checked={isActive}
-              onChange={e => setIsActive(e.target.checked)}
-              className="w-3.5 h-3.5"
-            />
-            <label htmlFor="is_active_modal" className="text-xs text-gray-600">表示中</label>
+          {/* 表示設定 */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="is_active_modal"
+                checked={isActive}
+                onChange={e => setIsActive(e.target.checked)}
+                className="w-3.5 h-3.5"
+              />
+              <label htmlFor="is_active_modal" className="text-xs text-gray-600">表示中</label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="show_in_thread_modal"
+                checked={showInThread}
+                onChange={e => setShowInThread(e.target.checked)}
+                className="w-3.5 h-3.5"
+              />
+              <label htmlFor="show_in_thread_modal" className="text-xs text-gray-600">各スレページにも表示（ホームと同期）</label>
+            </div>
           </div>
 
           {/* ボタン */}
