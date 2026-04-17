@@ -6,9 +6,10 @@ import { Category } from '@/types'
 
 interface Props {
   categories: Category[]
+  newThreadRules?: string
 }
 
-export function InlineNewThread({ categories }: Props) {
+export function InlineNewThread({ categories, newThreadRules }: Props) {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
 
@@ -34,17 +35,12 @@ export function InlineNewThread({ categories }: Props) {
 
       <>
           {/* ルール */}
-          <div className="px-4 py-3 text-xs border-b border-gray-200 leading-relaxed"
-            style={{ background: '#d1ecf1', color: '#0c5460' }}>
-            1.似たスレッドがないか確認してください。<br />
-            2.フライング・リーク情報は禁止です。<br />
-            3.タイトルでのネタバレを避けてください。<br />
-            4.画像は権利を侵害しない物を添付してください。<br />
-            5.ミスで立てたスレは必ず削除を押してください。<br />
-            6.他人が不快になるようなタイトルは避けてください。<br />
-            7.スレッド作成は承認制とする場合があります。<br />
-            8.不適切と判断した場合は削除・ブロックする事があります。
-          </div>
+          {newThreadRules && (
+            <div className="px-4 py-3 text-xs border-b border-gray-200 leading-relaxed"
+              style={{ background: '#d1ecf1', color: '#0c5460', whiteSpace: 'pre-wrap' }}>
+              {newThreadRules}
+            </div>
+          )}
 
           {/* フォーム */}
           <form onSubmit={handleSubmit} className="text-sm">

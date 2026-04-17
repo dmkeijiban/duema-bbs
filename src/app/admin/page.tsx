@@ -5,7 +5,9 @@ import {
   adminDeleteThread, adminDeletePost,
   adminUpdateThread, adminUpdatePost,
   adminToggleArchive, adminLogin,
+  updateSettingAction,
 } from './actions'
+import { getAllSettings } from '@/lib/settings'
 import { Notice } from '@/components/NoticeBlock'
 
 const ADMIN_COOKIE = 'admin_auth'
@@ -37,7 +39,7 @@ function LoginPage({ error }: { error?: string }) {
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ thread?: string; error?: string; editThread?: string; editPost?: string }>
+  searchParams: Promise<{ thread?: string; error?: string; editThread?: string; editPost?: string; editSetting?: string }>
 }) {
   const sp = await searchParams
   if (!(await isAdmin())) return <LoginPage error={sp.error} />
@@ -54,6 +56,16 @@ export default async function AdminPage({
 
   // お知らせ一覧（is_active問わず全件）
   const { data: notices } = await supabase.from('notices').select('*').order('position').order('sort_order')
+
+  // サイト設定
+  const settings = await getAllSettings()
+  const SETTING_LABELS: Record<string, string> = {
+    thread_rules: 'スレッド内ルール',
+    new_thread_rules: '新規スレッド作成ルール',
+    home_banner: 'ホーム緑バナー',
+    terms: '利用規約',
+  }
+  const editSetting = sp.editSetting ?? null
 
   // 特定スレのレス
   let posts = null
@@ -236,8 +248,51 @@ export default async function AdminPage({
         )}
       </div>
 
-      {/* お知らせ管理セクション */}
-      <div className="mt-6">
+      {/* サイトテキスト設定 */}
+      {editSetting && SETTING_LABELS[editSetting] && (
+        <div className="mt-6 border-2 border-purple-400 bg-purple-50 p-4">
+          <h2 className="font-bold text-purple-800 mb-3">📝 {SETTING_LABELS[editSetting]} の編集</h2>
+          <form action={updateSettingAction} className="space-y-2">
+            <input type="hidden" name="key" value={editSetting} />
+            <textarea
+              name="value"
+              rows={editSetting === 'terms' ? 20 : 8}
+              defaultValue={settings[editSetting] ?? ''}
+              className="w-full border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:border-purple-400 resize-y font-mono"
+            />
+            <div className="flex gap-2">
+              <button type="submit" className="px-4 py-1.5 text-white text-xs font-medium" style={{ background: '#6f42c1' }}>
+                保存
+              </button>
+              <a href="/admin" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600">
+                キャンセル
+              </a>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* サイトテキスト設定 */}
+      <div className="mt-4">
+        <h2 className="font-bold text-gray-700 mb-2 pb-1 border-b border-gray-200">📝 サイトテキスト設定</h2>
+        <div className="space-y-1">
+          {Object.entries(SETTING_LABELS).map(([key, label]) => (
+            <div key={key} className="bg-white border border-gray-200 p-2 flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <span className="text-xs font-medium text-gray-800">{label}</span>
+                <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">{(settings[key] ?? '（未設定）').slice(0, 60)}</p>
+              </div>
+              <a href={`/admin?editSetting=${key}`}
+                className="shrink-0 px-2 py-0.5 text-[10px] text-purple-700 border border-purple-400 hover:bg-purple-50">
+                編集
+              </a>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* お知らせ管理 */}
+      <div className="mt-4">
         <div className="flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
           <h2 className="font-bold text-gray-700">📢 お知らせ管理</h2>
           <a href="/" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#fd7e14' }}>
@@ -257,8 +312,7 @@ export default async function AdminPage({
                   </span>
                   <span className="text-[10px] text-gray-400 ml-1">{n.columns}列 / {n.items?.length ?? 0}件</span>
                 </div>
-                <span
-                  className="px-2 py-0.5 text-[10px] border leading-none"
+                <span className="px-2 py-0.5 text-[10px] border leading-none"
                   style={n.is_active
                     ? { color: '#155724', borderColor: '#28a745', background: '#d4edda' }
                     : { color: '#6c757d', borderColor: '#6c757d', background: '#f8f9fa' }}>

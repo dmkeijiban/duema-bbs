@@ -10,9 +10,10 @@ interface Props {
   thread: Thread & { categories: Category | null }
   bodyValue: string
   onBodyChange: (v: string) => void
+  rules?: string
 }
 
-export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props) {
+export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules }: Props) {
   const [authorName, setAuthorName] = useState('')
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -65,19 +66,11 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
       </div>
 
       {/* ルール */}
-      <div className="px-3 py-2 text-xs" style={{ background: '#d1ecf1', borderBottom: '1px solid #bee5eb' }}>
-        <p>1.アンカーはレス番号をクリックで自動入力できます。</p>
-        <p>2.誹謗中傷・暴言・煽り・スレッドと無関係な投稿は削除・規制対象です。<br />
-          他サイト・特定個人への中傷・暴言は禁止です。</p>
-        <p>※規約違反は各レスの『報告』からお知らせください。削除依頼は
-          <Link href="/contact" className="underline" style={{ color: '#004085' }}>『お問い合わせ』</Link>
-          からお願いします。
-        </p>
-        <p className="mt-0.5" style={{ color: '#dc3545' }}>
-          3.二次創作画像は、作者本人でない場合は必ずURLで貼ってください。サムネとリンク先が表示されます。
-        </p>
-        <p>4.巻き返し規制を受けている方や荒らしを反省した方はお問い合わせから連絡ください。</p>
-      </div>
+      {rules && (
+        <div className="px-3 py-2 text-xs" style={{ background: '#d1ecf1', borderBottom: '1px solid #bee5eb', whiteSpace: 'pre-wrap' }}>
+          {rules}
+        </div>
+      )}
 
       {/* フォーム */}
       <form onSubmit={handleSubmit}>

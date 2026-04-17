@@ -9,6 +9,7 @@ import { incrementViewCount } from '@/app/actions/thread'
 import { Thread, Post, Category } from '@/types'
 import Link from 'next/link'
 import { cookies } from 'next/headers'
+import { getSetting } from '@/lib/settings'
 
 const POSTS_PER_PAGE = 50
 
@@ -65,7 +66,10 @@ export default async function ThreadPage({ params, searchParams }: Props) {
 
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / POSTS_PER_PAGE))
 
-  const cookieStore = await cookies()
+  const [cookieStore, threadRules] = await Promise.all([
+    cookies(),
+    getSetting('thread_rules'),
+  ])
   const sessionId = cookieStore.get('bbs_session')?.value ?? ''
   let isFavorited = false
   if (sessionId) {

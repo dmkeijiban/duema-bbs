@@ -12,6 +12,7 @@ import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { NoticeAdminBar } from '@/components/NoticeAdminBar'
+import { getSetting } from '@/lib/settings'
 
 const PAGE_SIZE = 100
 
@@ -190,6 +191,11 @@ export default async function Home({
   const midNotices = notices.filter(n => n.position === 'mid')
   const botNotices = notices.filter(n => n.position === 'bot')
 
+  const [homeBanner, newThreadRules] = await Promise.all([
+    getSetting('home_banner', 'デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。\n初めての方はスレッドの立て方をご確認ください。'),
+    getSetting('new_thread_rules'),
+  ])
+
   return (
     <div className="w-full px-0 py-0">
       <div className="max-w-screen-xl mx-auto px-2 pt-2">
@@ -200,10 +206,11 @@ export default async function Home({
 
 
         {/* 緑のインフォアラート */}
-        <div className="mb-2 px-3 py-2 text-sm border" style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb' }}>
-          デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。
-          初めての方は<Link href="/thread/new" className="text-blue-600 hover:underline">スレッドの立て方</Link>をご確認ください。
-        </div>
+        {homeBanner && (
+          <div className="mb-2 px-3 py-2 text-sm border" style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb', whiteSpace: 'pre-wrap' }}>
+            {homeBanner}
+          </div>
+        )}
 
         {/* top お知らせ（緑バナーの下） */}
         {isAdmin
@@ -245,7 +252,7 @@ export default async function Home({
         <BottomNav />
 
         {/* 新規スレッド作成フォーム */}
-        <InlineNewThread categories={categories ?? []} />
+        <InlineNewThread categories={categories ?? []} newThreadRules={newThreadRules} />
 
         <div className="mb-6" />
       </div>

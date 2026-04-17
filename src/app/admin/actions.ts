@@ -191,3 +191,16 @@ export async function moveNotice(id: number, direction: 'up' | 'down'): Promise<
   revalidatePath('/')
   return {}
 }
+
+export async function updateSettingAction(formData: FormData) {
+  await checkAdmin()
+  const key = formData.get('key') as string
+  const value = formData.get('value') as string
+  const supabase = await createClient()
+  await supabase
+    .from('site_settings')
+    .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+  revalidatePath('/')
+  revalidatePath('/terms')
+  redirect('/admin')
+}
