@@ -1,18 +1,12 @@
 'use client'
 
-import { useState, useTransition, useEffect, useRef } from 'react'
+import { useState, useTransition, Suspense } from 'react'
 import { Post } from '@/types'
 import { formatDateTimeJP } from '@/lib/utils'
 import { deleteOwnPost } from '@/app/actions/delete'
 import { PostLikeButton } from './PostLikeButton'
 import { ReportButton } from './ReportButton'
-
-// Twitter widget type
-declare global {
-  interface Window {
-    twttr?: { widgets: { load: (el?: HTMLElement | null) => void } }
-  }
-}
+import { Tweet } from 'react-tweet'
 
 interface Props {
   post: Post
@@ -81,20 +75,30 @@ function extractYouTubeId(url: string): string | null {
   return null
 }
 
-// Twitter/X ツイートURL抽出
-// - /status/ID 形式に加え、twterm%5EID（URL encoded ^）付きプロフィールURLにも対応
-function extractTwitterStatusUrl(url: string): string | null {
-  // 通常の status URL
-  const statusMatch = url.match(/^https?:\/\/(?:twitter\.com|x\.com)\/(\w+)\/status\/(\d+)/i)
-  if (statusMatch) return url
+// Twitter/X ツイートID抽出
+// - /status/ID 形式
+// - twterm%5EID（URL encoded ^）付きトラッキングURLにも対応
+function extractTweetId(url: string): string | null {
+  // /status/ID 形式
+  const statusMatch = url.match(/\/status\/(\d+)/i)
+  if (statusMatch) return statusMatch[1]
 
-  // 埋め込みトラッキングURL（例: x.com/user?twterm%5E=TWEETID）
+  // 埋め込みトラッキングURL（twterm%5E=TWEETID）
   const twtermMatch = url.match(/[?&]twterm(?:%5E|\^)(\d+)/i)
-  const usernameMatch = url.match(/^https?:\/\/(?:twitter\.com|x\.com)\/(\w+)/i)
-  if (twtermMatch && usernameMatch) {
-    return `https://x.com/${usernameMatch[1]}/status/${twtermMatch[1]}`
-  }
+  if (twtermMatch) return twtermMatch[1]
+
   return null
+}
+
+// Twitter/X 埋め込み（react-tweet 使用）
+function TwitterEmbed({ tweetId }: { tweetId: string }) {
+  return (
+    <div className="my-2" style={{ maxWidth: 480 }}>
+      <Suspense fallback={<div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>}>
+        <Tweet id={tweetId} />
+      </Suspense>
+    </div>
+  )
 }
 
 // YouTube 埋め込み（最大幅480px）
@@ -115,34 +119,6 @@ function YouTubeEmbed({ videoId }: { videoId: string }) {
   )
 }
 
-// Twitter/X 埋め込み
-function TwitterEmbed({ url }: { url: string }) {
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!ref.current) return
-    ref.current.innerHTML = `<blockquote class="twitter-tweet" data-lang="ja"><a href="${url}"></a></blockquote>`
-
-    const load = () => { window.twttr?.widgets.load(ref.current!) }
-
-    if (window.twttr?.widgets) {
-      load()
-    } else if (!document.getElementById('twitter-widgets-js')) {
-      const s = document.createElement('script')
-      s.id = 'twitter-widgets-js'
-      s.src = 'https://platform.twitter.com/widgets.js'
-      s.async = true
-      s.charset = 'utf-8'
-      s.onload = load
-      document.head.appendChild(s)
-    } else {
-      // スクリプト読み込み中の場合は少し待つ
-      setTimeout(load, 1500)
-    }
-  }, [url])
-
-  return <div ref={ref} className="my-2 max-w-xl" />
-}
 
 // テキスト中の >>N を AnchorLink に変換
 function renderWithAnchors(text: string, allPosts: Post[]): React.ReactNode[] {
@@ -196,10 +172,10 @@ function renderBody(body: string, allPosts: Post[]): React.ReactNode[] {
       }
       // Twitter/X（status URL・twterm付きトラッキングURL両対応）
       if (/(?:twitter\.com|x\.com)/i.test(trimmed)) {
-        const tweetUrl = extractTwitterStatusUrl(trimmed)
-        if (tweetUrl) {
+        const tweetId = extractTweetId(trimmed)
+        if (tweetId) {
           flushText()
-          elements.push(<TwitterEmbed key={key++} url={tweetUrl} />)
+          elements.push(<TwitterEmbed key={key++} tweetId={tweetId} />)
           continue
         }
       }
