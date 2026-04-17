@@ -1,8 +1,11 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import './globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { Header } from '@/components/Header'
 import Link from 'next/link'
+
+const GA_ID = 'G-HDGDNYNMH4'
 
 export const metadata: Metadata = {
   title: '【デュエマ掲示板】デュエルマスターズ専門掲示板',
@@ -16,11 +19,40 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary',
   },
+  verification: {
+    google: '9MIQlFQWKdN5q04YxDYV3u5kj4uoiuNLA2DrjMCBuJU',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ja" suppressHydrationWarning>
+      <head>
+        {/* Google Analytics (GA4) */}
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="ga4-init" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${GA_ID}');
+          `}
+        </Script>
+
+        {/* Microsoft Clarity */}
+        <Script id="clarity-init" strategy="afterInteractive">
+          {`
+            (function(c,l,a,r,i,t,y){
+              c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+              t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+              y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", "wd3kzmwhnm");
+          `}
+        </Script>
+      </head>
       <body className="min-h-screen flex flex-col antialiased" style={{ background: 'var(--background)', color: 'var(--foreground)' }} suppressHydrationWarning>
         <ThemeProvider>
           <Header />
