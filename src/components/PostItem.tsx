@@ -81,23 +81,36 @@ function extractYouTubeId(url: string): string | null {
   return null
 }
 
-// Twitter/X URL 判定
-function isTwitterUrl(url: string): boolean {
-  return /^https?:\/\/(twitter\.com|x\.com)\/\w+\/status\/\d+/i.test(url)
+// Twitter/X ツイートURL抽出
+// - /status/ID 形式に加え、twterm%5EID（URL encoded ^）付きプロフィールURLにも対応
+function extractTwitterStatusUrl(url: string): string | null {
+  // 通常の status URL
+  const statusMatch = url.match(/^https?:\/\/(?:twitter\.com|x\.com)\/(\w+)\/status\/(\d+)/i)
+  if (statusMatch) return url
+
+  // 埋め込みトラッキングURL（例: x.com/user?twterm%5E=TWEETID）
+  const twtermMatch = url.match(/[?&]twterm(?:%5E|\^)(\d+)/i)
+  const usernameMatch = url.match(/^https?:\/\/(?:twitter\.com|x\.com)\/(\w+)/i)
+  if (twtermMatch && usernameMatch) {
+    return `https://x.com/${usernameMatch[1]}/status/${twtermMatch[1]}`
+  }
+  return null
 }
 
-// YouTube 埋め込み
+// YouTube 埋め込み（最大幅480px）
 function YouTubeEmbed({ videoId }: { videoId: string }) {
   return (
-    <div className="my-2 relative bg-black w-full" style={{ paddingBottom: '56.25%' }}>
-      <iframe
-        className="absolute inset-0 w-full h-full"
-        src={`https://www.youtube.com/embed/${videoId}`}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-        loading="lazy"
-        title="YouTube video"
-      />
+    <div className="my-2" style={{ maxWidth: 480 }}>
+      <div className="relative bg-black" style={{ paddingBottom: '56.25%' }}>
+        <iframe
+          className="absolute inset-0 w-full h-full"
+          src={`https://www.youtube.com/embed/${videoId}`}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          loading="lazy"
+          title="YouTube video"
+        />
+      </div>
     </div>
   )
 }
@@ -181,11 +194,14 @@ function renderBody(body: string, allPosts: Post[]): React.ReactNode[] {
         elements.push(<YouTubeEmbed key={key++} videoId={ytId} />)
         continue
       }
-      // Twitter/X
-      if (isTwitterUrl(trimmed)) {
-        flushText()
-        elements.push(<TwitterEmbed key={key++} url={trimmed} />)
-        continue
+      // Twitter/X（status URL・twterm付きトラッキングURL両対応）
+      if (/(?:twitter\.com|x\.com)/i.test(trimmed)) {
+        const tweetUrl = extractTwitterStatusUrl(trimmed)
+        if (tweetUrl) {
+          flushText()
+          elements.push(<TwitterEmbed key={key++} url={tweetUrl} />)
+          continue
+        }
       }
     }
 
