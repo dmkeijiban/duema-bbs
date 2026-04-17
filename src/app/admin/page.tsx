@@ -11,6 +11,7 @@ import { getAllSettings } from '@/lib/settings'
 import { Notice } from '@/components/NoticeBlock'
 
 const ADMIN_COOKIE = 'admin_auth'
+const THREADS_PER_PAGE = 60
 
 async function isAdmin() {
   const cookieStore = await cookies()
@@ -39,7 +40,7 @@ function LoginPage({ error }: { error?: string }) {
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ thread?: string; error?: string; editThread?: string; editPost?: string; editSetting?: string }>
+  searchParams: Promise<{ thread?: string; error?: string; editThread?: string; editPost?: string; editSetting?: string; threadPage?: string }>
 }) {
   const sp = await searchParams
   if (!(await isAdmin())) return <LoginPage error={sp.error} />
@@ -47,12 +48,27 @@ export default async function AdminPage({
   const supabase = await createClient()
   const { data: categories } = await supabase.from('categories').select('id,name').order('sort_order')
 
-  // スレッド一覧
-  const { data: threads } = await supabase
+  // スレッド一覧（ページネーション）
+  const threadPage = Math.max(1, parseInt(sp.threadPage ?? '1') || 1)
+  const threadOffset = (threadPage - 1) * THREADS_PER_PAGE
+
+  const { data: threads, count: threadCount } = await supabase
     .from('threads')
-    .select('id, title, body, post_count, is_archived, category_id, categories(name)')
+    .select('id, title, body, post_count, is_archived, category_id, categories(name)', { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(60)
+    .range(threadOffset, threadOffset + THREADS_PER_PAGE - 1)
+
+  const threadTotalPages = Math.max(1, Math.ceil((threadCount ?? 0) / THREADS_PER_PAGE))
+
+  // ページ番号リスト生成
+  const threadPageList: (number | '...')[] = []
+  for (let i = 1; i <= threadTotalPages; i++) {
+    if (i === 1 || i === threadTotalPages || Math.abs(i - threadPage) <= 2) {
+      threadPageList.push(i)
+    } else if (threadPageList[threadPageList.length - 1] !== '...') {
+      threadPageList.push('...')
+    }
+  }
 
   // お知らせ一覧（is_active問わず全件）
   const { data: notices } = await supabase.from('notices').select('*').order('position').order('sort_order')
@@ -170,47 +186,160 @@ export default async function AdminPage({
         </div>
       )}
 
+      {/* サイトテキスト設定（編集フォーム） */}
+      {editSetting && SETTING_LABELS[editSetting] && (
+        <div className="mb-4 border-2 border-purple-400 bg-purple-50 p-4">
+          <h2 className="font-bold text-purple-800 mb-3">📝 {SETTING_LABELS[editSetting]} の編集</h2>
+          <form action={updateSettingAction} className="space-y-2">
+            <input type="hidden" name="key" value={editSetting} />
+            <textarea
+              name="value"
+              rows={editSetting === 'terms' ? 20 : 8}
+              defaultValue={settings[editSetting] ?? ''}
+              className="w-full border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:border-purple-400 resize-y font-mono"
+            />
+            <div className="flex gap-2">
+              <button type="submit" className="px-4 py-1.5 text-white text-xs font-medium" style={{ background: '#6f42c1' }}>
+                保存
+              </button>
+              <a href="/admin" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600">
+                キャンセル
+              </a>
+            </div>
+          </form>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* スレッド一覧 */}
-        <div>
-          <h2 className="font-bold text-gray-700 mb-2 pb-1 border-b border-gray-200">
-            📋 スレッド一覧（最新60件）
-          </h2>
+      {/* ① お知らせ管理 */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
+          <h2 className="font-bold text-gray-700">📢 お知らせ管理</h2>
+          <a href="/" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#fd7e14' }}>
+            ホームで編集
+          </a>
+        </div>
+        {notices && notices.length > 0 ? (
           <div className="space-y-1">
+            {(notices as Notice[]).map(n => (
+              <div key={n.id} className="bg-white border border-gray-200 p-2 flex items-center gap-2">
+                <span className="shrink-0 text-[10px] px-1.5 py-0.5 border border-gray-300 text-gray-600 bg-gray-50">
+                  {positionLabel[n.position] ?? n.position}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-medium text-gray-800 line-clamp-1">
+                    {n.header_text || '（タイトルなし）'}
+                  </span>
+                  <span className="text-[10px] text-gray-400 ml-1">{n.columns}列 / {n.items?.length ?? 0}件</span>
+                </div>
+                <span className="px-2 py-0.5 text-[10px] border leading-none"
+                  style={n.is_active
+                    ? { color: '#155724', borderColor: '#28a745', background: '#d4edda' }
+                    : { color: '#6c757d', borderColor: '#6c757d', background: '#f8f9fa' }}>
+                  {n.is_active ? '表示中' : '非表示'}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-gray-400 py-2">お知らせはまだありません</p>
+        )}
+      </div>
+
+      {/* ② サイトテキスト設定 */}
+      <div className="mb-4">
+        <h2 className="font-bold text-gray-700 mb-2 pb-1 border-b border-gray-200">📝 サイトテキスト設定</h2>
+        <div className="space-y-1">
+          {Object.entries(SETTING_LABELS).map(([key, label]) => (
+            <div key={key} className="bg-white border border-gray-200 p-2 flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <span className="text-xs font-medium text-gray-800">{label}</span>
+                <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">{(settings[key] ?? '（未設定）').slice(0, 60)}</p>
+              </div>
+              <a href={`/admin?editSetting=${key}`}
+                className="shrink-0 px-2 py-0.5 text-[10px] text-purple-700 border border-purple-400 hover:bg-purple-50">
+                編集
+              </a>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ③ スレッド一覧 + レス一覧 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* スレッド一覧（2列グリッド） */}
+        <div>
+          <div className="flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
+            <h2 className="font-bold text-gray-700">
+              📋 スレッド一覧
+              <span className="text-[10px] text-gray-400 ml-1 font-normal">
+                （全{threadCount ?? 0}件 / {threadPage}ページ目）
+              </span>
+            </h2>
+          </div>
+
+          {/* 2列グリッド表示 */}
+          <div className="grid grid-cols-2 gap-1">
             {threads?.map(t => (
-              <div key={t.id} className="bg-white border border-gray-200 p-2">
-                <div className="flex items-start gap-2">
-                  <div className="flex-1 min-w-0">
-                    <a href={`/thread/${t.id}`} target="_blank" className="text-blue-600 hover:underline line-clamp-1 text-xs">
-                      {t.title}
-                    </a>
-                    <div className="text-gray-400 text-[10px] mt-0.5">
-                      {(t.categories as unknown as { name: string } | null)?.name ?? '未分類'} ／ 💬{t.post_count}
-                      {t.is_archived && ' ／ 📂過去ログ'}
-                    </div>
-                  </div>
-                  {/* ボタン群 */}
-                  <div className="flex flex-wrap gap-1 shrink-0">
-                    <a href={`/admin?thread=${t.id}`}
-                      className="px-2 py-0.5 text-[10px] text-blue-600 border border-blue-300 hover:bg-blue-50">
-                      レス
-                    </a>
-                    <a href={`/admin?editThread=${t.id}`}
-                      className="px-2 py-0.5 text-[10px] text-green-700 border border-green-400 hover:bg-green-50">
-                      編集
-                    </a>
-                    <form action={adminDeleteThread} className="inline-flex">
-                      <input type="hidden" name="threadId" value={t.id} />
-                      <button type="submit" className="px-2 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity leading-none" style={{ background: '#dc3545' }}>
-                        削除
-                      </button>
-                    </form>
-                  </div>
+              <div key={t.id} className="bg-white border border-gray-200 p-1.5">
+                <a href={`/thread/${t.id}`} target="_blank" className="text-blue-600 hover:underline line-clamp-1 text-[11px] block mb-0.5">
+                  {t.title}
+                </a>
+                <div className="text-gray-400 text-[10px] mb-1">
+                  💬{t.post_count}{t.is_archived && ' 📂'}
+                </div>
+                <div className="flex gap-1 flex-wrap">
+                  <a href={`/admin?thread=${t.id}`}
+                    className="px-1.5 py-0.5 text-[10px] text-blue-600 border border-blue-300 hover:bg-blue-50 leading-none">
+                    レス
+                  </a>
+                  <a href={`/admin?editThread=${t.id}&threadPage=${threadPage}`}
+                    className="px-1.5 py-0.5 text-[10px] text-green-700 border border-green-400 hover:bg-green-50 leading-none">
+                    編集
+                  </a>
+                  <form action={adminDeleteThread} className="inline-flex">
+                    <input type="hidden" name="threadId" value={t.id} />
+                    <button type="submit" className="px-1.5 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity leading-none" style={{ background: '#dc3545' }}>
+                      削除
+                    </button>
+                  </form>
                 </div>
               </div>
             ))}
           </div>
+
+          {/* ページネーション */}
+          {threadTotalPages > 1 && (
+            <div className="flex items-center gap-1 flex-wrap mt-2">
+              {threadPage > 1 && (
+                <a href={`/admin?threadPage=${threadPage - 1}`}
+                  className="min-w-[1.75rem] h-6 px-1.5 text-[11px] font-medium border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 flex items-center justify-center">
+                  «
+                </a>
+              )}
+              {threadPageList.map((p, i) =>
+                p === '...' ? (
+                  <span key={`e-${i}`} className="px-1 text-gray-400 text-[11px]">…</span>
+                ) : (
+                  <a
+                    key={p}
+                    href={`/admin?threadPage=${p}`}
+                    className="min-w-[1.75rem] h-6 px-1.5 text-[11px] font-medium border flex items-center justify-center"
+                    style={p === threadPage
+                      ? { background: '#0d6efd', color: '#fff', borderColor: '#0d6efd' }
+                      : { background: '#fff', color: '#0d6efd', borderColor: '#dee2e6' }}
+                  >
+                    {p}
+                  </a>
+                )
+              )}
+              {threadPage < threadTotalPages && (
+                <a href={`/admin?threadPage=${threadPage + 1}`}
+                  className="min-w-[1.75rem] h-6 px-1.5 text-[11px] font-medium border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 flex items-center justify-center">
+                  »
+                </a>
+              )}
+            </div>
+          )}
         </div>
 
         {/* レス一覧 */}
@@ -245,84 +374,6 @@ export default async function AdminPage({
               ))}
             </div>
           </div>
-        )}
-      </div>
-
-      {/* サイトテキスト設定 */}
-      {editSetting && SETTING_LABELS[editSetting] && (
-        <div className="mt-6 border-2 border-purple-400 bg-purple-50 p-4">
-          <h2 className="font-bold text-purple-800 mb-3">📝 {SETTING_LABELS[editSetting]} の編集</h2>
-          <form action={updateSettingAction} className="space-y-2">
-            <input type="hidden" name="key" value={editSetting} />
-            <textarea
-              name="value"
-              rows={editSetting === 'terms' ? 20 : 8}
-              defaultValue={settings[editSetting] ?? ''}
-              className="w-full border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:border-purple-400 resize-y font-mono"
-            />
-            <div className="flex gap-2">
-              <button type="submit" className="px-4 py-1.5 text-white text-xs font-medium" style={{ background: '#6f42c1' }}>
-                保存
-              </button>
-              <a href="/admin" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600">
-                キャンセル
-              </a>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* サイトテキスト設定 */}
-      <div className="mt-4">
-        <h2 className="font-bold text-gray-700 mb-2 pb-1 border-b border-gray-200">📝 サイトテキスト設定</h2>
-        <div className="space-y-1">
-          {Object.entries(SETTING_LABELS).map(([key, label]) => (
-            <div key={key} className="bg-white border border-gray-200 p-2 flex items-center gap-2">
-              <div className="flex-1 min-w-0">
-                <span className="text-xs font-medium text-gray-800">{label}</span>
-                <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">{(settings[key] ?? '（未設定）').slice(0, 60)}</p>
-              </div>
-              <a href={`/admin?editSetting=${key}`}
-                className="shrink-0 px-2 py-0.5 text-[10px] text-purple-700 border border-purple-400 hover:bg-purple-50">
-                編集
-              </a>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* お知らせ管理 */}
-      <div className="mt-4">
-        <div className="flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
-          <h2 className="font-bold text-gray-700">📢 お知らせ管理</h2>
-          <a href="/" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#fd7e14' }}>
-            ホームで編集
-          </a>
-        </div>
-        {notices && notices.length > 0 ? (
-          <div className="space-y-1">
-            {(notices as Notice[]).map(n => (
-              <div key={n.id} className="bg-white border border-gray-200 p-2 flex items-center gap-2">
-                <span className="shrink-0 text-[10px] px-1.5 py-0.5 border border-gray-300 text-gray-600 bg-gray-50">
-                  {positionLabel[n.position] ?? n.position}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <span className="text-xs font-medium text-gray-800 line-clamp-1">
-                    {n.header_text || '（タイトルなし）'}
-                  </span>
-                  <span className="text-[10px] text-gray-400 ml-1">{n.columns}列 / {n.items?.length ?? 0}件</span>
-                </div>
-                <span className="px-2 py-0.5 text-[10px] border leading-none"
-                  style={n.is_active
-                    ? { color: '#155724', borderColor: '#28a745', background: '#d4edda' }
-                    : { color: '#6c757d', borderColor: '#6c757d', background: '#f8f9fa' }}>
-                  {n.is_active ? '表示中' : '非表示'}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-gray-400 py-2">お知らせはまだありません</p>
         )}
       </div>
     </div>

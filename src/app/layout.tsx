@@ -7,6 +7,15 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: '【デュエマ掲示板】デュエルマスターズ専門掲示板',
   description: 'デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。',
+  metadataBase: new URL('https://duema-bbs.vercel.app'),
+  openGraph: {
+    siteName: 'デュエマ掲示板',
+    type: 'website',
+    locale: 'ja_JP',
+  },
+  twitter: {
+    card: 'summary',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

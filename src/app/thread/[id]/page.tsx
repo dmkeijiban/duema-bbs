@@ -23,15 +23,44 @@ export async function generateMetadata({ params }: Props) {
   const supabase = await createClient()
   const { data: thread } = await supabase
     .from('threads')
-    .select('title, body')
+    .select('title, body, image_url')
     .eq('id', parseInt(id))
     .single()
 
   if (!thread) return { title: 'スレッドが見つかりません' }
 
+  // OGP画像: スレ画像 → 最初の投稿添付画像 の順で探す
+  let ogImage: string | undefined = thread.image_url ?? undefined
+  if (!ogImage) {
+    const { data: postImg } = await supabase
+      .from('posts')
+      .select('image_url')
+      .eq('thread_id', parseInt(id))
+      .not('image_url', 'is', null)
+      .order('post_number', { ascending: true })
+      .limit(1)
+      .single()
+    ogImage = postImg?.image_url ?? undefined
+  }
+
+  const desc = thread.body.slice(0, 150)
+
   return {
     title: `${thread.title} | デュエマ掲示板`,
-    description: thread.body.slice(0, 150),
+    description: desc,
+    openGraph: {
+      title: thread.title,
+      description: desc,
+      url: `https://duema-bbs.vercel.app/thread/${id}`,
+      type: 'article',
+      images: ogImage ? [{ url: ogImage, width: 1200, height: 630, alt: thread.title }] : [],
+    },
+    twitter: {
+      card: ogImage ? 'summary_large_image' : 'summary',
+      title: thread.title,
+      description: desc,
+      images: ogImage ? [ogImage] : [],
+    },
   }
 }
 
