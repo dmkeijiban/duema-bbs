@@ -1,11 +1,18 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect, useRef } from 'react'
 import { Post } from '@/types'
 import { formatDateTimeJP } from '@/lib/utils'
 import { deleteOwnPost } from '@/app/actions/delete'
 import { PostLikeButton } from './PostLikeButton'
 import { ReportButton } from './ReportButton'
+
+// Twitter widget type
+declare global {
+  interface Window {
+    twttr?: { widgets: { load: (el?: HTMLElement | null) => void } }
+  }
+}
 
 interface Props {
   post: Post
@@ -44,14 +51,7 @@ function AnchorLink({ num, allPosts }: AnchorProps) {
       {show && ref && (
         <span
           className="absolute left-0 z-50 bg-white shadow-lg p-2 text-xs"
-          style={{
-            top: '1.2em',
-            minWidth: 220,
-            maxWidth: 320,
-            border: '1px solid #aaa',
-            display: 'block',
-            whiteSpace: 'normal',
-          }}
+          style={{ top: '1.2em', minWidth: 220, maxWidth: 320, border: '1px solid #aaa', display: 'block', whiteSpace: 'normal' }}
         >
           <span className="text-gray-500 block mb-1">
             &gt;{num} {ref.author_name} {formatDateTimeJP(ref.created_at)}
@@ -59,35 +59,141 @@ function AnchorLink({ num, allPosts }: AnchorProps) {
           <span className="text-gray-800 block break-all" style={{ whiteSpace: 'pre-wrap' }}>
             {ref.body.slice(0, 200)}{ref.body.length > 200 ? '…' : ''}
           </span>
-          {ref.image_url && (
-            <span className="text-gray-400 text-[10px] block mt-1">[画像あり]</span>
-          )}
+          {ref.image_url && <span className="text-gray-400 text-[10px] block mt-1">[画像あり]</span>}
         </span>
       )}
     </span>
   )
 }
 
-function renderBody(body: string, allPosts: Post[]) {
+// YouTube video ID 抽出
+function extractYouTubeId(url: string): string | null {
+  const patterns = [
+    /[?&]v=([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+  ]
+  for (const p of patterns) {
+    const m = url.match(p)
+    if (m) return m[1]
+  }
+  return null
+}
+
+// Twitter/X URL 判定
+function isTwitterUrl(url: string): boolean {
+  return /^https?:\/\/(twitter\.com|x\.com)\/\w+\/status\/\d+/i.test(url)
+}
+
+// YouTube 埋め込み
+function YouTubeEmbed({ videoId }: { videoId: string }) {
+  return (
+    <div className="my-2 relative bg-black w-full" style={{ paddingBottom: '56.25%' }}>
+      <iframe
+        className="absolute inset-0 w-full h-full"
+        src={`https://www.youtube.com/embed/${videoId}`}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        loading="lazy"
+        title="YouTube video"
+      />
+    </div>
+  )
+}
+
+// Twitter/X 埋め込み
+function TwitterEmbed({ url }: { url: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!ref.current) return
+    ref.current.innerHTML = `<blockquote class="twitter-tweet" data-lang="ja"><a href="${url}"></a></blockquote>`
+
+    const load = () => { window.twttr?.widgets.load(ref.current!) }
+
+    if (window.twttr?.widgets) {
+      load()
+    } else if (!document.getElementById('twitter-widgets-js')) {
+      const s = document.createElement('script')
+      s.id = 'twitter-widgets-js'
+      s.src = 'https://platform.twitter.com/widgets.js'
+      s.async = true
+      s.charset = 'utf-8'
+      s.onload = load
+      document.head.appendChild(s)
+    } else {
+      // スクリプト読み込み中の場合は少し待つ
+      setTimeout(load, 1500)
+    }
+  }, [url])
+
+  return <div ref={ref} className="my-2 max-w-xl" />
+}
+
+// テキスト中の >>N を AnchorLink に変換
+function renderWithAnchors(text: string, allPosts: Post[]): React.ReactNode[] {
   const result: React.ReactNode[] = []
   const regex = />>(\d+)/g
   let last = 0
   let match
   let key = 0
 
-  while ((match = regex.exec(body)) !== null) {
+  while ((match = regex.exec(text)) !== null) {
     if (match.index > last) {
-      result.push(<span key={key++}>{body.slice(last, match.index)}</span>)
+      result.push(<span key={key++}>{text.slice(last, match.index)}</span>)
     }
-    result.push(
-      <AnchorLink key={key++} num={parseInt(match[1])} allPosts={allPosts} />
-    )
+    result.push(<AnchorLink key={key++} num={parseInt(match[1])} allPosts={allPosts} />)
     last = regex.lastIndex
   }
-  if (last < body.length) {
-    result.push(<span key={key++}>{body.slice(last)}</span>)
+  if (last < text.length) {
+    result.push(<span key={key++}>{text.slice(last)}</span>)
   }
   return result
+}
+
+// 本文レンダリング：行ごとにURL埋め込み判定
+function renderBody(body: string, allPosts: Post[]): React.ReactNode[] {
+  const lines = body.split('\n')
+  const elements: React.ReactNode[] = []
+  const textBuf: string[] = []
+  let key = 0
+
+  const flushText = () => {
+    if (textBuf.length === 0) return
+    const joined = textBuf.join('\n')
+    elements.push(
+      <span key={key++} style={{ whiteSpace: 'pre-wrap' }}>
+        {renderWithAnchors(joined, allPosts)}
+      </span>
+    )
+    textBuf.length = 0
+  }
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+
+    if (/^https?:\/\/\S+$/.test(trimmed)) {
+      // YouTube
+      const ytId = extractYouTubeId(trimmed)
+      if (ytId) {
+        flushText()
+        elements.push(<YouTubeEmbed key={key++} videoId={ytId} />)
+        continue
+      }
+      // Twitter/X
+      if (isTwitterUrl(trimmed)) {
+        flushText()
+        elements.push(<TwitterEmbed key={key++} url={trimmed} />)
+        continue
+      }
+    }
+
+    textBuf.push(line)
+  }
+
+  flushText()
+  return elements
 }
 
 export function PostItem({ post, allPosts, onAnchorClick, displayNumber, sessionId, threadSessionId, threadId }: Props) {
@@ -110,10 +216,7 @@ export function PostItem({ post, allPosts, onAnchorClick, displayNumber, session
   return (
     <div id={`post-${displayNumber}`} className="border-b border-gray-200 last:border-b-0">
       {/* ヘッダー行 */}
-      <div
-        className="px-2 py-1.5 text-xs flex items-center gap-1 flex-wrap"
-        style={{ background: '#f5f5f5' }}
-      >
+      <div className="px-2 py-1.5 text-xs flex items-center gap-1 flex-wrap" style={{ background: '#f5f5f5' }}>
         <button
           type="button"
           onClick={() => onAnchorClick(displayNumber)}
@@ -140,12 +243,12 @@ export function PostItem({ post, allPosts, onAnchorClick, displayNumber, session
         )}
       </div>
 
-      {/* 本文 */}
-      <div className="px-3 py-3 text-sm text-gray-800 break-words leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>
+      {/* 本文（YouTube/X URL は自動埋め込み） */}
+      <div className="px-3 py-3 text-sm text-gray-800 break-words leading-relaxed">
         {renderBody(post.body, allPosts)}
       </div>
 
-      {/* 画像 */}
+      {/* 添付画像 */}
       {post.image_url && (
         <div className="px-3 pb-2">
           <a href={post.image_url} target="_blank" rel="noopener noreferrer">
