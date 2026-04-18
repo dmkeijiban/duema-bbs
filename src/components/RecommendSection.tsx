@@ -1,11 +1,6 @@
-import { createClient } from '@/lib/supabase-server'
-import { withFallbackThumbnails } from '@/lib/thumbnail'
+import { getCachedTopThreads } from '@/lib/cached-queries'
 import Link from 'next/link'
-
-const PLACEHOLDER =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3Crect fill='%23e9ecef' width='1' height='1'/%3E%3C/svg%3E"
-
-type Row = { id: number; title: string; image_url: string | null; post_count: number }
+import Image from 'next/image'
 
 // 30分ごとに変わるseedで安定シャッフル（タブ切り替えでは変わらない）
 function seededShuffle<T>(arr: T[], seed: number): T[] {
@@ -20,19 +15,11 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
 }
 
 export async function RecommendSection() {
-  const supabase = await createClient()
-  const { data: raw } = await supabase
-    .from('threads')
-    .select('id, title, image_url, post_count')
-    .eq('is_archived', false)
-    .order('post_count', { ascending: false })
-    .limit(20)
+  const raw = await getCachedTopThreads()
+  if (raw.length === 0) return null
 
-  if (!raw || raw.length === 0) return null
-
-  const withImages = await withFallbackThumbnails(supabase, raw as Row[])
   const seed = Math.floor(Date.now() / (1000 * 60 * 30)) // 30分ごとに変化
-  const threads = seededShuffle(withImages, seed).slice(0, 8)
+  const threads = seededShuffle(raw, seed).slice(0, 8)
 
   return (
     <div className="mb-2 border border-gray-300 bg-white">
@@ -47,8 +34,10 @@ export async function RecommendSection() {
             href={`/thread/${thread.id}`}
             className="flex bg-white hover:bg-gray-50 border-b border-r border-gray-300 overflow-hidden"
           >
-            <div className="shrink-0 bg-gray-100 overflow-hidden w-11 h-11 md:w-16 md:h-16">
-              <img src={thread.image_url ?? PLACEHOLDER} alt="" className="w-full h-full object-cover" />
+            <div className="relative shrink-0 bg-gray-100 overflow-hidden w-11 h-11 md:w-16 md:h-16">
+              {thread.image_url && (
+                <Image src={thread.image_url} alt="" fill className="object-cover" sizes="(min-width: 768px) 64px, 44px" />
+              )}
             </div>
             <div className="px-1 py-0.5 flex-1 min-w-0">
               <p className="text-[10px] md:text-[13px] leading-snug text-gray-800 line-clamp-3 break-all">

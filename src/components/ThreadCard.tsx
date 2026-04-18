@@ -1,15 +1,14 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Thread } from '@/types'
-
-const PLACEHOLDER =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3Crect fill='%23e9ecef' width='1' height='1'/%3E%3C/svg%3E"
 
 interface Props {
   thread: Thread
   rank?: number
+  priority?: boolean
 }
 
-export function ThreadCard({ thread, rank }: Props) {
+export function ThreadCard({ thread, rank, priority }: Props) {
   const category = thread.categories
 
   return (
@@ -21,7 +20,9 @@ export function ThreadCard({ thread, rank }: Props) {
       <div className="md:hidden flex" style={{ minHeight: 52 }}>
         {/* 画像（コメント数オーバーレイ付き） */}
         <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 52, height: 52 }}>
-          <img src={thread.image_url ?? PLACEHOLDER} alt="" className="w-full h-full object-cover" />
+          {thread.image_url && (
+            <Image src={thread.image_url} alt="" fill className="object-cover" sizes="52px" priority={priority} />
+          )}
           {rank !== undefined && (
             <span className="absolute top-0 left-0 bg-gray-800 bg-opacity-80 text-white text-[10px] font-bold px-1 leading-4">
               {rank}
@@ -49,7 +50,9 @@ export function ThreadCard({ thread, rank }: Props) {
       <div className="hidden md:flex" style={{ minHeight: 80 }}>
         {/* 画像 */}
         <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 80, height: 80 }}>
-          <img src={thread.image_url ?? PLACEHOLDER} alt="" className="w-full h-full object-cover" />
+          {thread.image_url && (
+            <Image src={thread.image_url} alt="" fill className="object-cover" sizes="80px" priority={priority} />
+          )}
           {rank !== undefined && (
             <span className="absolute top-0 left-0 bg-gray-800 bg-opacity-80 text-white text-[10px] font-bold px-1 leading-4">
               {rank}

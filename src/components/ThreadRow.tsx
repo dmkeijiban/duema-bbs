@@ -1,9 +1,7 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Thread, Category } from '@/types'
 import { formatRelativeTime } from '@/lib/utils'
-
-const PLACEHOLDER =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3Crect fill='%23e9ecef' width='1' height='1'/%3E%3C/svg%3E"
 
 interface Props {
   thread: Thread & { categories: Category | null }
@@ -23,7 +21,9 @@ export function ThreadRow({ thread, rank }: Props) {
       )}
       {/* サムネイル */}
       <div className="relative shrink-0 bg-gray-100 overflow-hidden" style={{ width: 52, height: 52 }}>
-        <img src={thread.image_url ?? PLACEHOLDER} alt="" className="w-full h-full object-cover" />
+        {thread.image_url && (
+          <Image src={thread.image_url} alt="" fill className="object-cover" sizes="52px" />
+        )}
         <span
           className="absolute bottom-0 left-0 right-0 text-[9px] text-white font-bold text-center leading-[14px]"
           style={{ background: 'rgba(0,0,0,0.55)' }}

@@ -1,11 +1,12 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase-server'
 import { hasJapanese } from '@/lib/spam'
 import { v4 as uuidv4 } from 'uuid'
+import { uploadImage, validateImageFile } from '@/lib/upload'
 
 async function getOrCreateSessionId(): Promise<string> {
   const cookieStore = await cookies()
@@ -28,49 +29,30 @@ export async function createThread(formData: FormData) {
   const categoryId = formData.get('category_id') as string
   const imageFile = formData.get('image') as File | null
 
-  // バリデーション
-  if (!title || title.length < 2) {
-    return { error: 'タイトルは2文字以上で入力してください' }
-  }
-  if (title.length > 100) {
-    return { error: 'タイトルは100文字以内で入力してください' }
-  }
-  if (!body || body.length < 5) {
-    return { error: '本文は5文字以上で入力してください' }
-  }
-  if (body.length > 5000) {
-    return { error: '本文は5000文字以内で入力してください' }
-  }
+  if (!title || title.length < 2) return { error: 'タイトルは2文字以上で入力してください' }
+  if (title.length > 100) return { error: 'タイトルは100文字以内で入力してください' }
+  if (!body || body.length < 5) return { error: '本文は5文字以上で入力してください' }
+  if (body.length > 5000) return { error: '本文は5000文字以内で入力してください' }
 
-  // 日本語チェック
   if (!hasJapanese(title) && !hasJapanese(body)) {
     return { error: 'スレッドには日本語を含めてください（スパム対策）' }
   }
 
   const supabase = await createClient()
 
-  // 画像アップロード
   let imageUrl: string | null = null
-  if (imageFile && imageFile.size > 0) {
-    if (imageFile.size > 5 * 1024 * 1024) {
-      return { error: '画像は5MB以下にしてください' }
-    }
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-    if (!allowedTypes.includes(imageFile.type)) {
-      return { error: 'JPEG・PNG・GIF・WebP形式の画像のみ添付できます' }
-    }
-    const ext = imageFile.name.split('.').pop()
-    const fileName = `${uuidv4()}.${ext}`
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('bbs-images')
-      .upload(fileName, imageFile, { contentType: imageFile.type })
+  let imageWidth: number | null = null
+  let imageHeight: number | null = null
 
-    if (uploadError) {
-      console.error('Upload error:', uploadError)
-      return { error: '画像のアップロードに失敗しました' }
-    }
-    const { data: urlData } = supabase.storage.from('bbs-images').getPublicUrl(uploadData.path)
-    imageUrl = urlData.publicUrl
+  if (imageFile && imageFile.size > 0) {
+    const validErr = validateImageFile(imageFile)
+    if (validErr) return { error: validErr }
+
+    const result = await uploadImage(imageFile, supabase, uuidv4(), 'thumbnail')
+    if (result.error || !result.data) return { error: result.error ?? '画像のアップロードに失敗しました' }
+    imageUrl = result.data.url
+    imageWidth = result.data.width || null
+    imageHeight = result.data.height || null
   }
 
   const sessionId = await getOrCreateSessionId()
@@ -81,6 +63,8 @@ export async function createThread(formData: FormData) {
     author_name: authorName,
     category_id: categoryId ? parseInt(categoryId) : null,
     image_url: imageUrl,
+    image_width: imageWidth,
+    image_height: imageHeight,
     session_id: sessionId,
   }
 
@@ -90,15 +74,26 @@ export async function createThread(formData: FormData) {
     .select('id')
     .single()
 
-  // session_idカラムが存在しない場合はなしで再試行
-  if (error && (error.code === '42703' || error.message?.includes('session_id'))) {
+  // image_width/height カラムが未作成の場合はなしで再試行
+  if (error && (error.code === '42703' || error.message?.includes('image_width'))) {
     const { data: t2, error: e2 } = await supabase
       .from('threads')
-      .insert({ title, body, author_name: authorName, category_id: categoryId ? parseInt(categoryId) : null, image_url: imageUrl })
+      .insert({ title, body, author_name: authorName, category_id: categoryId ? parseInt(categoryId) : null, image_url: imageUrl, session_id: sessionId })
       .select('id')
       .single()
     thread = t2
     error = e2
+  }
+
+  // session_id カラムが未作成の場合はなしで再試行
+  if (error && (error.code === '42703' || error.message?.includes('session_id'))) {
+    const { data: t3, error: e3 } = await supabase
+      .from('threads')
+      .insert({ title, body, author_name: authorName, category_id: categoryId ? parseInt(categoryId) : null, image_url: imageUrl })
+      .select('id')
+      .single()
+    thread = t3
+    error = e3
   }
 
   if (error || !thread) {
@@ -107,6 +102,7 @@ export async function createThread(formData: FormData) {
   }
 
   revalidatePath('/')
+  revalidateTag('threads', { expire: 0 })
   redirect(`/thread/${thread.id}`)
 }
 
@@ -120,14 +116,12 @@ export async function createPost(formData: FormData) {
   if (!body || body.length < 1) return { error: '本文を入力してください' }
   if (body.length > 3000) return { error: '本文は3000文字以内で入力してください' }
 
-  // 日本語チェック
   if (!hasJapanese(body)) {
     return { error: '日本語を含めてください（スパム対策）' }
   }
 
   const supabase = await createClient()
 
-  // 現在の最大post_numberを取得
   const { data: maxPost } = await supabase
     .from('posts')
     .select('post_number')
@@ -138,51 +132,57 @@ export async function createPost(formData: FormData) {
 
   const nextPostNumber = (maxPost?.post_number ?? 0) + 1
 
-  // 画像アップロード
   let imageUrl: string | null = null
-  if (imageFile && imageFile.size > 0) {
-    if (imageFile.size > 5 * 1024 * 1024) {
-      return { error: '画像は5MB以下にしてください' }
-    }
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-    if (!allowedTypes.includes(imageFile.type)) {
-      return { error: 'JPEG・PNG・GIF・WebP形式の画像のみ添付できます' }
-    }
-    const ext = imageFile.name.split('.').pop()
-    const fileName = `posts/${uuidv4()}.${ext}`
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('bbs-images')
-      .upload(fileName, imageFile, { contentType: imageFile.type })
+  let imageWidth: number | null = null
+  let imageHeight: number | null = null
 
-    if (uploadError) {
-      return { error: '画像のアップロードに失敗しました' }
-    }
-    const { data: urlData } = supabase.storage.from('bbs-images').getPublicUrl(uploadData.path)
-    imageUrl = urlData.publicUrl
+  if (imageFile && imageFile.size > 0) {
+    const validErr = validateImageFile(imageFile)
+    if (validErr) return { error: validErr }
+
+    const result = await uploadImage(imageFile, supabase, `posts/${uuidv4()}`, 'post')
+    if (result.error || !result.data) return { error: result.error ?? '画像のアップロードに失敗しました' }
+    imageUrl = result.data.url
+    imageWidth = result.data.width || null
+    imageHeight = result.data.height || null
   }
 
   const sessionId = await getOrCreateSessionId()
 
-  // まずsession_id付きで試みる（DBマイグレーション済みの場合）
   let { error } = await supabase.from('posts').insert({
     thread_id: threadId,
     post_number: nextPostNumber,
     body,
     author_name: authorName,
     image_url: imageUrl,
+    image_width: imageWidth,
+    image_height: imageHeight,
     session_id: sessionId,
   })
 
-  // session_idカラムが存在しない場合はなしで再試行
-  if (error && (error.code === '42703' || error.message?.includes('session_id'))) {
+  // image_width/height カラムが未作成の場合はなしで再試行
+  if (error && (error.code === '42703' || error.message?.includes('image_width'))) {
     const { error: e2 } = await supabase.from('posts').insert({
       thread_id: threadId,
       post_number: nextPostNumber,
       body,
       author_name: authorName,
       image_url: imageUrl,
+      session_id: sessionId,
     })
     error = e2
+  }
+
+  // session_id カラムが未作成の場合はなしで再試行
+  if (error && (error.code === '42703' || error.message?.includes('session_id'))) {
+    const { error: e3 } = await supabase.from('posts').insert({
+      thread_id: threadId,
+      post_number: nextPostNumber,
+      body,
+      author_name: authorName,
+      image_url: imageUrl,
+    })
+    error = e3
   }
 
   if (error) {
@@ -190,7 +190,6 @@ export async function createPost(formData: FormData) {
     return { error: 'レスの投稿に失敗しました' }
   }
 
-  // スレッドのレス数と最終投稿日時を更新（security definer RPCでRLSを回避）
   await supabase.rpc('increment_post_count', { p_thread_id: threadId })
 
   revalidatePath(`/thread/${threadId}`)

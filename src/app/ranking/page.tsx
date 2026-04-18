@@ -59,8 +59,6 @@ async function RankingList() {
 }
 
 export default async function RankingPage() {
-  const supabase = await createClient()
-  const { data: categories } = await supabase.from('categories').select('*').order('sort_order')
 
   return (
     <div className="w-full px-0 py-0">

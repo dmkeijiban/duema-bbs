@@ -4,9 +4,9 @@
   --background: #f8f9fa;
   --foreground: #212529;
   --border: #dee2e6;
-  --accent: #0d6efd;
+  --accent: #2563eb;
   --badge-red: #dc3545;
-  --header-bg: #0d6efd;
+  --header-bg: #2563eb;
 }
 
 @theme inline {

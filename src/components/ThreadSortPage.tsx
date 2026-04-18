@@ -34,7 +34,7 @@ async function ThreadList({ sort }: { sort: string }) {
     query = query.order('last_posted_at', { ascending: false })
   }
 
-  query = query.limit(sort === 'random' ? 500 : 100)
+  query = query.limit(100)
   const { data: rawThreads } = await query
   let threads = rawThreads ? await withFallbackThumbnails(supabase, rawThreads) : []
 
@@ -102,8 +102,8 @@ export function BottomNav({ current }: { current?: string }) {
           className="flex-1 text-center py-2 border-r border-gray-300 last:border-r-0 text-xs md:text-sm"
           style={
             current === btn.href
-              ? { background: '#0d6efd', color: '#fff' }
-              : { color: '#0d6efd' }
+              ? { background: '#2563eb', color: '#fff' }
+              : { color: '#2563eb' }
           }
         >
           {btn.label}

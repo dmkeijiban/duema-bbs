@@ -1,12 +1,18 @@
 'use client'
 
 import { useState, useTransition, Suspense } from 'react'
+import dynamic from 'next/dynamic'
 import { Post } from '@/types'
 import { formatDateTimeJP } from '@/lib/utils'
 import { deleteOwnPost } from '@/app/actions/delete'
 import { PostLikeButton } from './PostLikeButton'
 import { ReportButton } from './ReportButton'
-import { Tweet } from 'react-tweet'
+
+// react-tweetは重いので必要なときだけ遅延ロード
+const Tweet = dynamic(() => import('react-tweet').then(m => ({ default: m.Tweet })), {
+  ssr: false,
+  loading: () => <div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>,
+})
 
 interface Props {
   post: Post
@@ -244,9 +250,11 @@ export function PostItem({ post, allPosts, onAnchorClick, displayNumber, session
       {post.image_url && (
         <div className="px-3 pb-2">
           <a href={post.image_url} target="_blank" rel="noopener noreferrer">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={post.image_url}
               alt="添付画像"
+              loading="lazy"
               className="max-h-80 max-w-full object-contain hover:opacity-90 cursor-zoom-in"
             />
           </a>

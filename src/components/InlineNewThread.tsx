@@ -53,9 +53,10 @@ export function InlineNewThread({ categories, newThreadRules, isAdmin }: Props) 
           <form onSubmit={handleSubmit} className="text-sm">
             <div className="grid gap-0" style={{ gridTemplateColumns: '5rem 1fr' }}>
               {/* タイトル */}
-              <div className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">タイトル</div>
+              <label htmlFor="new-thread-title" className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">タイトル</label>
               <div className="py-2 pr-3 min-w-0">
                 <input
+                  id="new-thread-title"
                   type="text"
                   name="title"
                   required
@@ -65,9 +66,10 @@ export function InlineNewThread({ categories, newThreadRules, isAdmin }: Props) 
                 />
               </div>
               {/* カテゴリ */}
-              <div className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">カテゴリ</div>
+              <label htmlFor="new-thread-category" className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">カテゴリ</label>
               <div className="py-2 pr-3 min-w-0">
                 <select
+                  id="new-thread-category"
                   name="category_id"
                   className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400"
                 >
@@ -80,9 +82,10 @@ export function InlineNewThread({ categories, newThreadRules, isAdmin }: Props) 
                 </select>
               </div>
               {/* 名前 */}
-              <div className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">名前</div>
+              <label htmlFor="new-thread-author" className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">名前</label>
               <div className="py-2 pr-3 min-w-0">
                 <input
+                  id="new-thread-author"
                   type="text"
                   name="author_name"
                   maxLength={15}
@@ -91,9 +94,10 @@ export function InlineNewThread({ categories, newThreadRules, isAdmin }: Props) 
                 />
               </div>
               {/* 本文 */}
-              <div className="py-2 pr-2 pl-3 text-right text-gray-600 text-xs whitespace-nowrap pt-3">本文</div>
+              <label htmlFor="new-thread-body" className="py-2 pr-2 pl-3 text-right text-gray-600 text-xs whitespace-nowrap pt-3">本文</label>
               <div className="py-2 pr-3 min-w-0">
                 <textarea
+                  id="new-thread-body"
                   name="body"
                   required
                   rows={10}
@@ -102,9 +106,10 @@ export function InlineNewThread({ categories, newThreadRules, isAdmin }: Props) 
                 />
               </div>
               {/* 画像 */}
-              <div className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">画像</div>
+              <label htmlFor="new-thread-image" className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">画像</label>
               <div className="py-2 pr-3 min-w-0">
                 <input
+                  id="new-thread-image"
                   type="file"
                   name="image"
                   accept="image/jpeg,image/png,image/gif,image/webp"
@@ -124,7 +129,7 @@ export function InlineNewThread({ categories, newThreadRules, isAdmin }: Props) 
                   disabled={isPending}
                   id="respost"
                   className="px-12 py-2 text-white text-sm font-medium disabled:opacity-60"
-                  style={{ backgroundColor: '#0d6efd' }}
+                  style={{ backgroundColor: '#2563eb' }}
                 >
                   {isPending ? '投稿中...' : '投稿する'}
                 </button>

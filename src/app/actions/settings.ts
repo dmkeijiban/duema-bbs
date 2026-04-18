@@ -1,7 +1,7 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase-server'
 
 const ADMIN_COOKIE = 'admin_auth'
@@ -25,5 +25,6 @@ export async function updateSetting(key: string, value: string): Promise<{ error
   if (error) return { error: error.message }
   revalidatePath('/', 'layout')
   revalidatePath('/terms')
+  revalidateTag('settings', { expire: 0 })
   return {}
 }

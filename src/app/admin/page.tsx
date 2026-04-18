@@ -214,9 +214,14 @@ export default async function AdminPage({
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
           <h2 className="font-bold text-gray-700">📢 お知らせ管理</h2>
-          <a href="/" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#fd7e14' }}>
-            ホームで編集
-          </a>
+          <div className="flex gap-2">
+            <a href="/admin/cleanup" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
+              🧹 データ整理
+            </a>
+            <a href="/admin/notices" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#2563eb' }}>
+              お知らせ管理画面へ
+            </a>
+          </div>
         </div>
         {notices && notices.length > 0 ? (
           <div className="space-y-1">

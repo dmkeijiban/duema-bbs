@@ -76,9 +76,11 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
           {thread.image_url && (
             <div className="px-3 pb-2">
               <a href={thread.image_url} target="_blank" rel="noopener noreferrer">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={thread.image_url}
                   alt="添付画像"
+                  loading="lazy"
                   className="max-h-80 max-w-full object-contain hover:opacity-90 cursor-zoom-in"
                 />
               </a>

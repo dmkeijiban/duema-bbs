@@ -17,7 +17,7 @@ export interface Notice {
   show_in_thread: boolean
 }
 
-export function NoticeBlock({ notice }: { notice: Notice }) {
+export function NoticeBlock({ notice, priority }: { notice: Notice; priority?: boolean }) {
   const items = (notice.items as NoticeItem[]) || []
   if (items.length === 0 && !notice.header_text) return null
 
@@ -30,17 +30,24 @@ export function NoticeBlock({ notice }: { notice: Notice }) {
       {/* グリッド */}
       <div className="flex gap-1">
         {items.map((item, i) => {
+          // height固定でCLS防止（バナー画像が未ロードでも高さが確保される）
           const inner = (
-            <div className="relative overflow-hidden bg-gray-100" style={{ flex: '1' }}>
+            <div className="relative overflow-hidden bg-gray-100" style={{ flex: '1', height: 80 }}>
               {item.image_url && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={item.image_url} alt={item.title || ''} className="w-full block object-cover" />
+                <img
+                  src={item.image_url}
+                  alt={item.title || ''}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  loading={priority ? undefined : 'lazy'}
+                  fetchPriority={priority ? 'high' : undefined}
+                />
               )}
               {/* タイトルオーバーレイ（PC表示のみ）*/}
               {item.title && (
                 <div
                   className="hidden md:block absolute bottom-0 inset-x-0 px-2 py-1.5 text-white text-xs font-light leading-snug text-center"
-                  style={{ background: 'rgba(0,0,0,0.45)' }}
+                  style={{ background: 'rgba(0,0,0,0.65)' }}
                 >
                   {item.title}
                   {item.body && <span className="block text-[10px] font-light opacity-90 mt-0.5">{item.body}</span>}

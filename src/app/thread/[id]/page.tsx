@@ -9,10 +9,17 @@ import { incrementViewCount } from '@/app/actions/thread'
 import { Thread, Post, Category } from '@/types'
 import Link from 'next/link'
 import { cookies } from 'next/headers'
-import { getSetting } from '@/lib/settings'
+import { getCachedSetting, getCachedThreadNotices } from '@/lib/cached-queries'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 
 const POSTS_PER_PAGE = 50
+
+const THREAD_RULES_DEFAULT = `1.アンカーはレス番号をクリックで自動入力できます。
+2.誹謗中傷・暴言・煽り・スレッドと無関係な投稿は削除・規制対象です。
+他サイト・特定個人への中傷・暴言は禁止です。
+※規約違反は各レスの「報告」からお知らせください。削除依頼は「お問い合わせ」からお願いします。
+3.二次創作画像は、作者本人でない場合はURLで貼ってください。サムネとリンク先が表示されます。
+4.巻き返し規制を受けている方や荒らしを反省した方はお問い合わせから連絡ください。`
 
 interface Props {
   params: Promise<{ id: string }>
@@ -30,7 +37,6 @@ export async function generateMetadata({ params }: Props) {
 
   if (!thread) return { title: 'スレッドが見つかりません' }
 
-  // OGP画像: スレ画像 → 最初の投稿添付画像 の順で探す
   let ogImage: string | undefined = thread.image_url ?? undefined
   if (!ogImage) {
     const { data: postImg } = await supabase
@@ -66,51 +72,50 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function ThreadPage({ params, searchParams }: Props) {
-  const { id } = await params
-  const { page: pageStr } = await searchParams
+  const t0 = Date.now()
+
+  const [{ id }, { page: pageStr }] = await Promise.all([params, searchParams])
   const threadId = parseInt(id)
-
   if (isNaN(threadId)) notFound()
-
-  const supabase = await createClient()
-
-  const { data: thread } = await supabase
-    .from('threads')
-    .select('*, categories(id,name,slug,color,description,sort_order)')
-    .eq('id', threadId)
-    .single()
-
-  if (!thread) notFound()
-
-  incrementViewCount(threadId)
 
   const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
   const offset = (page - 1) * POSTS_PER_PAGE
 
-  const { data: posts, count } = await supabase
-    .from('posts')
-    .select('*', { count: 'exact' })
-    .eq('thread_id', threadId)
-    .order('post_number', { ascending: true })
-    .range(offset, offset + POSTS_PER_PAGE - 1)
-
-  const totalPages = Math.max(1, Math.ceil((count ?? 0) / POSTS_PER_PAGE))
-
-  const THREAD_RULES_DEFAULT = `1.アンカーはレス番号をクリックで自動入力できます。
-2.誹謗中傷・暴言・煽り・スレッドと無関係な投稿は削除・規制対象です。
-他サイト・特定個人への中傷・暴言は禁止です。
-※規約違反は各レスの「報告」からお知らせください。削除依頼は「お問い合わせ」からお願いします。
-3.二次創作画像は、作者本人でない場合はURLで貼ってください。サムネとリンク先が表示されます。
-4.巻き返し規制を受けている方や荒らしを反省した方はお問い合わせから連絡ください。`
-
-  const [cookieStore, threadRules, { data: threadNoticesRaw }] = await Promise.all([
+  // cookies + supabase client + キャッシュ済みデータを同時並列で取得
+  const [cookieStore, supabase, threadRules, threadNotices] = await Promise.all([
     cookies(),
-    getSetting('thread_rules', THREAD_RULES_DEFAULT),
-    supabase.from('notices').select('*').eq('is_active', true).eq('show_in_thread', true).order('sort_order'),
+    createClient(),
+    getCachedSetting('thread_rules', THREAD_RULES_DEFAULT),
+    getCachedThreadNotices(),
   ])
-  const threadNotices = (threadNoticesRaw as Notice[] | null) ?? []
+  console.log(`[perf] thread/${threadId} init: ${Date.now() - t0}ms`)
+
   const sessionId = cookieStore.get('bbs_session')?.value ?? ''
   const isAdmin = cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+
+  // スレ取得 + レス取得を並列実行
+  const tQ = Date.now()
+  const [threadResult, postsResult] = await Promise.all([
+    supabase
+      .from('threads')
+      .select('id, title, body, author_name, image_url, view_count, post_count, is_archived, created_at, last_posted_at, session_id, category_id, categories(id,name,slug,color,description,sort_order)')
+      .eq('id', threadId)
+      .single(),
+    supabase
+      .from('posts')
+      .select('id, thread_id, post_number, body, author_name, image_url, created_at', { count: 'exact' })
+      .eq('thread_id', threadId)
+      .order('post_number', { ascending: true })
+      .range(offset, offset + POSTS_PER_PAGE - 1),
+  ])
+  console.log(`[perf] thread/${threadId} queries: ${Date.now() - tQ}ms`)
+
+  const thread = threadResult.data
+  if (!thread) notFound()
+
+  incrementViewCount(threadId)
+
+  // お気に入り確認（sessionIdがあるときのみ）
   let isFavorited = false
   if (sessionId) {
     const { data: fav } = await supabase
@@ -122,11 +127,16 @@ export default async function ThreadPage({ params, searchParams }: Props) {
     isFavorited = !!fav
   }
 
-  const typedThread = thread as Thread & { categories: Category | null }
+  const posts = postsResult.data
+  const count = postsResult.count
+  const totalPages = Math.max(1, Math.ceil((count ?? 0) / POSTS_PER_PAGE))
+
+  console.log(`[perf] thread/${threadId} total: ${Date.now() - t0}ms, posts=${posts?.length}`)
+
+  const typedThread = thread as unknown as Thread & { categories: Category | null }
 
   return (
     <div className="max-w-screen-xl mx-auto px-2 py-2 text-sm">
-      {/* パンくず */}
       <nav className="text-xs text-gray-500 mb-2 flex items-center flex-wrap gap-x-1">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
         {typedThread.categories && (
@@ -144,7 +154,6 @@ export default async function ThreadPage({ params, searchParams }: Props) {
         <span className="text-gray-600 break-all">{typedThread.title}</span>
       </nav>
 
-      {/* スレタイバー */}
       <div className="border border-gray-300 bg-white mb-3 px-3 py-2">
         <div className="flex items-center gap-1.5 flex-wrap">
           <h1 className="font-bold text-gray-800 leading-snug text-base">{typedThread.title}</h1>
@@ -156,12 +165,10 @@ export default async function ThreadPage({ params, searchParams }: Props) {
         </div>
       </div>
 
-      {/* お知らせ（ホームと同期・show_in_thread=trueのもの） */}
-      {threadNotices.map(n => (
+      {(threadNotices as Notice[]).map(n => (
         <NoticeBlock key={n.id} notice={n} />
       ))}
 
-      {/* スレ本文・レス一覧・フォーム（クライアント側） */}
       <ThreadContent
         posts={(posts ?? []) as Post[]}
         threadId={threadId}
