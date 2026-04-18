@@ -70,7 +70,7 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
     return (
       <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
         {(all as unknown as (Thread & { categories: Category | null })[]).map((thread, i) => (
-          <ThreadCard key={thread.id} thread={thread} priority={i === 0} />
+          <ThreadCard key={thread.id} thread={thread} />
         ))}
       </div>
     )
@@ -105,7 +105,7 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
         </div>
         <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
           {(threads as unknown as (Thread & { categories: Category | null })[]).map((thread, i) => (
-            <ThreadCard key={thread.id} thread={thread} priority={i === 0} />
+            <ThreadCard key={thread.id} thread={thread} />
           ))}
         </div>
         <div className="mt-3">
@@ -207,14 +207,15 @@ export default async function Home({
           <RecommendSection />
         </Suspense>
 
-        {/* ── LCP 候補ゾーン（初期 HTML シェルに含まれる）────────────── */}
-        {homeBanner && (
-          <div className="mb-2 px-3 py-2 text-sm border relative" style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb', whiteSpace: 'pre-wrap' }}>
-            {homeBanner}
-          </div>
-        )}
-        {/* topNotices: priority 画像は fetchpriority="high" → 初期 HTML から即ロード */}
-        {topNotices.map((n, i) => <NoticeBlock key={n.id} notice={n} priority={i === 0} />)}
+        {/* ── LCP 対象テキスト（常時表示・画像ダウンロード不要）──────────
+            priority 画像をなくしたことでこのテキストブロックが
+            最初に描画される最大要素となり、LCP を確定させる。
+            homeBanner が空のときもフォールバック文言で必ず描画する。 */}
+        <div className="mb-2 px-3 py-2 text-sm border relative" style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb', whiteSpace: 'pre-wrap' }}>
+          {homeBanner || 'デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。'}
+        </div>
+        {/* topNotices: priority なし（lazy）→ 画像がLCPを更新しない */}
+        {topNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
         {/* ─────────────────────────────────────────────────────────────── */}
       </div>
 
