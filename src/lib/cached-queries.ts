@@ -4,6 +4,8 @@ import { withFallbackThumbnails } from './thumbnail'
 
 type ThreadRow = { id: number; title: string; image_url: string | null; post_count: number }
 
+export const THREAD_PAGE_SIZE = 20
+
 export const getCachedCategories = unstable_cache(
   async () => {
     const supabase = createPublicClient()
@@ -72,3 +74,61 @@ export const getCachedTopThreads = unstable_cache(
   ['top-threads'],
   { revalidate: 300, tags: ['threads'] }
 )
+
+export interface CachedThreadListResult {
+  threads: unknown[]
+  count: number
+  totalPages: number
+}
+
+// 標準クエリ（検索・ランダム以外）をキャッシュ。
+// キャッシュキーにsort/page/categoryId/isArchivedを含めて一意に管理。
+export function getCachedThreadList(
+  sort: string,
+  page: number,
+  categoryId: number | null,
+  isArchived: boolean
+): Promise<CachedThreadListResult> {
+  const cacheKey = `tl-${sort}-p${page}-c${String(categoryId)}-a${String(isArchived)}`
+  return unstable_cache(
+    async () => {
+      const supabase = createPublicClient()
+      const offset = (page - 1) * THREAD_PAGE_SIZE
+
+      let countQuery = supabase
+        .from('threads')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_archived', isArchived)
+      let dataQuery = supabase
+        .from('threads')
+        .select('id, title, image_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
+        .eq('is_archived', isArchived)
+
+      if (categoryId !== null) {
+        countQuery = countQuery.eq('category_id', categoryId)
+        dataQuery = dataQuery.eq('category_id', categoryId)
+      }
+
+      if (sort === 'popular') {
+        dataQuery = dataQuery.order('post_count', { ascending: false })
+      } else if (sort === 'new') {
+        dataQuery = dataQuery.order('created_at', { ascending: false })
+      } else {
+        dataQuery = dataQuery.order('last_posted_at', { ascending: false })
+      }
+
+      dataQuery = dataQuery.range(offset, offset + THREAD_PAGE_SIZE - 1)
+
+      const [{ count }, { data: raw }] = await Promise.all([countQuery, dataQuery])
+      const threads = raw ? await withFallbackThumbnails(supabase, raw as ThreadRow[]) : []
+
+      return {
+        threads,
+        count: count ?? 0,
+        totalPages: Math.max(1, Math.ceil((count ?? 0) / THREAD_PAGE_SIZE)),
+      }
+    },
+    [cacheKey],
+    { revalidate: 60, tags: ['threads'] }
+  )()
+}

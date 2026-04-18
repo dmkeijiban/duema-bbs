@@ -13,13 +13,15 @@ import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
-import { getCachedCategories, getCachedActiveNotices, getCachedSetting } from '@/lib/cached-queries'
+import {
+  getCachedCategories,
+  getCachedActiveNotices,
+  getCachedSetting,
+  getCachedThreadList,
+  THREAD_PAGE_SIZE,
+} from '@/lib/cached-queries'
 
-// cookies() を呼ばないことで ISR が有効になる。
-// 毎回SSRになっていた原因はcookies()のみだったため、これを除去する。
 export const revalidate = 60
-
-const PAGE_SIZE = 20
 
 interface SearchParams {
   category?: string
@@ -30,85 +32,98 @@ interface SearchParams {
   [key: string]: string | undefined
 }
 
-async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
-  const t0 = Date.now()
+type ThreadWithCategory = Thread & { categories: Category | null }
+
+interface ThreadData {
+  threads: ThreadWithCategory[]
+  count: number
+  totalPages: number
+  isRandom: boolean
+}
+
+// スレ一覧データ取得。標準クエリはキャッシュ済み、検索・ランダムはDB直接。
+async function fetchThreadData(params: SearchParams): Promise<ThreadData> {
+  const sort = params.sort ?? 'recent'
+  const searchQ = params.q?.trim()
+  const isArchived = sort === 'archived' || params.archived === '1'
+  const isRandom = sort === 'random'
+  const page = Math.max(1, parseInt(params.page ?? '1') || 1)
   const supabase = createPublicClient()
 
-  const page = Math.max(1, parseInt(searchParams.page ?? '1') || 1)
-  const categorySlug = searchParams.category
-  const sort = searchParams.sort ?? 'recent'
-  const searchQ = searchParams.q?.trim()
-  const forceArchived = searchParams.archived === '1'
-  const isArchived = sort === 'archived' || forceArchived
-  const isRandom = sort === 'random'
-
-  // カテゴリIDはキャッシュ済み一覧から引く（DBクエリ不要）
-  let categoryId: number | null = null
-  if (categorySlug) {
-    const cats = await getCachedCategories()
-    categoryId = cats.find(c => c.slug === categorySlug)?.id ?? null
-  }
-
-  // ランダムモード
   if (isRandom) {
-    let rQuery = supabase
+    const cats = await getCachedCategories()
+    const categoryId = params.category ? (cats.find(c => c.slug === params.category)?.id ?? null) : null
+    let q = supabase
       .from('threads')
       .select('id, title, image_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
       .eq('is_archived', false)
       .limit(100)
-    if (categoryId !== null) rQuery = rQuery.eq('category_id', categoryId)
-    const { data: rawAll } = await rQuery
-    const allThreads = rawAll ? await withFallbackThumbnails(supabase, rawAll) : []
-    for (let i = allThreads.length - 1; i > 0; i--) {
+    if (categoryId !== null) q = q.eq('category_id', categoryId)
+    const { data: raw } = await q
+    const all = raw ? await withFallbackThumbnails(supabase, raw) : []
+    for (let i = all.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [allThreads[i], allThreads[j]] = [allThreads[j], allThreads[i]]
+      [all[i], all[j]] = [all[j], all[i]]
     }
-    console.log(`[perf] ThreadList random: ${Date.now() - t0}ms`)
-    if (allThreads.length === 0) {
-      return (
-        <div className="text-center py-16 text-gray-500 bg-white border border-gray-300">
-          <p>スレッドがまだありません</p>
-        </div>
-      )
-    }
-    return (
-      <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
-        {(allThreads as unknown as (Thread & { categories: Category | null })[]).map((thread) => (
-          <ThreadCard key={thread.id} thread={thread} />
-        ))}
-      </div>
-    )
+    return { threads: all as unknown as ThreadWithCategory[], count: all.length, totalPages: 1, isRandom: true }
   }
 
-  // count + data を並列実行（直列だと2倍かかる）
-  const offset = (page - 1) * PAGE_SIZE
-
-  let countQuery = supabase
-    .from('threads')
-    .select('id', { count: 'exact', head: true })
-    .eq('is_archived', isArchived)
-  if (categoryId !== null) countQuery = countQuery.eq('category_id', categoryId)
-  if (searchQ) countQuery = countQuery.ilike('title', `%${searchQ}%`)
-
-  let dataQuery = supabase
-    .from('threads')
-    .select('id, title, image_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
-    .eq('is_archived', isArchived)
-  if (categoryId !== null) dataQuery = dataQuery.eq('category_id', categoryId)
-  if (searchQ) dataQuery = dataQuery.ilike('title', `%${searchQ}%`)
-  if (sort === 'popular') {
-    dataQuery = dataQuery.order('post_count', { ascending: false })
-  } else if (sort === 'new') {
-    dataQuery = dataQuery.order('created_at', { ascending: false })
-  } else {
-    dataQuery = dataQuery.order('last_posted_at', { ascending: false })
+  if (searchQ) {
+    const cats = await getCachedCategories()
+    const categoryId = params.category ? (cats.find(c => c.slug === params.category)?.id ?? null) : null
+    let countQ = supabase
+      .from('threads')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_archived', isArchived)
+      .ilike('title', `%${searchQ}%`)
+    let dataQ = supabase
+      .from('threads')
+      .select('id, title, image_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
+      .eq('is_archived', isArchived)
+      .ilike('title', `%${searchQ}%`)
+    if (categoryId !== null) {
+      countQ = countQ.eq('category_id', categoryId)
+      dataQ = dataQ.eq('category_id', categoryId)
+    }
+    const offset = (page - 1) * THREAD_PAGE_SIZE
+    dataQ = dataQ.order('last_posted_at', { ascending: false }).range(offset, offset + THREAD_PAGE_SIZE - 1)
+    const [{ count }, { data: raw }] = await Promise.all([countQ, dataQ])
+    const threads = raw ? await withFallbackThumbnails(supabase, raw) : []
+    return {
+      threads: threads as unknown as ThreadWithCategory[],
+      count: count ?? 0,
+      totalPages: Math.max(1, Math.ceil((count ?? 0) / THREAD_PAGE_SIZE)),
+      isRandom: false,
+    }
   }
-  dataQuery = dataQuery.range(offset, offset + PAGE_SIZE - 1)
 
-  const [{ count }, { data: rawThreads }] = await Promise.all([countQuery, dataQuery])
-  const threads = rawThreads ? await withFallbackThumbnails(supabase, rawThreads) : null
+  // 標準クエリ（キャッシュ済み）
+  const cats = await getCachedCategories()
+  const categoryId = params.category ? (cats.find(c => c.slug === params.category)?.id ?? null) : null
+  const result = await getCachedThreadList(sort, page, categoryId, isArchived)
+  return {
+    threads: result.threads as ThreadWithCategory[],
+    count: result.count,
+    totalPages: result.totalPages,
+    isRandom: false,
+  }
+}
 
-  console.log(`[perf] ThreadList (sort=${sort} page=${page}): ${Date.now() - t0}ms, count=${count}`)
+// スレ一覧の同期レンダー（Suspense不要 — データはページレベルで取得済み）
+function ThreadGrid({
+  data,
+  sort,
+  searchQ,
+  page,
+  searchParams,
+}: {
+  data: ThreadData
+  sort: string
+  searchQ?: string
+  page: number
+  searchParams: SearchParams
+}) {
+  const { threads, count, totalPages } = data
 
   if (!threads || threads.length === 0) {
     return (
@@ -122,8 +137,6 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
       </div>
     )
   }
-
-  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
 
   return (
     <>
@@ -139,17 +152,21 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
         </div>
       )}
       <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
-        {(threads as unknown as (Thread & { categories: Category | null })[]).map((thread, i) => (
+        {threads.map((thread, i) => (
           <ThreadCard
             key={thread.id}
             thread={thread}
-            rank={sort === 'popular' ? i + 1 + offset : undefined}
+            rank={sort === 'popular' ? i + 1 + (page - 1) * THREAD_PAGE_SIZE : undefined}
+            // 上位10枚は eager + fetchpriority="high"、以降は lazy（viewport外）
+            priority={i < 10}
           />
         ))}
       </div>
-      <div className="mt-3">
-        <Pagination currentPage={page} totalPages={totalPages} searchParams={searchParams} />
-      </div>
+      {!data.isRandom && (
+        <div className="mt-3">
+          <Pagination currentPage={page} totalPages={totalPages} searchParams={searchParams} />
+        </div>
+      )}
     </>
   )
 }
@@ -159,20 +176,19 @@ export default async function Home({
 }: {
   searchParams: Promise<SearchParams>
 }) {
-  const t0 = Date.now()
   const params = await searchParams
 
   const isConfigured =
     process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http') &&
     !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!isConfigured) {
-    return <SetupGuide />
-  }
+  if (!isConfigured) return <SetupGuide />
 
   const sort = params.sort ?? 'recent'
+  const searchQ = params.q?.trim()
+  const page = Math.max(1, parseInt(params.page ?? '1') || 1)
 
-  // 全てキャッシュ済みデータ（DB直アクセスなし）
-  const [categories, notices, homeBanner, newThreadRules] = await Promise.all([
+  // 全データをページレベルで並列取得（スレ一覧もキャッシュ済み→DB待ちなし）
+  const [categories, notices, homeBanner, newThreadRules, threadData] = await Promise.all([
     getCachedCategories(),
     getCachedActiveNotices(),
     getCachedSetting('home_banner', 'デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。'),
@@ -184,6 +200,7 @@ export default async function Home({
 6.他人が不快になるようなタイトルは避けてください。
 7.スレッド作成は承認制とする場合があります。
 8.不適切と判断した場合は削除・ブロックする事があります。`),
+    fetchThreadData(params),
   ])
 
   const typedNotices = notices as Notice[]
@@ -191,11 +208,11 @@ export default async function Home({
   const midNotices = typedNotices.filter(n => n.position === 'mid')
   const botNotices = typedNotices.filter(n => n.position === 'bot')
 
-  console.log(`[perf] Home static data: ${Date.now() - t0}ms`)
-
   return (
     <div className="w-full px-0 py-0">
       <div className="max-w-screen-xl mx-auto px-2 pt-2">
+        {/* RecommendSection: キャッシュ済み（300s）なので実質即座に解決するが
+            LCPには直接関係しないためSuspense内に残す。スケルトンで高さを確保しCLS防止。 */}
         <Suspense fallback={<RecommendSectionSkeleton />}>
           <RecommendSection />
         </Suspense>
@@ -224,9 +241,15 @@ export default async function Home({
       <div className="max-w-screen-xl mx-auto px-2">
         {midNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
 
-        <Suspense fallback={<ThreadListSkeleton />}>
-          <ThreadList searchParams={params} />
-        </Suspense>
+        {/* スレ一覧はSuspenseなし — ページレベルでデータ取得済み（キャッシュ→DB待ちなし）
+            これによりLCP要素（先頭スレカード画像）が初期HTMLに確実に含まれる */}
+        <ThreadGrid
+          data={threadData}
+          sort={sort}
+          searchQ={searchQ}
+          page={page}
+          searchParams={params}
+        />
 
         {botNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
 
@@ -259,8 +282,7 @@ function SetupGuide() {
   )
 }
 
-// RecommendSection と同一構造のスケルトン。
-// fallback={null} だとロード後にセクションが突然出現してCLS発生 → 固定高スケルトンで防ぐ。
+// RecommendSection と同一構造のスケルトン（高さ一致でCLS防止）
 function RecommendSectionSkeleton() {
   return (
     <div className="mb-2 border border-gray-300 bg-white animate-pulse">
@@ -278,25 +300,6 @@ function RecommendSectionSkeleton() {
           </div>
         ))}
       </div>
-    </div>
-  )
-}
-
-// ThreadCard と同サイズのスケルトン（実カードと高さ一致でCLS防止）
-function ThreadListSkeleton() {
-  return (
-    <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300 animate-pulse">
-      {[...Array(10)].map((_, i) => (
-        <div key={i} className="flex border-b border-r border-gray-300 bg-white">
-          {/* mobile: 52px / desktop: 80px — ThreadCard実サイズに合わせる */}
-          <div className="md:hidden bg-gray-200 shrink-0" style={{ width: 52, height: 52 }} />
-          <div className="hidden md:block bg-gray-200 shrink-0" style={{ width: 80, height: 80 }} />
-          <div className="p-1.5 flex-1 space-y-1.5 pt-2">
-            <div className="h-2 bg-gray-200 rounded w-full" />
-            <div className="h-2 bg-gray-200 rounded w-4/5" />
-          </div>
-        </div>
-      ))}
     </div>
   )
 }
