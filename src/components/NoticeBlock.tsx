@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 export interface NoticeItem {
   image_url: string
   title: string
@@ -34,13 +36,13 @@ export function NoticeBlock({ notice, priority }: { notice: Notice; priority?: b
           const inner = (
             <div className="relative overflow-hidden bg-gray-100" style={{ flex: '1', height: 80 }}>
               {item.image_url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={item.image_url}
                   alt={item.title || ''}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  loading={priority ? undefined : 'lazy'}
-                  fetchPriority={priority ? 'high' : undefined}
+                  fill
+                  className="object-cover"
+                  loading="eager"
+                  sizes="(max-width: 768px) 50vw, 25vw"
                 />
               )}
               {/* タイトルオーバーレイ（PC表示のみ）*/}
