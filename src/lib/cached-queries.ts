@@ -75,6 +75,42 @@ export const getCachedTopThreads = unstable_cache(
   { revalidate: 300, tags: ['threads'] }
 )
 
+const THREAD_POSTS_PER_PAGE = 50
+
+export const getCachedThread = (threadId: number) =>
+  unstable_cache(
+    async () => {
+      const supabase = createPublicClient()
+      const { data } = await supabase
+        .from('threads')
+        .select('id, title, body, author_name, image_url, view_count, post_count, is_archived, created_at, last_posted_at, session_id, category_id, categories(id,name,slug,color,description,sort_order)')
+        .eq('id', threadId)
+        .single()
+      return data
+    },
+    [`thread-${threadId}`],
+    { revalidate: 30, tags: [`thread-${threadId}`, 'threads'] }
+  )()
+
+export const getCachedThreadPosts = (threadId: number, page: number) =>
+  unstable_cache(
+    async () => {
+      const supabase = createPublicClient()
+      const offset = (page - 1) * THREAD_POSTS_PER_PAGE
+      const { data, count } = await supabase
+        .from('posts')
+        .select('id, thread_id, post_number, body, author_name, image_url, created_at', { count: 'exact' })
+        .eq('thread_id', threadId)
+        .order('post_number', { ascending: true })
+        .range(offset, offset + THREAD_POSTS_PER_PAGE - 1)
+      return { data: data ?? [], count: count ?? 0 }
+    },
+    [`thread-posts-${threadId}-p${page}`],
+    { revalidate: 30, tags: [`thread-${threadId}`, 'threads'] }
+  )()
+
+export { THREAD_POSTS_PER_PAGE }
+
 export interface CachedThreadListResult {
   threads: unknown[]
   count: number

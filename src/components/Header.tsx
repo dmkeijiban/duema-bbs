@@ -3,7 +3,9 @@ import { HeaderSearch } from './HeaderSearch'
 import { MobileMenu } from './MobileMenu'
 
 const navLinks = [
+  { href: '/guide', label: '使い方' },
   { href: '/terms', label: '利用規約' },
+  { href: '/privacy', label: 'プライバシー' },
   { href: '/contact', label: 'お問い合わせ' },
   { href: '/settings', label: '個人設定' },
   { href: 'https://www.youtube.com/@darekanizatugaku/featured', label: 'YouTube', external: true },

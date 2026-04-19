@@ -205,6 +205,7 @@ export async function createPost(formData: FormData) {
     }
   }
 
+  revalidateTag(`thread-${threadId}`, { expire: 0 })
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/')
   return { success: true }

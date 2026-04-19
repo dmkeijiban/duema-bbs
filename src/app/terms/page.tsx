@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { cookies } from 'next/headers'
-import { getSetting } from '@/lib/settings'
+import { getCachedSetting } from '@/lib/cached-queries'
 import { SettingEditButton } from '@/components/SettingEditButton'
 
 export const metadata = {
@@ -80,7 +80,7 @@ const DEFAULT_TERMS = `1. はじめに
 export default async function TermsPage() {
   const [cookieStore, terms] = await Promise.all([
     cookies(),
-    getSetting('terms', DEFAULT_TERMS),
+    getCachedSetting('terms', DEFAULT_TERMS),
   ])
   const isAdmin = cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
 

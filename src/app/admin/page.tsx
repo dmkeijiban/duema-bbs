@@ -221,6 +221,9 @@ export default async function AdminPage({
             <a href="/admin/categories" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
               🗂 カテゴリ管理
             </a>
+            <a href="/admin/regen-thumbnails" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
+              🖼 サムネ再生成
+            </a>
             <a href="/admin/notices" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#2563eb' }}>
               お知らせ管理画面へ
             </a>

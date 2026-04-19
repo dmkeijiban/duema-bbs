@@ -9,10 +9,10 @@ import { incrementViewCount } from '@/app/actions/thread'
 import { Thread, Post, Category } from '@/types'
 import Link from 'next/link'
 import { cookies } from 'next/headers'
-import { getCachedSetting, getCachedThreadNotices } from '@/lib/cached-queries'
+import { getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 
-const POSTS_PER_PAGE = 50
+const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
 const THREAD_RULES_DEFAULT = `1.アンカーはレス番号をクリックで自動入力できます。
 2.誹謗中傷・暴言・煽り・スレッドと無関係な投稿は削除・規制対象です。
@@ -93,40 +93,22 @@ export default async function ThreadPage({ params, searchParams }: Props) {
   const sessionId = cookieStore.get('bbs_session')?.value ?? ''
   const isAdmin = cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
 
-  // スレ取得 + レス取得を並列実行
+  // スレ・レスはキャッシュ済みクエリで取得（30秒TTL）、セッション依存データは直接取得
   const tQ = Date.now()
-  const [threadResult, postsResult] = await Promise.all([
-    supabase
-      .from('threads')
-      .select('id, title, body, author_name, image_url, view_count, post_count, is_archived, created_at, last_posted_at, session_id, category_id, categories(id,name,slug,color,description,sort_order)')
-      .eq('id', threadId)
-      .single(),
-    supabase
-      .from('posts')
-      .select('id, thread_id, post_number, body, author_name, image_url, created_at', { count: 'exact' })
-      .eq('thread_id', threadId)
-      .order('post_number', { ascending: true })
-      .range(offset, offset + POSTS_PER_PAGE - 1),
+  const [thread, postsResult, favResult] = await Promise.all([
+    getCachedThread(threadId),
+    getCachedThreadPosts(threadId, page),
+    sessionId
+      ? supabase.from('favorites').select('id').eq('session_id', sessionId).eq('thread_id', threadId).single()
+      : Promise.resolve({ data: null }),
   ])
   console.log(`[perf] thread/${threadId} queries: ${Date.now() - tQ}ms`)
 
-  const thread = threadResult.data
   if (!thread) notFound()
 
   incrementViewCount(threadId)
 
-  // お気に入り確認（sessionIdがあるときのみ）
-  let isFavorited = false
-  if (sessionId) {
-    const { data: fav } = await supabase
-      .from('favorites')
-      .select('id')
-      .eq('session_id', sessionId)
-      .eq('thread_id', threadId)
-      .single()
-    isFavorited = !!fav
-  }
-
+  const isFavorited = !!favResult.data
   const posts = postsResult.data
   const count = postsResult.count
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / POSTS_PER_PAGE))

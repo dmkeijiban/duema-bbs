@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase-server'
 
@@ -81,6 +81,7 @@ export async function deleteOwnPost(postId: number, threadId: number) {
 
   await supabase.rpc('recalculate_post_count', { p_thread_id: threadId })
 
+  revalidateTag(`thread-${threadId}`, { expire: 0 })
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/')
   revalidatePath('/settings')
