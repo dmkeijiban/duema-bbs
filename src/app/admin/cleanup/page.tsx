@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { archiveThread, deleteThread, batchArchiveStale } from './actions'
+import { ConfirmDeleteButton } from '@/components/admin/ConfirmDeleteButton'
 
 const ADMIN_COOKIE = 'admin_auth'
 
@@ -81,12 +82,13 @@ export default async function CleanupPage() {
                   </form>
                   <form action={deleteThread}>
                     <input type="hidden" name="id" value={t.id} />
-                    <button type="submit"
-                      onClick={e => { if (!confirm(`「${t.title}」を削除しますか？`)) e.preventDefault() }}
+                    <ConfirmDeleteButton
+                      message={`「${t.title}」を削除しますか？`}
                       className="px-2 py-0.5 text-[10px] text-white hover:opacity-80"
-                      style={{ background: '#dc3545' }}>
+                      style={{ background: '#dc3545' }}
+                    >
                       削除
-                    </button>
+                    </ConfirmDeleteButton>
                   </form>
                 </div>
               </div>
@@ -105,11 +107,12 @@ export default async function CleanupPage() {
           {stale && stale.length > 0 && (
             <form action={batchArchiveStale}>
               <input type="hidden" name="ids" value={staleIds} />
-              <button type="submit"
-                onClick={e => { if (!confirm(`${stale.length}件を一括アーカイブしますか？`)) e.preventDefault() }}
-                className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
+              <ConfirmDeleteButton
+                message={`${stale.length}件を一括アーカイブしますか？`}
+                className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50"
+              >
                 全件アーカイブ
-              </button>
+              </ConfirmDeleteButton>
             </form>
           )}
         </div>
@@ -137,12 +140,13 @@ export default async function CleanupPage() {
                   </form>
                   <form action={deleteThread}>
                     <input type="hidden" name="id" value={t.id} />
-                    <button type="submit"
-                      onClick={e => { if (!confirm(`「${t.title}」を削除しますか？`)) e.preventDefault() }}
+                    <ConfirmDeleteButton
+                      message={`「${t.title}」を削除しますか？`}
                       className="px-2 py-0.5 text-[10px] text-white hover:opacity-80"
-                      style={{ background: '#dc3545' }}>
+                      style={{ background: '#dc3545' }}
+                    >
                       削除
-                    </button>
+                    </ConfirmDeleteButton>
                   </form>
                 </div>
               </div>

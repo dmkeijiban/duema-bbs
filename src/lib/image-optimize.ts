@@ -43,9 +43,20 @@ export async function optimizeImage(
   }
 }
 
-// サムネイル用（スレッド一覧カード: 80x80px表示）
+// サムネイル用（スレッド一覧カード: 80x80px表示、3x DPR = 240px必要 → 320px固定正方形）
 export async function optimizeThumbnail(file: File): Promise<OptimizedImage> {
-  return optimizeImage(file, { maxWidth: 800, maxHeight: 800, quality: 80 })
+  const inputBuffer = Buffer.from(await file.arrayBuffer())
+
+  if (file.type === 'image/gif') {
+    return { buffer: inputBuffer, contentType: 'image/gif', ext: 'gif', width: 0, height: 0, byteSize: inputBuffer.length }
+  }
+
+  const { data, info } = await sharp(inputBuffer)
+    .resize(320, 320, { fit: 'cover', position: 'centre' })
+    .webp({ quality: 85 })
+    .toBuffer({ resolveWithObject: true })
+
+  return { buffer: data, contentType: 'image/webp', ext: 'webp', width: info.width, height: info.height, byteSize: info.size }
 }
 
 // レス画像用（インライン表示: 最大横幅いっぱい）

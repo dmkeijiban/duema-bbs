@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { createNotice, toggleNoticeActive, moveNotice, deleteNotice } from './actions'
 import { Notice } from '@/components/NoticeBlock'
+import { ConfirmDeleteButton } from '@/components/admin/ConfirmDeleteButton'
 
 const ADMIN_COOKIE = 'admin_auth'
 
@@ -132,12 +133,13 @@ export default async function NoticesAdminPage() {
                   {/* 削除 */}
                   <form action={deleteNotice}>
                     <input type="hidden" name="id" value={n.id} />
-                    <button type="submit"
-                      onClick={e => { if (!confirm('このお知らせを削除しますか？')) e.preventDefault() }}
+                    <ConfirmDeleteButton
+                      message="このお知らせを削除しますか？"
                       className="w-full px-2 py-0.5 text-[11px] text-white hover:opacity-80 leading-none"
-                      style={{ background: '#dc3545' }}>
+                      style={{ background: '#dc3545' }}
+                    >
                       削除
-                    </button>
+                    </ConfirmDeleteButton>
                   </form>
                 </div>
               </div>
