@@ -255,7 +255,7 @@ export function PostItem({ post, allPosts, onAnchorClick, displayNumber, session
               src={post.image_url}
               alt="添付画像"
               loading="lazy"
-              style={{ maxWidth: '100%', maxHeight: '320px', width: 'auto', height: 'auto', display: 'block' }}
+              style={{ width: '100%', height: 'auto', display: 'block' }}
               className="hover:opacity-90 cursor-zoom-in"
             />
           </a>

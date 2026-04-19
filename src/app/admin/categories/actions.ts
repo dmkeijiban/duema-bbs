@@ -52,17 +52,27 @@ export async function moveCategory(formData: FormData) {
   const id = parseInt(formData.get('id') as string)
   const direction = formData.get('direction') as 'up' | 'down'
 
-  const { data: current } = await supabase
+  const { data: all } = await supabase
     .from('categories')
-    .select('sort_order')
-    .eq('id', id)
-    .single()
+    .select('id, sort_order')
+    .order('sort_order')
 
-  if (!current) redirect('/admin/categories')
+  if (!all) redirect('/admin/categories')
 
-  const newOrder = direction === 'up' ? current.sort_order - 1 : current.sort_order + 1
+  const idx = all.findIndex(c => c.id === id)
+  if (idx < 0) redirect('/admin/categories')
 
-  await supabase.from('categories').update({ sort_order: newOrder }).eq('id', id)
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+  if (swapIdx < 0 || swapIdx >= all.length) redirect('/admin/categories')
+
+  const current = all[idx]
+  const neighbor = all[swapIdx]
+
+  // sort_orderを互いに交換
+  await Promise.all([
+    supabase.from('categories').update({ sort_order: neighbor.sort_order }).eq('id', current.id),
+    supabase.from('categories').update({ sort_order: current.sort_order }).eq('id', neighbor.id),
+  ])
 
   revalidateTag('categories', { expire: 0 })
   revalidatePath('/')
