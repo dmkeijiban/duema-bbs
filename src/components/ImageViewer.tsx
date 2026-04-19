@@ -21,24 +21,23 @@ export function ImageViewer({ src, alt = '添付画像' }: Props) {
 
   return (
     <>
-      {/* サムネ表示 */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt}
-        loading="lazy"
-        onClick={() => setOpen(true)}
-        style={{
-          maxWidth: 280,
-          maxHeight: 280,
-          width: 'auto',
-          height: 'auto',
-          display: 'block',
-          cursor: 'zoom-in',
-          objectFit: 'contain',
-        }}
-        className="hover:opacity-90"
-      />
+      {/* サムネ表示：maxWidth固定のwrapperでwidth:100%にして全画像を同じ幅で揃える */}
+      <div style={{ maxWidth: 280, width: '100%' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          onClick={() => setOpen(true)}
+          style={{
+            width: '100%',
+            height: 'auto',
+            display: 'block',
+            cursor: 'zoom-in',
+          }}
+          className="hover:opacity-90"
+        />
+      </div>
 
       {/* オーバーレイ拡大 */}
       {open && (
