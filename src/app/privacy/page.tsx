@@ -53,7 +53,7 @@ export default async function PrivacyPage() {
       </nav>
       <div className="bg-white border border-gray-300 p-5 leading-relaxed text-gray-800">
         <h1 className="text-base font-bold border-b border-gray-200 pb-2 mb-4">■ プライバシーポリシー（デュエマ掲示板）</h1>
-        {fixedPage ? (
+        {fixedPage?.content.length ? (
           <div className="space-y-4">
             {fixedPage.content.map((block, i) => renderBlock(block, i))}
           </div>
