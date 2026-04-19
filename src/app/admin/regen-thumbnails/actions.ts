@@ -2,7 +2,6 @@
 
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase-server'
-import { optimizeThumbnail } from '@/lib/image-optimize'
 
 const ADMIN_COOKIE = 'admin_auth'
 
@@ -13,54 +12,56 @@ async function requireAdmin() {
   }
 }
 
-export async function regenThumbnails(): Promise<{ updated: number; skipped: number; errors: number }> {
+// スレッド画像を高解像度版にアップグレード
+// - image_urlがposts/またはthreads/パスなら既に高解像度→スキップ
+// - それ以外（旧thumbnail）は、そのスレッドの返信画像(1200px)に差し替える
+// - 返信画像がなければスキップ（元画像なしのため改善不可）
+export async function upgradeThreadImages(): Promise<{ upgraded: number; skipped: number; noPostImage: number }> {
   await requireAdmin()
   const supabase = await createClient()
 
   const { data: threads } = await supabase
     .from('threads')
     .select('id, image_url')
-    .not('image_url', 'is', null)
 
-  if (!threads || threads.length === 0) return { updated: 0, skipped: 0, errors: 0 }
+  if (!threads || threads.length === 0) return { upgraded: 0, skipped: 0, noPostImage: 0 }
 
-  let updated = 0
+  let upgraded = 0
   let skipped = 0
-  let errors = 0
+  let noPostImage = 0
 
   for (const thread of threads) {
-    if (!thread.image_url) { skipped++; continue }
+    const url = thread.image_url ?? ''
 
-    // ポスト画像（posts/パス）はサイズ十分なのでスキップ
-    if (thread.image_url.includes('/posts/')) { skipped++; continue }
-
-    try {
-      const res = await fetch(thread.image_url)
-      if (!res.ok) { errors++; continue }
-
-      const blob = await res.blob()
-      const file = new File([blob], 'image.webp', { type: blob.type || 'image/webp' })
-      const optimized = await optimizeThumbnail(file)
-
-      // 400px未満はスキップ（既に十分なサイズ or 元画像が小さすぎ）
-      if (optimized.width < 300 && optimized.height < 300) { skipped++; continue }
-
-      // パスを元URLから抽出
-      const urlObj = new URL(thread.image_url)
-      const pathParts = urlObj.pathname.split('/object/public/bbs-images/')
-      if (pathParts.length < 2) { skipped++; continue }
-      const storagePath = pathParts[1]
-
-      const { error: upErr } = await supabase.storage
-        .from('bbs-images')
-        .update(storagePath, optimized.buffer, { contentType: optimized.contentType, upsert: true })
-
-      if (upErr) { errors++; continue }
-      updated++
-    } catch {
-      errors++
+    // 既に高解像度パス（posts/ または threads/）なら不要
+    if (url.includes('/posts/') || url.includes('/threads/')) {
+      skipped++
+      continue
     }
+
+    // 旧サムネ または 画像なし → スレッドの返信から高解像度画像を探す
+    const { data: postWithImage } = await supabase
+      .from('posts')
+      .select('image_url')
+      .eq('thread_id', thread.id)
+      .not('image_url', 'is', null)
+      .order('post_number', { ascending: true })
+      .limit(1)
+      .single()
+
+    if (!postWithImage?.image_url) {
+      noPostImage++
+      continue
+    }
+
+    // スレッドのimage_urlを返信の高解像度画像に差し替え
+    await supabase
+      .from('threads')
+      .update({ image_url: postWithImage.image_url })
+      .eq('id', thread.id)
+
+    upgraded++
   }
 
-  return { updated, skipped, errors }
+  return { upgraded, skipped, noPostImage }
 }
