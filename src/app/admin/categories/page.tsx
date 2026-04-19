@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase-server'
 import { addCategory, deleteCategory, updateCategoryOrder } from './actions'
 import { ConfirmDeleteButton } from '@/components/admin/ConfirmDeleteButton'
 
+export const dynamic = 'force-dynamic'
+
 const ADMIN_COOKIE = 'admin_auth'
 
 async function isAdmin() {

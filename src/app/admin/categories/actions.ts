@@ -51,8 +51,18 @@ export async function updateCategoryOrder(formData: FormData) {
   const supabase = await createClient()
   const id = parseInt(formData.get('id') as string)
   const sortOrder = parseInt(formData.get('sort_order') as string)
-  await supabase.from('categories').update({ sort_order: sortOrder }).eq('id', id)
+
+  if (isNaN(id) || isNaN(sortOrder)) redirect('/admin/categories?error=invalid+input')
+
+  const { error } = await supabase
+    .from('categories')
+    .update({ sort_order: sortOrder })
+    .eq('id', id)
+
+  if (error) redirect(`/admin/categories?error=${encodeURIComponent(error.message)}`)
+
   revalidateTag('categories', { expire: 0 })
   revalidatePath('/')
+  revalidatePath('/admin/categories')
   redirect('/admin/categories')
 }

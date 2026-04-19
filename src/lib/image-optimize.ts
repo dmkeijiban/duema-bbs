@@ -43,7 +43,9 @@ export async function optimizeImage(
   }
 }
 
-// サムネイル用（スレッド一覧カード: 80x80px表示、3x DPR = 240px必要 → 320px固定正方形）
+// サムネイル用（スレッド一覧カード: 80x80px表示）
+// fit:inside でアスペクト比を保持。スレッド詳細でも同じ URL を使うため比率を維持する。
+// withoutEnlargement:false により小さい画像も最大400pxまで引き上げ、Retina(3x=240px)に対応。
 export async function optimizeThumbnail(file: File): Promise<OptimizedImage> {
   const inputBuffer = Buffer.from(await file.arrayBuffer())
 
@@ -52,7 +54,7 @@ export async function optimizeThumbnail(file: File): Promise<OptimizedImage> {
   }
 
   const { data, info } = await sharp(inputBuffer)
-    .resize(320, 320, { fit: 'cover', position: 'centre' })
+    .resize(400, 400, { fit: 'inside', withoutEnlargement: false })
     .webp({ quality: 85 })
     .toBuffer({ resolveWithObject: true })
 
