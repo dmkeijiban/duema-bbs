@@ -20,9 +20,7 @@ export function ThreadCard({ thread, rank, priority }: Props) {
       <div className="md:hidden flex" style={{ minHeight: 52 }}>
         {/* 画像（コメント数オーバーレイ付き） */}
         <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 52, height: 52 }}>
-          {thread.image_url && (
-            <Image src={thread.image_url} alt="" fill className="object-cover" sizes="52px" priority={priority} />
-          )}
+          <Image src={thread.image_url ?? '/default-thumbnail.jpg'} alt="" fill className="object-cover" sizes="52px" priority={priority} />
           {rank !== undefined && (
             <span className="absolute top-0 left-0 bg-gray-800 bg-opacity-80 text-white text-[10px] font-bold px-1 leading-4">
               {rank}
@@ -50,9 +48,7 @@ export function ThreadCard({ thread, rank, priority }: Props) {
       <div className="hidden md:flex" style={{ minHeight: 80 }}>
         {/* 画像 */}
         <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 80, height: 80 }}>
-          {thread.image_url && (
-            <Image src={thread.image_url} alt="" fill className="object-cover" sizes="80px" priority={priority} />
-          )}
+          <Image src={thread.image_url ?? '/default-thumbnail.jpg'} alt="" fill className="object-cover" sizes="80px" priority={priority} />
           {rank !== undefined && (
             <span className="absolute top-0 left-0 bg-gray-800 bg-opacity-80 text-white text-[10px] font-bold px-1 leading-4">
               {rank}

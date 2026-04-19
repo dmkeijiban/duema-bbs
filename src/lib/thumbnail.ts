@@ -1,7 +1,10 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 
+export const DEFAULT_THREAD_THUMBNAIL = '/default-thumbnail.jpg'
+
 /**
- * スレに画像がない場合、最初に画像付きのレスの画像をサムネとして使う
+ * スレに画像がない場合、最初に画像付きのレスの画像をサムネとして使う。
+ * それもなければデフォルトサムネを使う（灰色の未設定状態を出さない）。
  */
 export async function withFallbackThumbnails<T extends { id: number; image_url: string | null }>(
   supabase: SupabaseClient,
@@ -28,6 +31,6 @@ export async function withFallbackThumbnails<T extends { id: number; image_url: 
 
   return threads.map(t => ({
     ...t,
-    image_url: t.image_url ?? firstPostImage[t.id] ?? null,
+    image_url: t.image_url ?? firstPostImage[t.id] ?? DEFAULT_THREAD_THUMBNAIL,
   }))
 }

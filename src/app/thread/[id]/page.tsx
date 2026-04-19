@@ -136,7 +136,7 @@ export default async function ThreadPage({ params, searchParams }: Props) {
   const typedThread = thread as unknown as Thread & { categories: Category | null }
 
   return (
-    <div className="max-w-screen-xl mx-auto px-2 py-2 text-sm">
+    <div className="max-w-screen-xl mx-auto px-2 py-2 text-sm overflow-x-hidden">
       <nav className="text-xs text-gray-500 mb-2 flex items-center flex-wrap gap-x-1">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
         {typedThread.categories && (

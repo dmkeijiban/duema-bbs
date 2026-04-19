@@ -99,7 +99,7 @@ function extractTweetId(url: string): string | null {
 // Twitter/X 埋め込み（react-tweet 使用）
 function TwitterEmbed({ tweetId }: { tweetId: string }) {
   return (
-    <div className="my-2" style={{ maxWidth: 480 }}>
+    <div className="my-2 w-full overflow-x-hidden" style={{ maxWidth: 480 }}>
       <Suspense fallback={<div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>}>
         <Tweet id={tweetId} />
       </Suspense>
@@ -110,7 +110,7 @@ function TwitterEmbed({ tweetId }: { tweetId: string }) {
 // YouTube 埋め込み（最大幅480px）
 function YouTubeEmbed({ videoId }: { videoId: string }) {
   return (
-    <div className="my-2" style={{ maxWidth: 480 }}>
+    <div className="my-2 w-full" style={{ maxWidth: 480 }}>
       <div className="relative bg-black" style={{ paddingBottom: '56.25%' }}>
         <iframe
           className="absolute inset-0 w-full h-full"

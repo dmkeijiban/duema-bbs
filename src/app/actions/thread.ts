@@ -192,6 +192,19 @@ export async function createPost(formData: FormData) {
 
   await supabase.rpc('increment_post_count', { p_thread_id: threadId })
 
+  // 画像付き投稿の場合、スレのサムネが未設定なら自動設定
+  if (imageUrl) {
+    const { data: th } = await supabase
+      .from('threads')
+      .select('image_url')
+      .eq('id', threadId)
+      .single()
+    if (!th?.image_url) {
+      await supabase.from('threads').update({ image_url: imageUrl }).eq('id', threadId)
+      revalidateTag('threads', { expire: 0 })
+    }
+  }
+
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/')
   return { success: true }
