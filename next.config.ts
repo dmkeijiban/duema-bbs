@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
     // 掲示板サムネは52-80px、バナーは~300px幅程度なので
     // 不要な大サイズ生成を抑えてキャッシュ効率を上げる
     deviceSizes: [640, 828, 1080, 1200],
-    imageSizes: [52, 80, 128, 256],
+    imageSizes: [52, 80, 128, 256, 384, 480],
     formats: ['image/webp'],
     minimumCacheTTL: 2592000, // 30日（デフォルト60秒→大幅延長）
   },
