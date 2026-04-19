@@ -60,12 +60,10 @@ export function ImageViewer({ src, alt = '添付画像' }: Props) {
             alt={alt}
             onClick={e => e.stopPropagation()}
             style={{
-              maxWidth: '95vw',
-              maxHeight: '95vh',
-              width: 'auto',
-              height: 'auto',
-              display: 'block',
+              width: '95vw',
+              height: '95vh',
               objectFit: 'contain',
+              display: 'block',
               cursor: 'default',
             }}
           />
