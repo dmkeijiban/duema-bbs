@@ -48,7 +48,7 @@ export async function createThread(formData: FormData) {
     const validErr = validateImageFile(imageFile)
     if (validErr) return { error: validErr }
 
-    const result = await uploadImage(imageFile, supabase, uuidv4(), 'thumbnail')
+    const result = await uploadImage(imageFile, supabase, `threads/${uuidv4()}`, 'post')
     if (result.error || !result.data) return { error: result.error ?? '画像のアップロードに失敗しました' }
     imageUrl = result.data.url
     imageWidth = result.data.width || null
