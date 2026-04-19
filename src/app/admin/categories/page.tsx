@@ -44,7 +44,7 @@ export default async function CategoriesPage({
         ) : (
           <div className="space-y-1">
             {categories.map(cat => (
-              <div key={cat.id} className="bg-white border border-gray-200 px-3 py-2 flex items-center gap-2 flex-wrap">
+              <div key={`${cat.id}-${cat.sort_order}`} className="bg-white border border-gray-200 px-3 py-2 flex items-center gap-2 flex-wrap">
                 <span
                   className="inline-block w-3 h-3 rounded-sm shrink-0"
                   style={{ backgroundColor: cat.color }}
