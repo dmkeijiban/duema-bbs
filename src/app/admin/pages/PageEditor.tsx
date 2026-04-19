@@ -157,9 +157,17 @@ export function PageEditor({ initial }: Props) {
                 {expandedIdx === i && (
                   <div className="p-3 space-y-2 border-t border-gray-100">
                     {block.type === 'text' && (
-                      <textarea value={block.content} onChange={e => updateBlock(i, { content: e.target.value })}
-                        rows={8} placeholder="テキストを入力..."
-                        className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400 font-mono" />
+                      <>
+                        <textarea value={block.content} onChange={e => updateBlock(i, { content: e.target.value })}
+                          rows={8} placeholder={'テキストを入力...\n\nインラインリンク記法: [リンクテキスト](https://...)'}
+                          className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400 font-mono" />
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-0.5">ブロック全体のリンクURL（省略可）</label>
+                          <input type="text" value={block.link ?? ''} onChange={e => updateBlock(i, { link: e.target.value })}
+                            placeholder="https://... （設定するとテキスト全体がリンクになります）"
+                            className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400" />
+                        </div>
+                      </>
                     )}
                     {block.type === 'image' && (
                       <>

@@ -79,7 +79,6 @@ export default async function AdminPage({
     thread_rules: 'スレッド内ルール',
     new_thread_rules: '新規スレッド作成ルール',
     home_banner: 'ホーム緑バナー',
-    terms: '利用規約',
   }
   const editSetting = sp.editSetting ?? null
 

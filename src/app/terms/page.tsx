@@ -1,7 +1,6 @@
 import Link from 'next/link'
-import { cookies } from 'next/headers'
-import { getCachedSetting } from '@/lib/cached-queries'
-import { SettingEditButton } from '@/components/SettingEditButton'
+import { getCachedFixedPage } from '@/lib/cached-queries'
+import { renderBlock } from '@/components/FixedPageBlocks'
 
 export const metadata = {
   title: '利用規約 | デュエマ掲示板',
@@ -78,29 +77,26 @@ const DEFAULT_TERMS = `1. はじめに
 本規約に関するお問い合わせは、専用フォームよりご連絡ください。`
 
 export default async function TermsPage() {
-  const [cookieStore, terms] = await Promise.all([
-    cookies(),
-    getCachedSetting('terms', DEFAULT_TERMS),
-  ])
-  const isAdmin = cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+  const fixedPage = await getCachedFixedPage('terms')
 
   return (
     <div className="max-w-screen-xl mx-auto px-3 py-4 text-sm">
-      {/* パンくず */}
       <nav className="text-xs text-gray-500 mb-4 flex items-center gap-2">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
         <span>{'>'}</span>
         <span className="inline-block px-2 py-0.5 rounded text-white text-[11px]" style={{ background: '#0d6efd' }}>利用規約</span>
-        {isAdmin && (
-          <SettingEditButton settingKey="terms" initialValue={terms} label="利用規約" rows={20} />
-        )}
       </nav>
-
       <div className="bg-white border border-gray-300 p-5 leading-relaxed text-gray-800">
         <h1 className="text-base font-bold border-b border-gray-200 pb-2 mb-4">■ 利用規約（デュエマ掲示板）</h1>
-        <div style={{ whiteSpace: 'pre-wrap' }} className="text-sm text-gray-800">
-          {terms}
-        </div>
+        {fixedPage ? (
+          <div className="space-y-4">
+            {fixedPage.content.map((block, i) => renderBlock(block, i))}
+          </div>
+        ) : (
+          <div style={{ whiteSpace: 'pre-wrap' }} className="text-sm text-gray-800">
+            {DEFAULT_TERMS}
+          </div>
+        )}
       </div>
     </div>
   )

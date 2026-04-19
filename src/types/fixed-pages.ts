@@ -1,4 +1,4 @@
-export interface TextBlock { type: 'text'; content: string }
+export interface TextBlock { type: 'text'; content: string; link?: string }
 export interface ImageBlock { type: 'image'; url: string; alt?: string; link?: string }
 export interface ButtonBlock { type: 'button'; label: string; url: string }
 export type Block = TextBlock | ImageBlock | ButtonBlock

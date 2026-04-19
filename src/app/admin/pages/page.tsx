@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
-import { deletePage, togglePublished, movePage } from './actions'
+import { deletePage, togglePublished, movePage, createDefaultStaticPages } from './actions'
 import { ConfirmDeleteButton } from '@/components/admin/ConfirmDeleteButton'
 
 export const dynamic = 'force-dynamic'
@@ -32,8 +32,14 @@ export default async function AdminPagesPage() {
         </div>
       </div>
 
-      <div className="text-xs text-gray-500 mb-3 bg-blue-50 border border-blue-100 px-3 py-2">
-        ナビに表示 ✓ のページが上部ヘッダーに表示されます。並び順で左→右の順に並びます。
+      <div className="text-xs text-gray-500 mb-3 bg-blue-50 border border-blue-100 px-3 py-2 flex items-center justify-between gap-3 flex-wrap">
+        <span>ナビに表示 ✓ のページが上部ヘッダーに表示されます。並び順で左→右の順に並びます。</span>
+        <form action={createDefaultStaticPages}>
+          <button type="submit"
+            className="text-[11px] px-2.5 py-1 border border-blue-400 text-blue-700 bg-white hover:bg-blue-50 shrink-0 whitespace-nowrap">
+            初期ページ作成（利用規約・プライバシー・使い方）
+          </button>
+        </form>
       </div>
 
       {!pages || pages.length === 0 ? (

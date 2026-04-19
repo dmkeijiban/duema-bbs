@@ -1,0 +1,80 @@
+import type { Block } from '@/types/fixed-pages'
+
+function parseInlineLinks(text: string): React.ReactNode[] {
+  const regex = /\[([^\]]+)\]\(([^)]+)\)/g
+  const parts: React.ReactNode[] = []
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+  let key = 0
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index))
+    const href = match[2]
+    const isExternal = href.startsWith('http')
+    parts.push(
+      <a key={key++} href={href}
+        target={isExternal ? '_blank' : undefined}
+        rel={isExternal ? 'noopener noreferrer' : undefined}
+        className="text-blue-600 underline hover:opacity-80">
+        {match[1]}
+      </a>
+    )
+    lastIndex = regex.lastIndex
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex))
+  return parts
+}
+
+export function renderBlock(block: Block, i: number) {
+  if (block.type === 'text') {
+    const body = (
+      <div className="text-sm text-gray-800 leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>
+        {parseInlineLinks(block.content)}
+      </div>
+    )
+    if (block.link) {
+      const isExternal = block.link.startsWith('http')
+      return (
+        <a key={i} href={block.link}
+          target={isExternal ? '_blank' : undefined}
+          rel={isExternal ? 'noopener noreferrer' : undefined}
+          className="block hover:opacity-80">
+          {body}
+        </a>
+      )
+    }
+    return <div key={i}>{body}</div>
+  }
+
+  if (block.type === 'image') {
+    // eslint-disable-next-line @next/next/no-img-element
+    const img = <img src={block.url} alt={block.alt ?? ''} loading="lazy"
+      style={{ maxWidth: '100%', height: 'auto', display: 'block' }}
+      className="border border-gray-100" />
+    if (block.link) {
+      return (
+        <a key={i} href={block.link} target="_blank" rel="noopener noreferrer" className="inline-block">
+          {img}
+        </a>
+      )
+    }
+    return <div key={i}>{img}</div>
+  }
+
+  if (block.type === 'button') {
+    const isExternal = block.url.startsWith('http')
+    return (
+      <div key={i}>
+        <a href={block.url}
+          target={isExternal ? '_blank' : undefined}
+          rel={isExternal ? 'noopener noreferrer' : undefined}
+          className="inline-block px-5 py-2 text-sm font-medium text-white hover:opacity-90"
+          style={{ background: '#0d6efd' }}>
+          {block.label}
+        </a>
+      </div>
+    )
+  }
+
+  return null
+}

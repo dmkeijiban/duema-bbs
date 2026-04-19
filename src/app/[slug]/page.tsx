@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getCachedFixedPage } from '@/lib/cached-queries'
-import type { Block } from '@/types/fixed-pages'
+import { renderBlock } from '@/components/FixedPageBlocks'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -12,53 +12,6 @@ export async function generateMetadata({ params }: Props) {
   const page = await getCachedFixedPage(slug)
   if (!page) return {}
   return { title: `${page.title} | デュエマ掲示板` }
-}
-
-function renderBlock(block: Block, i: number) {
-  if (block.type === 'text') {
-    return (
-      <div key={i} className="text-sm text-gray-800 leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>
-        {block.content}
-      </div>
-    )
-  }
-  if (block.type === 'image') {
-    const img = (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        key={i}
-        src={block.url}
-        alt={block.alt ?? ''}
-        loading="lazy"
-        style={{ maxWidth: '100%', height: 'auto', display: 'block' }}
-        className="border border-gray-100"
-      />
-    )
-    if (block.link) {
-      return (
-        <a key={i} href={block.link} target="_blank" rel="noopener noreferrer" className="inline-block">
-          {img}
-        </a>
-      )
-    }
-    return img
-  }
-  if (block.type === 'button') {
-    return (
-      <div key={i}>
-        <a
-          href={block.url}
-          target={block.url.startsWith('http') ? '_blank' : undefined}
-          rel={block.url.startsWith('http') ? 'noopener noreferrer' : undefined}
-          className="inline-block px-5 py-2 text-sm font-medium text-white hover:opacity-90"
-          style={{ background: '#0d6efd' }}
-        >
-          {block.label}
-        </a>
-      </div>
-    )
-  }
-  return null
 }
 
 export default async function FixedPageRoute({ params }: Props) {
