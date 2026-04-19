@@ -7,6 +7,7 @@ import { formatDateTimeJP } from '@/lib/utils'
 import { deleteOwnPost } from '@/app/actions/delete'
 import { PostLikeButton } from './PostLikeButton'
 import { ReportButton } from './ReportButton'
+import { ImageViewer } from './ImageViewer'
 
 // react-tweetは重いので必要なときだけ遅延ロード
 const Tweet = dynamic(() => import('react-tweet').then(m => ({ default: m.Tweet })), {
@@ -249,16 +250,7 @@ export function PostItem({ post, allPosts, onAnchorClick, displayNumber, session
       {/* 添付画像 */}
       {post.image_url && (
         <div className="px-3 pb-2">
-          <a href={post.image_url} target="_blank" rel="noopener noreferrer">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={post.image_url}
-              alt="添付画像"
-              loading="lazy"
-              style={{ width: '100%', height: 'auto', display: 'block' }}
-              className="hover:opacity-90 cursor-zoom-in"
-            />
-          </a>
+          <ImageViewer src={post.image_url} />
         </div>
       )}
     </div>

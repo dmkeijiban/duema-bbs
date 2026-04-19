@@ -8,6 +8,7 @@ import { PostLikeButton } from './PostLikeButton'
 import { ReportButton } from './ReportButton'
 import { formatDateTimeJP } from '@/lib/utils'
 import Link from 'next/link'
+import { ImageViewer } from './ImageViewer'
 
 interface Props {
   posts: Post[]
@@ -75,16 +76,7 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
           </div>
           {thread.image_url && (
             <div className="px-3 pb-2">
-              <a href={thread.image_url} target="_blank" rel="noopener noreferrer">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={thread.image_url}
-                  alt="添付画像"
-                  loading="lazy"
-                  style={{ width: '100%', height: 'auto', display: 'block' }}
-                  className="hover:opacity-90 cursor-zoom-in"
-                />
-              </a>
+              <ImageViewer src={thread.image_url} />
             </div>
           )}
         </div>
