@@ -46,23 +46,25 @@ export async function deleteCategory(formData: FormData) {
   redirect('/admin/categories')
 }
 
-export async function updateCategoryOrder(formData: FormData) {
+export async function moveCategory(formData: FormData) {
   await requireAdmin()
   const supabase = await createClient()
   const id = parseInt(formData.get('id') as string)
-  const sortOrder = parseInt(formData.get('sort_order') as string)
+  const direction = formData.get('direction') as 'up' | 'down'
 
-  if (isNaN(id) || isNaN(sortOrder)) redirect('/admin/categories?error=invalid+input')
-
-  const { error } = await supabase
+  const { data: current } = await supabase
     .from('categories')
-    .update({ sort_order: sortOrder })
+    .select('sort_order')
     .eq('id', id)
+    .single()
 
-  if (error) redirect(`/admin/categories?error=${encodeURIComponent(error.message)}`)
+  if (!current) redirect('/admin/categories')
+
+  const newOrder = direction === 'up' ? current.sort_order - 1 : current.sort_order + 1
+
+  await supabase.from('categories').update({ sort_order: newOrder }).eq('id', id)
 
   revalidateTag('categories', { expire: 0 })
   revalidatePath('/')
-  revalidatePath('/admin/categories')
   redirect('/admin/categories')
 }

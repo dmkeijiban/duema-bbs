@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
-import { addCategory, deleteCategory, updateCategoryOrder } from './actions'
+import { addCategory, deleteCategory, moveCategory } from './actions'
 import { ConfirmDeleteButton } from '@/components/admin/ConfirmDeleteButton'
 
 export const dynamic = 'force-dynamic'
@@ -45,27 +45,35 @@ export default async function CategoriesPage({
           <p className="text-xs text-gray-400 py-3">カテゴリがありません</p>
         ) : (
           <div className="space-y-1">
-            {categories.map(cat => (
-              <div key={`${cat.id}-${cat.sort_order}`} className="bg-white border border-gray-200 px-3 py-2 flex items-center gap-2 flex-wrap">
-                <span
-                  className="inline-block w-3 h-3 rounded-sm shrink-0"
-                  style={{ backgroundColor: cat.color }}
-                />
+            {categories.map((cat, idx) => (
+              <div key={cat.id} className="bg-white border border-gray-200 px-3 py-2 flex items-center gap-2">
+                {/* 並び順ボタン */}
+                <div className="flex flex-col gap-0.5 shrink-0">
+                  <form action={moveCategory}>
+                    <input type="hidden" name="id" value={cat.id} />
+                    <input type="hidden" name="direction" value="up" />
+                    <button
+                      type="submit"
+                      disabled={idx === 0}
+                      className="px-1.5 py-0.5 text-[11px] border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed block"
+                    >▲</button>
+                  </form>
+                  <form action={moveCategory}>
+                    <input type="hidden" name="id" value={cat.id} />
+                    <input type="hidden" name="direction" value="down" />
+                    <button
+                      type="submit"
+                      disabled={idx === categories.length - 1}
+                      className="px-1.5 py-0.5 text-[11px] border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed block"
+                    >▼</button>
+                  </form>
+                </div>
+
+                {/* カラー + 名前 */}
+                <span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: cat.color }} />
                 <span className="font-medium text-gray-800 flex-1 min-w-0">{cat.name}</span>
-                <span className="text-[10px] text-gray-400">/{cat.slug}</span>
-                {/* 並び順変更 */}
-                <form action={updateCategoryOrder} className="flex items-center gap-1">
-                  <input type="hidden" name="id" value={cat.id} />
-                  <input
-                    type="number"
-                    name="sort_order"
-                    defaultValue={cat.sort_order}
-                    className="w-14 border border-gray-300 px-1 py-0.5 text-[10px] text-center"
-                  />
-                  <button type="submit" className="text-[10px] px-1.5 py-0.5 border border-gray-300 text-gray-600 hover:bg-gray-50">
-                    順番保存
-                  </button>
-                </form>
+                <span className="text-[10px] text-gray-400 shrink-0">/{cat.slug}</span>
+
                 {/* 削除 */}
                 <form action={deleteCategory}>
                   <input type="hidden" name="id" value={cat.id} />
@@ -123,7 +131,7 @@ export default async function CategoriesPage({
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-600 mb-1">表示順（小さいほど先頭）</label>
+              <label className="block text-xs text-gray-600 mb-1">追加位置（並び順）</label>
               <input
                 type="number"
                 name="sort_order"
