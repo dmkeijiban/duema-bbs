@@ -3,15 +3,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import type { NavPage } from '@/types/fixed-pages'
 
-const navLinks = [
-  { href: '/terms', label: '利用規約' },
-  { href: '/contact', label: 'お問い合わせ' },
-  { href: '/settings', label: '個人設定' },
-  { href: 'https://www.youtube.com/@darekanizatugaku/featured', label: 'YouTube', external: true },
-]
+interface Props {
+  navPages: NavPage[]
+}
 
-export function MobileMenu() {
+export function MobileMenu({ navPages }: Props) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const [archived, setArchived] = useState('')
@@ -42,14 +40,14 @@ export function MobileMenu() {
 
       {open && (
         <div className="md:hidden border-t border-gray-200 bg-white text-sm text-gray-700 absolute top-full left-0 right-0 z-40">
-          {navLinks.map(l =>
-            l.external ? (
-              <a key={l.href} href={l.href} target="_blank" rel="noopener noreferrer"
-                className="block px-4 py-2.5 hover:bg-gray-50">{l.label}</a>
+          {navPages.map(p =>
+            p.external_url ? (
+              <a key={p.id} href={p.external_url} target="_blank" rel="noopener noreferrer"
+                className="block px-4 py-2.5 hover:bg-gray-50">{p.nav_label || p.title}</a>
             ) : (
-              <Link key={l.href} href={l.href}
+              <Link key={p.id} href={`/${p.slug}`}
                 className="block px-4 py-2.5 hover:bg-gray-50"
-                onClick={() => setOpen(false)}>{l.label}</Link>
+                onClick={() => setOpen(false)}>{p.nav_label || p.title}</Link>
             )
           )}
           <form onSubmit={search} className="flex gap-1 px-4 py-2.5">

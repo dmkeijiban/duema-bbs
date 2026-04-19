@@ -1,6 +1,50 @@
 import { unstable_cache } from 'next/cache'
 import { createPublicClient } from './supabase-public'
 import { withFallbackThumbnails } from './thumbnail'
+import type { NavPage, FixedPage } from '@/types/fixed-pages'
+import { parseBlocks } from '@/types/fixed-pages'
+
+export type { NavPage, FixedPage }
+
+export const getCachedNavPages = unstable_cache(
+  async (): Promise<NavPage[]> => {
+    try {
+      const supabase = createPublicClient()
+      const { data } = await supabase
+        .from('fixed_pages')
+        .select('id, title, slug, nav_label, sort_order, external_url')
+        .eq('is_published', true)
+        .eq('show_in_nav', true)
+        .order('sort_order')
+      return (data ?? []) as NavPage[]
+    } catch {
+      return []
+    }
+  },
+  ['nav-pages'],
+  { revalidate: 300, tags: ['fixed_pages'] }
+)
+
+export const getCachedFixedPage = (slug: string): Promise<FixedPage | null> =>
+  unstable_cache(
+    async () => {
+      try {
+        const supabase = createPublicClient()
+        const { data } = await supabase
+          .from('fixed_pages')
+          .select('*')
+          .eq('slug', slug)
+          .eq('is_published', true)
+          .single()
+        if (!data) return null
+        return { ...data, content: parseBlocks(data.content) } as FixedPage
+      } catch {
+        return null
+      }
+    },
+    [`fixed-page-${slug}`],
+    { revalidate: 300, tags: ['fixed_pages', `fixed-page-${slug}`] }
+  )()
 
 type ThreadRow = { id: number; title: string; image_url: string | null; post_count: number }
 

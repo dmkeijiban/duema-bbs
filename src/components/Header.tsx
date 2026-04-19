@@ -1,17 +1,11 @@
 import Link from 'next/link'
 import { HeaderSearch } from './HeaderSearch'
 import { MobileMenu } from './MobileMenu'
+import { getCachedNavPages } from '@/lib/cached-queries'
 
-const navLinks = [
-  { href: '/guide', label: '使い方' },
-  { href: '/terms', label: '利用規約' },
-  { href: '/privacy', label: 'プライバシー' },
-  { href: '/contact', label: 'お問い合わせ' },
-  { href: '/settings', label: '個人設定' },
-  { href: 'https://www.youtube.com/@darekanizatugaku/featured', label: 'YouTube', external: true },
-]
+export async function Header() {
+  const navPages = await getCachedNavPages()
 
-export function Header() {
   return (
     <header className="bg-white border-b border-gray-300 sticky top-0 z-50">
       <nav className="w-full relative">
@@ -23,21 +17,21 @@ export function Header() {
           </Link>
 
           {/* ハンバーガー（モバイル） */}
-          <MobileMenu />
+          <MobileMenu navPages={navPages} />
 
           {/* PC ナビ */}
           <div className="hidden md:flex items-center flex-1 min-w-0 gap-2">
             <ul className="flex items-center justify-evenly flex-1 text-sm text-gray-700">
-              {navLinks.map(l => (
-                <li key={l.href}>
-                  {l.external ? (
-                    <a href={l.href} target="_blank" rel="noopener noreferrer"
+              {navPages.map(p => (
+                <li key={p.id}>
+                  {p.external_url ? (
+                    <a href={p.external_url} target="_blank" rel="noopener noreferrer"
                       className="px-2 py-3 block hover:text-blue-600 whitespace-nowrap">
-                      {l.label}
+                      {p.nav_label || p.title}
                     </a>
                   ) : (
-                    <Link href={l.href} className="px-2 py-3 block hover:text-blue-600 whitespace-nowrap">
-                      {l.label}
+                    <Link href={`/${p.slug}`} className="px-2 py-3 block hover:text-blue-600 whitespace-nowrap">
+                      {p.nav_label || p.title}
                     </Link>
                   )}
                 </li>
