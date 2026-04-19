@@ -4,7 +4,7 @@ import { withFallbackThumbnails } from './thumbnail'
 
 type ThreadRow = { id: number; title: string; image_url: string | null; post_count: number }
 
-export const THREAD_PAGE_SIZE = 20
+export const THREAD_PAGE_SIZE = 60
 
 export const getCachedCategories = unstable_cache(
   async () => {
