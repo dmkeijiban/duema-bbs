@@ -29,9 +29,11 @@ export function renderBlock(block: Block, i: number) {
   if (block.type === 'text') {
     const isHtml = block.content.trimStart().startsWith('<')
     if (isHtml) {
+      // <p></p>（空行）はマージン相殺で潰れるため <p><br></p> に変換して高さを確保
+      const html = block.content.replace(/<p><\/p>/gi, '<p><br></p>')
       return (
         <div key={i} className="text-sm text-gray-800 leading-relaxed rich-content"
-          dangerouslySetInnerHTML={{ __html: block.content }} />
+          dangerouslySetInnerHTML={{ __html: html }} />
       )
     }
     return (
