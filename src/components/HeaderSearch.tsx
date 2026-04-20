@@ -5,30 +5,16 @@ import { useRouter } from 'next/navigation'
 
 export function HeaderSearch() {
   const [q, setQ] = useState('')
-  const [archived, setArchived] = useState('')
   const router = useRouter()
 
   const search = (e: React.FormEvent) => {
     e.preventDefault()
     if (!q.trim()) return
-    const params = new URLSearchParams()
-    params.set('q', q.trim())
-    if (archived === '1') params.set('archived', '1')
-    router.push(`/?${params.toString()}`)
+    router.push(`/?q=${encodeURIComponent(q.trim())}`)
   }
 
   return (
     <form onSubmit={search} className="shrink-0 flex items-center gap-1">
-      <label htmlFor="header-search-scope" className="sr-only">スレッド種別</label>
-      <select
-        id="header-search-scope"
-        value={archived}
-        onChange={e => setArchived(e.target.value)}
-        className="border border-gray-300 text-xs px-1 py-1.5 bg-white text-gray-700"
-      >
-        <option value="">現行スレ</option>
-        <option value="1">過去スレ</option>
-      </select>
       <label htmlFor="header-search-input" className="sr-only">検索ワード</label>
       <input
         id="header-search-input"
