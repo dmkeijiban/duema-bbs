@@ -51,6 +51,11 @@ export async function generateMetadata({ params }: Props) {
   }
 
   const desc = thread.body.slice(0, 150)
+  const baseUrl = 'https://duema-bbs.vercel.app'
+  // OG画像はX共有用に /api/og で 1200×675 (16:9) に統一クロップ
+  const ogImageUrl = ogImage
+    ? `${baseUrl}/api/og?url=${encodeURIComponent(ogImage)}`
+    : undefined
 
   return {
     title: `${thread.title} | デュエマ掲示板`,
@@ -58,15 +63,17 @@ export async function generateMetadata({ params }: Props) {
     openGraph: {
       title: thread.title,
       description: desc,
-      url: `https://duema-bbs.vercel.app/thread/${id}`,
+      url: `${baseUrl}/thread/${id}`,
       type: 'article',
-      images: ogImage ? [{ url: ogImage, width: 1200, height: 630, alt: thread.title }] : [],
+      images: ogImageUrl
+        ? [{ url: ogImageUrl, width: 1200, height: 675, alt: thread.title }]
+        : [],
     },
     twitter: {
-      card: ogImage ? 'summary_large_image' : 'summary',
+      card: ogImageUrl ? 'summary_large_image' : 'summary',
       title: thread.title,
       description: desc,
-      images: ogImage ? [ogImage] : [],
+      images: ogImageUrl ? [ogImageUrl] : [],
     },
   }
 }
