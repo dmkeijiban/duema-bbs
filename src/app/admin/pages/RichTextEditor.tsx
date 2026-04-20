@@ -1,11 +1,29 @@
 'use client'
 
-import { useEditor, EditorContent } from '@tiptap/react'
+import { useEditor, EditorContent, mergeAttributes } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import LinkExtension from '@tiptap/extension-link'
 import ImageExtension from '@tiptap/extension-image'
 import { useRef, useState } from 'react'
 import { uploadPageImage } from './actions'
+
+// 画像にhref属性を追加したカスタム拡張
+const ImageWithLink = ImageExtension.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      href: { default: null },
+    }
+  },
+  renderHTML({ HTMLAttributes }) {
+    const { href, ...imgAttrs } = HTMLAttributes
+    const imgNode = ['img', mergeAttributes({ class: 'rich-img' }, imgAttrs)] as [string, Record<string, unknown>]
+    if (href) {
+      return ['a', { href, target: '_blank', rel: 'noopener noreferrer' }, imgNode] as [string, Record<string, unknown>, [string, Record<string, unknown>]]
+    }
+    return imgNode
+  },
+})
 
 interface Props {
   content: string
@@ -15,7 +33,6 @@ interface Props {
 function toHtml(content: string): string {
   if (!content) return '<p></p>'
   if (content.trimStart().startsWith('<')) return content
-  // 既存のプレーンテキストをHTMLに変換
   return content
     .split('\n')
     .map(line => `<p>${line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') || '<br>'}</p>`)
@@ -25,6 +42,17 @@ function toHtml(content: string): string {
 export function RichTextEditor({ content, onChange }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  // undefined = 画像未選択, string = 選択中の画像のhref（空文字含む）
+  const [selectedImageHref, setSelectedImageHref] = useState<string | undefined>(undefined)
+
+  const syncImageState = (ed: ReturnType<typeof useEditor>) => {
+    if (!ed) return
+    if (ed.isActive('image')) {
+      setSelectedImageHref(ed.getAttributes('image').href ?? '')
+    } else {
+      setSelectedImageHref(undefined)
+    }
+  }
 
   const editor = useEditor({
     extensions: [
@@ -33,10 +61,11 @@ export function RichTextEditor({ content, onChange }: Props) {
         openOnClick: false,
         HTMLAttributes: { class: 'rich-link', target: '_blank', rel: 'noopener noreferrer' },
       }),
-      ImageExtension.configure({ HTMLAttributes: { class: 'rich-img' } }),
+      ImageWithLink.configure({ HTMLAttributes: { class: 'rich-img' } }),
     ],
     content: toHtml(content),
-    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    onUpdate: ({ editor }) => { onChange(editor.getHTML()); syncImageState(editor) },
+    onSelectionUpdate: ({ editor }) => syncImageState(editor),
     editorProps: {
       attributes: { class: 'rich-editor-content', spellCheck: 'false' },
     },
@@ -47,11 +76,17 @@ export function RichTextEditor({ content, onChange }: Props) {
     const prev = editor.getAttributes('link').href ?? ''
     const url = window.prompt('リンクURL（空欄でリンク解除）:', prev)
     if (url === null) return
-    if (!url.trim()) {
-      editor.chain().focus().unsetLink().run()
-    } else {
-      editor.chain().focus().setLink({ href: url.trim() }).run()
-    }
+    if (!url.trim()) editor.chain().focus().unsetLink().run()
+    else editor.chain().focus().setLink({ href: url.trim() }).run()
+  }
+
+  const setImageLink = () => {
+    if (!editor) return
+    const prev = selectedImageHref ?? ''
+    const url = window.prompt('画像クリック時のリンクURL（空欄で解除）:', prev)
+    if (url === null) return
+    editor.chain().focus().updateAttributes('image', { href: url.trim() || null }).run()
+    setSelectedImageHref(url.trim() || '')
   }
 
   const insertImage = async (file: File) => {
@@ -80,7 +115,7 @@ export function RichTextEditor({ content, onChange }: Props) {
         {btn(editor.isActive('bold'), 'B', () => editor.chain().focus().toggleBold().run(), '太字')}
         {btn(editor.isActive('italic'), 'I', () => editor.chain().focus().toggleItalic().run(), '斜体')}
         <div className="w-px bg-gray-300 mx-0.5" />
-        {btn(editor.isActive('link'), '🔗 リンク', setLink, 'テキストを選択してクリック → URLを入力')}
+        {btn(editor.isActive('link'), '🔗 テキストリンク', setLink, 'テキストを選択してクリック')}
         <div className="w-px bg-gray-300 mx-0.5" />
         {btn(editor.isActive('bulletList'), '• リスト', () => editor.chain().focus().toggleBulletList().run())}
         {btn(editor.isActive('orderedList'), '1. リスト', () => editor.chain().focus().toggleOrderedList().run())}
@@ -92,9 +127,22 @@ export function RichTextEditor({ content, onChange }: Props) {
         </button>
         <input ref={fileRef} type="file" accept="image/*" className="hidden"
           onChange={e => { const f = e.target.files?.[0]; if (f) { insertImage(f); e.target.value = '' } }} />
+
+        {/* 画像選択中のみ表示 */}
+        {selectedImageHref !== undefined && (
+          <>
+            <div className="w-px bg-gray-300 mx-0.5" />
+            <button type="button" onClick={setImageLink}
+              className={`px-2 py-1 text-xs border rounded ${selectedImageHref ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>
+              {selectedImageHref ? '🔗 画像リンク変更' : '🔗 画像にリンク設定'}
+            </button>
+            {selectedImageHref && (
+              <span className="text-[10px] text-gray-400 self-center truncate max-w-[160px]">{selectedImageHref}</span>
+            )}
+          </>
+        )}
       </div>
 
-      {/* エディタ本体 */}
       <EditorContent editor={editor} />
 
       <style>{`
@@ -107,21 +155,15 @@ export function RichTextEditor({ content, onChange }: Props) {
         }
         .rich-editor-content p { margin-bottom: 0.75em; }
         .rich-editor-content p:last-child { margin-bottom: 0; }
-        .rich-editor-content a, .rich-link {
-          color: #2563eb;
-          text-decoration: underline;
-          cursor: pointer;
-        }
+        .rich-editor-content a, .rich-link { color: #2563eb; text-decoration: underline; cursor: pointer; }
         .rich-editor-content ul { list-style: disc; padding-left: 1.5em; margin-bottom: 0.75em; }
         .rich-editor-content ol { list-style: decimal; padding-left: 1.5em; margin-bottom: 0.75em; }
         .rich-editor-content li { margin-bottom: 0.25em; }
         .rich-editor-content strong { font-weight: bold; }
         .rich-editor-content em { font-style: italic; }
         .rich-img, .rich-editor-content img {
-          max-width: 100%;
-          height: auto;
-          display: block;
-          margin: 0.5em 0;
+          max-width: 100%; height: auto; display: block; margin: 0.5em 0;
+          cursor: pointer;
         }
       `}</style>
     </div>
