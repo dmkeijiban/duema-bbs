@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
 import './globals.css'
-import { ThemeProvider } from '@/components/ThemeProvider'
 import { Header } from '@/components/Header'
 import Link from 'next/link'
 
@@ -57,8 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           `}
         </Script>
       </head>
-      <body className="min-h-screen flex flex-col antialiased" style={{ background: 'var(--background)', color: 'var(--foreground)' }} suppressHydrationWarning>
-        <ThemeProvider>
+      <body className="min-h-screen flex flex-col antialiased" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
           <Header />
           <main className="flex-1">{children}</main>
           <footer className="bg-white border-t border-gray-200 py-3 mt-6">
@@ -66,7 +64,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               ©<Link href="/">デュエマ掲示板</Link> — デュエル・マスターズ専門掲示板
             </div>
           </footer>
-        </ThemeProvider>
       </body>
     </html>
   )
