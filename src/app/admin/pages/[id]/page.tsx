@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { parseBlocks } from '@/types/fixed-pages'
 import { PageEditor } from '../PageEditor'
+import { DEFAULT_BLOCKS } from '../page-defaults'
 
 async function isAdmin() {
   const cookieStore = await cookies()
@@ -17,6 +18,10 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
   const { data: page } = await supabase.from('fixed_pages').select('*').eq('id', parseInt(id)).single()
   if (!page) notFound()
 
+  const parsed = parseBlocks(page.content)
+  // コンテンツが空の場合、既知スラッグのデフォルト文章を初期値として使う
+  const content = parsed.length > 0 ? parsed : (DEFAULT_BLOCKS[page.slug] ?? [])
+
   return (
     <div className="max-w-3xl mx-auto px-3 py-4 text-sm">
       <div className="flex items-center justify-between mb-4">
@@ -28,7 +33,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
         title: page.title,
         slug: page.slug,
         nav_label: page.nav_label,
-        content: parseBlocks(page.content),
+        content,
         is_published: page.is_published,
         show_in_nav: page.show_in_nav,
         sort_order: page.sort_order,
