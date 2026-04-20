@@ -1,0 +1,129 @@
+'use client'
+
+import { useEditor, EditorContent } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import LinkExtension from '@tiptap/extension-link'
+import ImageExtension from '@tiptap/extension-image'
+import { useRef, useState } from 'react'
+import { uploadPageImage } from './actions'
+
+interface Props {
+  content: string
+  onChange: (html: string) => void
+}
+
+function toHtml(content: string): string {
+  if (!content) return '<p></p>'
+  if (content.trimStart().startsWith('<')) return content
+  // 既存のプレーンテキストをHTMLに変換
+  return content
+    .split('\n')
+    .map(line => `<p>${line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') || '<br>'}</p>`)
+    .join('')
+}
+
+export function RichTextEditor({ content, onChange }: Props) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      LinkExtension.configure({
+        openOnClick: false,
+        HTMLAttributes: { class: 'rich-link', target: '_blank', rel: 'noopener noreferrer' },
+      }),
+      ImageExtension.configure({ HTMLAttributes: { class: 'rich-img' } }),
+    ],
+    content: toHtml(content),
+    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    editorProps: {
+      attributes: { class: 'rich-editor-content', spellCheck: 'false' },
+    },
+  })
+
+  const setLink = () => {
+    if (!editor) return
+    const prev = editor.getAttributes('link').href ?? ''
+    const url = window.prompt('リンクURL（空欄でリンク解除）:', prev)
+    if (url === null) return
+    if (!url.trim()) {
+      editor.chain().focus().unsetLink().run()
+    } else {
+      editor.chain().focus().setLink({ href: url.trim() }).run()
+    }
+  }
+
+  const insertImage = async (file: File) => {
+    if (!editor) return
+    setUploading(true)
+    const fd = new FormData()
+    fd.append('file', file)
+    const result = await uploadPageImage(fd)
+    setUploading(false)
+    if (result.url) editor.chain().focus().setImage({ src: result.url }).run()
+  }
+
+  const btn = (active: boolean, label: string, onClick: () => void, title?: string) => (
+    <button type="button" onClick={onClick} title={title}
+      className={`px-2 py-1 text-xs border rounded ${active ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>
+      {label}
+    </button>
+  )
+
+  if (!editor) return null
+
+  return (
+    <div className="border border-gray-300 rounded overflow-hidden">
+      {/* ツールバー */}
+      <div className="flex flex-wrap gap-1 p-1.5 bg-gray-50 border-b border-gray-200">
+        {btn(editor.isActive('bold'), 'B', () => editor.chain().focus().toggleBold().run(), '太字')}
+        {btn(editor.isActive('italic'), 'I', () => editor.chain().focus().toggleItalic().run(), '斜体')}
+        <div className="w-px bg-gray-300 mx-0.5" />
+        {btn(editor.isActive('link'), '🔗 リンク', setLink, 'テキストを選択してクリック → URLを入力')}
+        <div className="w-px bg-gray-300 mx-0.5" />
+        {btn(editor.isActive('bulletList'), '• リスト', () => editor.chain().focus().toggleBulletList().run())}
+        {btn(editor.isActive('orderedList'), '1. リスト', () => editor.chain().focus().toggleOrderedList().run())}
+        <div className="w-px bg-gray-300 mx-0.5" />
+        <button type="button" disabled={uploading}
+          onClick={() => fileRef.current?.click()}
+          className="px-2 py-1 text-xs border rounded bg-white text-gray-700 border-gray-300 hover:bg-gray-50 disabled:opacity-50">
+          {uploading ? '⏳ アップロード中...' : '🖼 画像を挿入'}
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) { insertImage(f); e.target.value = '' } }} />
+      </div>
+
+      {/* エディタ本体 */}
+      <EditorContent editor={editor} />
+
+      <style>{`
+        .rich-editor-content {
+          min-height: 200px;
+          padding: 10px 12px;
+          font-size: 14px;
+          line-height: 1.7;
+          outline: none;
+        }
+        .rich-editor-content p { margin-bottom: 0.75em; }
+        .rich-editor-content p:last-child { margin-bottom: 0; }
+        .rich-editor-content a, .rich-link {
+          color: #2563eb;
+          text-decoration: underline;
+          cursor: pointer;
+        }
+        .rich-editor-content ul { list-style: disc; padding-left: 1.5em; margin-bottom: 0.75em; }
+        .rich-editor-content ol { list-style: decimal; padding-left: 1.5em; margin-bottom: 0.75em; }
+        .rich-editor-content li { margin-bottom: 0.25em; }
+        .rich-editor-content strong { font-weight: bold; }
+        .rich-editor-content em { font-style: italic; }
+        .rich-img, .rich-editor-content img {
+          max-width: 100%;
+          height: auto;
+          display: block;
+          margin: 0.5em 0;
+        }
+      `}</style>
+    </div>
+  )
+}

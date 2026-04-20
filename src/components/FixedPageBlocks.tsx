@@ -27,23 +27,18 @@ function parseInlineLinks(text: string): React.ReactNode[] {
 
 export function renderBlock(block: Block, i: number) {
   if (block.type === 'text') {
-    const body = (
-      <div className="text-sm text-gray-800 leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>
+    const isHtml = block.content.trimStart().startsWith('<')
+    if (isHtml) {
+      return (
+        <div key={i} className="text-sm text-gray-800 leading-relaxed rich-content"
+          dangerouslySetInnerHTML={{ __html: block.content }} />
+      )
+    }
+    return (
+      <div key={i} className="text-sm text-gray-800 leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>
         {parseInlineLinks(block.content)}
       </div>
     )
-    if (block.link) {
-      const isExternal = block.link.startsWith('http')
-      return (
-        <a key={i} href={block.link}
-          target={isExternal ? '_blank' : undefined}
-          rel={isExternal ? 'noopener noreferrer' : undefined}
-          className="block hover:opacity-80">
-          {body}
-        </a>
-      )
-    }
-    return <div key={i}>{body}</div>
   }
 
   if (block.type === 'image') {

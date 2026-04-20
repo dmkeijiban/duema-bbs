@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef } from 'react'
 import type { Block } from '@/types/fixed-pages'
 import { savePage, uploadPageImage, type PageInput } from './actions'
+import { RichTextEditor } from './RichTextEditor'
 
 interface Props {
   initial: PageInput
@@ -81,9 +82,12 @@ export function PageEditor({ initial }: Props) {
   }
 
   const blockLabel = (b: Block) => {
-    if (b.type === 'text') return b.content.slice(0, 50) || '(空)'
+    if (b.type === 'text') {
+      const text = b.content.replace(/<[^>]+>/g, '').slice(0, 50)
+      return text || '(空)'
+    }
     if (b.type === 'image') return b.url || '(URLなし)'
-    return b.label || '(ラベルなし)'
+    return `ボタン: ${b.label || '(ラベルなし)'}`
   }
 
   return (
@@ -116,9 +120,9 @@ export function PageEditor({ initial }: Props) {
           </div>
         </div>
         <div>
-          <label className="block text-xs text-gray-600 mb-1">外部リンクURL（設定すると本文ではなくこのURLに直接リンク）</label>
+          <label className="block text-xs text-gray-600 mb-1">外部リンクURL（設定するとこのURLへ直接リンク）</label>
           <input type="text" value={externalUrl} onChange={e => setExternalUrl(e.target.value)}
-            placeholder="https://... (YouTube等の外部リンクの場合のみ)"
+            placeholder="https://..."
             className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400" />
         </div>
         <div className="flex gap-5 pt-1">
@@ -133,10 +137,17 @@ export function PageEditor({ initial }: Props) {
         </div>
       </div>
 
-      {/* 本文ブロック（外部URLがない場合のみ） */}
+      {/* 本文ブロック */}
       {!externalUrl && (
         <div className="bg-white border border-gray-200 p-4">
           <h2 className="font-bold text-gray-700 text-sm pb-2 border-b border-gray-100 mb-3">ページ本文</h2>
+
+          {/* ブロック種類の説明 */}
+          <div className="text-[11px] text-gray-500 bg-gray-50 border border-gray-100 px-3 py-2 mb-3 space-y-0.5">
+            <p>📝 <strong>テキスト</strong>：本文を書くエリア。画像もここに差し込めます。テキスト選択→🔗リンクで青文字リンク設定。</p>
+            <p>🖼 <strong>画像</strong>：クリックで別URLへ飛ぶバナー画像専用（テキストとは独立した配置）。</p>
+            <p>🔘 <strong>ボタン</strong>：「お問い合わせはこちら」などのリンクボタン。クリックすると指定URLへ移動。</p>
+          </div>
 
           {blocks.length === 0 && (
             <p className="text-xs text-gray-400 py-3 text-center">ブロックがありません。下のボタンから追加してください。</p>
@@ -169,30 +180,20 @@ export function PageEditor({ initial }: Props) {
                 {expandedIdx === i && (
                   <div className="p-3 space-y-2 border-t border-gray-100">
                     {block.type === 'text' && (
-                      <div>
-                        <p className="text-[10px] text-gray-400 mb-1">
-                          一部テキストにリンクを付けるには <code className="bg-gray-100 px-1">[リンクテキスト](https://...)</code> と記述してください
-                        </p>
-                        <textarea value={block.content} onChange={e => updateBlock(i, { content: e.target.value })}
-                          rows={10} placeholder={'テキストを入力...\n\n例：詳しくは[こちら](https://example.com)をご覧ください。'}
-                          className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400 font-mono" />
-                      </div>
+                      <RichTextEditor
+                        content={block.content}
+                        onChange={html => updateBlock(i, { content: html })}
+                      />
                     )}
 
                     {block.type === 'image' && (
                       <>
-                        {/* ファイルアップロード */}
                         <div>
                           <label className="block text-xs text-gray-600 mb-0.5">画像をアップロード</label>
-                          <input
-                            type="file" accept="image/*"
+                          <input type="file" accept="image/*"
                             ref={el => { fileInputRefs.current[i] = el }}
-                            onChange={e => {
-                              const file = e.target.files?.[0]
-                              if (file) handleImageUpload(file, i)
-                            }}
-                            className="hidden"
-                          />
+                            onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f, i) }}
+                            className="hidden" />
                           <button type="button"
                             onClick={() => fileInputRefs.current[i]?.click()}
                             disabled={uploadingIdx === i}
@@ -200,15 +201,12 @@ export function PageEditor({ initial }: Props) {
                             {uploadingIdx === i ? 'アップロード中...' : '📁 ファイルを選択'}
                           </button>
                         </div>
-
-                        {/* URLを直接入力 */}
                         <div>
-                          <label className="block text-xs text-gray-600 mb-0.5">または画像URL <span className="text-red-500">*</span></label>
+                          <label className="block text-xs text-gray-600 mb-0.5">または画像URL</label>
                           <input type="text" value={block.url} onChange={e => updateBlock(i, { url: e.target.value })}
                             placeholder="https://..."
                             className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400" />
                         </div>
-
                         <div>
                           <label className="block text-xs text-gray-600 mb-0.5">クリック時リンクURL（省略可）</label>
                           <input type="text" value={block.link ?? ''} onChange={e => updateBlock(i, { link: e.target.value })}
@@ -231,20 +229,20 @@ export function PageEditor({ initial }: Props) {
                     {block.type === 'button' && (
                       <>
                         <div>
-                          <label className="block text-xs text-gray-600 mb-0.5">ボタンラベル <span className="text-red-500">*</span></label>
+                          <label className="block text-xs text-gray-600 mb-0.5">ボタンのテキスト <span className="text-red-500">*</span></label>
                           <input type="text" value={block.label} onChange={e => updateBlock(i, { label: e.target.value })}
-                            placeholder="ボタンのテキスト"
+                            placeholder="例：お問い合わせはこちら"
                             className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400" />
                         </div>
                         <div>
-                          <label className="block text-xs text-gray-600 mb-0.5">リンクURL <span className="text-red-500">*</span></label>
+                          <label className="block text-xs text-gray-600 mb-0.5">リンク先URL <span className="text-red-500">*</span></label>
                           <input type="text" value={block.url} onChange={e => updateBlock(i, { url: e.target.value })}
                             placeholder="https://..."
                             className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400" />
                         </div>
                         {block.label && block.url && (
                           <div className="pt-1">
-                            <span className="text-xs text-gray-500">プレビュー: </span>
+                            <p className="text-[10px] text-gray-400 mb-1">プレビュー（クリックするとURLへ移動するボタン）：</p>
                             <span className="inline-block px-4 py-1.5 text-xs font-medium text-white" style={{ background: '#0d6efd' }}>
                               {block.label}
                             </span>
