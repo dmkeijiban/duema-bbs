@@ -4,7 +4,9 @@ import { revalidateTag } from 'next/cache'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
+import { uploadImage, validateImageFile } from '@/lib/upload'
 import type { Block } from '@/types/fixed-pages'
+import { v4 as uuidv4 } from 'uuid'
 
 const ADMIN_COOKIE = 'admin_auth'
 const OPT = { expire: 0 } as const
@@ -14,6 +16,17 @@ async function requireAdmin() {
   if (cookieStore.get(ADMIN_COOKIE)?.value !== process.env.ADMIN_PASSWORD) {
     redirect('/admin')
   }
+}
+
+export async function uploadPageImage(formData: FormData): Promise<{ url?: string; error?: string }> {
+  await requireAdmin()
+  const file = formData.get('file') as File
+  const err = validateImageFile(file)
+  if (err) return { error: err }
+  const supabase = await createClient()
+  const { data, error } = await uploadImage(file, supabase, `pages/${uuidv4()}`, 'post')
+  if (error || !data) return { error: error ?? 'アップロード失敗' }
+  return { url: data.url }
 }
 
 export interface PageInput {

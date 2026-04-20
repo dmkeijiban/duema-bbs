@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import type { Block } from '@/types/fixed-pages'
-import { savePage, type PageInput } from './actions'
+import { savePage, uploadPageImage, type PageInput } from './actions'
 
 interface Props {
   initial: PageInput
@@ -20,6 +20,8 @@ export function PageEditor({ initial }: Props) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null)
+  const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
 
   const addBlock = (type: Block['type']) => {
     const block: Block =
@@ -49,6 +51,16 @@ export function PageEditor({ initial }: Props) {
     if (!confirm('このブロックを削除しますか？')) return
     setBlocks(blocks.filter((_, idx) => idx !== i))
     if (expandedIdx === i) setExpandedIdx(null)
+  }
+
+  const handleImageUpload = async (file: File, i: number) => {
+    setUploadingIdx(i)
+    const fd = new FormData()
+    fd.append('file', file)
+    const result = await uploadPageImage(fd)
+    setUploadingIdx(null)
+    if (result.error) { setStatus(`画像エラー: ${result.error}`); return }
+    if (result.url) updateBlock(i, { url: result.url })
   }
 
   const handleSave = () => {
@@ -157,26 +169,46 @@ export function PageEditor({ initial }: Props) {
                 {expandedIdx === i && (
                   <div className="p-3 space-y-2 border-t border-gray-100">
                     {block.type === 'text' && (
-                      <>
+                      <div>
+                        <p className="text-[10px] text-gray-400 mb-1">
+                          一部テキストにリンクを付けるには <code className="bg-gray-100 px-1">[リンクテキスト](https://...)</code> と記述してください
+                        </p>
                         <textarea value={block.content} onChange={e => updateBlock(i, { content: e.target.value })}
-                          rows={8} placeholder={'テキストを入力...\n\nインラインリンク記法: [リンクテキスト](https://...)'}
+                          rows={10} placeholder={'テキストを入力...\n\n例：詳しくは[こちら](https://example.com)をご覧ください。'}
                           className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400 font-mono" />
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-0.5">ブロック全体のリンクURL（省略可）</label>
-                          <input type="text" value={block.link ?? ''} onChange={e => updateBlock(i, { link: e.target.value })}
-                            placeholder="https://... （設定するとテキスト全体がリンクになります）"
-                            className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400" />
-                        </div>
-                      </>
+                      </div>
                     )}
+
                     {block.type === 'image' && (
                       <>
+                        {/* ファイルアップロード */}
                         <div>
-                          <label className="block text-xs text-gray-600 mb-0.5">画像URL <span className="text-red-500">*</span></label>
+                          <label className="block text-xs text-gray-600 mb-0.5">画像をアップロード</label>
+                          <input
+                            type="file" accept="image/*"
+                            ref={el => { fileInputRefs.current[i] = el }}
+                            onChange={e => {
+                              const file = e.target.files?.[0]
+                              if (file) handleImageUpload(file, i)
+                            }}
+                            className="hidden"
+                          />
+                          <button type="button"
+                            onClick={() => fileInputRefs.current[i]?.click()}
+                            disabled={uploadingIdx === i}
+                            className="text-xs px-3 py-1.5 border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50">
+                            {uploadingIdx === i ? 'アップロード中...' : '📁 ファイルを選択'}
+                          </button>
+                        </div>
+
+                        {/* URLを直接入力 */}
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-0.5">または画像URL <span className="text-red-500">*</span></label>
                           <input type="text" value={block.url} onChange={e => updateBlock(i, { url: e.target.value })}
                             placeholder="https://..."
                             className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400" />
                         </div>
+
                         <div>
                           <label className="block text-xs text-gray-600 mb-0.5">クリック時リンクURL（省略可）</label>
                           <input type="text" value={block.link ?? ''} onChange={e => updateBlock(i, { link: e.target.value })}
@@ -195,6 +227,7 @@ export function PageEditor({ initial }: Props) {
                         )}
                       </>
                     )}
+
                     {block.type === 'button' && (
                       <>
                         <div>
