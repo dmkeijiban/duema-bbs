@@ -69,11 +69,14 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
 
       {/* ルール */}
       {(rules || isAdmin) && (
-        <div className="px-3 py-2 text-xs relative" style={{ background: '#d1ecf1', borderBottom: '1px solid #bee5eb', whiteSpace: 'pre-wrap' }}>
-          {rules}
+        <div className="px-3 py-2 text-xs relative setting-content"
+          style={{ background: '#d1ecf1', borderBottom: '1px solid #bee5eb', whiteSpace: rules?.trimStart().startsWith('<') ? undefined : 'pre-wrap' }}>
+          {rules?.trimStart().startsWith('<')
+            ? <div dangerouslySetInnerHTML={{ __html: rules }} />
+            : rules}
           {isAdmin && (
             <span className="absolute top-1 right-1">
-              <SettingEditButton settingKey="thread_rules" initialValue={rules ?? ''} label="スレッド内ルール" rows={6} />
+              <SettingEditButton settingKey="thread_rules" initialValue={rules ?? ''} label="スレッド内ルール" />
             </span>
           )}
         </div>

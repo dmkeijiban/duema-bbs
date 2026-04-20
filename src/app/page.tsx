@@ -211,9 +211,18 @@ export default async function Home({
             priority 画像をなくしたことでこのテキストブロックが
             最初に描画される最大要素となり、LCP を確定させる。
             homeBanner が空のときもフォールバック文言で必ず描画する。 */}
-        <div className="mb-2 px-3 py-2 text-sm border relative" style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb', whiteSpace: 'pre-wrap' }}>
-          {homeBanner || 'デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。'}
-        </div>
+        {(() => {
+          const banner = homeBanner || 'デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。'
+          const isHtml = banner.trimStart().startsWith('<')
+          return (
+            <div className="mb-2 px-3 py-2 text-sm border relative setting-content"
+              style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb', whiteSpace: isHtml ? undefined : 'pre-wrap' }}>
+              {isHtml
+                ? <div dangerouslySetInnerHTML={{ __html: banner }} />
+                : banner}
+            </div>
+          )
+        })()}
         {/* topNotices: priority なし（lazy）→ 画像がLCPを更新しない */}
         {topNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
         {/* ─────────────────────────────────────────────────────────────── */}

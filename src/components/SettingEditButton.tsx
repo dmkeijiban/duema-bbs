@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateSetting } from '@/app/actions/settings'
+import { SettingRichEditor } from '@/app/admin/SettingRichEditor'
 
 interface Props {
   settingKey: string
@@ -11,7 +12,7 @@ interface Props {
   rows?: number
 }
 
-export function SettingEditButton({ settingKey, initialValue, label, rows = 6 }: Props) {
+export function SettingEditButton({ settingKey, initialValue, label }: Props) {
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState(initialValue)
   const [isPending, startTransition] = useTransition()
@@ -50,12 +51,7 @@ export function SettingEditButton({ settingKey, initialValue, label, rows = 6 }:
             <h3 className="font-bold text-purple-800 mb-2 text-sm">
               📝 {label ?? 'テキスト編集'}
             </h3>
-            <textarea
-              value={value}
-              onChange={e => setValue(e.target.value)}
-              rows={rows}
-              className="w-full border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:border-purple-400 resize-y font-mono"
-            />
+            <SettingRichEditor content={value} onChange={setValue} minHeight={120} />
             <div className="flex gap-2 mt-2">
               <button
                 onClick={handleSave}

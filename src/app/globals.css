@@ -44,6 +44,12 @@ body {
   }
 }
 
+/* サイトテキスト設定（バナー・ルール）のリンクスタイル */
+.setting-content p { margin-bottom: 0.4em; }
+.setting-content p:last-child { margin-bottom: 0; }
+.setting-content a { text-decoration: underline; font-weight: 500; }
+.setting-content a:hover { opacity: 0.8; }
+
 /* リッチテキスト（固定ページ本文）のスタイル */
 .rich-content p { margin-bottom: 0.75em; }
 .rich-content p:last-child { margin-bottom: 0; }

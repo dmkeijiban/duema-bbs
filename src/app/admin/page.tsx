@@ -5,8 +5,8 @@ import {
   adminDeleteThread, adminDeletePost,
   adminUpdateThread, adminUpdatePost,
   adminToggleArchive, adminLogin,
-  updateSettingAction,
 } from './actions'
+import { SettingEditFormClient } from './SettingEditFormClient'
 import { getAllSettings } from '@/lib/settings'
 import { Notice } from '@/components/NoticeBlock'
 
@@ -187,26 +187,11 @@ export default async function AdminPage({
 
       {/* サイトテキスト設定（編集フォーム） */}
       {editSetting && SETTING_LABELS[editSetting] && (
-        <div className="mb-4 border-2 border-purple-400 bg-purple-50 p-4">
-          <h2 className="font-bold text-purple-800 mb-3">📝 {SETTING_LABELS[editSetting]} の編集</h2>
-          <form action={updateSettingAction} className="space-y-2">
-            <input type="hidden" name="key" value={editSetting} />
-            <textarea
-              name="value"
-              rows={editSetting === 'terms' ? 20 : 8}
-              defaultValue={settings[editSetting] ?? ''}
-              className="w-full border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:border-purple-400 resize-y font-mono"
-            />
-            <div className="flex gap-2">
-              <button type="submit" className="px-4 py-1.5 text-white text-xs font-medium" style={{ background: '#6f42c1' }}>
-                保存
-              </button>
-              <a href="/admin" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600">
-                キャンセル
-              </a>
-            </div>
-          </form>
-        </div>
+        <SettingEditFormClient
+          settingKey={editSetting}
+          initialValue={settings[editSetting] ?? ''}
+          label={SETTING_LABELS[editSetting]}
+        />
       )}
 
       {/* ① お知らせ管理 */}

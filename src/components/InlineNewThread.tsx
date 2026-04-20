@@ -38,12 +38,14 @@ export function InlineNewThread({ categories, newThreadRules, isAdmin }: Props) 
       <>
           {/* ルール */}
           {(newThreadRules || isAdmin) && (
-            <div className="px-4 py-3 text-xs border-b border-gray-200 leading-relaxed relative"
-              style={{ background: '#d1ecf1', color: '#0c5460', whiteSpace: 'pre-wrap' }}>
-              {newThreadRules}
+            <div className="px-4 py-3 text-xs border-b border-gray-200 leading-relaxed relative setting-content"
+              style={{ background: '#d1ecf1', color: '#0c5460', whiteSpace: newThreadRules?.trimStart().startsWith('<') ? undefined : 'pre-wrap' }}>
+              {newThreadRules?.trimStart().startsWith('<')
+                ? <div dangerouslySetInnerHTML={{ __html: newThreadRules }} />
+                : newThreadRules}
               {isAdmin && (
                 <span className="absolute top-1 right-1">
-                  <SettingEditButton settingKey="new_thread_rules" initialValue={newThreadRules ?? ''} label="新規スレッド作成ルール" rows={8} />
+                  <SettingEditButton settingKey="new_thread_rules" initialValue={newThreadRules ?? ''} label="新規スレッド作成ルール" />
                 </span>
               )}
             </div>
