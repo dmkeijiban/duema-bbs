@@ -2,7 +2,7 @@
 
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
-import { Sun, Moon } from 'lucide-react'
+import { Sun, Moon } from '@/components/Icons'
 
 export function DarkModeToggle() {
   const { theme, setTheme } = useTheme()

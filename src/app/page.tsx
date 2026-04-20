@@ -285,8 +285,9 @@ function SetupGuide() {
 function RecommendSectionSkeleton() {
   return (
     <div className="mb-2 border border-gray-300 bg-white animate-pulse">
+      {/* h-5(20px) + py-1.5(6px*2) = 32px → 実コンテンツのテキスト行高と一致させCLS防止 */}
       <div className="px-3 py-1.5 border-b border-gray-300 flex items-center gap-1.5">
-        <div className="h-3 bg-gray-200 rounded w-16" />
+        <div className="h-5 bg-gray-200 rounded w-16" />
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 border-l border-t border-gray-300">
         {[...Array(8)].map((_, i) => (

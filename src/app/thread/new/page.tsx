@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createThread } from '@/app/actions/thread'
 import { ImageUploadField } from '@/components/ImageUploadField'
-import { ArrowLeft, PenSquare } from 'lucide-react'
+import { ArrowLeft, PenSquare } from '@/components/Icons'
 import Link from 'next/link'
 
 // カテゴリはSupabaseから取得するが、クライアントコンポーネントのため

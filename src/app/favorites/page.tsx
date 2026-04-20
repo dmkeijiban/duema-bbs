@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase-server'
 import { ThreadCard } from '@/components/ThreadCard'
 import { Thread, Category } from '@/types'
-import { Star, ArrowLeft } from 'lucide-react'
+import { Star, ArrowLeft } from '@/components/Icons'
 import Link from 'next/link'
 import { cookies } from 'next/headers'
 

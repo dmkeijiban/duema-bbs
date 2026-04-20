@@ -28,7 +28,7 @@ export async function RecommendSection() {
         <span className="font-bold text-sm" style={{ color: '#004085' }}>オススメ</span>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 border-l border-t border-gray-300">
-        {threads.map(thread => (
+        {threads.map((thread, idx) => (
           <Link
             key={thread.id}
             href={`/thread/${thread.id}`}
@@ -36,7 +36,7 @@ export async function RecommendSection() {
           >
             <div className="relative shrink-0 bg-gray-100 overflow-hidden w-11 h-11 md:w-16 md:h-16">
               {thread.image_url && (
-                <Image src={thread.image_url} alt="" fill className="object-cover" sizes="(min-width: 768px) 64px, 44px" />
+                <Image src={thread.image_url} alt="" fill className="object-cover" sizes="(min-width: 768px) 64px, 44px" priority={idx === 0} />
               )}
             </div>
             <div className="px-1 py-0.5 flex-1 min-w-0">

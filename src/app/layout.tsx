@@ -28,6 +28,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ja" suppressHydrationWarning>
       <head>
+        {/* Supabase ストレージへの早期接続でLCPの画像取得を高速化 */}
+        <link rel="preconnect" href="https://nodgfukqvuwvgfnlzvnh.supabase.co" />
+        <link rel="dns-prefetch" href="https://nodgfukqvuwvgfnlzvnh.supabase.co" />
+
         {/* Google Analytics (GA4) — lazyOnload でTBTへの影響を排除 */}
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
