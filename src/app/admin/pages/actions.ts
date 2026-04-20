@@ -270,25 +270,34 @@ export async function createDefaultStaticPages() {
 
   for (const def of STATIC_PAGE_DEFAULTS) {
     const { data: existing } = await supabase
-      .from('fixed_pages').select('id').eq('slug', def.slug).maybeSingle()
-
-    if (existing) {
-      skipped.push(def.title)
-      continue
-    }
+      .from('fixed_pages').select('id, content').eq('slug', def.slug).maybeSingle()
 
     const blocks: Block[] = [{ type: 'text', content: def.content }]
-    await supabase.from('fixed_pages').insert({
-      slug: def.slug,
-      title: def.title,
-      nav_label: def.nav_label,
-      content: blocks as unknown as Record<string, unknown>[],
-      is_published: true,
-      show_in_nav: false,
-      sort_order: 90,
-      external_url: null,
-    })
-    created.push(def.title)
+
+    if (existing) {
+      // コンテンツが空の場合のみデフォルト内容で上書き
+      const hasContent = Array.isArray(existing.content) && existing.content.length > 0
+      if (hasContent) {
+        skipped.push(def.title)
+        continue
+      }
+      await supabase.from('fixed_pages')
+        .update({ content: blocks as unknown as Record<string, unknown>[] })
+        .eq('id', existing.id)
+      created.push(def.title)
+    } else {
+      await supabase.from('fixed_pages').insert({
+        slug: def.slug,
+        title: def.title,
+        nav_label: def.nav_label,
+        content: blocks as unknown as Record<string, unknown>[],
+        is_published: true,
+        show_in_nav: false,
+        sort_order: 90,
+        external_url: null,
+      })
+      created.push(def.title)
+    }
   }
 
   revalidateTag('fixed_pages', OPT)
