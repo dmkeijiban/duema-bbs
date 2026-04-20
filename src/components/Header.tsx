@@ -13,7 +13,7 @@ export async function Header() {
         <div className="max-w-screen-xl mx-auto px-2 flex items-center gap-2" style={{ minHeight: 46 }}>
           {/* ロゴ */}
           <Link href="/" className="shrink-0 py-1 flex items-center gap-2 leading-tight">
-            <Image src="/logo.jpg" alt="デュエマ掲示板" width={32} height={32} className="rounded-sm" />
+            <Image src="/logo.jpg" alt="デュエマ掲示板" width={32} height={32} className="rounded-sm" priority />
             <div className="flex flex-col">
               <span className="font-bold text-lg" style={{ color: '#1a3a6e', lineHeight: 1.1 }}>デュエマ掲示板</span>
               <span className="text-[10px] text-gray-600" style={{ lineHeight: 1.2 }}>デュエル・マスターズ専門掲示板</span>
