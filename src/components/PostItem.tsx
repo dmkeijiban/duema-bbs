@@ -169,17 +169,21 @@ function renderBody(body: string, allPosts: Post[]): React.ReactNode[] {
   for (const line of lines) {
     const trimmed = line.trim()
 
-    if (/^https?:\/\/\S+$/.test(trimmed)) {
+    // 行頭のURLを抽出（後ろにテキストが続いていても埋め込み対象とする）
+    const urlMatch = trimmed.match(/^(https?:\/\/\S+)/)
+    if (urlMatch) {
+      const url = urlMatch[1]
+
       // YouTube
-      const ytId = extractYouTubeId(trimmed)
+      const ytId = extractYouTubeId(url)
       if (ytId) {
         flushText()
         elements.push(<YouTubeEmbed key={key++} videoId={ytId} />)
         continue
       }
       // Twitter/X（status URL・twterm付きトラッキングURL両対応）
-      if (/(?:twitter\.com|x\.com)/i.test(trimmed)) {
-        const tweetId = extractTweetId(trimmed)
+      if (/(?:twitter\.com|x\.com)/i.test(url)) {
+        const tweetId = extractTweetId(url)
         if (tweetId) {
           flushText()
           elements.push(<TwitterEmbed key={key++} tweetId={tweetId} />)

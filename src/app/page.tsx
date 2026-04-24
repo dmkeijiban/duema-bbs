@@ -33,10 +33,9 @@ interface SearchParams {
 }
 
 // ──────────────────────────────────────────────────
-// スレ一覧（非同期・Suspense内）
-// キャッシュ済みデータを使うため実質 <10ms で解決するが、
-// Suspense に置くことで初期 HTML シェル（homeBanner・topNotices・SortTabs）が
-// 先に届き、それらが LCP 対象になる。
+// スレ一覧（非同期）
+// getCachedThreadList は <10ms で解決するため Suspense に入れず、
+// 初期 HTML に含めて LCP をホームバナーで確定させる。
 // ──────────────────────────────────────────────────
 async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
   const sort = searchParams.sort ?? 'recent'
@@ -243,13 +242,9 @@ export default async function Home({
       <div className="max-w-screen-xl mx-auto px-2">
         {midNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
 
-        {/* スレ一覧: Suspense 内で後からストリーミング。
-            getCachedThreadList により実際の解決は <10ms。
-            初期シェルの LCP（homeBanner / topNotices）が先に確定するため
-            スレ一覧画像は LCP レースに参加しない。 */}
-        <Suspense fallback={<ThreadListSkeleton />}>
-          <ThreadList searchParams={params} />
-        </Suspense>
+        {/* スレ一覧: getCachedThreadList は <10ms で解決するため
+            Suspense を外して初期 HTML に含める → LCP をホームバナーで確定させる */}
+        <ThreadList searchParams={params} />
 
         {botNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
 
@@ -300,24 +295,6 @@ function RecommendSectionSkeleton() {
           </div>
         ))}
       </div>
-    </div>
-  )
-}
-
-// スレ一覧のスケルトン（ThreadCard 実サイズに合わせて CLS を防止）
-function ThreadListSkeleton() {
-  return (
-    <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300 animate-pulse">
-      {[...Array(10)].map((_, i) => (
-        <div key={i} className="flex border-b border-r border-gray-300 bg-white">
-          <div className="md:hidden bg-gray-200 shrink-0" style={{ width: 52, height: 52 }} />
-          <div className="hidden md:block bg-gray-200 shrink-0" style={{ width: 80, height: 80 }} />
-          <div className="p-1.5 flex-1 space-y-1.5 pt-2">
-            <div className="h-2 bg-gray-200 rounded w-full" />
-            <div className="h-2 bg-gray-200 rounded w-4/5" />
-          </div>
-        </div>
-      ))}
     </div>
   )
 }
