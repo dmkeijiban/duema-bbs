@@ -17,7 +17,7 @@ export function ThreadCard({ thread, rank, priority }: Props) {
       className="thread-card bg-white hover:bg-gray-50 overflow-hidden border-b border-r border-gray-300 block"
     >
       {/* ── モバイル: 横並び（あにまん式） ── */}
-      <div className="md:hidden flex" style={{ minHeight: 52 }}>
+      <div className="md:hidden flex" style={{ height: 52, overflow: 'hidden' }}>
         {/* 画像（コメント数オーバーレイ付き） */}
         <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 52, height: 52 }}>
           <Image src={thread.image_url ?? '/default-thumbnail.jpg'} alt="" fill className="object-cover" sizes="160px" quality={90} priority={priority} />
@@ -38,14 +38,14 @@ export function ThreadCard({ thread, rank, priority }: Props) {
         </div>
         {/* タイトル */}
         <div className="px-1.5 py-1 flex-1 min-w-0">
-          <p className="text-[11px] leading-snug text-gray-800 line-clamp-4 break-all">
+          <p className="text-[11px] leading-snug text-gray-800 line-clamp-3 break-all">
             {thread.title}
           </p>
         </div>
       </div>
 
       {/* ── PC: 横並び ── */}
-      <div className="hidden md:flex" style={{ minHeight: 80 }}>
+      <div className="hidden md:flex" style={{ height: 80, overflow: 'hidden' }}>
         {/* 画像 */}
         <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 80, height: 80 }}>
           <Image src={thread.image_url ?? '/default-thumbnail.jpg'} alt="" fill className="object-cover" sizes="240px" quality={90} priority={priority} />
