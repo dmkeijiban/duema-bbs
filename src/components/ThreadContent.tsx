@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Post, Thread, Category } from '@/types'
-import { PostItem } from './PostItem'
+import { PostItem, renderBody } from './PostItem'
 import { NewPostForm } from './NewPostForm'
 import { PostLikeButton } from './PostLikeButton'
 import { ReportButton } from './ReportButton'
@@ -71,8 +71,8 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
             <PostLikeButton likeKey={`thread-${thread.id}`} />
             <ReportButton itemType="thread" itemId={thread.id} itemBody={thread.body} />
           </div>
-          <div className="px-3 py-3 text-sm text-gray-800 break-words leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>
-            {thread.body}
+          <div className="px-3 py-3 text-base text-gray-800 break-words leading-relaxed">
+            {renderBody(thread.body, displayPosts as Post[])}
           </div>
           {thread.image_url && (
             <div className="px-3 pb-2">

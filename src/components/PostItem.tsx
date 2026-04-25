@@ -150,7 +150,7 @@ function renderWithAnchors(text: string, allPosts: Post[]): React.ReactNode[] {
 }
 
 // 本文レンダリング：行ごとにURL埋め込み判定
-function renderBody(body: string, allPosts: Post[]): React.ReactNode[] {
+export function renderBody(body: string, allPosts: Post[]): React.ReactNode[] {
   const lines = body.split('\n')
   const elements: React.ReactNode[] = []
   const textBuf: string[] = []
