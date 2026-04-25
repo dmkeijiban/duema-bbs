@@ -247,7 +247,7 @@ export function PostItem({ post, allPosts, onAnchorClick, displayNumber, session
       </div>
 
       {/* 本文（YouTube/X URL は自動埋め込み） */}
-      <div className="px-3 py-3 text-sm text-gray-800 break-words leading-relaxed">
+      <div className="px-3 py-3 text-base text-gray-800 break-words leading-relaxed">
         {renderBody(post.body, allPosts)}
       </div>
 
