@@ -8,6 +8,7 @@ import { deleteOwnPost } from '@/app/actions/delete'
 import { PostLikeButton } from './PostLikeButton'
 import { ReportButton } from './ReportButton'
 import { ImageViewer } from './ImageViewer'
+import { LinkCard } from './LinkCard'
 
 // react-tweetは重いので必要なときだけ遅延ロード
 const Tweet = dynamic(() => import('react-tweet').then(m => ({ default: m.Tweet })), {
@@ -190,6 +191,11 @@ function renderBody(body: string, allPosts: Post[]): React.ReactNode[] {
           continue
         }
       }
+
+      // その他のURL → OGPリンクカード
+      flushText()
+      elements.push(<LinkCard key={key++} url={url} />)
+      continue
     }
 
     textBuf.push(line)
