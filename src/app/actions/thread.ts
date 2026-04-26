@@ -233,7 +233,13 @@ export async function toggleFavorite(threadId: number) {
   }
 }
 
-export async function incrementViewCount(threadId: number) {
+export async function incrementViewCount(threadId: number): Promise<number> {
   const supabase = await createClient()
   await supabase.rpc('increment_view_count', { thread_id: threadId })
+  const { data } = await supabase
+    .from('threads')
+    .select('view_count')
+    .eq('id', threadId)
+    .single()
+  return data?.view_count ?? 0
 }

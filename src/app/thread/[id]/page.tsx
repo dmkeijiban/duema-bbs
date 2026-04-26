@@ -104,19 +104,19 @@ export default async function ThreadPage({ params, searchParams }: Props) {
   const isAdmin = cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
 
   // スレ・レスはキャッシュ済みクエリで取得（30秒TTL）、セッション依存データは直接取得
+  // incrementViewCountは閲覧数を+1しつつ最新値を返す（awaitでfire-and-forget問題を解消）
   const tQ = Date.now()
-  const [thread, postsResult, favResult] = await Promise.all([
+  const [thread, postsResult, favResult, freshViewCount] = await Promise.all([
     getCachedThread(threadId),
     getCachedThreadPosts(threadId, page),
     sessionId
       ? supabase.from('favorites').select('id').eq('session_id', sessionId).eq('thread_id', threadId).single()
       : Promise.resolve({ data: null }),
+    incrementViewCount(threadId),
   ])
   console.log(`[perf] thread/${threadId} queries: ${Date.now() - tQ}ms`)
 
   if (!thread) notFound()
-
-  incrementViewCount(threadId)
 
   const isFavorited = !!favResult.data
   const posts = postsResult.data
@@ -194,7 +194,7 @@ export default async function ThreadPage({ params, searchParams }: Props) {
           <ShareXButton title={typedThread.title} />
         </div>
         <div className="text-xs text-gray-500 mt-0.5">
-          {typedThread.post_count}件 ／ 閲覧 {typedThread.view_count}
+          {typedThread.post_count}件 ／ 閲覧 {freshViewCount}
         </div>
       </div>
 
