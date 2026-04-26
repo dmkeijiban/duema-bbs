@@ -81,11 +81,11 @@ create trigger trg_update_thread_on_post
   after insert on posts
   for each row execute function update_thread_on_post();
 
--- ビュー数インクリメント用RPC
+-- ビュー数インクリメント用RPC（SECURITY DEFINERでRLSを回避）
 create or replace function increment_view_count(thread_id bigint)
 returns void as $$
   update threads set view_count = view_count + 1 where id = thread_id;
-$$ language sql;
+$$ language sql security definer;
 
 -- RLS: 全テーブルを一般公開読み取り可能に
 alter table categories enable row level security;
