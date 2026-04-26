@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報など何でも語ろう。',
   },
   verification: {
-    google: '9MIQlFQWKdN5q04YxDYV3u5kj4uoiuNLA2DrjMCBuJU',
+    google: 'fYOcWqqCUBFXoIWN_0CMoALvbJnuUcTpvdf01SGgLNM',
   },
 }
 
