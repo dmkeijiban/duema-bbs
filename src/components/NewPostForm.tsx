@@ -58,7 +58,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
         {thread.categories && (
           <>
             <span className="mx-1">{'>'}</span>
-            <Link href={`/?category=${thread.categories.slug}`} className="text-blue-600 hover:underline">
+            <Link href={`/category/${thread.categories.slug}`} className="text-blue-600 hover:underline">
               カテゴリ『{thread.categories.name}』
             </Link>
           </>

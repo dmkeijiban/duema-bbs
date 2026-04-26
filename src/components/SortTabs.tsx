@@ -6,6 +6,8 @@ interface Props {
   currentSort: string
   currentCategory?: string
   categories: Category[]
+  /** カテゴリページで使用。指定すると `/basePath?sort=xxx` 形式のリンクを生成する */
+  basePath?: string
 }
 
 const TABS = [
@@ -15,8 +17,12 @@ const TABS = [
   { label: 'ランダム', sort: 'random', icon: '🎲', short: 'ランダ' },
 ]
 
-export function SortTabs({ currentSort, currentCategory, categories }: Props) {
-  const base = currentCategory ? `/?category=${currentCategory}&` : '/?'
+export function SortTabs({ currentSort, currentCategory, categories, basePath }: Props) {
+  const getTabHref = (sort: string) => {
+    if (basePath) return `${basePath}?sort=${sort}`
+    if (currentCategory) return `/?category=${currentCategory}&sort=${sort}`
+    return `/?sort=${sort}`
+  }
 
   return (
     <div className="max-w-screen-xl mx-auto px-2">
@@ -26,7 +32,7 @@ export function SortTabs({ currentSort, currentCategory, categories }: Props) {
           return (
             <li key={tab.sort} className="flex-1 min-w-0" role="presentation">
               <Link
-                href={`${base}sort=${tab.sort}`}
+                href={getTabHref(tab.sort)}
                 role="tab"
                 aria-selected={active}
                 className="w-full text-center py-2 font-medium border border-transparent select-none overflow-hidden text-xs md:text-sm flex items-center justify-center gap-0.5"

@@ -5,19 +5,22 @@ interface Props {
   currentPage: number
   totalPages: number
   searchParams?: Record<string, string | undefined>
+  /** カテゴリページで使用。指定すると `basePath?sort=xxx&page=n` 形式のリンクを生成する */
+  basePath?: string
 }
 
-function buildHref(page: number, searchParams: Record<string, string | undefined>) {
+function buildHref(page: number, searchParams: Record<string, string | undefined>, basePath?: string) {
   const params: Record<string, string> = {}
   for (const [k, v] of Object.entries(searchParams)) {
     if (v !== undefined && k !== 'page') params[k] = v
   }
   if (page !== 1) params.page = String(page)
   const str = new URLSearchParams(params).toString()
+  if (basePath) return str ? `${basePath}?${str}` : basePath
   return str ? `/?${str}` : '/'
 }
 
-export function Pagination({ currentPage, totalPages, searchParams = {} }: Props) {
+export function Pagination({ currentPage, totalPages, searchParams = {}, basePath }: Props) {
   if (totalPages <= 1) return null
 
   const pages: (number | '...')[] = []
@@ -40,7 +43,7 @@ export function Pagination({ currentPage, totalPages, searchParams = {} }: Props
           <ChevronLeft className="w-4 h-4" aria-hidden="true" />
         </span>
       ) : (
-        <Link href={buildHref(currentPage - 1, searchParams)} className={`${base} ${inactive}`} aria-label="前のページ">
+        <Link href={buildHref(currentPage - 1, searchParams, basePath)} className={`${base} ${inactive}`} aria-label="前のページ">
           <ChevronLeft className="w-4 h-4" aria-hidden="true" />
         </Link>
       )}
@@ -61,7 +64,7 @@ export function Pagination({ currentPage, totalPages, searchParams = {} }: Props
         ) : (
           <Link
             key={p}
-            href={buildHref(p as number, searchParams)}
+            href={buildHref(p as number, searchParams, basePath)}
             className={`${base} ${inactive}`}
             aria-label={`${p}ページ目`}
           >
@@ -75,7 +78,7 @@ export function Pagination({ currentPage, totalPages, searchParams = {} }: Props
           <ChevronRight className="w-4 h-4" aria-hidden="true" />
         </span>
       ) : (
-        <Link href={buildHref(currentPage + 1, searchParams)} className={`${base} ${inactive}`} aria-label="次のページ">
+        <Link href={buildHref(currentPage + 1, searchParams, basePath)} className={`${base} ${inactive}`} aria-label="次のページ">
           <ChevronRight className="w-4 h-4" aria-hidden="true" />
         </Link>
       )}

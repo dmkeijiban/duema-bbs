@@ -54,7 +54,7 @@ export function CategoryDropdown({ currentCategory, categories }: Props) {
           {categories.map(c => (
             <Link
               key={c.slug}
-              href={`/?category=${c.slug}`}
+              href={`/category/${c.slug}`}
               role="option"
               aria-selected={currentCategory === c.slug}
               className="block px-4 py-2 hover:bg-gray-100 text-gray-700 border-b border-gray-100 last:border-b-0"

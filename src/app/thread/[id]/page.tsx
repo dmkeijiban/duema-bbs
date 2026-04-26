@@ -146,6 +146,29 @@ export default async function ThreadPage({ params, searchParams }: Props) {
           })
         }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "TOP", "item": baseUrl },
+              ...(typedThread.categories ? [
+                {
+                  "@type": "ListItem",
+                  "position": 2,
+                  "name": `カテゴリ『${typedThread.categories.name}』`,
+                  "item": `${baseUrl}/category/${typedThread.categories.slug}`,
+                },
+                { "@type": "ListItem", "position": 3, "name": typedThread.title },
+              ] : [
+                { "@type": "ListItem", "position": 2, "name": typedThread.title },
+              ]),
+            ],
+          })
+        }}
+      />
 
       <nav className="text-xs text-gray-500 mb-2 flex items-center flex-wrap gap-x-1">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
@@ -153,7 +176,7 @@ export default async function ThreadPage({ params, searchParams }: Props) {
           <>
             <span>{'>'}</span>
             <Link
-              href={`/?category=${typedThread.categories.slug}`}
+              href={`/category/${typedThread.categories.slug}`}
               className="text-blue-600 hover:underline"
             >
               カテゴリ『{typedThread.categories.name}』

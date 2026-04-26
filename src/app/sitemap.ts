@@ -45,12 +45,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const supabase = createPublicClient()
-    const { data: threads } = await supabase
-      .from('threads')
-      .select('id, last_posted_at')
-      .eq('is_archived', false)
-      .order('last_posted_at', { ascending: false })
-      .limit(5000)
+    const [{ data: threads }, { data: categories }] = await Promise.all([
+      supabase
+        .from('threads')
+        .select('id, last_posted_at')
+        .eq('is_archived', false)
+        .order('last_posted_at', { ascending: false })
+        .limit(5000),
+      supabase
+        .from('categories')
+        .select('slug')
+        .order('sort_order'),
+    ])
+
+    const categoryPages: MetadataRoute.Sitemap = (categories ?? []).map(cat => ({
+      url: `${BASE_URL}/category/${cat.slug}`,
+      lastModified: new Date(),
+      changeFrequency: 'hourly' as const,
+      priority: 0.9,
+    }))
 
     const threadPages: MetadataRoute.Sitemap = (threads ?? []).map(thread => ({
       url: `${BASE_URL}/thread/${thread.id}`,
@@ -59,7 +72,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }))
 
-    return [...staticPages, ...threadPages]
+    return [...staticPages, ...categoryPages, ...threadPages]
   } catch {
     return staticPages
   }
