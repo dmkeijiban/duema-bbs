@@ -7,16 +7,25 @@ import Link from 'next/link'
 const GA_ID = 'G-HDGDNYNMH4'
 
 export const metadata: Metadata = {
-  title: '【デュエマ掲示板】デュエルマスターズ専門掲示板',
-  description: 'デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。',
+  title: 'デュエマ掲示板 | デュエルマスターズ専門掲示板',
+  description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報・環境考察など何でも語ろう。',
   metadataBase: new URL('https://duema-bbs.vercel.app'),
+  keywords: ['デュエマ', 'デュエルマスターズ', '掲示板', 'デッキ', 'カード', '大会', '環境', 'BBS'],
+  alternates: {
+    canonical: 'https://duema-bbs.vercel.app',
+  },
   openGraph: {
+    title: 'デュエマ掲示板 | デュエルマスターズ専門掲示板',
+    description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報など何でも語ろう。',
+    url: 'https://duema-bbs.vercel.app',
     siteName: 'デュエマ掲示板',
-    type: 'website',
     locale: 'ja_JP',
+    type: 'website',
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
+    title: 'デュエマ掲示板 | デュエルマスターズ専門掲示板',
+    description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報など何でも語ろう。',
   },
   verification: {
     google: '9MIQlFQWKdN5q04YxDYV3u5kj4uoiuNLA2DrjMCBuJU',

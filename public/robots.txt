@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://duema-bbs.vercel.app/sitemap.xml

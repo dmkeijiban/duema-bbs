@@ -200,6 +200,32 @@ export default async function Home({
 
   return (
     <div className="w-full px-0 py-0">
+      {/* SEO: スクリーンリーダー・Googleのみ向けH1 */}
+      <h1 className="sr-only">デュエマ掲示板 - デュエルマスターズ専門掲示板</h1>
+
+      {/* SEO: WebSite構造化データ（JSON-LD） */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "デュエマ掲示板",
+            "alternateName": "デュエルマスターズ専門掲示板",
+            "url": "https://duema-bbs.vercel.app",
+            "description": "デュエルマスターズ専門の掲示板。デッキ相談・カード評価・大会情報など。",
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://duema-bbs.vercel.app/?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          })
+        }}
+      />
+
       <div className="max-w-screen-xl mx-auto px-2 pt-2">
         {/* RecommendSection: キャッシュ済み（300s）で高速解決、スケルトンでCLS防止 */}
         <Suspense fallback={<RecommendSectionSkeleton />}>

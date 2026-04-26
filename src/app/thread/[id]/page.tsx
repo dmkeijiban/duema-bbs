@@ -60,6 +60,9 @@ export async function generateMetadata({ params }: Props) {
   return {
     title: `${thread.title} | デュエマ掲示板`,
     description: desc,
+    alternates: {
+      canonical: `${baseUrl}/thread/${id}`,
+    },
     openGraph: {
       title: thread.title,
       description: desc,
@@ -124,8 +127,26 @@ export default async function ThreadPage({ params, searchParams }: Props) {
 
   const typedThread = thread as unknown as Thread & { categories: Category | null }
 
+  const baseUrl = 'https://duema-bbs.vercel.app'
+
   return (
     <div className="max-w-screen-xl mx-auto px-2 py-2 text-sm overflow-x-hidden">
+      {/* SEO: DiscussionForumPosting構造化データ（JSON-LD） */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "DiscussionForumPosting",
+            "headline": typedThread.title,
+            "url": `${baseUrl}/thread/${threadId}`,
+            "datePublished": typedThread.created_at,
+            "dateModified": typedThread.last_posted_at ?? typedThread.created_at,
+            "description": typedThread.body.slice(0, 100),
+          })
+        }}
+      />
+
       <nav className="text-xs text-gray-500 mb-2 flex items-center flex-wrap gap-x-1">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
         {typedThread.categories && (
