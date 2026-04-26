@@ -102,20 +102,6 @@ export function NewThreadFormClient({ categories }: Props) {
         <ImageUploadField name="image" />
       </div>
 
-      {/* 返信通知メール */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          返信通知メール（省略可）
-        </label>
-        <input
-          type="email"
-          name="notify_email"
-          placeholder="example@example.com（返信がついたらお知らせします）"
-          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 placeholder-gray-400"
-        />
-        <p className="mt-1 text-xs text-gray-400">入力すると、このスレッドに返信がついたときにメールが届きます。配信停止はメール内のリンクから。</p>
-      </div>
-
       {error && (
         <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
           {error}

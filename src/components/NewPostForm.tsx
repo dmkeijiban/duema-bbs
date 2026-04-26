@@ -5,6 +5,7 @@ import { createPost } from '@/app/actions/thread'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { SettingEditButton } from './SettingEditButton'
+import { PushSubscribeButton } from './PushSubscribeButton'
 
 interface Props {
   threadId: number
@@ -17,7 +18,6 @@ interface Props {
 
 export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, isAdmin }: Props) {
   const [authorName, setAuthorName] = useState('')
-  const [notifyEmail, setNotifyEmail] = useState('')
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -30,7 +30,6 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
     fd.set('thread_id', String(threadId))
     fd.set('body', bodyValue)
     fd.set('author_name', authorName)
-    if (notifyEmail.trim()) fd.set('notify_email', notifyEmail.trim())
     const file = fileInputRef.current?.files?.[0]
     if (file) fd.set('image', file)
 
@@ -41,7 +40,6 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
       } else {
         onBodyChange('')
         setAuthorName('')
-        setNotifyEmail('')
         if (fileInputRef.current) fileInputRef.current.value = ''
         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
       }
@@ -140,14 +138,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
                 返信通知
               </td>
               <td className="py-2 px-3">
-                <input
-                  type="email"
-                  value={notifyEmail}
-                  onChange={e => setNotifyEmail(e.target.value)}
-                  placeholder="メールアドレス（省略可・返信時に通知）"
-                  className="border border-gray-300 px-2 py-1 text-sm bg-white focus:outline-none focus:border-blue-400"
-                  style={{ width: 260 }}
-                />
+                <PushSubscribeButton threadId={threadId} />
               </td>
             </tr>
           </tbody>
