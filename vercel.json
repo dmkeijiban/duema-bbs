@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/summary/generate?type=weekly",
+      "schedule": "0 0 * * 1"
+    },
+    {
+      "path": "/api/summary/generate?type=monthly",
+      "schedule": "0 1 1 * *"
+    }
+  ]
+}

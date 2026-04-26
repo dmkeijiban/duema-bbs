@@ -41,11 +41,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'daily',
       priority: 0.6,
     },
+    {
+      url: `${BASE_URL}/summary`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.6,
+    },
   ]
 
   try {
     const supabase = createPublicClient()
-    const [{ data: threads }, { data: categories }] = await Promise.all([
+    const [{ data: threads }, { data: categories }, { data: summaries }] = await Promise.all([
       supabase
         .from('threads')
         .select('id, last_posted_at')
@@ -56,6 +62,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .from('categories')
         .select('slug')
         .order('sort_order'),
+      supabase
+        .from('summaries')
+        .select('slug, created_at')
+        .eq('published', true)
+        .order('created_at', { ascending: false })
+        .limit(100),
     ])
 
     const categoryPages: MetadataRoute.Sitemap = (categories ?? []).map(cat => ({
@@ -72,7 +84,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }))
 
-    return [...staticPages, ...categoryPages, ...threadPages]
+    const summaryPages: MetadataRoute.Sitemap = (summaries ?? []).map(s => ({
+      url: `${BASE_URL}/summary/${s.slug}`,
+      lastModified: s.created_at ? new Date(s.created_at) : new Date(),
+      changeFrequency: 'never' as const,
+      priority: 0.5,
+    }))
+
+    return [...staticPages, ...categoryPages, ...threadPages, ...summaryPages]
   } catch {
     return staticPages
   }

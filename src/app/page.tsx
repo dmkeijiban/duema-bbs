@@ -250,6 +250,15 @@ export default async function Home({
         })()}
         {/* topNotices: priority なし（lazy）→ 画像がLCPを更新しない */}
         {topNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
+
+        {/* まとめバナー */}
+        <Link
+          href="/summary"
+          className="mb-2 flex items-center justify-between px-3 py-2 border border-blue-200 bg-blue-50 text-sm text-blue-700 hover:bg-blue-100 transition-colors"
+        >
+          <span>📊 先週の人気スレッドまとめ（TOP5）を見る</span>
+          <span className="text-xs ml-2 shrink-0">→</span>
+        </Link>
         {/* ─────────────────────────────────────────────────────────────── */}
       </div>
 
