@@ -17,6 +17,7 @@ interface Props {
 
 export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, isAdmin }: Props) {
   const [authorName, setAuthorName] = useState('')
+  const [notifyEmail, setNotifyEmail] = useState('')
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -29,6 +30,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
     fd.set('thread_id', String(threadId))
     fd.set('body', bodyValue)
     fd.set('author_name', authorName)
+    if (notifyEmail.trim()) fd.set('notify_email', notifyEmail.trim())
     const file = fileInputRef.current?.files?.[0]
     if (file) fd.set('image', file)
 
@@ -39,6 +41,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
       } else {
         onBodyChange('')
         setAuthorName('')
+        setNotifyEmail('')
         if (fileInputRef.current) fileInputRef.current.value = ''
         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
       }
@@ -129,6 +132,21 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
                   type="file"
                   accept="image/jpeg,image/png,image/gif,image/webp"
                   className="text-sm cursor-pointer file:mr-2 file:px-3 file:py-1 file:border file:border-gray-400 file:bg-gray-200 file:text-gray-700 file:text-sm file:cursor-pointer hover:file:bg-gray-300"
+                />
+              </td>
+            </tr>
+            <tr className="border-b border-gray-200">
+              <td className="py-2 px-3 align-middle text-xs font-medium whitespace-nowrap" style={{ background: '#f5f5f5' }}>
+                返信通知
+              </td>
+              <td className="py-2 px-3">
+                <input
+                  type="email"
+                  value={notifyEmail}
+                  onChange={e => setNotifyEmail(e.target.value)}
+                  placeholder="メールアドレス（省略可・返信時に通知）"
+                  className="border border-gray-300 px-2 py-1 text-sm bg-white focus:outline-none focus:border-blue-400"
+                  style={{ width: 260 }}
                 />
               </td>
             </tr>

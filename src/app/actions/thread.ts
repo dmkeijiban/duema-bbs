@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase-server'
 import { hasJapanese } from '@/lib/spam'
 import { v4 as uuidv4 } from 'uuid'
 import { uploadImage, validateImageFile } from '@/lib/upload'
+import { subscribeToThread, sendNewPostNotifications } from '@/app/actions/email-subscription'
 
 async function getOrCreateSessionId(): Promise<string> {
   const cookieStore = await cookies()
@@ -28,6 +29,7 @@ export async function createThread(formData: FormData) {
   const authorName = (formData.get('author_name') as string)?.trim() || '名無しのデュエリスト'
   const categoryId = formData.get('category_id') as string
   const imageFile = formData.get('image') as File | null
+  const notifyEmail = (formData.get('notify_email') as string)?.trim() || ''
 
   if (!title || title.length < 2) return { error: 'タイトルは2文字以上で入力してください' }
   if (title.length > 100) return { error: 'タイトルは100文字以内で入力してください' }
@@ -101,6 +103,11 @@ export async function createThread(formData: FormData) {
     return { error: 'スレッドの作成に失敗しました' }
   }
 
+  // メールアドレスが入力されていたらスレ作成者として購読登録
+  if (notifyEmail && notifyEmail.includes('@')) {
+    await subscribeToThread(thread.id, notifyEmail).catch(() => {})
+  }
+
   revalidatePath('/')
   revalidateTag('threads', { expire: 0 })
   redirect(`/thread/${thread.id}`)
@@ -111,6 +118,7 @@ export async function createPost(formData: FormData) {
   const body = (formData.get('body') as string)?.trim()
   const authorName = (formData.get('author_name') as string)?.trim() || '名無しのデュエリスト'
   const imageFile = formData.get('image') as File | null
+  const notifyEmail = (formData.get('notify_email') as string)?.trim() || ''
 
   if (!threadId) return { error: 'スレッドIDが無効です' }
   if (!body || body.length < 1) return { error: '本文を入力してください' }
@@ -191,6 +199,26 @@ export async function createPost(formData: FormData) {
   }
 
   await supabase.rpc('increment_post_count', { p_thread_id: threadId })
+
+  // スレタイトルを取得して通知を送る（失敗してもレス投稿はブロックしない）
+  const { data: threadData } = await supabase
+    .from('threads')
+    .select('title')
+    .eq('id', threadId)
+    .single()
+
+  if (threadData?.title) {
+    // 投稿者のメールアドレスを購読登録してから通知（自分自身は除外して送信）
+    if (notifyEmail && notifyEmail.includes('@')) {
+      await subscribeToThread(threadId, notifyEmail).catch(() => {})
+    }
+    sendNewPostNotifications(
+      threadId,
+      threadData.title,
+      nextPostNumber,
+      notifyEmail || undefined,
+    ).catch(() => {})
+  }
 
   // 画像付き投稿の場合、スレのサムネが未設定なら自動設定
   if (imageUrl) {
