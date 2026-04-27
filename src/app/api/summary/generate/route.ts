@@ -126,7 +126,7 @@ export async function GET(req: NextRequest) {
   const threadsJson = top5Ids.map((id, i) => {
     const t = (threads ?? []).find(th => th.id === id)
     if (!t) return null
-    const cats = t.categories as { name: string; color: string } | null
+    const cats = t.categories as unknown as { name: string; color: string } | null
     return {
       id: t.id,
       title: t.title,
