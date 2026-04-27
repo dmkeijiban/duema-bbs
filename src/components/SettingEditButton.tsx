@@ -1,9 +1,15 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { updateSetting } from '@/app/actions/settings'
-import { SettingRichEditor } from '@/app/admin/SettingRichEditor'
+
+// Tiptap（ProseMirror）は大きいため、編集ボタンが開かれるまで遅延ロード
+const SettingRichEditor = dynamic(
+  () => import('@/app/admin/SettingRichEditor').then(m => m.SettingRichEditor),
+  { ssr: false, loading: () => <div className="h-20 border border-gray-300 bg-gray-50 animate-pulse" /> }
+)
 
 interface Props {
   settingKey: string
