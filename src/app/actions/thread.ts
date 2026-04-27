@@ -8,6 +8,7 @@ import { hasJapanese } from '@/lib/spam'
 import { v4 as uuidv4 } from 'uuid'
 import { uploadImage, validateImageFile } from '@/lib/upload'
 import { sendPushNotifications } from '@/app/actions/push-subscription'
+import { notifyNewThread } from '@/lib/discord'
 
 async function getOrCreateSessionId(): Promise<string> {
   const cookieStore = await cookies()
@@ -99,6 +100,18 @@ export async function createThread(formData: FormData) {
   if (error || !thread) {
     console.error('Thread insert error:', error)
     return { error: 'スレッドの作成に失敗しました' }
+  }
+
+  // Discord 通知（失敗してもスレッド作成はブロックしない）
+  if (categoryId) {
+    const { data: cat } = await supabase
+      .from('categories')
+      .select('name')
+      .eq('id', parseInt(categoryId))
+      .single()
+    notifyNewThread({ threadId: thread.id, title, categoryName: cat?.name ?? null }).catch(() => {})
+  } else {
+    notifyNewThread({ threadId: thread.id, title, categoryName: null }).catch(() => {})
   }
 
   revalidatePath('/')
