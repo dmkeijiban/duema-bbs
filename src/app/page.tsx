@@ -277,9 +277,12 @@ export default async function Home({
       <div className="max-w-screen-xl mx-auto px-2">
         {midNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
 
-        {/* スレ一覧: getCachedThreadList は <10ms で解決するため
-            Suspense を外して初期 HTML に含める → LCP をホームバナーで確定させる */}
-        <ThreadList searchParams={params} />
+        {/* スレ一覧: Suspense で包むことで homeBanner テキストを初期 HTML に含める。
+            ThreadList が resolve するまで Skeleton を表示し、LCP 要素（homeBanner）が
+            即座にペイントされるようにする（Element Render Delay 解消）。 */}
+        <Suspense fallback={<ThreadListSkeleton />}>
+          <ThreadList searchParams={params} />
+        </Suspense>
 
         {botNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
 
@@ -308,6 +311,33 @@ function SetupGuide() {
           <li><code className="bg-gray-100 px-1">.env.local</code> にURLとANON KEYを設定</li>
         </ol>
       </div>
+    </div>
+  )
+}
+
+function ThreadListSkeleton() {
+  return (
+    <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300 animate-pulse">
+      {[...Array(15)].map((_, i) => (
+        <div key={i} className="bg-white border-b border-r border-gray-300 overflow-hidden">
+          {/* モバイル */}
+          <div className="md:hidden flex" style={{ height: 52 }}>
+            <div className="shrink-0 bg-gray-200" style={{ width: 52, height: 52 }} />
+            <div className="px-1.5 py-1 flex-1 flex flex-col gap-1 justify-center">
+              <div className="h-2 bg-gray-200 rounded w-full" />
+              <div className="h-2 bg-gray-200 rounded w-3/4" />
+            </div>
+          </div>
+          {/* PC */}
+          <div className="hidden md:flex" style={{ height: 80 }}>
+            <div className="shrink-0 bg-gray-200" style={{ width: 80, height: 80 }} />
+            <div className="p-1.5 flex-1 flex flex-col gap-1 justify-center">
+              <div className="h-2 bg-gray-200 rounded w-full" />
+              <div className="h-2 bg-gray-200 rounded w-3/4" />
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
