@@ -320,8 +320,10 @@ export default async function Home({
           <HomeBannerServer />
         </Suspense>
 
-        {/* topNotices: 現在アクティブなものがなければ null を返すため CLS ≈ 0 */}
-        <Suspense fallback={null}>
+        {/* topNotices: 同一高さのスケルトンで空間を予約し CLS を防ぐ。
+            TopNoticesServer は常に height:80 の行を返すため、
+            スケルトンと実コンテンツの高さが一致して layout shift がゼロになる。 */}
+        <Suspense fallback={<TopNoticesSkeleton />}>
           <TopNoticesServer />
         </Suspense>
 
@@ -455,6 +457,25 @@ function SortTabsSkeleton({ sort }: { sort: string }) {
           <div className="h-4 bg-gray-100 rounded w-full animate-pulse" />
         </li>
       </ul>
+    </div>
+  )
+}
+
+// TopNoticesServer のスケルトン。
+// NoticeBlock は常に height:80 の画像行を持つため、スケルトンも同じ高さに固定する。
+// これにより、ストリーミング SSR でコンテンツが差し込まれても
+// 後続要素が移動せず CLS = 0 になる。
+function TopNoticesSkeleton() {
+  return (
+    <div className="mb-2 animate-pulse">
+      {/* ヘッダー行（text-sm ≈ 20px + mb-1 = 4px → 24px） */}
+      <div className="h-5 bg-gray-100 rounded w-44 mb-1 mx-1" />
+      {/* 画像行（height: 80px 固定 / NoticeBlock と同一） */}
+      <div className="flex gap-1">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} style={{ flex: 1, height: 80 }} className="bg-gray-100" />
+        ))}
+      </div>
     </div>
   )
 }
