@@ -33,9 +33,7 @@ interface SearchParams {
 }
 
 // ──────────────────────────────────────────────────
-// スレ一覧（非同期）
-// getCachedThreadList は <10ms で解決するため Suspense に入れず、
-// 初期 HTML に含めて LCP をホームバナーで確定させる。
+// スレ一覧（非同期・Suspense 内）
 // ──────────────────────────────────────────────────
 async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
   const sort = searchParams.sort ?? 'recent'
@@ -68,7 +66,7 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
     if (all.length === 0) return <ThreadEmpty searchQ={undefined} />
     return (
       <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
-        {(all as unknown as (Thread & { categories: Category | null })[]).map((thread, i) => (
+        {(all as unknown as (Thread & { categories: Category | null })[]).map((thread) => (
           <ThreadCard key={thread.id} thread={thread} />
         ))}
       </div>
@@ -103,7 +101,7 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
           「{searchQ}」の検索結果：{count}件
         </div>
         <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
-          {(threads as unknown as (Thread & { categories: Category | null })[]).map((thread, i) => (
+          {(threads as unknown as (Thread & { categories: Category | null })[]).map((thread) => (
             <ThreadCard key={thread.id} thread={thread} />
           ))}
         </div>
@@ -134,7 +132,6 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
             key={thread.id}
             thread={thread}
             rank={sort === 'popular' ? i + 1 + (page - 1) * THREAD_PAGE_SIZE : undefined}
-            // 1枚目のみ eager + fetchpriority="high"、残りは lazy
             priority={i === 0}
           />
         ))}
@@ -160,16 +157,113 @@ function ThreadEmpty({ searchQ }: { searchQ?: string }) {
 }
 
 // ──────────────────────────────────────────────────
+// LCP要素のデフォルト表示
+// Home が await を持たないため、このコンポーネントが最初の
+// HTML バイトに含まれ、LCP が即座に確定する。
+// ──────────────────────────────────────────────────
+function HomeBannerFallback() {
+  return (
+    <div
+      className="mb-2 px-3 py-2 text-sm border relative setting-content"
+      style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb', whiteSpace: 'pre-wrap' }}
+    >
+      デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。
+    </div>
+  )
+}
+
+// ── 実バナーデータを取得して HomeBannerFallback と置き換える
+async function HomeBannerServer() {
+  const banner = await getCachedSetting(
+    'home_banner',
+    'デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。',
+  )
+  const text = banner || 'デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。'
+  const isHtml = text.trimStart().startsWith('<')
+  return (
+    <div
+      className="mb-2 px-3 py-2 text-sm border relative setting-content"
+      style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb', whiteSpace: isHtml ? undefined : 'pre-wrap' }}
+    >
+      {isHtml ? <div dangerouslySetInnerHTML={{ __html: text }} /> : text}
+    </div>
+  )
+}
+
+// ── お知らせブロック（position 別）
+async function TopNoticesServer() {
+  const notices = (await getCachedActiveNotices()) as Notice[]
+  const top = notices.filter(n => n.position === 'top')
+  if (top.length === 0) return null
+  return <>{top.map(n => <NoticeBlock key={n.id} notice={n} />)}</>
+}
+
+async function MidNoticesServer() {
+  const notices = (await getCachedActiveNotices()) as Notice[]
+  const mid = notices.filter(n => n.position === 'mid')
+  if (mid.length === 0) return null
+  return <>{mid.map(n => <NoticeBlock key={n.id} notice={n} />)}</>
+}
+
+async function BotNoticesServer() {
+  const notices = (await getCachedActiveNotices()) as Notice[]
+  const bot = notices.filter(n => n.position === 'bot')
+  if (bot.length === 0) return null
+  return <>{bot.map(n => <NoticeBlock key={n.id} notice={n} />)}</>
+}
+
+// ── SortTabs（カテゴリ取得後に差し替え）
+// パンくずリストも同じカテゴリデータを使うためここに含める。
+async function SortTabsServer({ params }: { params: SearchParams }) {
+  const categories = await getCachedCategories()
+  const sort = params.sort ?? 'recent'
+  return (
+    <>
+      {params.category && (
+        <div className="max-w-screen-xl mx-auto px-2 mb-1">
+          <nav className="text-xs text-gray-600 flex items-center gap-x-1" aria-label="パンくずリスト">
+            <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
+            <span>{'>'}</span>
+            <span>カテゴリ：{categories.find(c => c.slug === params.category)?.name ?? params.category}</span>
+          </nav>
+        </div>
+      )}
+      <SortTabs currentSort={sort} currentCategory={params.category} categories={categories} />
+    </>
+  )
+}
+
+// ── InlineNewThread（カテゴリ＋スレ作成ルール取得後に差し替え）
+async function InlineNewThreadServer({ params }: { params: SearchParams }) {
+  const [categories, newThreadRules] = await Promise.all([
+    getCachedCategories(),
+    getCachedSetting(
+      'new_thread_rules',
+      `1.似たスレッドがないか確認してください。
+2.フライング・リーク情報は禁止です。
+3.タイトルでのネタバレを避けてください。
+4.画像は権利を侵害しない物を添付してください。
+5.ミスで立てたスレは必ず削除を押してください。
+6.他人が不快になるようなタイトルは避けてください。
+7.スレッド作成は承認制とする場合があります。
+8.不適切と判断した場合は削除・ブロックする事があります。`,
+    ),
+  ])
+  return <InlineNewThread categories={categories} newThreadRules={newThreadRules} />
+}
+
+// ──────────────────────────────────────────────────
 // ページ本体
-// homeBanner・topNotices・SortTabs を初期 HTML シェルに含める。
-// これらが LCP 対象となり、スレ一覧ストリームを待たずに LCP が確定する。
+// DB await を一切持たないため、最初の HTML バイトが
+// 即座にストリームされ LCP 要素（HomeBannerFallback）が
+// ブラウザに届く。
 // ──────────────────────────────────────────────────
 export default async function Home({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>
 }) {
-  const params = await searchParams
+  const params = await searchParams   // searchParams の解決のみ（DB なし・即時）
 
   const isConfigured =
     process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http') &&
@@ -177,26 +271,6 @@ export default async function Home({
   if (!isConfigured) return <SetupGuide />
 
   const sort = params.sort ?? 'recent'
-
-  // 初期シェルに必要なデータをすべてキャッシュ済みで並列取得
-  const [categories, notices, homeBanner, newThreadRules] = await Promise.all([
-    getCachedCategories(),
-    getCachedActiveNotices(),
-    getCachedSetting('home_banner', 'デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。'),
-    getCachedSetting('new_thread_rules', `1.似たスレッドがないか確認してください。
-2.フライング・リーク情報は禁止です。
-3.タイトルでのネタバレを避けてください。
-4.画像は権利を侵害しない物を添付してください。
-5.ミスで立てたスレは必ず削除を押してください。
-6.他人が不快になるようなタイトルは避けてください。
-7.スレッド作成は承認制とする場合があります。
-8.不適切と判断した場合は削除・ブロックする事があります。`),
-  ])
-
-  const typedNotices = notices as Notice[]
-  const topNotices = typedNotices.filter(n => n.position === 'top')
-  const midNotices = typedNotices.filter(n => n.position === 'mid')
-  const botNotices = typedNotices.filter(n => n.position === 'bot')
 
   return (
     <div className="w-full px-0 py-0">
@@ -227,31 +301,24 @@ export default async function Home({
       />
 
       <div className="max-w-screen-xl mx-auto px-2 pt-2">
-        {/* RecommendSection: キャッシュ済み（300s）で高速解決、スケルトンでCLS防止 */}
         <Suspense fallback={<RecommendSectionSkeleton />}>
           <RecommendSection />
         </Suspense>
 
-        {/* ── LCP 対象テキスト（常時表示・画像ダウンロード不要）──────────
-            priority 画像をなくしたことでこのテキストブロックが
-            最初に描画される最大要素となり、LCP を確定させる。
-            homeBanner が空のときもフォールバック文言で必ず描画する。 */}
-        {(() => {
-          const banner = homeBanner || 'デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。'
-          const isHtml = banner.trimStart().startsWith('<')
-          return (
-            <div className="mb-2 px-3 py-2 text-sm border relative setting-content"
-              style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb', whiteSpace: isHtml ? undefined : 'pre-wrap' }}>
-              {isHtml
-                ? <div dangerouslySetInnerHTML={{ __html: banner }} />
-                : banner}
-            </div>
-          )
-        })()}
-        {/* topNotices: priority なし（lazy）→ 画像がLCPを更新しない */}
-        {topNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
+        {/* ── LCP 対象テキスト ──────────────────────────────────────────
+            HomeBannerFallback が初期 HTML シェルに含まれ、CSS のみで
+            即座に描画される。HomeBannerServer の解決後に実データで置換。
+            どちらもテキストのみ（画像なし）なので、LCP がページ表示直後に確定。 */}
+        <Suspense fallback={<HomeBannerFallback />}>
+          <HomeBannerServer />
+        </Suspense>
 
-        {/* まとめバナー */}
+        {/* topNotices: 現在アクティブなものがなければ null を返すため CLS ≈ 0 */}
+        <Suspense fallback={null}>
+          <TopNoticesServer />
+        </Suspense>
+
+        {/* まとめバナー（静的・即座に描画） */}
         <Link
           href="/summary"
           className="mb-2 flex items-center justify-between px-3 py-2 border border-blue-200 bg-blue-50 text-sm text-blue-700 hover:bg-blue-100 transition-colors"
@@ -259,36 +326,33 @@ export default async function Home({
           <span>📊 先週の人気スレッドまとめ（TOP5）を見る</span>
           <span className="text-xs ml-2 shrink-0">→</span>
         </Link>
-        {/* ─────────────────────────────────────────────────────────────── */}
       </div>
 
-      {params.category && (
-        <div className="max-w-screen-xl mx-auto px-2 mb-1">
-          <nav className="text-xs text-gray-600 flex items-center gap-x-1" aria-label="パンくずリスト">
-            <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
-            <span>{'>'}</span>
-            <span>カテゴリ：{categories.find(c => c.slug === params.category)?.name ?? params.category}</span>
-          </nav>
-        </div>
-      )}
-
-      <SortTabs currentSort={sort} currentCategory={params.category} categories={categories} />
+      {/* SortTabs: カテゴリ一覧が必要。スケルトンで正確な高さを維持し CLS 防止 */}
+      <Suspense fallback={<SortTabsSkeleton sort={sort} />}>
+        <SortTabsServer params={params} />
+      </Suspense>
 
       <div className="max-w-screen-xl mx-auto px-2">
-        {midNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
+        <Suspense fallback={null}>
+          <MidNoticesServer />
+        </Suspense>
 
-        {/* スレ一覧: Suspense で包むことで homeBanner テキストを初期 HTML に含める。
-            ThreadList が resolve するまで Skeleton を表示し、LCP 要素（homeBanner）が
-            即座にペイントされるようにする（Element Render Delay 解消）。 */}
+        {/* スレ一覧: Suspense で包み、上位要素（LCP）のストリームを妨げない */}
         <Suspense fallback={<ThreadListSkeleton />}>
           <ThreadList searchParams={params} />
         </Suspense>
 
-        {botNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
+        <Suspense fallback={null}>
+          <BotNoticesServer />
+        </Suspense>
 
         <BottomNav />
 
-        <InlineNewThread categories={categories} newThreadRules={newThreadRules} />
+        {/* スレ作成フォーム: 遅延ロードで可視領域外のレンダリングコストを下げる */}
+        <Suspense fallback={null}>
+          <InlineNewThreadServer params={params} />
+        </Suspense>
 
         <div className="mb-6" />
       </div>
@@ -315,6 +379,10 @@ function SetupGuide() {
   )
 }
 
+// ──────────────────────────────────────────────────
+// スケルトン
+// ──────────────────────────────────────────────────
+
 function ThreadListSkeleton() {
   return (
     <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300 animate-pulse">
@@ -338,6 +406,48 @@ function ThreadListSkeleton() {
           </div>
         </div>
       ))}
+    </div>
+  )
+}
+
+// SortTabs と同一の高さ・構造を維持し CLS を防ぐスケルトン。
+// カテゴリ一覧が届く前の表示として使う。
+// アクティブタブは sort が既知なので正確に描画できる。
+const SORT_TABS_META = [
+  { sort: 'recent',  short: '更新', label: '更新順', icon: '↺' },
+  { sort: 'new',     short: '新着', label: '新着',   icon: '⏱' },
+  { sort: 'popular', short: '人気', label: '人気',   icon: '📊' },
+  { sort: 'random',  short: 'ランダ', label: 'ランダム', icon: '🎲' },
+]
+
+function SortTabsSkeleton({ sort }: { sort: string }) {
+  return (
+    <div className="max-w-screen-xl mx-auto px-2">
+      <ul className="flex mb-3 mt-2" role="tablist" style={{ borderBottom: '1px solid #dee2e6' }}>
+        {SORT_TABS_META.map(tab => {
+          const active = sort === tab.sort
+          return (
+            <li key={tab.sort} className="flex-1 min-w-0" role="presentation">
+              <div
+                className="w-full text-center py-2 font-medium border border-transparent select-none overflow-hidden text-xs md:text-sm flex items-center justify-center gap-0.5"
+                style={
+                  active
+                    ? { background: '#2563eb', color: '#fff', borderColor: '#2563eb', borderRadius: '4px 4px 0 0', marginBottom: -1 }
+                    : { color: '#2563eb' }
+                }
+              >
+                <span className="opacity-80">{tab.icon}</span>
+                <span className="hidden md:inline">{tab.label}</span>
+                <span className="md:hidden">{tab.short}</span>
+              </div>
+            </li>
+          )
+        })}
+        {/* CategoryDropdown プレースホルダー */}
+        <li className="flex-1 min-w-0 flex items-center justify-center px-1 py-2">
+          <div className="h-4 bg-gray-100 rounded w-full animate-pulse" />
+        </li>
+      </ul>
     </div>
   )
 }
