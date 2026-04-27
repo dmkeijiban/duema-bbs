@@ -26,15 +26,18 @@ export function formatDateTime(dateStr: string): string {
 }
 
 // animanch形式: 26/04/11(土) 13:44:02
+// JST(UTC+9)に固定 — サーバー(UTC)とブラウザのハイドレーションミスマッチを防ぐため
+// d.getHours()等のローカルタイムメソッドは使わず、UTC+9オフセットを手動加算してUTCメソッドで取得する
 export function formatDateTimeJP(dateStr: string): string {
   const d = new Date(dateStr)
-  const yy = String(d.getFullYear()).slice(2)
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
+  // UTC+9オフセットを加算してJST相当のUTC時刻として扱う
+  const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000)
+  const yy = String(jst.getUTCFullYear()).slice(2)
+  const mm = String(jst.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(jst.getUTCDate()).padStart(2, '0')
   const days = ['日', '月', '火', '水', '木', '金', '土']
-  const day = days[d.getDay()]
-  const hh = String(d.getHours()).padStart(2, '0')
-  const min = String(d.getMinutes()).padStart(2, '0')
-  const ss = String(d.getSeconds()).padStart(2, '0')
+  const day = days[jst.getUTCDay()]
+  const hh = String(jst.getUTCHours()).padStart(2, '0')
+  const min = String(jst.getUTCMinutes()).padStart(2, '0')
   return `${yy}/${mm}/${dd}(${day}) ${hh}:${min}`
 }

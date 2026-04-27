@@ -24,8 +24,13 @@ export function NewThreadFormClient({ categories }: Props) {
     setError('')
     const formData = new FormData(e.currentTarget)
     startTransition(async () => {
-      const result = await createThread(formData)
-      if (result?.error) setError(result.error)
+      try {
+        const result = await createThread(formData)
+        if (result?.error) setError(result.error)
+      } catch {
+        // デプロイ後の古いJSキャッシュによるサーバーアクション404対策
+        setError('ページが古くなっています。再読み込みしてから再度投稿してください。')
+      }
     })
   }
 

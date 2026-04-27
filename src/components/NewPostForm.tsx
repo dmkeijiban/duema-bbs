@@ -34,14 +34,20 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
     if (file) fd.set('image', file)
 
     startTransition(async () => {
-      const result = await createPost(fd)
-      if (result?.error) {
-        setError(result.error)
-      } else {
-        onBodyChange('')
-        setAuthorName('')
-        if (fileInputRef.current) fileInputRef.current.value = ''
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+      try {
+        const result = await createPost(fd)
+        if (result?.error) {
+          setError(result.error)
+        } else {
+          onBodyChange('')
+          setAuthorName('')
+          if (fileInputRef.current) fileInputRef.current.value = ''
+          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+        }
+      } catch {
+        // デプロイ後に古いJSキャッシュを持つタブからアクセスするとサーバーアクションIDが
+        // 一致せず404が返る。ページ更新を促すメッセージを表示する。
+        setError('ページが古くなっています。再読み込みしてから再度投稿してください。')
       }
     })
   }
