@@ -160,25 +160,32 @@ function ThreadEmpty({ searchQ }: { searchQ?: string }) {
 // LCP要素のデフォルト表示
 // Home が await を持たないため、このコンポーネントが最初の
 // HTML バイトに含まれ、LCP が即座に確定する。
+//
+// 【重要】DB の home_banner 値と同じ内容・サイズにすること。
+// Chrome は「より大きい要素」に LCP 候補を更新するため、
+// fallback より DB 版が大きいと DB 版（1830ms）が LCP になる。
+// fallback = DB 値 にすることで fallback が LCP 確定（ERD ≈ 0）。
+// DB 値を変更したらここも合わせて更新する。
 // ──────────────────────────────────────────────────
 function HomeBannerFallback() {
   return (
     <div
       className="mb-2 px-3 py-2 text-sm border relative setting-content"
-      style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb', whiteSpace: 'pre-wrap' }}
+      style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb' }}
     >
-      デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。
+      <div>
+        <p>デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。初めての方は<a target="_blank" rel="noopener noreferrer" href="https://duema-bbs.vercel.app/guide">スレッドの立て方</a>をご確認ください。</p>
+      </div>
     </div>
   )
 }
 
 // ── 実バナーデータを取得して HomeBannerFallback と置き換える
+const HOME_BANNER_DEFAULT = '<p>デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。初めての方は<a target="_blank" rel="noopener noreferrer" href="https://duema-bbs.vercel.app/guide">スレッドの立て方</a>をご確認ください。</p>'
+
 async function HomeBannerServer() {
-  const banner = await getCachedSetting(
-    'home_banner',
-    'デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。',
-  )
-  const text = banner || 'デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。'
+  const banner = await getCachedSetting('home_banner', HOME_BANNER_DEFAULT)
+  const text = banner || HOME_BANNER_DEFAULT
   const isHtml = text.trimStart().startsWith('<')
   return (
     <div
