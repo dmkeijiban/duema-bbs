@@ -51,7 +51,12 @@ export async function generateMetadata({ params }: Props) {
     ogImage = postImg?.image_url ?? undefined
   }
 
-  const desc = thread.body.slice(0, 150)
+  const desc = thread.body
+    .replace(/>>?\d+/g, '')      // >>123 アンカー除去
+    .replace(/[\r\n]+/g, ' ')    // 改行をスペースに
+    .replace(/\s{2,}/g, ' ')     // 連続スペース圧縮
+    .trim()
+    .slice(0, 150)
   const baseUrl = 'https://duema-bbs.vercel.app'
   // OG画像はX共有用に /api/og で 1200×675 (16:9) に統一クロップ
   const ogImageUrl = ogImage
@@ -143,7 +148,7 @@ export default async function ThreadPage({ params, searchParams }: Props) {
             "url": `${baseUrl}/thread/${threadId}`,
             "datePublished": typedThread.created_at,
             "dateModified": typedThread.last_posted_at ?? typedThread.created_at,
-            "description": typedThread.body.slice(0, 100),
+            "description": typedThread.body.replace(/>>?\d+/g, '').replace(/[\r\n]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 100),
           })
         }}
       />

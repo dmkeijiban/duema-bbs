@@ -45,13 +45,29 @@ async function getSummary(slug: string): Promise<Summary | null> {
   return data as Summary | null
 }
 
+const BASE_URL = 'https://duema-bbs.vercel.app'
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const summary = await getSummary(slug)
   if (!summary) return {}
+  const desc = `${summary.period_start}〜${summary.period_end}の人気スレッドTOP5まとめ。デュエマ掲示板で盛り上がったスレッドをランキング形式で紹介します。`
+  const url = `${BASE_URL}/summary/${slug}`
   return {
     title: `${summary.title} | デュエマ掲示板`,
-    description: `${summary.period_start}〜${summary.period_end}の人気スレッドTOP5まとめです。`,
+    description: desc,
+    alternates: { canonical: url },
+    openGraph: {
+      title: summary.title,
+      description: desc,
+      url,
+      type: 'article',
+    },
+    twitter: {
+      card: 'summary',
+      title: summary.title,
+      description: desc,
+    },
   }
 }
 
@@ -75,6 +91,42 @@ export default async function SummarySlugPage({ params }: Props) {
 
   return (
     <div className="w-full px-0 py-0">
+      {/* SEO: Article + ItemList 構造化データ */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Article',
+            headline: summary.title,
+            url: `${BASE_URL}/summary/${summary.slug}`,
+            datePublished: summary.created_at,
+            description: `${summary.period_start}〜${summary.period_end}の人気スレッドTOP5まとめ。`,
+            publisher: {
+              '@type': 'Organization',
+              name: 'デュエマ掲示板',
+              url: BASE_URL,
+            },
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'ItemList',
+            name: summary.title,
+            numberOfItems: threads.length,
+            itemListElement: threads.map((t, i) => ({
+              '@type': 'ListItem',
+              position: i + 1,
+              name: t.title,
+              url: `${BASE_URL}/thread/${t.id}`,
+            })),
+          }),
+        }}
+      />
       <div className="max-w-screen-xl mx-auto px-2 pt-2">
         <Suspense fallback={null}>
           <RecommendSection />

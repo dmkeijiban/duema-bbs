@@ -52,19 +52,18 @@ function parseRss(xml: string): VideoEntry | null {
   }
 }
 
-async function getLastNotifiedVideoId(supabase: ReturnType<typeof createClient>): Promise<string | null> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getLastNotifiedVideoId(supabase: any): Promise<string | null> {
   const { data } = await supabase
     .from('youtube_state')
     .select('value')
     .eq('key', 'last_video_id')
     .maybeSingle()
-  return data?.value ?? null
+  return (data as { value: string } | null)?.value ?? null
 }
 
-async function setLastNotifiedVideoId(
-  supabase: ReturnType<typeof createClient>,
-  videoId: string,
-) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function setLastNotifiedVideoId(supabase: any, videoId: string) {
   await supabase
     .from('youtube_state')
     .upsert({ key: 'last_video_id', value: videoId, updated_at: new Date().toISOString() })
