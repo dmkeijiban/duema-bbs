@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
+import { SnsCtaCard } from '@/components/SnsCtaCard'
 
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
@@ -218,6 +219,9 @@ export default async function ThreadPage({ params, searchParams }: Props) {
           </Suspense>
         }
       />
+
+      {/* SNS フォロー導線 — 最終ページのみ表示（読み終えた直後が最もコンバージョン高い） */}
+      {page >= totalPages && <SnsCtaCard />}
     </div>
   )
 }

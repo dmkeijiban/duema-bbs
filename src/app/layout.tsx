@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Script from 'next/script'
 import './globals.css'
 import { Header } from '@/components/Header'
+import { SnsFloatingBar } from '@/components/SnsFloatingBar'
 import Link from 'next/link'
 
 const GA_ID = 'G-HDGDNYNMH4'
@@ -98,6 +99,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen flex flex-col antialiased" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
           <Header />
           <main className="flex-1">{children}</main>
+          <SnsFloatingBar />
           <footer className="bg-white border-t border-gray-200 py-3 mt-6">
             <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-600">
               ©<Link href="/">デュエマ掲示板</Link> — デュエル・マスターズ専門掲示板

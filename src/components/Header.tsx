@@ -3,6 +3,8 @@ import Image from 'next/image'
 import { HeaderSearch } from './HeaderSearch'
 import { MobileMenu } from './MobileMenu'
 import { getCachedNavPages } from '@/lib/cached-queries'
+import { XLogo, YouTubeLogo, DiscordLogo } from '@/components/Icons'
+import { SNS } from '@/lib/sns'
 
 export async function Header() {
   const navPages = await getCachedNavPages()
@@ -42,6 +44,25 @@ export async function Header() {
               ))}
             </ul>
             <HeaderSearch />
+
+            {/* SNS アイコン（PC のみ） */}
+            <div className="flex items-center gap-0.5 shrink-0 ml-1">
+              <a href={SNS.x} target="_blank" rel="noopener noreferrer"
+                 title="X (Twitter)" aria-label="X (Twitter)"
+                 className="p-1.5 text-gray-500 hover:text-black transition-colors rounded">
+                <XLogo size={16} />
+              </a>
+              <a href={SNS.youtube} target="_blank" rel="noopener noreferrer"
+                 title="YouTube" aria-label="YouTube"
+                 className="p-1.5 text-gray-500 hover:text-[#ff0000] transition-colors rounded">
+                <YouTubeLogo size={16} />
+              </a>
+              <a href={SNS.discord} target="_blank" rel="noopener noreferrer"
+                 title="Discord" aria-label="Discord"
+                 className="p-1.5 text-gray-500 hover:text-[#5865F2] transition-colors rounded">
+                <DiscordLogo size={16} />
+              </a>
+            </div>
           </div>
         </div>
       </nav>
