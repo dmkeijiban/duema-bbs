@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { sendContact } from '@/app/actions/contact'
 import Link from 'next/link'
+import { SnsCtaCard } from '@/components/SnsCtaCard'
 
 export default function ContactPage() {
   const [subject, setSubject] = useState('')
@@ -132,6 +133,7 @@ export default function ContactPage() {
           </form>
         )}
       </div>
+      <SnsCtaCard />
     </div>
   )
 }

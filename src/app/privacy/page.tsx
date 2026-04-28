@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { getCachedFixedPage } from '@/lib/cached-queries'
 import { renderBlock } from '@/components/FixedPageBlocks'
+import { SnsCtaCard } from '@/components/SnsCtaCard'
 
 export const metadata = {
   title: 'プライバシーポリシー | デュエマ掲示板',
@@ -63,6 +64,7 @@ export default async function PrivacyPage() {
           </div>
         )}
       </div>
+      <SnsCtaCard />
     </div>
   )
 }

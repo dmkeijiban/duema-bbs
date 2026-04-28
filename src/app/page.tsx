@@ -13,6 +13,7 @@ import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
+import { SnsCtaCard } from '@/components/SnsCtaCard'
 import {
   getCachedCategories,
   getCachedActiveNotices,
@@ -363,6 +364,7 @@ export default async function Home({
           <InlineNewThreadServer params={params} />
         </Suspense>
 
+        <SnsCtaCard />
         <div className="mb-6" />
       </div>
     </div>
