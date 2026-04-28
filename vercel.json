@@ -7,6 +7,10 @@
     {
       "path": "/api/summary/generate?type=monthly",
       "schedule": "0 1 1 * *"
+    },
+    {
+      "path": "/api/youtube/check",
+      "schedule": "*/15 * * * *"
     }
   ]
 }
