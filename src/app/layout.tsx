@@ -14,6 +14,11 @@ export const metadata: Metadata = {
   alternates: {
     canonical: 'https://duema-bbs.vercel.app',
   },
+  icons: {
+    icon: [{ url: '/icon.jpg', type: 'image/jpeg' }],
+    shortcut: '/icon.jpg',
+    apple: '/icon.jpg',
+  },
   openGraph: {
     title: 'デュエマ掲示板 | デュエルマスターズ専門掲示板',
     description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報など何でも語ろう。',
@@ -36,6 +41,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ja" suppressHydrationWarning>
       <head>
+        {/* 構造化データ：GoogleがサイトをVercelではなく「デュエマ掲示板」と認識するために必要 */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'WebSite',
+              name: 'デュエマ掲示板',
+              alternateName: 'デュエルマスターズ専門掲示板',
+              url: 'https://duema-bbs.vercel.app',
+              description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報・環境考察など何でも語ろう。',
+              inLanguage: 'ja',
+              publisher: {
+                '@type': 'Organization',
+                name: 'デュエマ掲示板',
+                url: 'https://duema-bbs.vercel.app',
+                logo: {
+                  '@type': 'ImageObject',
+                  url: 'https://duema-bbs.vercel.app/logo.jpg',
+                },
+              },
+            }),
+          }}
+        />
+
         {/* Supabase ストレージへの早期接続でLCPの画像取得を高速化 */}
         <link rel="preconnect" href="https://nodgfukqvuwvgfnlzvnh.supabase.co" />
         <link rel="dns-prefetch" href="https://nodgfukqvuwvgfnlzvnh.supabase.co" />
