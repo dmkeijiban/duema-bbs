@@ -4,7 +4,7 @@ export const runtime = 'nodejs'
 export const maxDuration = 30
 
 const YOUTUBE_CHANNEL_ID = 'UCRsyn5WXG3jkqBu9XGIyW1w'
-const HUB_URL = 'https://pubsubhubbb.appspot.com/'
+const HUB_URL = 'https://pubsubhubbub.appspot.com/'
 
 function getSiteUrl(): string {
   // Vercelが自動設定する本番URLを優先、なければ環境変数
