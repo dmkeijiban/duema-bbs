@@ -9,8 +9,32 @@
       "schedule": "0 1 1 * *"
     },
     {
+      "path": "/api/youtube/subscribe",
+      "schedule": "0 0 * * 0"
+    },
+    {
       "path": "/api/youtube/check",
+      "schedule": "0 */1 * * *"
+    },
+    {
+      "path": "/api/seed/thread",
+      "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/seed/thread",
+      "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/seed/thread",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/seed/thread",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/seed/comment",
+      "schedule": "0 3 * * *"
     }
   ]
 }
