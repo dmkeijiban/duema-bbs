@@ -100,15 +100,16 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAnonClient()
 
-  // 重複通知チェック
+  // 重複通知チェック（最近50件の通知済みIDを配列で保持）
   const { data } = await supabase
     .from('youtube_state')
     .select('value')
-    .eq('key', 'last_video_id')
+    .eq('key', 'notified_video_ids')
     .maybeSingle()
-  const lastVideoId = (data as { value: string } | null)?.value ?? null
+  const raw = (data as { value: string } | null)?.value ?? '[]'
+  const notifiedIds: string[] = (() => { try { return JSON.parse(raw) } catch { return [] } })()
 
-  if (lastVideoId === video.videoId) {
+  if (notifiedIds.includes(video.videoId)) {
     return NextResponse.json({ ok: true, skipped: true, reason: 'already notified' })
   }
 
@@ -119,9 +120,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Discord notify failed' }, { status: 500 })
   }
 
+  const updated = [video.videoId, ...notifiedIds].slice(0, 50)
   await supabase
     .from('youtube_state')
-    .upsert({ key: 'last_video_id', value: video.videoId, updated_at: new Date().toISOString() })
+    .upsert({ key: 'notified_video_ids', value: JSON.stringify(updated), updated_at: new Date().toISOString() })
 
   console.log(`YouTube push notification sent: ${video.videoId} - ${video.title}`)
   return NextResponse.json({ ok: true, notified: true, videoId: video.videoId, title: video.title })
