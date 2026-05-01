@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { SEED_THREADS } from '@/lib/seed-data'
+import { notifyNewThread } from '@/lib/discord'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -192,6 +193,9 @@ export async function GET(req: NextRequest) {
       result.threadCreated = { id: created.id, title: created.title }
       result.source = `animanch board ${chosen.boardId}`
       console.log(`Seed/thread: created ${created.id} "${created.title}"`)
+      // カテゴリ名を取得してDiscord通知
+      const { data: cat } = await supabase.from('categories').select('name').eq('id', categoryId).single()
+      notifyNewThread({ threadId: created.id, title: created.title, categoryName: cat?.name ?? null }).catch(() => {})
     }
   } catch (err) {
     // フォールバック：seed-data.ts の固定テンプレートを使用
@@ -217,6 +221,9 @@ export async function GET(req: NextRequest) {
       result.threadCreated = { id: created.id, title: created.title }
       result.source = 'fallback seed-data'
       console.log(`Seed/thread: created fallback ${created.id} "${created.title}"`)
+      // カテゴリ名を取得してDiscord通知
+      const { data: cat } = await supabase.from('categories').select('name').eq('id', template.category_id).single()
+      notifyNewThread({ threadId: created.id, title: created.title, categoryName: cat?.name ?? null }).catch(() => {})
     }
   }
 
