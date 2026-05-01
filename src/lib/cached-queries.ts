@@ -171,7 +171,7 @@ export function getCachedThreadList(
   isArchived: boolean
 ): Promise<CachedThreadListResult> {
   const pageSize = sort === 'popular' ? POPULAR_PAGE_SIZE : THREAD_PAGE_SIZE
-  const cacheKey = `tl-${sort}-p${page}-c${String(categoryId)}-a${String(isArchived)}`
+  const cacheKey = `tl-${sort}-ps${pageSize}-p${page}-c${String(categoryId)}-a${String(isArchived)}`
   return unstable_cache(
     async () => {
       const supabase = createPublicClient()
