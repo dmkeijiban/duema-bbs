@@ -3,42 +3,55 @@ import { createClient } from '@/lib/supabase-server'
 import { ThreadCard } from '@/components/ThreadCard'
 import { RecommendSection } from '@/components/RecommendSection'
 import { BottomNav } from '@/components/ThreadSortPage'
+import { Pagination } from '@/components/Pagination'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 
-const LIMIT = 100
+const PAGE_SIZE = 50
 
-async function RankingList() {
+async function RankingList({ page }: { page: number }) {
   const supabase = await createClient()
-
-  // 過去3日間でpost_countが多い順
   const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+  const offset = (page - 1) * PAGE_SIZE
 
-  // まず過去3日間に更新があったスレッドをpost_count順で取得
-  const { data: rawThreads } = await supabase
+  // 過去3日間の件数確認
+  const { count: recentCount } = await supabase
+    .from('threads')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_archived', false)
+    .gte('last_posted_at', since)
+
+  const useRecent = (recentCount ?? 0) >= 20
+
+  // データ取得
+  let dataQuery = supabase
     .from('threads')
     .select('*, categories(id,name,slug,color,description,sort_order)')
     .eq('is_archived', false)
-    .gte('last_posted_at', since)
     .order('post_count', { ascending: false })
-    .limit(LIMIT)
+    .range(offset, offset + PAGE_SIZE - 1)
 
-  // 足りない場合は全体からpost_count順で補完
-  const threads = rawThreads && rawThreads.length >= 20
-    ? rawThreads
+  if (useRecent) {
+    dataQuery = dataQuery.gte('last_posted_at', since)
+  }
+
+  const { data: rawThreads } = await dataQuery
+
+  // 総ページ数
+  const totalCount = useRecent
+    ? (recentCount ?? 0)
     : await (async () => {
-        const { data } = await supabase
+        const { count } = await supabase
           .from('threads')
-          .select('*, categories(id,name,slug,color,description,sort_order)')
+          .select('*', { count: 'exact', head: true })
           .eq('is_archived', false)
-          .order('post_count', { ascending: false })
-          .limit(LIMIT)
-        return data ?? []
+        return count ?? 0
       })()
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
 
-  const withImages = threads.length > 0
-    ? await withFallbackThumbnails(supabase, threads)
+  const withImages = rawThreads && rawThreads.length > 0
+    ? await withFallbackThumbnails(supabase, rawThreads)
     : []
 
   if (withImages.length === 0) {
@@ -50,15 +63,24 @@ async function RankingList() {
   }
 
   return (
-    <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
-      {(withImages as (Thread & { categories: Category | null })[]).map((thread, i) => (
-        <ThreadCard key={thread.id} thread={thread} rank={i + 1} />
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
+        {(withImages as (Thread & { categories: Category | null })[]).map((thread, i) => (
+          <ThreadCard key={thread.id} thread={thread} rank={offset + i + 1} />
+        ))}
+      </div>
+      <Pagination currentPage={page} totalPages={totalPages} basePath="/ranking" />
+    </>
   )
 }
 
-export default async function RankingPage() {
+interface Props {
+  searchParams: Promise<{ page?: string }>
+}
+
+export default async function RankingPage({ searchParams }: Props) {
+  const { page: pageStr } = await searchParams
+  const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
 
   return (
     <div className="w-full px-0 py-0">

@@ -2,9 +2,12 @@ import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase-server'
 import { ThreadRow } from '@/components/ThreadRow'
 import { RecommendSection } from '@/components/RecommendSection'
+import { Pagination } from '@/components/Pagination'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
+
+const PAGE_SIZE = 50
 
 export const NAV_LINKS = [
   { label: '↺ 更新順一覧', href: '/update' },
@@ -17,11 +20,50 @@ interface Props {
   sort: 'recent' | 'new' | 'archived' | 'random'
   title: string
   icon: string
+  page?: number
 }
 
-async function ThreadList({ sort }: { sort: string }) {
+async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
   const supabase = await createClient()
   const isArchived = sort === 'archived'
+  const basePath = sort === 'recent' ? '/update' : sort === 'new' ? '/new' : sort === 'random' ? '/random' : '/archived'
+
+  // ランダムは毎回シャッフルするためページネーション不要（常にPAGE_SIZE件ランダム表示）
+  if (sort === 'random') {
+    const { data: rawThreads } = await supabase
+      .from('threads')
+      .select('*, categories(id,name,slug,color,description,sort_order)')
+      .eq('is_archived', false)
+      .limit(500)
+    const all = rawThreads ? await withFallbackThumbnails(supabase, rawThreads) : []
+    for (let i = all.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [all[i], all[j]] = [all[j], all[i]]
+    }
+    const threads = all.slice(0, PAGE_SIZE) as (Thread & { categories: Category | null })[]
+    if (threads.length === 0) {
+      return (
+        <div className="text-center py-16 text-gray-500 bg-white border border-gray-300">
+          スレッドがまだありません
+        </div>
+      )
+    }
+    return (
+      <div className="border border-gray-300 bg-white">
+        {threads.map((thread) => (
+          <ThreadRow key={thread.id} thread={thread} />
+        ))}
+      </div>
+    )
+  }
+
+  // 総件数取得
+  const { count } = await supabase
+    .from('threads')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_archived', isArchived)
+  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
+  const offset = (page - 1) * PAGE_SIZE
 
   let query = supabase
     .from('threads')
@@ -30,21 +72,13 @@ async function ThreadList({ sort }: { sort: string }) {
 
   if (sort === 'new') {
     query = query.order('created_at', { ascending: false })
-  } else if (sort !== 'random') {
+  } else {
     query = query.order('last_posted_at', { ascending: false })
   }
 
-  query = query.limit(100)
+  query = query.range(offset, offset + PAGE_SIZE - 1)
   const { data: rawThreads } = await query
-  let threads = rawThreads ? await withFallbackThumbnails(supabase, rawThreads) : []
-
-  // ランダムシャッフル
-  if (sort === 'random') {
-    for (let i = threads.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [threads[i], threads[j]] = [threads[j], threads[i]]
-    }
-  }
+  const threads = rawThreads ? await withFallbackThumbnails(supabase, rawThreads) : []
 
   if (threads.length === 0) {
     return (
@@ -58,20 +92,26 @@ async function ThreadList({ sort }: { sort: string }) {
   if (sort === 'archived') {
     const { ThreadCard } = await import('@/components/ThreadCard')
     return (
-      <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
-        {(threads as (Thread & { categories: Category | null })[]).map((thread) => (
-          <ThreadCard key={thread.id} thread={thread} />
-        ))}
-      </div>
+      <>
+        <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
+          {(threads as (Thread & { categories: Category | null })[]).map((thread) => (
+            <ThreadCard key={thread.id} thread={thread} />
+          ))}
+        </div>
+        <Pagination currentPage={page} totalPages={totalPages} basePath={basePath} />
+      </>
     )
   }
 
   return (
-    <div className="border border-gray-300 bg-white">
-      {(threads as (Thread & { categories: Category | null })[]).map((thread) => (
-        <ThreadRow key={thread.id} thread={thread} />
-      ))}
-    </div>
+    <>
+      <div className="border border-gray-300 bg-white">
+        {(threads as (Thread & { categories: Category | null })[]).map((thread) => (
+          <ThreadRow key={thread.id} thread={thread} />
+        ))}
+      </div>
+      <Pagination currentPage={page} totalPages={totalPages} basePath={basePath} />
+    </>
   )
 }
 
@@ -113,7 +153,7 @@ export function BottomNav({ current }: { current?: string }) {
   )
 }
 
-export async function ThreadSortPage({ sort, title, icon }: Props) {
+export async function ThreadSortPage({ sort, title, icon, page = 1 }: Props) {
   const href = sort === 'recent' ? '/update' : sort === 'new' ? '/new' : sort === 'random' ? '/random' : '/archived'
 
   return (
@@ -136,7 +176,7 @@ export async function ThreadSortPage({ sort, title, icon }: Props) {
 
       <div className="max-w-screen-xl mx-auto px-2">
         <Suspense fallback={<SkeletonList />}>
-          <ThreadList sort={sort} />
+          <ThreadList sort={sort} page={page} />
         </Suspense>
 
         <BottomNav current={href} />
