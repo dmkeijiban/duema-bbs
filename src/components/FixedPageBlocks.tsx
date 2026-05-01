@@ -50,12 +50,13 @@ export function renderBlock(block: Block, i: number) {
       className="border border-gray-100" />
     if (block.link) {
       return (
-        <a key={i} href={block.link} target="_blank" rel="noopener noreferrer" className="inline-block">
+        <a key={i} href={block.link} target="_blank" rel="noopener noreferrer"
+          style={{ display: 'block', maxWidth: 600, margin: '0 auto' }}>
           {img}
         </a>
       )
     }
-    return <div key={i}>{img}</div>
+    return <div key={i} style={{ maxWidth: 600, margin: '0 auto' }}>{img}</div>
   }
 
   if (block.type === 'button') {
