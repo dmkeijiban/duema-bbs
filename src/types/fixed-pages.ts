@@ -2,7 +2,7 @@ export interface TextBlock { type: 'text'; content: string; link?: string }
 export interface ImageBlock { type: 'image'; url: string; alt?: string; link?: string }
 export interface ButtonBlock { type: 'button'; label: string; url: string }
 export interface LinksItem { label: string; url: string; color?: string }
-export interface LinksBlock { type: 'links'; items: LinksItem[] }
+export interface LinksBlock { type: 'links'; items: LinksItem[]; surugaya_url?: string }
 export type Block = TextBlock | ImageBlock | ButtonBlock | LinksBlock
 
 export interface NavPage {
