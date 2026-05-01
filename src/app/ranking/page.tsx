@@ -8,7 +8,7 @@ import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 100
 
 async function RankingList({ page }: { page: number }) {
   const supabase = await createClient()
