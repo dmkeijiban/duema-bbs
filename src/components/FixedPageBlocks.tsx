@@ -1,5 +1,22 @@
 import type { Block } from '@/types/fixed-pages'
 
+const SHOP_COLORS: Record<string, string> = {
+  'Amazon': '#FF9900',
+  '駿河屋': '#9b59b6',
+}
+
+// テキスト内の「●ショップ名」リンクをピルボタンに変換
+function convertShopLinks(html: string): string {
+  return html.replace(
+    /●\s*<a\s([^>]*)>(.*?)<\/a>/g,
+    (_match, attrs, label) => {
+      const trimmed = label.trim()
+      const color = SHOP_COLORS[trimmed] ?? '#0d6efd'
+      return `<a ${attrs} style="display:inline-flex;align-items:center;gap:4px;padding:4px 14px;background:${color};color:white !important;text-decoration:none !important;font-weight:bold;border-radius:9999px;font-size:0.8125rem;">🛒 ${trimmed}</a>`
+    }
+  )
+}
+
 function parseInlineLinks(text: string): React.ReactNode[] {
   const regex = /\[([^\]]+)\]\(([^)]+)\)/g
   const parts: React.ReactNode[] = []
@@ -30,7 +47,8 @@ export function renderBlock(block: Block, i: number) {
     const isHtml = block.content.trimStart().startsWith('<')
     if (isHtml) {
       // <p></p>（空行）はマージン相殺で潰れるため <p><br></p> に変換して高さを確保
-      const html = block.content.replace(/<p><\/p>/gi, '<p><br></p>')
+      // ●Amazon / ●駿河屋 などのテキストリンクをピルボタンに変換
+      const html = convertShopLinks(block.content.replace(/<p><\/p>/gi, '<p><br></p>'))
       return (
         <div key={i} className="text-sm text-gray-800 leading-relaxed rich-content"
           dangerouslySetInnerHTML={{ __html: html }} />
