@@ -60,4 +60,4 @@ body {
 .rich-content li { margin-bottom: 0.25em; }
 .rich-content strong { font-weight: bold; }
 .rich-content em { font-style: italic; }
-.rich-content img { max-width: min(100%, 600px); height: auto; display: block; margin: 0.5em auto; }
+.rich-content img { max-width: min(100%, 600px); height: auto; display: block; margin: 0.5em 0; }
