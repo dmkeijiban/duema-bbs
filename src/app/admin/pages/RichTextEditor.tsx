@@ -4,7 +4,7 @@ import { useEditor, EditorContent, mergeAttributes } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import LinkExtension from '@tiptap/extension-link'
 import ImageExtension from '@tiptap/extension-image'
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect, type CSSProperties } from 'react'
 import { uploadPageImage } from './actions'
 
 // 画像にhref属性を追加したカスタム拡張
@@ -61,9 +61,43 @@ function toHtml(content: string): string {
 
 export function RichTextEditor({ content, onChange }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const toolbarRef = useRef<HTMLDivElement>(null)
   const [uploading, setUploading] = useState(false)
   // undefined = 画像未選択, string = 選択中の画像のhref（空文字含む）
   const [selectedImageHref, setSelectedImageHref] = useState<string | undefined>(undefined)
+  const [toolbarFixed, setToolbarFixed] = useState(false)
+  const [toolbarHeight, setToolbarHeight] = useState(0)
+  const [toolbarFixedStyle, setToolbarFixedStyle] = useState<CSSProperties>({})
+
+  useEffect(() => {
+    const HEADER_H = 46
+    const onScroll = () => {
+      const wrapper = wrapperRef.current
+      const toolbar = toolbarRef.current
+      if (!wrapper || !toolbar) return
+      const wRect = wrapper.getBoundingClientRect()
+      const tHeight = toolbar.offsetHeight
+      if (wRect.top < HEADER_H) {
+        // ツールバーが画面外に出そう → fixed で追従
+        setToolbarFixed(true)
+        setToolbarHeight(tHeight)
+        setToolbarFixedStyle({
+          position: 'fixed',
+          top: HEADER_H,
+          left: wRect.left,
+          width: wRect.width,
+          zIndex: 40,
+        })
+      } else {
+        setToolbarFixed(false)
+        setToolbarHeight(0)
+        setToolbarFixedStyle({})
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   const syncImageState = (ed: ReturnType<typeof useEditor>) => {
     if (!ed) return
@@ -137,9 +171,13 @@ export function RichTextEditor({ content, onChange }: Props) {
   if (!editor) return null
 
   return (
-    <div className="border border-gray-300 rounded">
-      {/* ツールバー：スクロール中も追従（サイトヘッダー46px分下） */}
-      <div className="sticky top-[46px] z-10 flex flex-wrap gap-1 p-1.5 bg-gray-50 border-b border-gray-200 rounded-t">
+    <div ref={wrapperRef} className="border border-gray-300 rounded">
+      {/* ツールバー固定時のスペーサー（レイアウトずれ防止） */}
+      {toolbarFixed && <div style={{ height: toolbarHeight }} />}
+      {/* ツールバー：スクロール中も追従 */}
+      <div ref={toolbarRef}
+        style={toolbarFixed ? toolbarFixedStyle : undefined}
+        className={`flex flex-wrap gap-1 p-1.5 bg-gray-50 border-b border-gray-200 ${toolbarFixed ? 'shadow-md' : 'rounded-t'}`}>
         {btn(editor.isActive('bold'), 'B', () => editor.chain().focus().toggleBold().run(), '太字')}
         {btn(editor.isActive('italic'), 'I', () => editor.chain().focus().toggleItalic().run(), '斜体')}
         <div className="w-px bg-gray-300 mx-0.5" />
