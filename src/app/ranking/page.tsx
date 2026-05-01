@@ -22,7 +22,7 @@ async function RankingList({ page }: { page: number }) {
     .eq('is_archived', false)
     .gte('last_posted_at', since)
 
-  const useRecent = (recentCount ?? 0) >= 20
+  const useRecent = (recentCount ?? 0) >= PAGE_SIZE
 
   // データ取得
   let dataQuery = supabase
