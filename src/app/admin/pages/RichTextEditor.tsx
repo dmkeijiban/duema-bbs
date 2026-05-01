@@ -15,6 +15,26 @@ const ImageWithLink = ImageExtension.extend({
       href: { default: null },
     }
   },
+  // <a href="..."><img></a> のHTMLを読み込んだとき href を復元する
+  parseHTML() {
+    return [
+      {
+        tag: 'img[src]',
+        getAttrs: (node) => {
+          if (typeof node === 'string') return {}
+          const el = node as HTMLElement
+          const parent = el.parentElement
+          const href = parent?.tagName.toLowerCase() === 'a' ? parent.getAttribute('href') : null
+          return {
+            src: el.getAttribute('src'),
+            alt: el.getAttribute('alt') ?? undefined,
+            title: el.getAttribute('title') ?? undefined,
+            href,
+          }
+        },
+      },
+    ]
+  },
   renderHTML({ HTMLAttributes }) {
     const { href, ...imgAttrs } = HTMLAttributes
     const imgNode = ['img', mergeAttributes({ class: 'rich-img' }, imgAttrs)] as [string, Record<string, unknown>]
