@@ -100,7 +100,7 @@ export default async function RankingPage({ searchParams }: Props) {
         {/* ランキングヘッダー */}
         <div className="mb-2 px-3 py-2 border border-gray-300 bg-white flex items-baseline gap-2">
           <span className="font-bold text-sm text-gray-800">📊 人気スレッド</span>
-          <span className="text-xs text-gray-500">（過去3日間 / {LIMIT}位まで）</span>
+          <span className="text-xs text-gray-500">（過去3日間）</span>
         </div>
       </div>
 
@@ -118,7 +118,7 @@ export default async function RankingPage({ searchParams }: Props) {
             ))}
           </div>
         }>
-          <RankingList />
+          <RankingList page={page} />
         </Suspense>
 
         <BottomNav current="/ranking" />
