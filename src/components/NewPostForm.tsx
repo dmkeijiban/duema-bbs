@@ -91,7 +91,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
 
       {/* フォーム */}
       <form onSubmit={handleSubmit}>
-        <table className="w-full text-sm border-collapse">
+        <table className="w-full text-sm border-collapse" style={{ tableLayout: 'fixed' }}>
           <tbody>
             <tr className="border-b border-gray-200">
               <td className="py-2 px-3 whitespace-nowrap align-middle text-xs font-medium" style={{ background: '#f5f5f5', width: 72 }}>
