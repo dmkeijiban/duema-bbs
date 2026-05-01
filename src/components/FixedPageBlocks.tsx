@@ -63,17 +63,13 @@ export function renderBlock(block: Block, i: number) {
     if (!block.items?.length) return null
     return (
       <div key={i} className="flex flex-wrap gap-2">
-        {block.items.map((item, j) => {
-          const isSurugaya = item.color === '#9b59b6'
-          const href = isSurugaya ? (block.surugaya_url || item.url) : item.url
-          return (
-            <a key={j} href={href} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-bold text-white rounded-full shadow-sm hover:opacity-80 transition-opacity"
-              style={{ backgroundColor: item.color || '#0d6efd' }}>
-              🛒 {item.label}
-            </a>
-          )
-        })}
+        {block.items.map((item, j) => (
+          <a key={j} href={item.url} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-bold text-white rounded-full shadow-sm hover:opacity-80 transition-opacity"
+            style={{ backgroundColor: item.color || '#0d6efd' }}>
+            🛒 {item.label}
+          </a>
+        ))}
       </div>
     )
   }

@@ -244,24 +244,11 @@ export function PageEditor({ initial }: Props) {
                     {block.type === 'links' && (
                       <div className="space-y-3">
                         <p className="text-[11px] text-gray-500">Amazon・駿河屋などのショップリンクをボタンとして並べます。</p>
-
-                        {/* 駿河屋 共通URL（ブロックレベル） */}
-                        <div className="flex items-center gap-2 p-2 border border-purple-200 rounded bg-purple-50">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold text-white rounded-full shrink-0"
-                            style={{ backgroundColor: '#9b59b6' }}>🛒 駿河屋</span>
-                          <input type="text"
-                            value={block.surugaya_url ?? ''}
-                            onChange={e => updateBlock(i, { surugaya_url: e.target.value } as Partial<Block>)}
-                            placeholder="駿河屋の共通URL（全アイテム共通）"
-                            className="flex-1 border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:border-purple-400 bg-white" />
-                        </div>
-
                         {block.items.length === 0 && (
                           <p className="text-xs text-gray-400 py-1">リンクがありません。下のボタンから追加してください。</p>
                         )}
                         <div className="space-y-2">
                           {block.items.map((item, j) => {
-                            const isSurugaya = item.color === '#9b59b6'
                             const updateItem = (patch: Partial<typeof item>) => {
                               const items = block.items.map((it, k) => k === j ? { ...it, ...patch } : it)
                               updateBlock(i, { items } as Partial<Block>)
@@ -285,16 +272,10 @@ export function PageEditor({ initial }: Props) {
                                     onChange={e => updateItem({ label: e.target.value })}
                                     placeholder="ショップ名（例: Amazon）"
                                     className="w-full border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:border-blue-400" />
-                                  {/* 駿河屋カラーは共通URLを使うため個別URLは非表示 */}
-                                  {!isSurugaya && (
-                                    <input type="text" value={item.url}
-                                      onChange={e => updateItem({ url: e.target.value })}
-                                      placeholder="https://..."
-                                      className="w-full border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:border-blue-400" />
-                                  )}
-                                  {isSurugaya && (
-                                    <p className="text-[10px] text-purple-500">URL は上の「駿河屋 共通URL」を使用</p>
-                                  )}
+                                  <input type="text" value={item.url}
+                                    onChange={e => updateItem({ url: e.target.value })}
+                                    placeholder="https://..."
+                                    className="w-full border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:border-blue-400" />
                                   <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className="text-[10px] text-gray-500">色:</span>
                                     {COLOR_PRESETS.map(preset => (
