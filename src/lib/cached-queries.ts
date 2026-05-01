@@ -49,6 +49,7 @@ export const getCachedFixedPage = (slug: string): Promise<FixedPage | null> =>
 type ThreadRow = { id: number; title: string; image_url: string | null; post_count: number }
 
 export const THREAD_PAGE_SIZE = 60
+export const POPULAR_PAGE_SIZE = 100
 
 export const getCachedCategories = unstable_cache(
   async () => {
@@ -169,11 +170,12 @@ export function getCachedThreadList(
   categoryId: number | null,
   isArchived: boolean
 ): Promise<CachedThreadListResult> {
+  const pageSize = sort === 'popular' ? POPULAR_PAGE_SIZE : THREAD_PAGE_SIZE
   const cacheKey = `tl-${sort}-p${page}-c${String(categoryId)}-a${String(isArchived)}`
   return unstable_cache(
     async () => {
       const supabase = createPublicClient()
-      const offset = (page - 1) * THREAD_PAGE_SIZE
+      const offset = (page - 1) * pageSize
 
       let countQuery = supabase
         .from('threads')
@@ -197,7 +199,7 @@ export function getCachedThreadList(
         dataQuery = dataQuery.order('last_posted_at', { ascending: false })
       }
 
-      dataQuery = dataQuery.range(offset, offset + THREAD_PAGE_SIZE - 1)
+      dataQuery = dataQuery.range(offset, offset + pageSize - 1)
 
       const [{ count }, { data: raw }] = await Promise.all([countQuery, dataQuery])
       const threads = raw ? await withFallbackThumbnails(supabase, raw as ThreadRow[]) : []
@@ -205,7 +207,7 @@ export function getCachedThreadList(
       return {
         threads,
         count: count ?? 0,
-        totalPages: Math.max(1, Math.ceil((count ?? 0) / THREAD_PAGE_SIZE)),
+        totalPages: Math.max(1, Math.ceil((count ?? 0) / pageSize)),
       }
     },
     [cacheKey],

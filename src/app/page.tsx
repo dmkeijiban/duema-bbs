@@ -20,6 +20,7 @@ import {
   getCachedSetting,
   getCachedThreadList,
   THREAD_PAGE_SIZE,
+  POPULAR_PAGE_SIZE,
 } from '@/lib/cached-queries'
 
 export const revalidate = 60
@@ -132,7 +133,7 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
           <ThreadCard
             key={thread.id}
             thread={thread}
-            rank={sort === 'popular' ? i + 1 + (page - 1) * THREAD_PAGE_SIZE : undefined}
+            rank={sort === 'popular' ? i + 1 + (page - 1) * POPULAR_PAGE_SIZE : undefined}
             priority={i === 0}
           />
         ))}
