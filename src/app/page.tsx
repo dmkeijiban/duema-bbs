@@ -138,9 +138,11 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
           />
         ))}
       </div>
-      <div className="mt-3">
-        <Pagination currentPage={page} totalPages={result.totalPages} searchParams={searchParams} />
-      </div>
+      {sort !== 'popular' && (
+        <div className="mt-3">
+          <Pagination currentPage={page} totalPages={result.totalPages} searchParams={searchParams} />
+        </div>
+      )}
     </>
   )
 }

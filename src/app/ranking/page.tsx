@@ -69,7 +69,6 @@ async function RankingList({ page }: { page: number }) {
           <ThreadCard key={thread.id} thread={thread} rank={offset + i + 1} />
         ))}
       </div>
-      <Pagination currentPage={page} totalPages={totalPages} basePath="/ranking" />
     </>
   )
 }
