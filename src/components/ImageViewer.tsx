@@ -22,8 +22,7 @@ export function ImageViewer({ src, alt = '添付画像' }: Props) {
   return (
     <>
       {/* サムネ表示：maxWidth固定のwrapperでwidth:100%にして全画像を同じ幅で揃える */}
-      {/* aspectRatio でロード前のスペースを確保して CLS を防ぐ */}
-      <div style={{ maxWidth: 280, width: '100%', aspectRatio: '4/3', background: '#f3f4f6', overflow: 'hidden' }}>
+      <div style={{ maxWidth: 280, width: '100%' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
@@ -32,8 +31,7 @@ export function ImageViewer({ src, alt = '添付画像' }: Props) {
           onClick={() => setOpen(true)}
           style={{
             width: '100%',
-            height: '100%',
-            objectFit: 'cover',
+            height: 'auto',
             display: 'block',
             cursor: 'zoom-in',
           }}
