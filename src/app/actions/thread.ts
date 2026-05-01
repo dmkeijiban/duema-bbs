@@ -251,7 +251,7 @@ export async function createPost(formData: FormData) {
   revalidateTag(`thread-${threadId}`, { expire: 0 })
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/')
-  return { success: true }
+  return { success: true, postNumber: nextPostNumber }
 }
 
 export async function toggleFavorite(threadId: number) {

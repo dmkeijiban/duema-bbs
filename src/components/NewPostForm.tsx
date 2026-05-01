@@ -1,11 +1,14 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useRef, useState, useTransition, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createPost } from '@/app/actions/thread'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { SettingEditButton } from './SettingEditButton'
 import { PushSubscribeButton } from './PushSubscribeButton'
+
+const POSTS_PER_PAGE = 50
 
 interface Props {
   threadId: number
@@ -20,7 +23,37 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
   const [authorName, setAuthorName] = useState('')
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
+  const [scrollTarget, setScrollTarget] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
+
+  useEffect(() => {
+    if (scrollTarget === null) return
+    let tries = 0
+    const attempt = () => {
+      const el = document.getElementById(`post-${scrollTarget}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        setScrollTarget(null)
+        return
+      }
+      tries++
+      if (tries < 20) {
+        setTimeout(attempt, 150)
+      } else {
+        // 別ページに投稿された場合はそのページに遷移してアンカーへ
+        const postNumber = scrollTarget - 1
+        const targetPage = Math.ceil(postNumber / POSTS_PER_PAGE)
+        const url = targetPage <= 1
+          ? `/thread/${threadId}#post-${scrollTarget}`
+          : `/thread/${threadId}?page=${targetPage}#post-${scrollTarget}`
+        router.push(url)
+        setScrollTarget(null)
+      }
+    }
+    attempt()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrollTarget])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,7 +75,9 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
           onBodyChange('')
           setAuthorName('')
           if (fileInputRef.current) fileInputRef.current.value = ''
-          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+          if ('postNumber' in result && typeof result.postNumber === 'number') {
+            setScrollTarget(result.postNumber + 1)
+          }
         }
       } catch {
         // デプロイ後に古いJSキャッシュを持つタブからアクセスするとサーバーアクションIDが
