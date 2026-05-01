@@ -28,6 +28,7 @@ export function PageEditor({ initial }: Props) {
     const block: Block =
       type === 'text' ? { type: 'text', content: '' }
       : type === 'image' ? { type: 'image', url: '', alt: '', link: '' }
+      : type === 'links' ? { type: 'links', items: [] }
       : { type: 'button', label: '', url: '' }
     const next = [...blocks, block]
     setBlocks(next)
@@ -87,6 +88,7 @@ export function PageEditor({ initial }: Props) {
       return text || '(空)'
     }
     if (b.type === 'image') return b.url || '(URLなし)'
+    if (b.type === 'links') return `ショップリンク: ${b.items.map(it => it.label).filter(Boolean).join('・') || '(なし)'}`
     return `ボタン: ${b.label || '(ラベルなし)'}`
   }
 
@@ -159,7 +161,7 @@ export function PageEditor({ initial }: Props) {
                 {/* ブロックヘッダー */}
                 <div className="flex items-center gap-1.5 px-2 py-1.5 bg-gray-50 rounded-t">
                   <span className="text-[10px] font-medium px-1.5 py-0.5 bg-white border border-gray-200 rounded shrink-0">
-                    {block.type === 'text' ? '📝 テキスト' : block.type === 'image' ? '🖼 画像' : '🔘 ボタン'}
+                    {block.type === 'text' ? '📝 テキスト' : block.type === 'image' ? '🖼 画像' : block.type === 'links' ? '🛒 ショップリンク' : '🔘 ボタン'}
                   </span>
                   <span className="flex-1 text-xs text-gray-500 truncate min-w-0">{blockLabel(block)}</span>
                   <div className="flex gap-1 shrink-0">
@@ -226,6 +228,80 @@ export function PageEditor({ initial }: Props) {
                       </>
                     )}
 
+                    {block.type === 'links' && (
+                      <div className="space-y-3">
+                        <p className="text-[11px] text-gray-500">Amazon・駿河屋などのショップリンクをボタンとして並べます。</p>
+                        {block.items.length === 0 && (
+                          <p className="text-xs text-gray-400 py-1">リンクがありません。下のボタンから追加してください。</p>
+                        )}
+                        <div className="space-y-2">
+                          {block.items.map((item, j) => {
+                            const updateItem = (patch: Partial<typeof item>) => {
+                              const items = block.items.map((it, k) => k === j ? { ...it, ...patch } : it)
+                              updateBlock(i, { items } as Partial<Block>)
+                            }
+                            const removeItem = () => {
+                              const items = block.items.filter((_, k) => k !== j)
+                              updateBlock(i, { items } as Partial<Block>)
+                            }
+                            const COLOR_PRESETS = [
+                              { label: 'Amazon', color: '#FF9900' },
+                              { label: '駿河屋', color: '#9b59b6' },
+                              { label: '青', color: '#0d6efd' },
+                              { label: '緑', color: '#28a745' },
+                              { label: '赤', color: '#dc3545' },
+                              { label: '黒', color: '#333333' },
+                            ]
+                            return (
+                              <div key={j} className="flex gap-2 items-start p-2 border border-gray-200 rounded bg-gray-50">
+                                <div className="flex-1 space-y-1.5 min-w-0">
+                                  <input type="text" value={item.label}
+                                    onChange={e => updateItem({ label: e.target.value })}
+                                    placeholder="ショップ名（例: Amazon）"
+                                    className="w-full border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:border-blue-400" />
+                                  <input type="text" value={item.url}
+                                    onChange={e => updateItem({ url: e.target.value })}
+                                    placeholder="https://..."
+                                    className="w-full border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:border-blue-400" />
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[10px] text-gray-500">色:</span>
+                                    {COLOR_PRESETS.map(preset => (
+                                      <button key={preset.color} type="button" title={preset.label}
+                                        onClick={() => updateItem({ color: preset.color })}
+                                        className={`w-5 h-5 rounded-full border-2 transition-transform ${item.color === preset.color ? 'border-gray-700 scale-110' : 'border-transparent'}`}
+                                        style={{ backgroundColor: preset.color }} />
+                                    ))}
+                                    <input type="color" value={item.color || '#0d6efd'}
+                                      onChange={e => updateItem({ color: e.target.value })}
+                                      title="カスタムカラー"
+                                      className="w-6 h-5 cursor-pointer border border-gray-300 rounded" />
+                                    {item.label && (
+                                      <span className="ml-1 inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold text-white rounded-full"
+                                        style={{ backgroundColor: item.color || '#0d6efd' }}>
+                                        🛒 {item.label}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <button type="button" onClick={removeItem}
+                                  className="text-[10px] px-1.5 py-0.5 text-white rounded shrink-0 mt-0.5" style={{ background: '#dc3545' }}>
+                                  削除
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        <button type="button"
+                          onClick={() => {
+                            const items = [...block.items, { label: '', url: '', color: '#0d6efd' }]
+                            updateBlock(i, { items } as Partial<Block>)
+                          }}
+                          className="text-xs px-2.5 py-1 border border-gray-300 bg-white hover:bg-gray-50 rounded">
+                          + リンクを追加
+                        </button>
+                      </div>
+                    )}
+
                     {block.type === 'button' && (
                       <>
                         <div>
@@ -262,6 +338,8 @@ export function PageEditor({ initial }: Props) {
               className="text-xs px-2.5 py-1 border border-gray-300 bg-white hover:bg-gray-50 rounded">📝 テキスト</button>
             <button type="button" onClick={() => addBlock('image')}
               className="text-xs px-2.5 py-1 border border-gray-300 bg-white hover:bg-gray-50 rounded">🖼 画像</button>
+            <button type="button" onClick={() => addBlock('links')}
+              className="text-xs px-2.5 py-1 border border-gray-300 bg-white hover:bg-gray-50 rounded">🛒 ショップリンク</button>
             <button type="button" onClick={() => addBlock('button')}
               className="text-xs px-2.5 py-1 border border-gray-300 bg-white hover:bg-gray-50 rounded">🔘 ボタン</button>
           </div>

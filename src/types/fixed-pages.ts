@@ -1,7 +1,9 @@
 export interface TextBlock { type: 'text'; content: string; link?: string }
 export interface ImageBlock { type: 'image'; url: string; alt?: string; link?: string }
 export interface ButtonBlock { type: 'button'; label: string; url: string }
-export type Block = TextBlock | ImageBlock | ButtonBlock
+export interface LinksItem { label: string; url: string; color?: string }
+export interface LinksBlock { type: 'links'; items: LinksItem[] }
+export type Block = TextBlock | ImageBlock | ButtonBlock | LinksBlock
 
 export interface NavPage {
   id: number
@@ -23,6 +25,6 @@ export function parseBlocks(raw: unknown): Block[] {
   return raw.filter((b): b is Block => {
     if (!b || typeof b !== 'object') return false
     const t = (b as Record<string, unknown>).type
-    return t === 'text' || t === 'image' || t === 'button'
+    return t === 'text' || t === 'image' || t === 'button' || t === 'links'
   })
 }
