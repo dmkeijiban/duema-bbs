@@ -64,17 +64,16 @@ function detectCategoryId(title: string, body: string): number {
   return 21
 }
 
-/** 本文を自然な掲示板投稿に整形 */
+/** 本文を掲示板投稿用に整形 */
 function buildThreadBody(title: string, rawBody: string): string {
   let body = rawBody.replace(/<[^>]*>/g, '').trim()
   body = body.replace(/\n{3,}/g, '\n\n')
-  if (body.length >= 100) {
-    if (!/[?？]$/.test(body.trim())) {
-      body = `${body}\n\nみなさんはどう思いますか？`
-    }
+  // あにまんから取得できた本文はそのまま使う
+  if (body.length > 0) {
     return body
   }
-  return `${title}について話しましょう！\n\n${body ? body + '\n\n' : ''}気になる方はぜひ意見を聞かせてください。`
+  // 本文が空の場合のみ最小限のフォールバック
+  return `${title}についてみなさんはどう思いますか？`
 }
 
 interface AnimanchThread {
@@ -96,11 +95,18 @@ async function fetchAnimanchDuemaThreads(): Promise<AnimanchThread[]> {
   if (!res.ok) throw new Error(`animanch category fetch failed: ${res.status}`)
   const html = await res.text()
 
-  const threadPattern = /href="\/board\/(\d+)\/"\s*>([^<]+?)\d+<\/a>/g
+  // 実際のHTML構造:
+  // <a href="https://bbs.animanch.com/board/BOARDID/" class="card">
+  //   ...<div class="card-body">スレタイ<p class="threadCount">N</p></div>...
+  // </a>
+  const threadPattern = /href="https:\/\/bbs\.animanch\.com\/board\/(\d+)\/"[^>]*class="card"[^>]*>[\s\S]*?<div class="card-body">([\s\S]*?)<p class="threadCount"/g
   const threads: AnimanchThread[] = []
+  const seenIds = new Set<number>()
   let m: RegExpExecArray | null
   while ((m = threadPattern.exec(html)) !== null) {
     const boardId = parseInt(m[1], 10)
+    if (seenIds.has(boardId)) continue
+    seenIds.add(boardId)
     const rawTitle = m[2].trim()
     if (isDuemaRelated(rawTitle)) {
       threads.push({ boardId, title: rawTitle })
@@ -120,15 +126,18 @@ async function fetchAnimanchFirstPost(boardId: number): Promise<AnimanchThreadDe
   const html = await res.text()
 
   let body = ''
-  const bodyMatch = html.match(/<p[^>]*class="resbody[^"]*"[^>]*>([\s\S]*?)<\/p>/)
+  // 実際のHTML構造:
+  // <div class="resbody nomal"><p>本文テキスト<br>続き</p>...</div>
+  const bodyMatch = html.match(/<div class="resbody[^"]*">\s*<p>([\s\S]*?)<\/p>/)
   if (bodyMatch) {
     body = bodyMatch[1].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim()
   }
 
   let imageUrl: string | null = null
-  const imgMatch = html.match(/href="(\/img\/\d+\/1)"/)
+  // 実際のHTML構造: href="https://bbs.animanch.com/img/BOARDID/1" (絶対URL)
+  const imgMatch = html.match(/href="(https:\/\/bbs\.animanch\.com\/img\/\d+\/1)"/)
   if (imgMatch) {
-    imageUrl = `${ANIMANCH_BASE}${imgMatch[1]}`
+    imageUrl = imgMatch[1]
   }
 
   return { body, imageUrl }
