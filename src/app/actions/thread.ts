@@ -41,6 +41,21 @@ export async function createThread(formData: FormData) {
 
   const supabase = await createClient()
 
+  // 管理者専用カテゴリの保護（フロントを迂回したリクエストをブロック）
+  if (categoryId) {
+    const { data: cat } = await supabase
+      .from('categories')
+      .select('name')
+      .eq('id', parseInt(categoryId))
+      .single()
+    const ADMIN_ONLY = ['管理者連絡']
+    if (cat && ADMIN_ONLY.includes(cat.name)) {
+      const cookieStore = await cookies()
+      const isAdmin = cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+      if (!isAdmin) return { error: 'このカテゴリは管理者のみ使用できます' }
+    }
+  }
+
   let imageUrl: string | null = null
   let imageWidth: number | null = null
   let imageHeight: number | null = null
