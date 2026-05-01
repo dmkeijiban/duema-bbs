@@ -1,7 +1,6 @@
 'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase-server'
 import { hasJapanese } from '@/lib/spam'
@@ -131,7 +130,7 @@ export async function createThread(formData: FormData) {
 
   revalidatePath('/')
   revalidateTag('threads', { expire: 0 })
-  redirect(`/thread/${thread.id}`)
+  return { success: true, threadId: thread.id }
 }
 
 export async function createPost(formData: FormData) {

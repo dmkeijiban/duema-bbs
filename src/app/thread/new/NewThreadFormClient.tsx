@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { createThread } from '@/app/actions/thread'
 import { ImageUploadField } from '@/components/ImageUploadField'
 import { PenSquare } from '@/components/Icons'
@@ -18,6 +19,7 @@ interface Props {
 export function NewThreadFormClient({ categories }: Props) {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -26,7 +28,11 @@ export function NewThreadFormClient({ categories }: Props) {
     startTransition(async () => {
       try {
         const result = await createThread(formData)
-        if (result?.error) setError(result.error)
+        if (result?.error) {
+          setError(result.error)
+        } else if ('threadId' in result && result.threadId) {
+          router.push(`/thread/${result.threadId}`)
+        }
       } catch {
         // デプロイ後の古いJSキャッシュによるサーバーアクション404対策
         setError('ページが古くなっています。再読み込みしてから再度投稿してください。')
