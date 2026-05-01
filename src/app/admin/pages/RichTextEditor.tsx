@@ -48,6 +48,8 @@ const ImageWithLink = ImageExtension.extend({
 interface Props {
   content: string
   onChange: (html: string) => void
+  onAddLinks?: () => void
+  onAddButton?: () => void
 }
 
 function toHtml(content: string): string {
@@ -59,7 +61,7 @@ function toHtml(content: string): string {
     .join('')
 }
 
-export function RichTextEditor({ content, onChange }: Props) {
+export function RichTextEditor({ content, onChange, onAddLinks, onAddButton }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const toolbarRef = useRef<HTMLDivElement>(null)
@@ -193,6 +195,25 @@ export function RichTextEditor({ content, onChange }: Props) {
         </button>
         <input ref={fileRef} type="file" accept="image/*" className="hidden"
           onChange={e => { const f = e.target.files?.[0]; if (f) { insertImage(f); e.target.value = '' } }} />
+
+        {/* ブロック追加ショートカット */}
+        {(onAddLinks || onAddButton) && (
+          <>
+            <div className="w-px bg-gray-300 mx-0.5" />
+            {onAddLinks && (
+              <button type="button" onClick={onAddLinks}
+                className="px-2 py-1 text-xs border rounded bg-white text-gray-700 border-gray-300 hover:bg-gray-50">
+                🛒 ショップリンク
+              </button>
+            )}
+            {onAddButton && (
+              <button type="button" onClick={onAddButton}
+                className="px-2 py-1 text-xs border rounded bg-white text-gray-700 border-gray-300 hover:bg-gray-50">
+                🔘 ボタン
+              </button>
+            )}
+          </>
+        )}
 
         {/* 画像選択中のみ表示 */}
         {selectedImageHref !== undefined && (

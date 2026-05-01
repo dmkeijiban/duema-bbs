@@ -198,6 +198,8 @@ export function PageEditor({ initial }: Props) {
                       <RichTextEditor
                         content={block.content}
                         onChange={html => updateBlock(i, { content: html })}
+                        onAddLinks={() => addBlock('links')}
+                        onAddButton={() => addBlock('button')}
                       />
                     )}
 
