@@ -321,10 +321,7 @@ export default async function Home({
           <HomeBannerServer />
         </Suspense>
 
-        {/* topNotices: 同一高さのスケルトンで空間を予約し CLS を防ぐ。
-            TopNoticesServer は常に height:80 の行を返すため、
-            スケルトンと実コンテンツの高さが一致して layout shift がゼロになる。 */}
-        <Suspense fallback={<TopNoticesSkeleton />}>
+        <Suspense fallback={null}>
           <TopNoticesServer />
         </Suspense>
 

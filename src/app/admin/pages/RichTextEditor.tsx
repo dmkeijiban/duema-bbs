@@ -68,6 +68,14 @@ export function RichTextEditor({ content, onChange }: Props) {
     onSelectionUpdate: ({ editor }) => syncImageState(editor),
     editorProps: {
       attributes: { class: 'rich-editor-content', spellCheck: 'false' },
+      handleDOMEvents: {
+        // エディタ内のリンク（画像リンク含む）クリックで外部遷移しないよう防ぐ
+        click: (_view, event) => {
+          const anchor = (event.target as HTMLElement).closest('a[href]')
+          if (anchor) event.preventDefault()
+          return false
+        },
+      },
     },
   })
 
@@ -109,9 +117,9 @@ export function RichTextEditor({ content, onChange }: Props) {
   if (!editor) return null
 
   return (
-    <div className="border border-gray-300 rounded overflow-hidden">
-      {/* ツールバー */}
-      <div className="flex flex-wrap gap-1 p-1.5 bg-gray-50 border-b border-gray-200">
+    <div className="border border-gray-300 rounded">
+      {/* ツールバー：スクロール中も追従（サイトヘッダー46px分下） */}
+      <div className="sticky top-[46px] z-10 flex flex-wrap gap-1 p-1.5 bg-gray-50 border-b border-gray-200 rounded-t">
         {btn(editor.isActive('bold'), 'B', () => editor.chain().focus().toggleBold().run(), '太字')}
         {btn(editor.isActive('italic'), 'I', () => editor.chain().focus().toggleItalic().run(), '斜体')}
         <div className="w-px bg-gray-300 mx-0.5" />

@@ -36,7 +36,7 @@ export async function RecommendSection() {
           >
             <div className="relative shrink-0 bg-gray-100 overflow-hidden w-11 h-11 md:w-16 md:h-16">
               {thread.image_url && (
-                <Image src={thread.image_url} alt="" fill className="object-cover" sizes="(min-width: 768px) 64px, 44px" priority={idx === 0} />
+                <Image src={thread.image_url} alt="" fill className="object-cover" sizes="256px" quality={85} priority={idx === 0} />
               )}
             </div>
             <div className="px-1 py-0.5 flex-1 min-w-0">

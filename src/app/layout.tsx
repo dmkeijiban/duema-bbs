@@ -16,9 +16,9 @@ export const metadata: Metadata = {
     canonical: 'https://duema-bbs.vercel.app',
   },
   icons: {
-    icon: [{ url: '/icon.jpg', type: 'image/jpeg' }],
-    shortcut: '/icon.jpg',
-    apple: '/icon.jpg',
+    icon: [{ url: '/logo.jpg', type: 'image/jpeg' }],
+    shortcut: '/logo.jpg',
+    apple: '/logo.jpg',
   },
   openGraph: {
     title: 'デュエマ掲示板 | デュエルマスターズ専門掲示板',
