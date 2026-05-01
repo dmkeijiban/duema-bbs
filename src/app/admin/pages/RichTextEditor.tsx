@@ -134,6 +134,21 @@ const ShopLink = Node.create({
   },
 })
 
+const COLOR_PRESETS = [
+  { label: 'Amazon', color: '#FF9900' },
+  { label: '駿河屋', color: '#9b59b6' },
+  { label: '青', color: '#0d6efd' },
+  { label: '緑', color: '#28a745' },
+  { label: '赤', color: '#dc3545' },
+  { label: '黒', color: '#333333' },
+]
+
+interface ShopLinkDialog {
+  label: string
+  url: string
+  color: string
+}
+
 interface Props {
   content: string
   onChange: (html: string) => void
@@ -158,6 +173,12 @@ export function RichTextEditor({ content, onChange }: Props) {
   const [toolbarFixed, setToolbarFixed] = useState(false)
   const [toolbarHeight, setToolbarHeight] = useState(0)
   const [toolbarFixedStyle, setToolbarFixedStyle] = useState<CSSProperties>({})
+
+  // ショップリンクダイアログ
+  const [shopDialog, setShopDialog] = useState<ShopLinkDialog | null>(null)
+
+  // ボタンダイアログ
+  const [btnDialog, setBtnDialog] = useState<{ label: string; url: string } | null>(null)
 
   useEffect(() => {
     const HEADER_H = 46
@@ -252,33 +273,24 @@ export function RichTextEditor({ content, onChange }: Props) {
     if (result.url) editor.chain().focus().setImage({ src: result.url }).run()
   }
 
-  const insertButton = () => {
-    if (!editor) return
-    const label = window.prompt('ボタンのテキスト:', '')
-    if (!label?.trim()) return
-    const url = window.prompt('リンク先URL:', 'https://')
-    if (!url?.trim()) return
-    editor.chain().focus().insertContent({
-      type: 'pageButton',
-      attrs: { href: url.trim(), label: label.trim() },
-    }).run()
-  }
-
-  const insertShopLink = () => {
-    if (!editor) return
-    const label = window.prompt('ショップ名（例: Amazon）:', '')
-    if (!label?.trim()) return
-    const url = window.prompt('リンク先URL:', 'https://')
-    if (!url?.trim()) return
-    const colorRaw = window.prompt(
-      'ボタンの色（例: #FF9900=Amazon / #9b59b6=駿河屋 / #0d6efd=青）:',
-      '#FF9900'
-    )
-    const color = colorRaw?.trim() || '#FF9900'
+  const submitShopLink = () => {
+    if (!editor || !shopDialog) return
+    if (!shopDialog.label.trim() || !shopDialog.url.trim()) return
     editor.chain().focus().insertContent({
       type: 'shopLink',
-      attrs: { href: url.trim(), label: label.trim(), color },
+      attrs: { href: shopDialog.url.trim(), label: shopDialog.label.trim(), color: shopDialog.color },
     }).run()
+    setShopDialog(null)
+  }
+
+  const submitButton = () => {
+    if (!editor || !btnDialog) return
+    if (!btnDialog.label.trim() || !btnDialog.url.trim()) return
+    editor.chain().focus().insertContent({
+      type: 'pageButton',
+      attrs: { href: btnDialog.url.trim(), label: btnDialog.label.trim() },
+    }).run()
+    setBtnDialog(null)
   }
 
   const btn = (active: boolean, label: string, onClick: () => void, title?: string) => (
@@ -314,11 +326,11 @@ export function RichTextEditor({ content, onChange }: Props) {
         <input ref={fileRef} type="file" accept="image/*" className="hidden"
           onChange={e => { const f = e.target.files?.[0]; if (f) { insertImage(f); e.target.value = '' } }} />
         <div className="w-px bg-gray-300 mx-0.5" />
-        <button type="button" onClick={insertShopLink}
+        <button type="button" onClick={() => setShopDialog({ label: '', url: '', color: '#FF9900' })}
           className="px-2 py-1 text-xs border rounded bg-white text-gray-700 border-gray-300 hover:bg-gray-50">
           🛒 ショップリンク
         </button>
-        <button type="button" onClick={insertButton}
+        <button type="button" onClick={() => setBtnDialog({ label: '', url: '' })}
           className="px-2 py-1 text-xs border rounded bg-white text-gray-700 border-gray-300 hover:bg-gray-50">
           🔘 ボタン
         </button>
@@ -339,6 +351,131 @@ export function RichTextEditor({ content, onChange }: Props) {
       </div>
 
       <EditorContent editor={editor} />
+
+      {/* ショップリンクダイアログ */}
+      {shopDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={e => { if (e.target === e.currentTarget) setShopDialog(null) }}>
+          <div className="bg-white rounded-lg shadow-xl w-80 p-4 space-y-3">
+            <p className="font-bold text-sm text-gray-800">🛒 ショップリンクを挿入</p>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-0.5">ショップ名 <span className="text-red-500">*</span></label>
+              <input type="text" value={shopDialog.label}
+                onChange={e => setShopDialog(d => d && ({ ...d, label: e.target.value }))}
+                placeholder="例: Amazon"
+                className="w-full border border-gray-300 px-2 py-1.5 text-sm rounded focus:outline-none focus:border-blue-400"
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-0.5">URL <span className="text-red-500">*</span></label>
+              <input type="text" value={shopDialog.url}
+                onChange={e => setShopDialog(d => d && ({ ...d, url: e.target.value }))}
+                placeholder="https://..."
+                className="w-full border border-gray-300 px-2 py-1.5 text-sm rounded focus:outline-none focus:border-blue-400"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1.5">ボタンの色</label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {COLOR_PRESETS.map(preset => (
+                  <button key={preset.color} type="button"
+                    onClick={() => setShopDialog(d => d && ({ ...d, color: preset.color }))}
+                    title={preset.label}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs text-white font-bold transition-transform"
+                    style={{
+                      backgroundColor: preset.color,
+                      outline: shopDialog.color === preset.color ? '2px solid #333' : 'none',
+                      outlineOffset: 2,
+                      transform: shopDialog.color === preset.color ? 'scale(1.1)' : 'scale(1)',
+                    }}>
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="color" value={shopDialog.color}
+                  onChange={e => setShopDialog(d => d && ({ ...d, color: e.target.value }))}
+                  className="w-8 h-8 cursor-pointer rounded border border-gray-300"
+                  title="カスタムカラー" />
+                <span className="text-xs text-gray-500">カスタム色</span>
+                <span className="ml-auto inline-flex items-center gap-1 px-3 py-1 text-xs font-bold text-white rounded-full"
+                  style={{ backgroundColor: shopDialog.color }}>
+                  🛒 {shopDialog.label || 'プレビュー'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button type="button" onClick={() => setShopDialog(null)}
+                className="px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50">
+                キャンセル
+              </button>
+              <button type="button" onClick={submitShopLink}
+                disabled={!shopDialog.label.trim() || !shopDialog.url.trim()}
+                className="px-4 py-1.5 text-xs text-white rounded disabled:opacity-40"
+                style={{ background: '#0d6efd' }}>
+                挿入する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ボタンダイアログ */}
+      {btnDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={e => { if (e.target === e.currentTarget) setBtnDialog(null) }}>
+          <div className="bg-white rounded-lg shadow-xl w-72 p-4 space-y-3">
+            <p className="font-bold text-sm text-gray-800">🔘 ボタンを挿入</p>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-0.5">ボタンのテキスト <span className="text-red-500">*</span></label>
+              <input type="text" value={btnDialog.label}
+                onChange={e => setBtnDialog(d => d && ({ ...d, label: e.target.value }))}
+                placeholder="例: 詳細はこちら"
+                className="w-full border border-gray-300 px-2 py-1.5 text-sm rounded focus:outline-none focus:border-blue-400"
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-0.5">URL <span className="text-red-500">*</span></label>
+              <input type="text" value={btnDialog.url}
+                onChange={e => setBtnDialog(d => d && ({ ...d, url: e.target.value }))}
+                placeholder="https://..."
+                className="w-full border border-gray-300 px-2 py-1.5 text-sm rounded focus:outline-none focus:border-blue-400"
+              />
+            </div>
+
+            {btnDialog.label && (
+              <div>
+                <p className="text-[10px] text-gray-400 mb-1">プレビュー：</p>
+                <span className="inline-block px-4 py-1.5 text-xs font-medium text-white rounded"
+                  style={{ background: '#0d6efd' }}>
+                  {btnDialog.label}
+                </span>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button type="button" onClick={() => setBtnDialog(null)}
+                className="px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50">
+                キャンセル
+              </button>
+              <button type="button" onClick={submitButton}
+                disabled={!btnDialog.label.trim() || !btnDialog.url.trim()}
+                className="px-4 py-1.5 text-xs text-white rounded disabled:opacity-40"
+                style={{ background: '#0d6efd' }}>
+                挿入する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .rich-editor-content {
