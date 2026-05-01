@@ -30,7 +30,7 @@ export default async function FixedPageRoute({ params }: Props) {
         </span>
       </nav>
       <div className="bg-white border border-gray-300 p-5">
-        <h1 className="text-xl font-bold text-gray-800 pb-3 mb-4 border-b-2 border-blue-600">{page.title}</h1>
+        <h1 className="text-base font-bold border-b border-gray-200 pb-2 mb-4">■ {page.title}</h1>
         <div className="space-y-4">
           {page.content.length === 0 ? (
             <p className="text-xs text-gray-400">コンテンツがありません</p>
