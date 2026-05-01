@@ -61,3 +61,23 @@ body {
 .rich-content strong { font-weight: bold; }
 .rich-content em { font-style: italic; }
 .rich-content img { max-width: min(100%, 600px); height: auto; display: block; margin: 0.5em 0; }
+.rich-content a.page-btn {
+  display: inline-block;
+  padding: 6px 20px;
+  background: #0d6efd;
+  color: white !important;
+  text-decoration: none !important;
+  font-weight: 500;
+  border-radius: 2px;
+}
+.rich-content a.page-btn:hover { opacity: 0.9; }
+.rich-content a.shop-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  color: white !important;
+  text-decoration: none !important;
+  font-weight: bold;
+  border-radius: 9999px;
+}
+.rich-content a.shop-link:hover { opacity: 0.8; }

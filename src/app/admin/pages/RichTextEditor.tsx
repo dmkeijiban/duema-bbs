@@ -1,6 +1,6 @@
 'use client'
 
-import { useEditor, EditorContent, mergeAttributes } from '@tiptap/react'
+import { useEditor, EditorContent, mergeAttributes, Node } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import LinkExtension from '@tiptap/extension-link'
 import ImageExtension from '@tiptap/extension-image'
@@ -45,11 +45,98 @@ const ImageWithLink = ImageExtension.extend({
   },
 })
 
+// インラインボタンノード（テキスト内に埋め込むリンクボタン）
+const PageButton = Node.create({
+  name: 'pageButton',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  addAttributes() {
+    return {
+      href: { default: '' },
+      label: { default: 'ボタン' },
+    }
+  },
+  parseHTML() {
+    return [
+      {
+        tag: 'a[data-btn]',
+        getAttrs: (node) => {
+          if (typeof node === 'string') return {}
+          const el = node as HTMLElement
+          return {
+            href: el.getAttribute('href') || '',
+            label: el.textContent || 'ボタン',
+          }
+        },
+      },
+    ]
+  },
+  renderHTML({ node }) {
+    return [
+      'a',
+      {
+        'data-btn': '',
+        href: node.attrs.href,
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        class: 'page-btn',
+      },
+      node.attrs.label,
+    ]
+  },
+})
+
+// インラインショップリンクノード（テキスト内に埋め込む色付きバッジリンク）
+const ShopLink = Node.create({
+  name: 'shopLink',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  addAttributes() {
+    return {
+      href: { default: '' },
+      label: { default: 'ショップ' },
+      color: { default: '#0d6efd' },
+    }
+  },
+  parseHTML() {
+    return [
+      {
+        tag: 'a[data-shop]',
+        getAttrs: (node) => {
+          if (typeof node === 'string') return {}
+          const el = node as HTMLElement
+          const style = el.getAttribute('style') || ''
+          const colorMatch = style.match(/background-color:\s*([^;]+)/)
+          return {
+            href: el.getAttribute('href') || '',
+            label: (el.textContent || 'ショップ').replace(/^🛒\s*/, ''),
+            color: colorMatch?.[1]?.trim() || '#0d6efd',
+          }
+        },
+      },
+    ]
+  },
+  renderHTML({ node }) {
+    return [
+      'a',
+      {
+        'data-shop': '',
+        href: node.attrs.href,
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        class: 'shop-link',
+        style: `background-color:${node.attrs.color}`,
+      },
+      `🛒 ${node.attrs.label}`,
+    ]
+  },
+})
+
 interface Props {
   content: string
   onChange: (html: string) => void
-  onAddLinks?: () => void
-  onAddButton?: () => void
 }
 
 function toHtml(content: string): string {
@@ -61,7 +148,7 @@ function toHtml(content: string): string {
     .join('')
 }
 
-export function RichTextEditor({ content, onChange, onAddLinks, onAddButton }: Props) {
+export function RichTextEditor({ content, onChange }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const toolbarRef = useRef<HTMLDivElement>(null)
@@ -118,6 +205,8 @@ export function RichTextEditor({ content, onChange, onAddLinks, onAddButton }: P
         HTMLAttributes: { class: 'rich-link', target: '_blank', rel: 'noopener noreferrer' },
       }),
       ImageWithLink.configure({ HTMLAttributes: { class: 'rich-img' } }),
+      PageButton,
+      ShopLink,
     ],
     content: toHtml(content),
     onUpdate: ({ editor }) => { onChange(editor.getHTML()); syncImageState(editor) },
@@ -163,6 +252,35 @@ export function RichTextEditor({ content, onChange, onAddLinks, onAddButton }: P
     if (result.url) editor.chain().focus().setImage({ src: result.url }).run()
   }
 
+  const insertButton = () => {
+    if (!editor) return
+    const label = window.prompt('ボタンのテキスト:', '')
+    if (!label?.trim()) return
+    const url = window.prompt('リンク先URL:', 'https://')
+    if (!url?.trim()) return
+    editor.chain().focus().insertContent({
+      type: 'pageButton',
+      attrs: { href: url.trim(), label: label.trim() },
+    }).run()
+  }
+
+  const insertShopLink = () => {
+    if (!editor) return
+    const label = window.prompt('ショップ名（例: Amazon）:', '')
+    if (!label?.trim()) return
+    const url = window.prompt('リンク先URL:', 'https://')
+    if (!url?.trim()) return
+    const colorRaw = window.prompt(
+      'ボタンの色（例: #FF9900=Amazon / #9b59b6=駿河屋 / #0d6efd=青）:',
+      '#FF9900'
+    )
+    const color = colorRaw?.trim() || '#FF9900'
+    editor.chain().focus().insertContent({
+      type: 'shopLink',
+      attrs: { href: url.trim(), label: label.trim(), color },
+    }).run()
+  }
+
   const btn = (active: boolean, label: string, onClick: () => void, title?: string) => (
     <button type="button" onClick={onClick} title={title}
       className={`px-2 py-1 text-xs border rounded ${active ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>
@@ -195,25 +313,15 @@ export function RichTextEditor({ content, onChange, onAddLinks, onAddButton }: P
         </button>
         <input ref={fileRef} type="file" accept="image/*" className="hidden"
           onChange={e => { const f = e.target.files?.[0]; if (f) { insertImage(f); e.target.value = '' } }} />
-
-        {/* ブロック追加ショートカット */}
-        {(onAddLinks || onAddButton) && (
-          <>
-            <div className="w-px bg-gray-300 mx-0.5" />
-            {onAddLinks && (
-              <button type="button" onClick={onAddLinks}
-                className="px-2 py-1 text-xs border rounded bg-white text-gray-700 border-gray-300 hover:bg-gray-50">
-                🛒 ショップリンク
-              </button>
-            )}
-            {onAddButton && (
-              <button type="button" onClick={onAddButton}
-                className="px-2 py-1 text-xs border rounded bg-white text-gray-700 border-gray-300 hover:bg-gray-50">
-                🔘 ボタン
-              </button>
-            )}
-          </>
-        )}
+        <div className="w-px bg-gray-300 mx-0.5" />
+        <button type="button" onClick={insertShopLink}
+          className="px-2 py-1 text-xs border rounded bg-white text-gray-700 border-gray-300 hover:bg-gray-50">
+          🛒 ショップリンク
+        </button>
+        <button type="button" onClick={insertButton}
+          className="px-2 py-1 text-xs border rounded bg-white text-gray-700 border-gray-300 hover:bg-gray-50">
+          🔘 ボタン
+        </button>
 
         {/* 画像選択中のみ表示 */}
         {selectedImageHref !== undefined && (
@@ -251,6 +359,29 @@ export function RichTextEditor({ content, onChange, onAddLinks, onAddButton }: P
         .rich-img, .rich-editor-content img {
           max-width: 100%; height: auto; display: block; margin: 0.5em 0;
           cursor: pointer;
+        }
+        /* インラインボタン・ショップリンクのエディタ内プレビュー */
+        .rich-editor-content a.page-btn {
+          display: inline-block;
+          padding: 4px 16px;
+          background: #0d6efd;
+          color: white !important;
+          text-decoration: none !important;
+          font-weight: 500;
+          border-radius: 2px;
+          cursor: default;
+          user-select: none;
+        }
+        .rich-editor-content a.shop-link {
+          display: inline-flex;
+          align-items: center;
+          padding: 3px 12px;
+          color: white !important;
+          text-decoration: none !important;
+          font-weight: bold;
+          border-radius: 9999px;
+          cursor: default;
+          user-select: none;
         }
       `}</style>
     </div>
