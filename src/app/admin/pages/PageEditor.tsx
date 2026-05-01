@@ -151,8 +151,21 @@ export function PageEditor({ initial }: Props) {
             <p>🔘 <strong>ボタン</strong>：「お問い合わせはこちら」などのリンクボタン。クリックすると指定URLへ移動。</p>
           </div>
 
+          {/* ブロック追加（上部） */}
+          <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-100">
+            <span className="text-xs text-gray-500">ブロック追加:</span>
+            <button type="button" onClick={() => addBlock('text')}
+              className="text-xs px-2.5 py-1 border border-gray-300 bg-white hover:bg-gray-50 rounded">📝 テキスト</button>
+            <button type="button" onClick={() => addBlock('image')}
+              className="text-xs px-2.5 py-1 border border-gray-300 bg-white hover:bg-gray-50 rounded">🖼 画像</button>
+            <button type="button" onClick={() => addBlock('links')}
+              className="text-xs px-2.5 py-1 border border-gray-300 bg-white hover:bg-gray-50 rounded">🛒 ショップリンク</button>
+            <button type="button" onClick={() => addBlock('button')}
+              className="text-xs px-2.5 py-1 border border-gray-300 bg-white hover:bg-gray-50 rounded">🔘 ボタン</button>
+          </div>
+
           {blocks.length === 0 && (
-            <p className="text-xs text-gray-400 py-3 text-center">ブロックがありません。下のボタンから追加してください。</p>
+            <p className="text-xs text-gray-400 py-3 text-center">ブロックがありません。上のボタンから追加してください。</p>
           )}
 
           <div className="space-y-2">
