@@ -201,7 +201,8 @@ export async function GET(req: NextRequest) {
         body,
         author_name: AUTHOR_NAME,
         category_id: categoryId,
-        image_url: detail.imageUrl,
+        // あにまん画像はホットリンク禁止（Referer必須）のため保存しない
+        image_url: null,
       })
       .select('id, title')
       .single()
