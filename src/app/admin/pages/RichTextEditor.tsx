@@ -136,7 +136,7 @@ const ShopLink = Node.create({
 
 const COLOR_PRESETS = [
   { label: 'Amazon', color: '#FF9900' },
-  { label: '駿河屋', color: '#9b59b6' },
+  { label: '駿河屋', color: '#00b3ff' },
   { label: '青', color: '#0d6efd' },
   { label: '緑', color: '#28a745' },
   { label: '赤', color: '#dc3545' },
@@ -149,14 +149,51 @@ interface ShopLinkDialog {
   color: string
 }
 
+interface LinkPopupState {
+  x: number
+  y: number
+  from: number
+  href: string
+  type: 'shopLink' | 'pageButton' | 'link'
+  label?: string
+  color?: string
+}
+
 interface Props {
   content: string
   onChange: (html: string) => void
 }
 
+// エディタ読み込み前処理：旧形式 ●<a>ショップ名</a> → ShopLinkノード形式に変換
+const SHOP_COLOR_MAP_FOR_EDITOR: Record<string, string> = {
+  'Amazon': '#FF9900',
+  '駿河屋': '#00b3ff',
+}
+const SURUGAYA_SHORTURL = 'https://x.gd/P6Gmd'
+
+function preprocessForEditor(html: string): string {
+  // ① ●<a href="...">ショップ名</a> → <a data-shop="" ...>
+  let result = html.replace(
+    /●\s*<a\s([^>]*)>([\s\S]*?)<\/a>/gi,
+    (_match, attrs, label) => {
+      const trimmed = label.trim()
+      const color = SHOP_COLOR_MAP_FOR_EDITOR[trimmed] ?? '#0d6efd'
+      const hrefMatch = attrs.match(/href=["']([^"']*)["']/i)
+      const href = hrefMatch?.[1] ?? ''
+      return `<a data-shop="" href="${href}" style="background-color:${color};">${trimmed}</a>`
+    }
+  )
+  // ② ●駿河屋 プレーンテキスト → ShopLinkノード
+  result = result.replace(
+    /●駿河屋/g,
+    `<a data-shop="" href="${SURUGAYA_SHORTURL}" style="background-color:#00b3ff;">駿河屋</a>`
+  )
+  return result
+}
+
 function toHtml(content: string): string {
   if (!content) return '<p></p>'
-  if (content.trimStart().startsWith('<')) return content
+  if (content.trimStart().startsWith('<')) return preprocessForEditor(content)
   return content
     .split('\n')
     .map(line => `<p>${line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') || '<br>'}</p>`)
@@ -176,9 +213,15 @@ export function RichTextEditor({ content, onChange }: Props) {
 
   // ショップリンクダイアログ
   const [shopDialog, setShopDialog] = useState<ShopLinkDialog | null>(null)
+  const [isEditingShopLink, setIsEditingShopLink] = useState(false)
 
   // ボタンダイアログ
   const [btnDialog, setBtnDialog] = useState<{ label: string; url: string } | null>(null)
+  const [isEditingBtn, setIsEditingBtn] = useState(false)
+
+  // クリックしたリンクのURL確認ポップアップ
+  const [linkPopup, setLinkPopup] = useState<LinkPopupState | null>(null)
+  const showPopupOnNextSelectionRef = useRef(false)
 
   useEffect(() => {
     const HEADER_H = 46
@@ -230,15 +273,43 @@ export function RichTextEditor({ content, onChange }: Props) {
       ShopLink,
     ],
     content: toHtml(content),
-    onUpdate: ({ editor }) => { onChange(editor.getHTML()); syncImageState(editor) },
-    onSelectionUpdate: ({ editor }) => syncImageState(editor),
+    onUpdate: ({ editor }) => { onChange(editor.getHTML()); syncImageState(editor); setLinkPopup(null) },
+    onSelectionUpdate: ({ editor }) => {
+      syncImageState(editor)
+      if (showPopupOnNextSelectionRef.current) {
+        showPopupOnNextSelectionRef.current = false
+        const { from } = editor.state.selection
+        const coords = editor.view.coordsAtPos(from)
+        const px = coords.left
+        const py = coords.bottom + 6
+        if (editor.isActive('shopLink')) {
+          const attrs = editor.getAttributes('shopLink')
+          setLinkPopup({ x: px, y: py, from, href: attrs.href, type: 'shopLink', label: attrs.label, color: attrs.color })
+        } else if (editor.isActive('pageButton')) {
+          const attrs = editor.getAttributes('pageButton')
+          setLinkPopup({ x: px, y: py, from, href: attrs.href, type: 'pageButton', label: attrs.label })
+        } else if (editor.isActive('link')) {
+          const attrs = editor.getAttributes('link')
+          setLinkPopup({ x: px, y: py, from, href: attrs.href, type: 'link' })
+        } else {
+          setLinkPopup(null)
+        }
+      } else {
+        setLinkPopup(null)
+      }
+    },
     editorProps: {
       attributes: { class: 'rich-editor-content', spellCheck: 'false' },
       handleDOMEvents: {
-        // エディタ内のリンク（画像リンク含む）クリックで外部遷移しないよう防ぐ
+        // エディタ内のリンクをクリック：外部遷移を防ぎ、URLポップアップを表示
         click: (_view, event) => {
-          const anchor = (event.target as HTMLElement).closest('a[href]')
-          if (anchor) event.preventDefault()
+          const target = event.target as HTMLElement
+          if (target.tagName === 'IMG') return false  // 画像クリックは別ハンドラで処理
+          const anchor = target.closest('a[href]')
+          if (anchor) {
+            event.preventDefault()
+            showPopupOnNextSelectionRef.current = true
+          }
           return false
         },
       },
@@ -276,21 +347,47 @@ export function RichTextEditor({ content, onChange }: Props) {
   const submitShopLink = () => {
     if (!editor || !shopDialog) return
     if (!shopDialog.label.trim() || !shopDialog.url.trim()) return
-    editor.chain().focus().insertContent({
-      type: 'shopLink',
-      attrs: { href: shopDialog.url.trim(), label: shopDialog.label.trim(), color: shopDialog.color },
-    }).run()
+    if (isEditingShopLink && linkPopup) {
+      // 既存ノードを置き換え
+      editor.chain().focus()
+        .setNodeSelection(linkPopup.from)
+        .insertContent({
+          type: 'shopLink',
+          attrs: { href: shopDialog.url.trim(), label: shopDialog.label.trim(), color: shopDialog.color },
+        })
+        .run()
+      setIsEditingShopLink(false)
+    } else {
+      editor.chain().focus().insertContent({
+        type: 'shopLink',
+        attrs: { href: shopDialog.url.trim(), label: shopDialog.label.trim(), color: shopDialog.color },
+      }).run()
+    }
     setShopDialog(null)
+    setLinkPopup(null)
   }
 
   const submitButton = () => {
     if (!editor || !btnDialog) return
     if (!btnDialog.label.trim() || !btnDialog.url.trim()) return
-    editor.chain().focus().insertContent({
-      type: 'pageButton',
-      attrs: { href: btnDialog.url.trim(), label: btnDialog.label.trim() },
-    }).run()
+    if (isEditingBtn && linkPopup) {
+      // 既存ノードを置き換え
+      editor.chain().focus()
+        .setNodeSelection(linkPopup.from)
+        .insertContent({
+          type: 'pageButton',
+          attrs: { href: btnDialog.url.trim(), label: btnDialog.label.trim() },
+        })
+        .run()
+      setIsEditingBtn(false)
+    } else {
+      editor.chain().focus().insertContent({
+        type: 'pageButton',
+        attrs: { href: btnDialog.url.trim(), label: btnDialog.label.trim() },
+      }).run()
+    }
     setBtnDialog(null)
+    setLinkPopup(null)
   }
 
   const btn = (active: boolean, label: string, onClick: () => void, title?: string) => (
@@ -352,12 +449,86 @@ export function RichTextEditor({ content, onChange }: Props) {
 
       <EditorContent editor={editor} />
 
+      {/* リンククリック時のURL確認ポップアップ */}
+      {linkPopup && (
+        <div
+          style={{ position: 'fixed', left: Math.min(linkPopup.x, window.innerWidth - 320), top: linkPopup.y, zIndex: 200 }}
+          className="bg-white border border-gray-300 rounded-lg shadow-lg p-2.5 w-72 text-xs"
+        >
+          {/* URL表示（外部リンク） */}
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className="text-gray-400 shrink-0">🔗</span>
+            <a
+              href={linkPopup.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline truncate flex-1"
+              title={linkPopup.href}
+              onMouseDown={e => e.stopPropagation()}
+            >
+              {linkPopup.href}
+            </a>
+          </div>
+          {/* 操作ボタン */}
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => {
+                if (linkPopup.type === 'shopLink') {
+                  setIsEditingShopLink(true)
+                  setShopDialog({ label: linkPopup.label ?? '', url: linkPopup.href, color: linkPopup.color ?? '#FF9900' })
+                } else if (linkPopup.type === 'pageButton') {
+                  setIsEditingBtn(true)
+                  setBtnDialog({ label: linkPopup.label ?? '', url: linkPopup.href })
+                } else {
+                  // テキストリンクは setLink ダイアログで編集
+                  const url = window.prompt('リンクURLを変更:', linkPopup.href)
+                  if (url === null) return
+                  if (!url.trim()) editor.chain().focus().unsetLink().run()
+                  else editor.chain().focus().setLink({ href: url.trim() }).run()
+                  setLinkPopup(null)
+                }
+              }}
+              className="flex-1 px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-700"
+            >
+              ✏️ 編集
+            </button>
+            <button
+              type="button"
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => {
+                if (linkPopup.type === 'shopLink' || linkPopup.type === 'pageButton') {
+                  editor.chain().focus().setNodeSelection(linkPopup.from).deleteSelection().run()
+                } else {
+                  editor.chain().focus().unsetLink().run()
+                }
+                setLinkPopup(null)
+              }}
+              className="flex-1 px-2 py-1 border border-red-200 rounded hover:bg-red-50 text-red-600"
+            >
+              🗑 削除
+            </button>
+            <button
+              type="button"
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => setLinkPopup(null)}
+              className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-400"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ショップリンクダイアログ */}
       {shopDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={e => { if (e.target === e.currentTarget) setShopDialog(null) }}>
+          onClick={e => { if (e.target === e.currentTarget) { setShopDialog(null); setIsEditingShopLink(false); setLinkPopup(null) } }}>
           <div className="bg-white rounded-lg shadow-xl w-80 p-4 space-y-3">
-            <p className="font-bold text-sm text-gray-800">🛒 ショップリンクを挿入</p>
+            <p className="font-bold text-sm text-gray-800">
+              {isEditingShopLink ? '🛒 ショップリンクを編集' : '🛒 ショップリンクを挿入'}
+            </p>
 
             <div>
               <label className="block text-xs text-gray-600 mb-0.5">ショップ名 <span className="text-red-500">*</span></label>
@@ -410,7 +581,7 @@ export function RichTextEditor({ content, onChange }: Props) {
             </div>
 
             <div className="flex justify-end gap-2 pt-1">
-              <button type="button" onClick={() => setShopDialog(null)}
+              <button type="button" onClick={() => { setShopDialog(null); setIsEditingShopLink(false) }}
                 className="px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50">
                 キャンセル
               </button>
@@ -418,7 +589,7 @@ export function RichTextEditor({ content, onChange }: Props) {
                 disabled={!shopDialog.label.trim() || !shopDialog.url.trim()}
                 className="px-4 py-1.5 text-xs text-white rounded disabled:opacity-40"
                 style={{ background: '#0d6efd' }}>
-                挿入する
+                {isEditingShopLink ? '更新する' : '挿入する'}
               </button>
             </div>
           </div>
@@ -428,9 +599,11 @@ export function RichTextEditor({ content, onChange }: Props) {
       {/* ボタンダイアログ */}
       {btnDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={e => { if (e.target === e.currentTarget) setBtnDialog(null) }}>
+          onClick={e => { if (e.target === e.currentTarget) { setBtnDialog(null); setIsEditingBtn(false); setLinkPopup(null) } }}>
           <div className="bg-white rounded-lg shadow-xl w-72 p-4 space-y-3">
-            <p className="font-bold text-sm text-gray-800">🔘 ボタンを挿入</p>
+            <p className="font-bold text-sm text-gray-800">
+              {isEditingBtn ? '🔘 ボタンを編集' : '🔘 ボタンを挿入'}
+            </p>
 
             <div>
               <label className="block text-xs text-gray-600 mb-0.5">ボタンのテキスト <span className="text-red-500">*</span></label>
@@ -462,7 +635,7 @@ export function RichTextEditor({ content, onChange }: Props) {
             )}
 
             <div className="flex justify-end gap-2 pt-1">
-              <button type="button" onClick={() => setBtnDialog(null)}
+              <button type="button" onClick={() => { setBtnDialog(null); setIsEditingBtn(false); setLinkPopup(null) }}
                 className="px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50">
                 キャンセル
               </button>
@@ -470,7 +643,7 @@ export function RichTextEditor({ content, onChange }: Props) {
                 disabled={!btnDialog.label.trim() || !btnDialog.url.trim()}
                 className="px-4 py-1.5 text-xs text-white rounded disabled:opacity-40"
                 style={{ background: '#0d6efd' }}>
-                挿入する
+                {isEditingBtn ? '更新する' : '挿入する'}
               </button>
             </div>
           </div>

@@ -259,7 +259,7 @@ export function PageEditor({ initial }: Props) {
                             }
                             const COLOR_PRESETS = [
                               { label: 'Amazon', color: '#FF9900' },
-                              { label: '駿河屋', color: '#9b59b6' },
+                              { label: '駿河屋', color: '#00b3ff' },
                               { label: '青', color: '#0d6efd' },
                               { label: '緑', color: '#28a745' },
                               { label: '赤', color: '#dc3545' },
