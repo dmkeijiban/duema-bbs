@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Thread } from '@/types'
+import { resolveImageUrl } from '@/lib/utils'
 
 interface Props {
   thread: Thread
@@ -10,6 +11,7 @@ interface Props {
 
 export function ThreadCard({ thread, rank, priority }: Props) {
   const category = thread.categories
+  const imgSrc = resolveImageUrl(thread.image_url) ?? '/default-thumbnail.jpg'
 
   return (
     <Link
@@ -20,7 +22,7 @@ export function ThreadCard({ thread, rank, priority }: Props) {
       <div className="md:hidden flex" style={{ height: 52, overflow: 'hidden' }}>
         {/* 画像（コメント数オーバーレイ付き） */}
         <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 52, height: 52 }}>
-          <Image src={thread.image_url ?? '/default-thumbnail.jpg'} alt={thread.title} fill className={thread.image_url ? 'object-cover' : 'object-contain'} sizes="256px" quality={90} priority={priority} />
+          <Image src={imgSrc} alt={thread.title} fill className={thread.image_url ? 'object-cover' : 'object-contain'} sizes="256px" quality={90} priority={priority} />
           {rank !== undefined && (
             <span className="absolute top-0 left-0 bg-gray-800 bg-opacity-80 text-white text-[10px] font-bold px-1 leading-4">
               {rank}
@@ -48,7 +50,7 @@ export function ThreadCard({ thread, rank, priority }: Props) {
       <div className="hidden md:flex" style={{ height: 80, overflow: 'hidden' }}>
         {/* 画像 */}
         <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 80, height: 80 }}>
-          <Image src={thread.image_url ?? '/default-thumbnail.jpg'} alt={thread.title} fill className={thread.image_url ? 'object-cover' : 'object-contain'} sizes="320px" quality={90} priority={priority} />
+          <Image src={imgSrc} alt={thread.title} fill className={thread.image_url ? 'object-cover' : 'object-contain'} sizes="320px" quality={90} priority={priority} />
           {rank !== undefined && (
             <span className="absolute top-0 left-0 bg-gray-800 bg-opacity-80 text-white text-[10px] font-bold px-1 leading-4">
               {rank}

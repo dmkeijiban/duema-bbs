@@ -9,6 +9,7 @@ import { ReportButton } from './ReportButton'
 import { formatDateTimeJP } from '@/lib/utils'
 import Link from 'next/link'
 import { ImageViewer } from './ImageViewer'
+import { resolveImageUrl } from '@/lib/utils'
 
 interface Props {
   posts: Post[]
@@ -76,7 +77,7 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
           </div>
           {thread.image_url && (
             <div className="px-3 pb-2">
-              <ImageViewer src={thread.image_url} />
+              <ImageViewer src={resolveImageUrl(thread.image_url)!} />
             </div>
           )}
         </div>

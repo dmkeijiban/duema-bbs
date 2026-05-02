@@ -1,3 +1,22 @@
+/**
+ * ホットリンク禁止サイトの画像URLをサーバーサイドプロキシ経由のURLに変換する。
+ * 対象外のURLはそのまま返す。null は null のまま。
+ */
+const PROXY_HOSTS = ['bbs.animanch.com']
+
+export function resolveImageUrl(url: string | null): string | null {
+  if (!url) return null
+  try {
+    const { hostname } = new URL(url)
+    if (PROXY_HOSTS.includes(hostname)) {
+      return `/api/image-proxy?url=${encodeURIComponent(url)}`
+    }
+  } catch {
+    // URLパース失敗はそのまま返す
+  }
+  return url
+}
+
 export function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr)
   const now = new Date()

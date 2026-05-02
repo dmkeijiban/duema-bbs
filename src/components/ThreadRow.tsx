@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Thread, Category } from '@/types'
-import { formatRelativeTime } from '@/lib/utils'
+import { formatRelativeTime, resolveImageUrl } from '@/lib/utils'
 
 interface Props {
   thread: Thread & { categories: Category | null }
@@ -22,7 +22,7 @@ export function ThreadRow({ thread, rank }: Props) {
       {/* サムネイル */}
       <div className="relative shrink-0 bg-gray-100 overflow-hidden" style={{ width: 52, height: 52 }}>
         {thread.image_url && (
-          <Image src={thread.image_url} alt="" fill className="object-cover" sizes="256px" />
+          <Image src={resolveImageUrl(thread.image_url)!} alt="" fill className="object-cover" sizes="256px" />
         )}
         <span
           className="absolute bottom-0 left-0 right-0 text-[9px] text-white font-bold text-center leading-[14px]"
