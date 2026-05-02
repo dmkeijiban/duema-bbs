@@ -78,6 +78,8 @@ export async function GET(req: NextRequest) {
       console.error(`Seed/comment: post insert error for thread ${thread.id}:`, postError)
       result.errors.push(`post(thread=${thread.id}): ${postError.message}`)
     } else {
+      // post_count と last_posted_at を更新（更新順ソートに反映させるため必須）
+      await supabase.rpc('increment_post_count', { p_thread_id: thread.id })
       result.commentsAdded.push({ threadId: thread.id, postNumber: nextPostNumber })
       console.log(`Seed/comment: added comment to thread ${thread.id} (post #${nextPostNumber})`)
     }
