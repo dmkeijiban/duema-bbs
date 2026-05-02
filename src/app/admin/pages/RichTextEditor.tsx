@@ -172,7 +172,7 @@ const SHOP_COLOR_MAP_FOR_EDITOR: Record<string, string> = {
 const SURUGAYA_SHORTURL = 'https://x.gd/P6Gmd'
 
 function preprocessForEditor(html: string): string {
-  // ① ●<a href="...">ショップ名</a> → <a data-shop="" ...>
+  // ① ●<a href="...">ショップ名</a> → <a data-shop="" ...>（旧形式）
   let result = html.replace(
     /●\s*<a\s([^>]*)>([\s\S]*?)<\/a>/gi,
     (_match, attrs, label) => {
@@ -188,6 +188,20 @@ function preprocessForEditor(html: string): string {
     /●駿河屋/g,
     `<a data-shop="" href="${SURUGAYA_SHORTURL}" style="background-color:#00b3ff;">駿河屋</a>`
   )
+  // ③ data-shopなしの <a href>ショップ名</a> → ShopLinkノード
+  //    （●なしで保存された既存リンクや、テキストリンクとして保存された場合を救済）
+  const shopNames = Object.keys(SHOP_COLOR_MAP_FOR_EDITOR).join('|')
+  const shopPattern = new RegExp(
+    `<a\\b(?![^>]*data-shop)([^>]*)>(${shopNames})<\\/a>`,
+    'gi'
+  )
+  result = result.replace(shopPattern, (_match, attrs, label) => {
+    const trimmed = label.trim()
+    const color = SHOP_COLOR_MAP_FOR_EDITOR[trimmed] ?? '#0d6efd'
+    const hrefMatch = attrs.match(/href=["']([^"']*)["']/i)
+    const href = hrefMatch?.[1] ?? ''
+    return `<a data-shop="" href="${href}" style="background-color:${color};">${trimmed}</a>`
+  })
   return result
 }
 
