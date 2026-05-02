@@ -37,10 +37,8 @@ export function LinkCard({ url }: { url: string }) {
     )
   }
 
-  // OGP画像はサーバープロキシ経由で取得（ホットリンク禁止・CORS対策）
-  const proxiedImage = data?.image
-    ? `/api/ogp-image?url=${encodeURIComponent(data.image)}`
-    : null
+  // OGP画像は /api/ogp がサーバー側でbase64 data URLとして取得済み（ホットリンク禁止対策）
+  const proxiedImage = data?.image ?? null
 
   if (!data) {
     return (
@@ -93,6 +91,7 @@ export function LinkCard({ url }: { url: string }) {
             <img
               src={proxiedImage}
               alt=""
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
               style={{ width: '100%', height: '100%', objectFit: 'cover', minHeight: 96, display: 'block' }}
             />
           </div>
