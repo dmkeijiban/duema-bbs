@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { NoticeItem } from '@/components/NoticeBlock'
 
 const ADMIN_COOKIE = 'admin_auth'
@@ -33,7 +34,7 @@ export async function adminLogin(formData: FormData) {
 export async function adminDeleteThread(formData: FormData) {
   await checkAdmin()
   const threadId = parseInt(formData.get('threadId') as string)
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   // 関連する posts を先に削除（外部キー制約）
   await supabase.from('posts').delete().eq('thread_id', threadId)
@@ -49,7 +50,7 @@ export async function adminDeletePost(formData: FormData) {
   await checkAdmin()
   const postId = parseInt(formData.get('postId') as string)
   const threadId = parseInt(formData.get('threadId') as string)
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   await supabase.from('posts').delete().eq('id', postId)
   await supabase.rpc('recalculate_post_count', { p_thread_id: threadId })
@@ -65,13 +66,15 @@ export async function adminUpdateThread(formData: FormData) {
   const title = formData.get('title') as string
   const body = formData.get('body') as string
   const categoryId = formData.get('category_id') as string
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
-  await supabase.from('threads').update({
+  const { error } = await supabase.from('threads').update({
     title: title.trim(),
     body: body.trim(),
     ...(categoryId ? { category_id: parseInt(categoryId) } : {}),
   }).eq('id', threadId)
+
+  if (error) throw new Error(`スレッド更新失敗: ${error.message}`)
 
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/')
@@ -84,9 +87,11 @@ export async function adminUpdatePost(formData: FormData) {
   const postId = parseInt(formData.get('postId') as string)
   const threadId = parseInt(formData.get('threadId') as string)
   const body = formData.get('body') as string
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
-  await supabase.from('posts').update({ body: body.trim() }).eq('id', postId)
+  const { error } = await supabase.from('posts').update({ body: body.trim() }).eq('id', postId)
+
+  if (error) throw new Error(`投稿更新失敗: ${error.message}`)
 
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/admin')
@@ -97,7 +102,7 @@ export async function adminToggleArchive(formData: FormData) {
   await checkAdmin()
   const threadId = parseInt(formData.get('threadId') as string)
   const current = formData.get('isArchived') === 'true'
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   await supabase.from('threads').update({ is_archived: !current }).eq('id', threadId)
 
