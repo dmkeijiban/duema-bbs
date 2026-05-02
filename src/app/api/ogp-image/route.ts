@@ -1,0 +1,76 @@
+import { NextRequest, NextResponse } from 'next/server'
+
+export const runtime = 'nodejs'
+
+// SSRF対策：プライベートIPをブロック
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false
+    const h = parsed.hostname
+    if (
+      h === 'localhost' ||
+      h === '::1' ||
+      /^127\./.test(h) ||
+      /^10\./.test(h) ||
+      /^192\.168\./.test(h) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(h) ||
+      /^169\.254\./.test(h) ||
+      /^0\./.test(h)
+    ) return false
+    return true
+  } catch {
+    return false
+  }
+}
+
+export async function GET(req: NextRequest) {
+  const rawUrl = req.nextUrl.searchParams.get('url')
+  if (!rawUrl) return NextResponse.json({ error: 'Missing url' }, { status: 400 })
+
+  let url: string
+  try {
+    url = decodeURIComponent(rawUrl)
+    new URL(url)
+  } catch {
+    return NextResponse.json({ error: 'Invalid url' }, { status: 400 })
+  }
+
+  if (!isSafeUrl(url)) {
+    return NextResponse.json({ error: 'Disallowed url' }, { status: 403 })
+  }
+
+  try {
+    const parsed = new URL(url)
+    const res = await fetch(url, {
+      headers: {
+        Referer: `${parsed.protocol}//${parsed.hostname}/`,
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+      },
+      next: { revalidate: 86400 }, // 24h キャッシュ
+      signal: AbortSignal.timeout(8000),
+    })
+
+    if (!res.ok) {
+      return NextResponse.json({ error: `Upstream ${res.status}` }, { status: res.status })
+    }
+
+    const contentType = res.headers.get('content-type') ?? 'image/jpeg'
+    if (!contentType.startsWith('image/')) {
+      return NextResponse.json({ error: 'Not an image' }, { status: 400 })
+    }
+
+    const buffer = await res.arrayBuffer()
+    return new NextResponse(buffer, {
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=86400, stale-while-revalidate=3600',
+      },
+    })
+  } catch (err) {
+    console.error('ogp-image proxy error:', err)
+    return NextResponse.json({ error: 'Fetch failed' }, { status: 502 })
+  }
+}

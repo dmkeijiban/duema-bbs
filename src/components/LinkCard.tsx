@@ -37,15 +37,20 @@ export function LinkCard({ url }: { url: string }) {
     )
   }
 
+  // OGP画像はサーバープロキシ経由で取得（ホットリンク禁止・CORS対策）
+  const proxiedImage = data?.image
+    ? `/api/ogp-image?url=${encodeURIComponent(data.image)}`
+    : null
+
   if (!data) {
     return (
       <div
         style={{
-          maxWidth: 480,
-          height: 80,
+          maxWidth: 560,
+          height: 96,
           border: '1px solid #e5e7eb',
-          borderRadius: 4,
-          margin: '6px 0',
+          borderRadius: 6,
+          margin: '8px 0',
           background: '#f9fafb',
           display: 'flex',
           alignItems: 'center',
@@ -64,21 +69,21 @@ export function LinkCard({ url }: { url: string }) {
       rel="noopener noreferrer"
       className="hover:bg-gray-50 transition-colors"
       style={{
-        maxWidth: 480,
+        maxWidth: 560,
         display: 'block',
         border: '1px solid #e5e7eb',
-        borderRadius: 4,
-        margin: '6px 0',
+        borderRadius: 6,
+        margin: '8px 0',
         textDecoration: 'none',
         overflow: 'hidden',
       }}
     >
-      <div style={{ display: 'flex', minHeight: 80 }}>
-        {data.image && (
+      <div style={{ display: 'flex', minHeight: 96 }}>
+        {proxiedImage && (
           <div
             style={{
-              width: 120,
-              minHeight: 80,
+              width: 140,
+              minHeight: 96,
               flexShrink: 0,
               background: '#f3f4f6',
               overflow: 'hidden',
@@ -86,28 +91,28 @@ export function LinkCard({ url }: { url: string }) {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={data.image}
+              src={proxiedImage}
               alt=""
-              style={{ width: '100%', height: '100%', objectFit: 'cover', minHeight: 80, display: 'block' }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', minHeight: 96, display: 'block' }}
             />
           </div>
         )}
         <div
           style={{
-            padding: '6px 8px',
+            padding: '8px 10px',
             flex: 1,
             minWidth: 0,
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            minHeight: 80,
+            minHeight: 96,
           }}
         >
           <div>
             {data.title && (
               <p
                 style={{
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: 700,
                   color: '#1f2937',
                   lineHeight: 1.4,
@@ -124,7 +129,7 @@ export function LinkCard({ url }: { url: string }) {
             {data.description && (
               <p
                 style={{
-                  fontSize: 11,
+                  fontSize: 12,
                   color: '#6b7280',
                   lineHeight: 1.4,
                   display: '-webkit-box',
@@ -138,7 +143,7 @@ export function LinkCard({ url }: { url: string }) {
               </p>
             )}
           </div>
-          <p style={{ fontSize: 10, color: '#9ca3af', margin: '4px 0 0' }}>
+          <p style={{ fontSize: 11, color: '#9ca3af', margin: '4px 0 0' }}>
             {data.hostname}
           </p>
         </div>
