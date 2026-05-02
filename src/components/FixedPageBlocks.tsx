@@ -2,7 +2,7 @@ import type { Block } from '@/types/fixed-pages'
 
 const SHOP_COLORS: Record<string, string> = {
   'Amazon': '#FF9900',
-  '駿河屋': '#9b59b6',
+  '駿河屋': '#00b3ff',
 }
 
 // ますますつよいパックの駿河屋URL（全商品共通で使用）
@@ -26,7 +26,7 @@ function convertShopLinks(html: string): string {
   // ②プレーンテキストの「●駿河屋」→ 共通URLでピルボタン化
   result = result.replace(
     /●\s*駿河屋/g,
-    `<a href="${SURUGAYA_URL}" target="_blank" rel="noopener noreferrer" style="${PILL_STYLE}background:#9b59b6;">🛒 駿河屋</a>`
+    `<a href="${SURUGAYA_URL}" target="_blank" rel="noopener noreferrer" style="${PILL_STYLE}background:#00b3ff;">🛒 駿河屋</a>`
   )
   return result
 }
