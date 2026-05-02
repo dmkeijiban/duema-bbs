@@ -37,9 +37,11 @@ export function LinkCard({ url }: { url: string }) {
     )
   }
 
-  // OGP画像は /api/ogp がサーバー側でbase64 data URLとして取得済み（ホットリンク禁止対策）
-  // data: で始まらない場合はキャッシュ古のraw URLなので無視
-  const proxiedImage = data?.image?.startsWith('data:') ? data.image : null
+  // OGP画像は /api/ogp-image プロキシ経由で取得（ホットリンク禁止・CORS対策）
+  // refererパラメータに元ページURLを渡すことでcorocoro.jpなどのCDNの403を回避
+  const proxiedImage = data?.image
+    ? `/api/ogp-image?url=${encodeURIComponent(data.image)}&referer=${encodeURIComponent(data.url)}`
+    : null
 
   if (!data) {
     return (

@@ -43,36 +43,6 @@ function resolveUrl(base: string, imageUrl: string | null): string | null {
   }
 }
 
-/**
- * OGP画像をサーバーサイドで取得してbase64 data URLとして返す。
- * 元ページURLをRefererに使うことでホットリンク禁止を回避。
- * 失敗時はnullを返す（エラーにしない）。
- */
-async function fetchImageAsDataUrl(imageUrl: string, pageUrl: string): Promise<string | null> {
-  if (!isSafeUrl(imageUrl)) return null
-  try {
-    const res = await fetch(imageUrl, {
-      headers: {
-        Referer: pageUrl,
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-      },
-      signal: AbortSignal.timeout(4000),
-    })
-    if (!res.ok) return null
-    const contentType = res.headers.get('content-type') ?? ''
-    if (!contentType.startsWith('image/')) return null
-    const buffer = await res.arrayBuffer()
-    // 300KB超は重すぎるので無視
-    if (buffer.byteLength > 300 * 1024) return null
-    const base64 = Buffer.from(buffer).toString('base64')
-    return `data:${contentType};base64,${base64}`
-  } catch {
-    return null
-  }
-}
-
 export async function GET(req: NextRequest) {
   const rawUrl = req.nextUrl.searchParams.get('url')
   if (!rawUrl) return NextResponse.json({ error: 'Missing url' }, { status: 400 })
@@ -114,11 +84,8 @@ export async function GET(req: NextRequest) {
     const imageUrl = resolveUrl(url, rawImage)
     const hostname = new URL(url).hostname
 
-    // 画像をサーバーサイドで取得してdata URLに変換（元ページURLをRefererに使う）
-    const image = imageUrl ? await fetchImageAsDataUrl(imageUrl, url) : null
-
     return NextResponse.json(
-      { title, description, image, url, hostname },
+      { title, description, image: imageUrl, url, hostname },
       { headers: { 'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400' } }
     )
   } catch {

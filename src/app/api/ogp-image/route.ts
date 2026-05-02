@@ -26,6 +26,7 @@ function isSafeUrl(url: string): boolean {
 
 export async function GET(req: NextRequest) {
   const rawUrl = req.nextUrl.searchParams.get('url')
+  const rawReferer = req.nextUrl.searchParams.get('referer')
   if (!rawUrl) return NextResponse.json({ error: 'Missing url' }, { status: 400 })
 
   let url: string
@@ -40,11 +41,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Disallowed url' }, { status: 403 })
   }
 
+  // refererパラメータがあれば元ページURL（corocoro.jpなどのCDNはページURLが必要）、なければホスト名
+  const parsed = new URL(url)
+  let refererHeader = `${parsed.protocol}//${parsed.hostname}/`
+  if (rawReferer) {
+    try {
+      const decoded = decodeURIComponent(rawReferer)
+      new URL(decoded) // バリデーション
+      refererHeader = decoded
+    } catch { /* 不正なら無視してデフォルト使用 */ }
+  }
+
   try {
-    const parsed = new URL(url)
     const res = await fetch(url, {
       headers: {
-        Referer: `${parsed.protocol}//${parsed.hostname}/`,
+        Referer: refererHeader,
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
