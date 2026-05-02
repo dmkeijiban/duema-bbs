@@ -65,6 +65,19 @@ export async function GET(req: NextRequest) {
     // (日付インデックス + スレ番号×7) % 40 でローテーション
     const commentTemplate = SEED_COMMENTS[(dayIndex + i * 7) % SEED_COMMENTS.length]
 
+    // 直近の投稿と本文が同じなら重複なのでスキップ
+    const { data: lastPost } = await supabase
+      .from('posts')
+      .select('body')
+      .eq('thread_id', thread.id)
+      .order('post_number', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (lastPost?.body === commentTemplate.body) {
+      console.log(`Seed/comment: skipping duplicate body for thread ${thread.id}`)
+      continue
+    }
+
     const { error: postError } = await supabase
       .from('posts')
       .insert({
