@@ -5,16 +5,30 @@ const SHOP_COLORS: Record<string, string> = {
   '駿河屋': '#9b59b6',
 }
 
-// テキスト内の「●ショップ名」リンクをピルボタンに変換
+// ますますつよいパックの駿河屋URL（全商品共通で使用）
+const SURUGAYA_URL = 'https://x.gd/P6Gmd'
+
+const PILL_STYLE = 'display:inline-flex;align-items:center;gap:4px;padding:4px 14px;color:white !important;text-decoration:none !important;font-weight:bold;border-radius:9999px;font-size:0.8125rem;'
+
+// テキスト内の「●ショップ名」をピルボタンに変換
+// ①●<a href="...">Amazon</a> → Amazonはそのhrefを維持してピルボタン化
+// ②●駿河屋（プレーンテキスト）→ 共通URLでピルボタン化
 function convertShopLinks(html: string): string {
-  return html.replace(
+  // ①リンク付きの「●<a>ショップ名</a>」パターン
+  let result = html.replace(
     /●\s*<a\s([^>]*)>(.*?)<\/a>/g,
     (_match, attrs, label) => {
       const trimmed = label.trim()
       const color = SHOP_COLORS[trimmed] ?? '#0d6efd'
-      return `<a ${attrs} style="display:inline-flex;align-items:center;gap:4px;padding:4px 14px;background:${color};color:white !important;text-decoration:none !important;font-weight:bold;border-radius:9999px;font-size:0.8125rem;">🛒 ${trimmed}</a>`
+      return `<a ${attrs} style="${PILL_STYLE}background:${color};">🛒 ${trimmed}</a>`
     }
   )
+  // ②プレーンテキストの「●駿河屋」→ 共通URLでピルボタン化
+  result = result.replace(
+    /●\s*駿河屋/g,
+    `<a href="${SURUGAYA_URL}" target="_blank" rel="noopener noreferrer" style="${PILL_STYLE}background:#9b59b6;">🛒 駿河屋</a>`
+  )
+  return result
 }
 
 function parseInlineLinks(text: string): React.ReactNode[] {
