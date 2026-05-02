@@ -10,9 +10,11 @@ const SURUGAYA_URL = 'https://x.gd/P6Gmd'
 
 const PILL_STYLE = 'display:inline-flex;align-items:center;gap:4px;padding:4px 14px;color:white !important;text-decoration:none !important;font-weight:bold;border-radius:9999px;font-size:0.8125rem;'
 
-// テキスト内の「●ショップ名」をピルボタンに変換
-// ①●<a href="...">Amazon</a> → Amazonはそのhrefを維持してピルボタン化
-// ②●駿河屋（プレーンテキスト）→ 共通URLでピルボタン化
+// テキスト内のショップリンクをピルボタンに変換（複数形式に対応）
+// ①●<a href="...">Amazon</a> → Amazonはそのhrefを維持してピルボタン化（旧形式）
+// ②●駿河屋（プレーンテキスト）→ 共通URLでピルボタン化（旧形式）
+// ③<a href="...">Amazon</a>（●なし）→ ピルボタン化（旧形式救済）
+// ④<a data-shop="" style="background-color:...">（新エディタ形式）→ 既にCSS側で対応済みだがここでも保険変換
 function convertShopLinks(html: string): string {
   // ①リンク付きの「●<a>ショップ名</a>」パターン
   let result = html.replace(
@@ -28,6 +30,19 @@ function convertShopLinks(html: string): string {
     /●\s*駿河屋/g,
     `<a href="${SURUGAYA_URL}" target="_blank" rel="noopener noreferrer" style="${PILL_STYLE}background:#00b3ff;">🛒 駿河屋</a>`
   )
+  // ③ data-shopなしの <a href>ショップ名</a>（●なし・旧形式救済）
+  const shopNames = Object.keys(SHOP_COLORS).join('|')
+  const bareShopPattern = new RegExp(
+    `<a\\b(?![^>]*data-shop)([^>]*)>(${shopNames})<\\/a>`,
+    'gi'
+  )
+  result = result.replace(bareShopPattern, (_match, attrs, label) => {
+    const trimmed = label.trim()
+    const color = SHOP_COLORS[trimmed] ?? '#0d6efd'
+    const hrefMatch = attrs.match(/href=["']([^"']*)["']/i)
+    const href = hrefMatch?.[1] ?? ''
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="${PILL_STYLE}background:${color};">🛒 ${trimmed}</a>`
+  })
   return result
 }
 
