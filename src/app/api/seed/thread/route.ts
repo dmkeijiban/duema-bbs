@@ -144,6 +144,47 @@ function createAnonClient() {
   )
 }
 
+type SupabaseClient = ReturnType<typeof createAnonClient>
+
+/**
+ * あにまん画像をダウンロードしてSupabase Storageに保存
+ * ホットリンク（proxy経由配信）ではなく自前ストレージに持つ
+ */
+async function downloadAndUploadImage(imageUrl: string, supabase: SupabaseClient): Promise<string | null> {
+  try {
+    const res = await fetch(imageUrl, {
+      headers: {
+        Referer: 'https://bbs.animanch.com/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
+    })
+    if (!res.ok) {
+      console.warn(`downloadAndUploadImage: fetch failed ${res.status} for ${imageUrl}`)
+      return null
+    }
+    const contentType = res.headers.get('content-type') ?? 'image/jpeg'
+    const buffer = await res.arrayBuffer()
+    const ext = contentType.includes('png') ? 'png' : contentType.includes('gif') ? 'gif' : contentType.includes('webp') ? 'webp' : 'jpg'
+    const filename = `seeds/${Date.now()}.${ext}`
+
+    const { data, error } = await supabase.storage
+      .from('bbs-images')
+      .upload(filename, buffer, { contentType, upsert: false })
+
+    if (error) {
+      console.warn('downloadAndUploadImage: storage upload failed:', error.message)
+      return null
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from('bbs-images').getPublicUrl(data.path)
+    console.log(`downloadAndUploadImage: uploaded to ${publicUrl}`)
+    return publicUrl
+  } catch (err) {
+    console.warn('downloadAndUploadImage: error:', err)
+    return null
+  }
+}
+
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
@@ -194,6 +235,11 @@ export async function GET(req: NextRequest) {
     const body = buildThreadBody(title, detail.body)
     const categoryId = detectCategoryId(title, detail.body)
 
+    // 画像はSupabase Storageにダウンロード保存（ホットリンク禁止回避）
+    const imageUrl = detail.imageUrl
+      ? await downloadAndUploadImage(detail.imageUrl, supabase)
+      : null
+
     const { data: created, error: threadError } = await supabase
       .from('threads')
       .insert({
@@ -201,7 +247,7 @@ export async function GET(req: NextRequest) {
         body,
         author_name: AUTHOR_NAME,
         category_id: categoryId,
-        image_url: detail.imageUrl,
+        image_url: imageUrl,
       })
       .select('id, title')
       .single()
