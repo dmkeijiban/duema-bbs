@@ -33,7 +33,9 @@ export function NewThreadFormClient({ categories }: Props) {
         } else if ('threadId' in result && result.threadId) {
           router.push(`/thread/${result.threadId}`)
         }
-      } catch {
+      } catch (err) {
+        // NEXT_REDIRECT はNext.jsがリダイレクト処理するので再スロー
+        if (err && typeof err === 'object' && 'digest' in err && String((err as { digest: unknown }).digest).startsWith('NEXT_REDIRECT')) throw err
         // デプロイ後の古いJSキャッシュによるサーバーアクション404対策
         setError('ページが古くなっています。再読み込みしてから再度投稿してください。')
       }
