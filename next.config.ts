@@ -23,6 +23,14 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '10mb',
     },
+    // 大型パッケージのtree-shakingを最適化してバンドルサイズを削減
+    optimizePackageImports: ['@tiptap/react', '@tiptap/pm', '@tiptap/starter-kit', '@tiptap/extension-image', '@tiptap/extension-link'],
+  },
+  compiler: {
+    // 本番ビルドでconsole.log除去（console.errorは残す）
+    removeConsole: {
+      exclude: ['error'],
+    },
   },
   async headers() {
     return [
