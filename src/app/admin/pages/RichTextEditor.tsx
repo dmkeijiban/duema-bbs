@@ -1,6 +1,7 @@
 'use client'
 
 import { useEditor, EditorContent, mergeAttributes, Node } from '@tiptap/react'
+import { NodeSelection } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import LinkExtension from '@tiptap/extension-link'
 import ImageExtension from '@tiptap/extension-image'
@@ -177,7 +178,7 @@ interface LinkPopupState {
   y: number
   from: number
   href: string
-  type: 'shopLink' | 'pageButton' | 'link'
+  type: 'shopLink' | 'pageButton' | 'link' | 'imageLink'
   label?: string
   color?: string
 }
@@ -258,7 +259,6 @@ export function RichTextEditor({ content, onChange }: Props) {
 
   // クリックしたリンクのURL確認ポップアップ
   const [linkPopup, setLinkPopup] = useState<LinkPopupState | null>(null)
-  const showPopupOnNextSelectionRef = useRef(false)
 
   useEffect(() => {
     const HEADER_H = 46
@@ -313,41 +313,39 @@ export function RichTextEditor({ content, onChange }: Props) {
     onUpdate: ({ editor }) => { onChange(editor.getHTML()); syncImageState(editor); setLinkPopup(null) },
     onSelectionUpdate: ({ editor }) => {
       syncImageState(editor)
-      if (showPopupOnNextSelectionRef.current) {
-        showPopupOnNextSelectionRef.current = false
-        const { from } = editor.state.selection
-        const coords = editor.view.coordsAtPos(from)
-        const px = coords.left
-        const py = coords.bottom + 6
-        if (editor.isActive('shopLink')) {
-          const attrs = editor.getAttributes('shopLink')
-          setLinkPopup({ x: px, y: py, from, href: attrs.href, type: 'shopLink', label: attrs.label, color: attrs.color })
-        } else if (editor.isActive('pageButton')) {
-          const attrs = editor.getAttributes('pageButton')
-          setLinkPopup({ x: px, y: py, from, href: attrs.href, type: 'pageButton', label: attrs.label })
-        } else if (editor.isActive('link')) {
-          const attrs = editor.getAttributes('link')
-          setLinkPopup({ x: px, y: py, from, href: attrs.href, type: 'link' })
-        } else {
-          setLinkPopup(null)
-        }
-      } else {
-        setLinkPopup(null)
-      }
+      setLinkPopup(null)
     },
     editorProps: {
       attributes: { class: 'rich-editor-content', spellCheck: 'false' },
       handleDOMEvents: {
         // エディタ内のリンクをクリック：外部遷移を防ぎ、URLポップアップを表示
-        click: (_view, event) => {
+        click: (view, event) => {
           const target = event.target as HTMLElement
-          if (target.tagName === 'IMG') return false  // 画像クリックは別ハンドラで処理
-          const anchor = target.closest('a[href]')
-          if (anchor) {
-            event.preventDefault()
-            showPopupOnNextSelectionRef.current = true
+          // アンカー内クリックのみ処理（画像のアンカーも含む）
+          const anchor = target.closest('a') as HTMLElement | null
+          if (!anchor) return false
+          event.preventDefault()
+          const px = event.clientX
+          const py = event.clientY + 12
+          // mousedown 時点で ProseMirror が selection をセット済みなのでそのまま使用
+          const { selection } = view.state
+          const selectedNode = selection instanceof NodeSelection ? selection.node : null
+          const from = selection.from
+          if (selectedNode?.type.name === 'shopLink') {
+            setLinkPopup({ x: px, y: py, from, href: selectedNode.attrs.href, type: 'shopLink', label: selectedNode.attrs.label, color: selectedNode.attrs.color })
+          } else if (selectedNode?.type.name === 'pageButton') {
+            setLinkPopup({ x: px, y: py, from, href: selectedNode.attrs.href, type: 'pageButton', label: selectedNode.attrs.label })
+          } else if (selectedNode?.type.name === 'image') {
+            if (selectedNode.attrs.href) {
+              setLinkPopup({ x: px, y: py, from, href: selectedNode.attrs.href, type: 'imageLink' })
+            }
+          } else {
+            const linkMark = selection.$from.marks().find(m => m.type.name === 'link')
+            if (linkMark) {
+              setLinkPopup({ x: px, y: py, from, href: linkMark.attrs.href, type: 'link' })
+            }
           }
-          return false
+          return true
         },
       },
     },
@@ -518,6 +516,11 @@ export function RichTextEditor({ content, onChange }: Props) {
                 } else if (linkPopup.type === 'pageButton') {
                   setIsEditingBtn(true)
                   setBtnDialog({ label: linkPopup.label ?? '', url: linkPopup.href })
+                } else if (linkPopup.type === 'imageLink') {
+                  const url = window.prompt('画像リンクURLを変更:', linkPopup.href)
+                  if (url === null) return
+                  editor.chain().focus().setNodeSelection(linkPopup.from).updateAttributes('image', { href: url.trim() || null }).run()
+                  setLinkPopup(null)
                 } else {
                   // テキストリンクは setLink ダイアログで編集
                   const url = window.prompt('リンクURLを変更:', linkPopup.href)
@@ -537,6 +540,8 @@ export function RichTextEditor({ content, onChange }: Props) {
               onClick={() => {
                 if (linkPopup.type === 'shopLink' || linkPopup.type === 'pageButton') {
                   editor.chain().focus().setNodeSelection(linkPopup.from).deleteSelection().run()
+                } else if (linkPopup.type === 'imageLink') {
+                  editor.chain().focus().setNodeSelection(linkPopup.from).updateAttributes('image', { href: null }).run()
                 } else {
                   editor.chain().focus().unsetLink().run()
                 }
@@ -729,6 +734,20 @@ export function RichTextEditor({ content, onChange }: Props) {
           border-radius: 9999px;
           cursor: default;
           user-select: none;
+        }
+        /* atom ノード選択時のビジュアルフィードバック */
+        .rich-editor-content a.shop-link.ProseMirror-selectednode {
+          box-shadow: 0 0 0 3px rgba(0,0,0,0.35);
+          outline: none;
+        }
+        .rich-editor-content a.page-btn.ProseMirror-selectednode {
+          box-shadow: 0 0 0 3px rgba(0,0,0,0.35);
+          outline: none;
+        }
+        .rich-editor-content img.ProseMirror-selectednode,
+        .rich-editor-content .ProseMirror-selectednode img {
+          box-shadow: 0 0 0 3px #3b82f6;
+          outline: none;
         }
       `}</style>
     </div>
