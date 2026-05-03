@@ -108,6 +108,7 @@ const ShopLink = Node.create({
     return [
       {
         tag: 'a[data-shop]',
+        priority: 1000,
         getAttrs: (node) => {
           if (typeof node === 'string') return {}
           const el = node as HTMLElement
@@ -124,6 +125,7 @@ const ShopLink = Node.create({
       {
         // 旧形式: data-shopなし・class="shop-link"付き（以前のrenderHTMLで保存されたもの）
         tag: 'a.shop-link',
+        priority: 1000,
         getAttrs: (node) => {
           if (typeof node === 'string') return {}
           const el = node as HTMLElement
