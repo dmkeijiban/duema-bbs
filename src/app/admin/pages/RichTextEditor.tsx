@@ -101,6 +101,10 @@ const ShopLink = Node.create({
     }
   },
   parseHTML() {
+    const shopColorMap: Record<string, string> = {
+      'Amazon': '#FF9900',
+      '駿河屋': '#00b3ff',
+    }
     return [
       {
         tag: 'a[data-shop]',
@@ -109,10 +113,27 @@ const ShopLink = Node.create({
           const el = node as HTMLElement
           const style = el.getAttribute('style') || ''
           const colorMatch = style.match(/background-color:\s*([^;]+)/)
+          const label = (el.textContent || 'ショップ').replace(/^🛒\s*/, '')
           return {
             href: el.getAttribute('href') || '',
-            label: (el.textContent || 'ショップ').replace(/^🛒\s*/, ''),
-            color: colorMatch?.[1]?.trim() || '#0d6efd',
+            label,
+            color: colorMatch?.[1]?.trim() || shopColorMap[label] || '#0d6efd',
+          }
+        },
+      },
+      {
+        // 旧形式: data-shopなし・class="shop-link"付き（以前のrenderHTMLで保存されたもの）
+        tag: 'a.shop-link',
+        getAttrs: (node) => {
+          if (typeof node === 'string') return {}
+          const el = node as HTMLElement
+          const style = el.getAttribute('style') || ''
+          const colorMatch = style.match(/background-color:\s*([^;]+)/)
+          const label = (el.textContent || 'ショップ').replace(/^🛒\s*/, '')
+          return {
+            href: el.getAttribute('href') || '',
+            label,
+            color: colorMatch?.[1]?.trim() || shopColorMap[label] || '#0d6efd',
           }
         },
       },
@@ -188,11 +209,11 @@ function preprocessForEditor(html: string): string {
     /●駿河屋/g,
     `<a data-shop="" href="${SURUGAYA_SHORTURL}" style="background-color:#00b3ff;">駿河屋</a>`
   )
-  // ③ data-shopなしの <a href>ショップ名</a> → ShopLinkノード
-  //    （●なしで保存された既存リンクや、テキストリンクとして保存された場合を救済）
+  // ③ data-shopなしの <a href>ショップ名</a> または <a class="shop-link">🛒 ショップ名</a> → ShopLinkノード
+  //    （●なしで保存された旧形式・🛒絵文字付きで保存された旧形式、両方を救済）
   const shopNames = Object.keys(SHOP_COLOR_MAP_FOR_EDITOR).join('|')
   const shopPattern = new RegExp(
-    `<a\\b(?![^>]*data-shop)([^>]*)>(${shopNames})<\\/a>`,
+    `<a\\b(?![^>]*data-shop)([^>]*)>(?:🛒\\s*)?(${shopNames})<\\/a>`,
     'gi'
   )
   result = result.replace(shopPattern, (_match, attrs, label) => {
