@@ -32,6 +32,17 @@ const nextConfig: NextConfig = {
       exclude: ['error'],
     },
   },
+  async redirects() {
+    return [
+      {
+        // vercel.appドメインからカスタムドメインへ301リダイレクト（SEO重複回避）
+        source: '/:path*',
+        has: [{ type: 'host', value: 'duema-bbs.vercel.app' }],
+        destination: 'https://duema-bbs.com/:path*',
+        permanent: true,
+      },
+    ]
+  },
   async headers() {
     return [
       {
