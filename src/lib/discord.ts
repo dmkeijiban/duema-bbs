@@ -4,7 +4,8 @@
  * - 通知失敗はログに残すだけでスレッド作成をブロックしない
  */
 
-const SITE_ORIGIN = 'https://duema-bbs.vercel.app'
+import { SITE_URL } from '@/lib/site-config'
+const SITE_ORIGIN = SITE_URL
 
 interface NotifyNewThreadOptions {
   threadId: number

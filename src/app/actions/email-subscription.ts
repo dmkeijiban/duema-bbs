@@ -3,8 +3,9 @@
 import { Resend } from 'resend'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { SITE_URL } from '@/lib/site-config'
 
-const BASE_URL = 'https://duema-bbs.vercel.app'
+const BASE_URL = SITE_URL
 
 /** スレッドへのメール通知を登録する（既登録はスキップ） */
 export async function subscribeToThread(threadId: number, email: string): Promise<{ error?: string }> {

@@ -45,7 +45,8 @@ async function getSummary(slug: string): Promise<Summary | null> {
   return data as Summary | null
 }
 
-const BASE_URL = 'https://duema-bbs.vercel.app'
+import { SITE_URL } from '@/lib/site-config'
+const BASE_URL = SITE_URL
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params

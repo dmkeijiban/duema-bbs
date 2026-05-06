@@ -12,6 +12,7 @@ import { cookies } from 'next/headers'
 import { getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
+import { SITE_URL } from '@/lib/site-config'
 
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
@@ -57,7 +58,7 @@ export async function generateMetadata({ params }: Props) {
     .replace(/\s{2,}/g, ' ')     // 連続スペース圧縮
     .trim()
     .slice(0, 150)
-  const baseUrl = 'https://duema-bbs.vercel.app'
+  const baseUrl = SITE_URL
   // OG画像はX共有用に /api/og で 1200×675 (16:9) に統一クロップ
   const ogImageUrl = ogImage
     ? `${baseUrl}/api/og?url=${encodeURIComponent(ogImage)}`
@@ -133,7 +134,7 @@ export default async function ThreadPage({ params, searchParams }: Props) {
 
   const typedThread = thread as unknown as Thread & { categories: Category | null }
 
-  const baseUrl = 'https://duema-bbs.vercel.app'
+  const baseUrl = SITE_URL
 
   return (
     <div className="max-w-screen-xl mx-auto px-2 py-2 text-sm overflow-x-hidden">

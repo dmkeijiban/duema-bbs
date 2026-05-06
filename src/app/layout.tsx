@@ -4,16 +4,17 @@ import './globals.css'
 import { Header } from '@/components/Header'
 import { SnsFloatingBar } from '@/components/SnsFloatingBar'
 import Link from 'next/link'
+import { SITE_URL } from '@/lib/site-config'
 
 const GA_ID = 'G-HDGDNYNMH4'
 
 export const metadata: Metadata = {
   title: 'デュエマ掲示板 | デュエルマスターズ専門掲示板',
   description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報・環境考察など何でも語ろう。',
-  metadataBase: new URL('https://duema-bbs.vercel.app'),
+  metadataBase: new URL(SITE_URL),
   keywords: ['デュエマ', 'デュエルマスターズ', '掲示板', 'デッキ', 'カード', '大会', '環境', 'BBS'],
   alternates: {
-    canonical: 'https://duema-bbs.vercel.app',
+    canonical: SITE_URL,
   },
   icons: {
     icon: [{ url: '/logo.jpg', type: 'image/jpeg' }],
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'デュエマ掲示板 | デュエルマスターズ専門掲示板',
     description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報など何でも語ろう。',
-    url: 'https://duema-bbs.vercel.app',
+    url: SITE_URL,
     siteName: 'デュエマ掲示板',
     locale: 'ja_JP',
     type: 'website',
@@ -51,16 +52,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               '@type': 'WebSite',
               name: 'デュエマ掲示板',
               alternateName: 'デュエルマスターズ専門掲示板',
-              url: 'https://duema-bbs.vercel.app',
+              url: SITE_URL,
               description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報・環境考察など何でも語ろう。',
               inLanguage: 'ja',
               publisher: {
                 '@type': 'Organization',
                 name: 'デュエマ掲示板',
-                url: 'https://duema-bbs.vercel.app',
+                url: SITE_URL,
                 logo: {
                   '@type': 'ImageObject',
-                  url: 'https://duema-bbs.vercel.app/logo.jpg',
+                  url: `${SITE_URL}/logo.jpg`,
                 },
               },
             }),

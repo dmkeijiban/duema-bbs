@@ -22,6 +22,7 @@ import {
   THREAD_PAGE_SIZE,
   POPULAR_PAGE_SIZE,
 } from '@/lib/cached-queries'
+import { SITE_URL } from '@/lib/site-config'
 
 export const revalidate = 60
 
@@ -178,14 +179,14 @@ function HomeBannerFallback() {
       style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb' }}
     >
       <div>
-        <p>デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。初めての方は<a target="_blank" rel="noopener noreferrer" href="https://duema-bbs.vercel.app/guide">スレッドの立て方</a>をご確認ください。</p>
+        <p>デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。初めての方は<a target="_blank" rel="noopener noreferrer" href={`${SITE_URL}/guide`}>スレッドの立て方</a>をご確認ください。</p>
       </div>
     </div>
   )
 }
 
 // ── 実バナーデータを取得して HomeBannerFallback と置き換える
-const HOME_BANNER_DEFAULT = '<p>デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。初めての方は<a target="_blank" rel="noopener noreferrer" href="https://duema-bbs.vercel.app/guide">スレッドの立て方</a>をご確認ください。</p>'
+const HOME_BANNER_DEFAULT = '<p>デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。初めての方は<a target="_blank" rel="noopener noreferrer" href={`${SITE_URL}/guide`}>スレッドの立て方</a>をご確認ください。</p>'
 
 async function HomeBannerServer() {
   const banner = await getCachedSetting('home_banner', HOME_BANNER_DEFAULT)
@@ -297,13 +298,13 @@ export default async function Home({
             "@type": "WebSite",
             "name": "デュエマ掲示板",
             "alternateName": "デュエルマスターズ専門掲示板",
-            "url": "https://duema-bbs.vercel.app",
+            "url": `${SITE_URL}`,
             "description": "デュエルマスターズ専門の掲示板。デッキ相談・カード評価・大会情報など。",
             "potentialAction": {
               "@type": "SearchAction",
               "target": {
                 "@type": "EntryPoint",
-                "urlTemplate": "https://duema-bbs.vercel.app/?q={search_term_string}"
+                "urlTemplate": `${SITE_URL}/?q={search_term_string}`
               },
               "query-input": "required name=search_term_string"
             }
