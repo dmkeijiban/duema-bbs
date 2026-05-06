@@ -3,6 +3,10 @@
     {
       "path": "/api/seed/thread",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/summary/cron",
+      "schedule": "0 1 * * *"
     }
   ]
 }
