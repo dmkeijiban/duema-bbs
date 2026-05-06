@@ -260,6 +260,22 @@ export function RichTextEditor({ content, onChange }: Props) {
   // クリックしたリンクのURL確認ポップアップ
   const [linkPopup, setLinkPopup] = useState<LinkPopupState | null>(null)
 
+  // エディタ内の <a> クリックによるページ遷移を capture フェーズで完全ブロック。
+  // ProseMirror の handleDOMEvents.click (bubble フェーズ) より先に発火し、
+  // contenteditable="false" 内の atom ノードリンクも含めて確実に preventDefault する。
+  useEffect(() => {
+    const el = wrapperRef.current
+    if (!el) return
+    const blockAnchorNav = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (target.closest('a')) {
+        e.preventDefault()
+      }
+    }
+    el.addEventListener('click', blockAnchorNav, true) // capture phase
+    return () => el.removeEventListener('click', blockAnchorNav, true)
+  }, [])
+
   useEffect(() => {
     const HEADER_H = 46
     const onScroll = () => {
