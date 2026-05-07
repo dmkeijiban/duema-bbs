@@ -28,6 +28,7 @@ interface Summary {
   period_end: string
   threads: SummaryThread[]
   created_at: string
+  body: string | null
 }
 
 interface Props {
@@ -53,7 +54,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const summary = await getSummary(slug)
   if (!summary) return {}
   const desc = summary.type === 'manual'
-    ? `${summary.title}。デュエマ掲示板の注目スレッドをまとめて紹介します。`
+    ? (summary.body
+        ? summary.body.replace(/\n/g, ' ').slice(0, 120)
+        : `${summary.title}。デュエマ掲示板の注目スレッドをまとめて紹介します。`)
     : `${summary.period_start}〜${summary.period_end}の人気スレッドTOP5まとめ。デュエマ掲示板で盛り上がったスレッドをランキング形式で紹介します。`
   const url = `${BASE_URL}/summary/${slug}`
   return {
@@ -105,7 +108,7 @@ export default async function SummarySlugPage({ params }: Props) {
             url: `${BASE_URL}/summary/${summary.slug}`,
             datePublished: summary.created_at,
             description: summary.type === 'manual'
-              ? `${summary.title}。デュエマ掲示板の注目スレッドまとめ。`
+              ? (summary.body ? summary.body.replace(/\n/g, ' ').slice(0, 120) : `${summary.title}。デュエマ掲示板の注目スレッドまとめ。`)
               : `${summary.period_start}〜${summary.period_end}の人気スレッドTOP5まとめ。`,
             publisher: {
               '@type': 'Organization',
@@ -155,6 +158,15 @@ export default async function SummarySlugPage({ params }: Props) {
             </p>
           )}
         </div>
+
+        {/* 手書き本文（manualのみ） */}
+        {summary.type === 'manual' && summary.body && (
+          <div className="mb-3 px-4 py-4 border border-gray-300 bg-white text-sm text-gray-800 leading-relaxed space-y-3">
+            {summary.body.split(/\n\n+/).map((para, i) => (
+              <p key={i} className="whitespace-pre-wrap">{para.trim()}</p>
+            ))}
+          </div>
+        )}
 
         {/* スレッドランキング */}
         {threads.length === 0 ? (

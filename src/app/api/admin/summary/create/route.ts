@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   if (cookieStore.get('admin_auth')?.value !== process.env.ADMIN_PASSWORD)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { title, slug, threadIds } = await req.json()
+  const { title, slug, body, threadIds } = await req.json()
 
   if (!title || !slug)
     return NextResponse.json({ error: 'title・slug は必須です' }, { status: 400 })
@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
     type: 'manual', slug, title,
     period_start: today, period_end: today,
     threads: threadsJson, published: true,
+    body: body ?? null,
   })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

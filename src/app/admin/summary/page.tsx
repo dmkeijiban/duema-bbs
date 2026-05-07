@@ -15,6 +15,7 @@ function slugify(title: string) {
 export default function AdminSummaryPage() {
   const [title, setTitle] = useState('')
   const [slug, setSlug] = useState('')
+  const [body, setBody] = useState('')
   const [slugManual, setSlugManual] = useState(false)
   const [submitLog, setSubmitLog] = useState('')
   const [loading, setLoading] = useState(false)
@@ -39,12 +40,12 @@ export default function AdminSummaryPage() {
       const res = await fetch('/api/admin/summary/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, slug }),
+        body: JSON.stringify({ title, slug, body }),
       })
       const json = await res.json()
       if (json.ok) {
         setSubmitLog(`✅ 作成完了！ → /summary/${json.slug}`)
-        setTitle(''); setSlug(''); setSlugManual(false)
+        setTitle(''); setSlug(''); setBody(''); setSlugManual(false)
       } else {
         setSubmitLog(`❌ ${json.error}`)
       }
@@ -114,6 +115,20 @@ export default function AdminSummaryPage() {
                 className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400"
               />
               <p className="text-[11px] text-gray-400 mt-0.5">小文字英数字とハイフンのみ</p>
+            </div>
+            <div>
+              <label className="text-xs text-gray-600 block mb-0.5">
+                記事本文（手書き）
+                <span className="text-gray-400 font-normal ml-1">— 空行で段落分け。SEOの核心部分</span>
+              </label>
+              <textarea
+                value={body}
+                onChange={e => setBody(e.target.value)}
+                placeholder={`例：\nデュエマの高額カードをまとめました。\n\n【龍覇 グレンモルト】定価1500円→現在6000円前後で取引されています。理由は○○デッキでの活躍で需要が急増したため。\n\n【蒼龍の大地】...`}
+                rows={12}
+                className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400 font-mono resize-y"
+              />
+              <p className="text-[11px] text-gray-400 mt-0.5">空行（2回Enter）で段落が分かれます。書いた内容がそのままページに表示されます。</p>
             </div>
           </div>
 
