@@ -23,24 +23,23 @@ export async function FeaturedSummaries() {
   if (summaries.length === 0) return null
 
   return (
-    <div className="mb-2 border border-gray-300 bg-white">
-      <div className="px-3 py-1.5 border-b border-gray-200 flex items-center justify-between">
-        <span className="text-xs font-bold text-gray-700">人気記事まとめ</span>
-        <Link href="/summary" className="text-xs text-blue-600 hover:underline">一覧へ</Link>
-      </div>
-      <ul className="divide-y divide-gray-100">
+    <section className="mb-2">
+      <h2 className="text-sm font-bold text-gray-700 px-2 py-1.5 border border-gray-300 bg-orange-50 mb-0 flex items-center justify-between">
+        <span>📝 人気記事まとめ</span>
+        <Link href="/summary" className="text-xs font-normal text-blue-600 hover:underline">一覧へ</Link>
+      </h2>
+      <div className="border border-t-0 border-gray-300 divide-y divide-gray-200 bg-white">
         {summaries.map(s => (
-          <li key={s.id}>
-            <Link
-              href={`/summary/${s.slug}`}
-              className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 transition-colors"
-            >
-              <span className="text-xs text-gray-800 flex-1 line-clamp-1">{s.title}</span>
-              <span className="text-[11px] text-gray-400 shrink-0 ml-2">▶</span>
-            </Link>
-          </li>
+          <Link
+            key={s.id}
+            href={`/summary/${s.slug}`}
+            className="flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors"
+          >
+            <p className="text-sm text-gray-800 font-medium line-clamp-1">{s.title}</p>
+            <span className="text-xs text-gray-400 ml-2 shrink-0">▶</span>
+          </Link>
         ))}
-      </ul>
-    </div>
+      </div>
+    </section>
   )
 }
