@@ -25,7 +25,7 @@ export async function FeaturedSummaries() {
   return (
     <section className="mb-2">
       <h2 className="text-sm font-bold text-gray-700 px-2 py-1.5 border border-gray-300 bg-orange-50 mb-0 flex items-center justify-between">
-        <span>📝 人気記事まとめ</span>
+        <Link href="/summary" className="text-gray-700 hover:underline">📝 人気記事まとめ</Link>
         <Link href="/summary" className="text-xs font-normal text-blue-600 hover:underline">一覧へ</Link>
       </h2>
       <div className="border border-t-0 border-gray-300 divide-y divide-gray-200 bg-white">
