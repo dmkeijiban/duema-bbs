@@ -205,6 +205,9 @@ export default async function AdminPage({
             <a href="/admin/categories" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
               🗂 カテゴリ管理
             </a>
+            <a href="/admin/summary" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
+              📊 まとめ生成
+            </a>
             <a href="/admin/regen-thumbnails" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
               🖼 サムネ再生成
             </a>
