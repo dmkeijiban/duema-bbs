@@ -2,10 +2,40 @@ import Link from 'next/link'
 import { getCachedFixedPage } from '@/lib/cached-queries'
 import { renderBlock } from '@/components/FixedPageBlocks'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
+import { SITE_URL } from '@/lib/site-config'
 
 export const metadata = {
   title: '使い方 | デュエマ掲示板',
+  description: 'デュエマ掲示板の使い方ガイド。スレッドの立て方・レスの付け方・画像投稿・お気に入り登録など基本操作を解説します。',
+  alternates: { canonical: `${SITE_URL}/guide` },
 }
+
+const FAQ_ITEMS = [
+  {
+    question: 'スレッドはどうやって立てますか？',
+    answer: 'トップページ右上または一覧上部の「スレッドを立てる」ボタンをクリックし、タイトル（2〜100文字）・本文（5〜5000文字）を入力して投稿します。',
+  },
+  {
+    question: 'ハンドルネームや名前は必要ですか？',
+    answer: 'ハンドルネームは任意です。入力しなくても投稿できます。',
+  },
+  {
+    question: '画像や動画を投稿できますか？',
+    answer: '画像ファイル（JPEG/PNG/GIF/WebP、最大10MB）を直接添付できます。YouTubeやX（Twitter）のURLを単独行に貼ると自動埋め込みされます。',
+  },
+  {
+    question: '自分の投稿を削除できますか？',
+    answer: '自分が投稿したレスは「削除」ボタンで削除できます。同じブラウザ・セッション内のみ有効です。ブラウザのCookieを削除すると削除権限が失われます。',
+  },
+  {
+    question: 'お気に入り機能はありますか？',
+    answer: 'スレッドタイトル横の☆ボタンでお気に入り登録できます。登録したスレッドは「個人設定」から一覧確認できます。',
+  },
+  {
+    question: '削除依頼やバグ報告はどこにすればいいですか？',
+    answer: 'ページ下部のお問い合わせフォームからご連絡ください。削除依頼の場合はURLを必ず明記してください。',
+  },
+]
 
 const DEFAULT_GUIDE = `🧵 スレッドを立てる
 1. トップページ右上または一覧上部の「スレッドを立てる」ボタンをクリック
@@ -45,6 +75,20 @@ export default async function GuidePage() {
 
   return (
     <div className="max-w-screen-xl mx-auto px-3 py-4 text-sm">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: FAQ_ITEMS.map(item => ({
+              '@type': 'Question',
+              name: item.question,
+              acceptedAnswer: { '@type': 'Answer', text: item.answer },
+            })),
+          }),
+        }}
+      />
       <nav className="text-xs text-gray-500 mb-4 flex items-center gap-2">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
         <span>{'>'}</span>

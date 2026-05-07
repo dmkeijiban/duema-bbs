@@ -8,6 +8,7 @@ const InlineNewThread = dynamic(
   () => import('@/components/InlineNewThread').then(m => m.InlineNewThread)
 )
 import { RecommendSection } from '@/components/RecommendSection'
+import { CategorySummarySection } from '@/components/CategorySummarySection'
 import { SortTabs } from '@/components/SortTabs'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
@@ -49,11 +50,13 @@ export async function generateMetadata({ params }: Props) {
       description: `デュエルマスターズ掲示板の「${category.name}」カテゴリ。`,
       url: `${BASE_URL}/category/${slug}`,
       type: 'website',
+      images: [{ url: `${BASE_URL}/logo.jpg`, width: 500, height: 500, alt: 'デュエマ掲示板' }],
     },
     twitter: {
-      card: 'summary',
+      card: 'summary' as const,
       title: `${category.name} | デュエマ掲示板`,
       description: `デュエルマスターズ掲示板の「${category.name}」カテゴリ。`,
+      images: [`${BASE_URL}/logo.jpg`],
     },
   }
 }
@@ -229,6 +232,9 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
       <div className="max-w-screen-xl mx-auto px-2">
         {midNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
+
+        {/* まとめ記事セクション — 不要なら下の1行を削除するだけで戻せます */}
+        <Suspense fallback={null}><CategorySummarySection categoryName={category.name} /></Suspense>
 
         <CategoryThreadList category={category} sort={sort} page={page} />
 
