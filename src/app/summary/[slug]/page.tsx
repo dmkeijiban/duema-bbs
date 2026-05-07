@@ -87,6 +87,22 @@ const RANK_COLORS = [
 
 const RANK_LABELS = ['🥇', '🥈', '🥉', '4位', '5位']
 
+async function getLivePostCounts(threadIds: number[]): Promise<Map<number, number>> {
+  if (threadIds.length === 0) return new Map()
+  const supabase = createPublicClient()
+  const { data } = await supabase
+    .from('threads')
+    .select('id, post_count')
+    .in('id', threadIds)
+  const map = new Map<number, number>()
+  if (data) {
+    for (const row of data) {
+      map.set(row.id, row.post_count ?? 0)
+    }
+  }
+  return map
+}
+
 export default async function SummarySlugPage({ params }: Props) {
   const { slug } = await params
   const summary = await getSummary(slug)
@@ -94,6 +110,8 @@ export default async function SummarySlugPage({ params }: Props) {
   if (!summary) notFound()
 
   const threads = summary.threads ?? []
+  const threadIds = threads.map(t => t.id)
+  const livePostCounts = await getLivePostCounts(threadIds)
 
   return (
     <div className="w-full px-0 py-0">
@@ -216,7 +234,7 @@ export default async function SummarySlugPage({ params }: Props) {
                     {summary.type !== 'manual' && (
                       <>この期間の投稿数：<span className="font-semibold text-gray-600">{thread.activity}</span>件 ／ </>
                     )}
-                    総レス：{thread.post_count}件
+                    総レス：{livePostCounts.get(thread.id) ?? thread.post_count}件
                   </p>
                 </div>
 

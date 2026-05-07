@@ -42,7 +42,7 @@ export function ImageViewer({ src, alt = '添付画像' }: Props) {
             cursor: 'zoom-in',
             aspectRatio: '4/3',
             objectFit: 'contain',
-            backgroundColor: '#f3f4f6',
+            backgroundColor: '#ffffff',
           }}
           className="hover:opacity-90"
         />

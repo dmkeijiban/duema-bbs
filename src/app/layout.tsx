@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     images: [{ url: `${SITE_URL}/logo.jpg`, width: 500, height: 500, alt: 'デュエマ掲示板' }],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'デュエマ掲示板 | デュエルマスターズ専門掲示板',
     description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報など何でも語ろう。',
     images: [`${SITE_URL}/logo.jpg`],
