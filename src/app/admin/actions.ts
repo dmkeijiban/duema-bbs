@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { NoticeItem } from '@/components/NoticeBlock'
@@ -36,8 +36,12 @@ export async function adminDeleteThread(formData: FormData) {
   const threadId = parseInt(formData.get('threadId') as string)
   const supabase = createAdminClient()
 
-  // 関連する posts を先に削除（外部キー制約）
-  await supabase.from('posts').delete().eq('thread_id', threadId)
+  // 関連する posts をソフト削除してからスレッド本体を削除
+  await supabase.from('posts').update({
+    is_deleted: true,
+    deleted_at: new Date().toISOString(),
+    deleted_by: 'admin_thread_delete',
+  }).eq('thread_id', threadId).eq('is_deleted', false)
   await supabase.from('favorites').delete().eq('thread_id', threadId)
   await supabase.from('threads').delete().eq('id', threadId)
 
@@ -52,9 +56,14 @@ export async function adminDeletePost(formData: FormData) {
   const threadId = parseInt(formData.get('threadId') as string)
   const supabase = createAdminClient()
 
-  await supabase.from('posts').delete().eq('id', postId)
+  await supabase.from('posts').update({
+    is_deleted: true,
+    deleted_at: new Date().toISOString(),
+    deleted_by: 'admin',
+  }).eq('id', postId)
   await supabase.rpc('recalculate_post_count', { p_thread_id: threadId })
 
+  revalidateTag(`thread-${threadId}`, { expire: 0 })
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/admin')
   redirect(`/admin?thread=${threadId}`)

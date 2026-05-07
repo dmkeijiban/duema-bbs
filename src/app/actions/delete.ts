@@ -76,7 +76,12 @@ export async function deleteOwnPost(postId: number, threadId: number) {
 
   if (!isPostAuthor && !isThreadOwner) return { error: '削除権限がありません' }
 
-  const { error } = await supabase.from('posts').delete().eq('id', postId)
+  const deletedBy = isPostAuthor ? 'user' : 'thread_owner'
+  const { error } = await supabase.from('posts').update({
+    is_deleted: true,
+    deleted_at: new Date().toISOString(),
+    deleted_by: deletedBy,
+  }).eq('id', postId)
   if (error) return { error: '削除に失敗しました' }
 
   await supabase.rpc('recalculate_post_count', { p_thread_id: threadId })

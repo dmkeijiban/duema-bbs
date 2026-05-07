@@ -146,6 +146,7 @@ export const getCachedThreadPosts = (threadId: number, page: number) =>
         .from('posts')
         .select('id, thread_id, post_number, body, author_name, image_url, created_at', { count: 'exact' })
         .eq('thread_id', threadId)
+        .eq('is_deleted', false)
         .order('post_number', { ascending: true })
         .range(offset, offset + THREAD_POSTS_PER_PAGE - 1)
       return { data: data ?? [], count: count ?? 0 }

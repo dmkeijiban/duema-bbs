@@ -215,6 +215,9 @@ export default async function AdminPage({
             <a href="/admin/regen-thumbnails" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
               🖼 サムネ再生成
             </a>
+            <a href="/admin/deleted-posts" className="px-3 py-1 text-xs border border-orange-400 text-orange-600 hover:bg-orange-50">
+              🗑️ 削除済みレス
+            </a>
             <a href="/admin/pages" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#198754' }}>
               📄 固定ページ管理
             </a>
