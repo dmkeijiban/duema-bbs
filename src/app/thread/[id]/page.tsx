@@ -12,7 +12,6 @@ import { cookies } from 'next/headers'
 import { getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
-import { RelatedThreads } from '@/components/RelatedThreads'
 import { SITE_URL } from '@/lib/site-config'
 
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
@@ -226,18 +225,6 @@ export default async function ThreadPage({ params, searchParams }: Props) {
           </Suspense>
         }
       />
-
-      {/* 関連スレッド — 最終ページ・カテゴリあり時のみ表示 */}
-      {page >= totalPages && typedThread.categories && (
-        <Suspense fallback={null}>
-          <RelatedThreads
-            categoryId={typedThread.categories.id}
-            categoryName={typedThread.categories.name}
-            categorySlug={typedThread.categories.slug}
-            currentThreadId={threadId}
-          />
-        </Suspense>
-      )}
 
       {/* SNS フォロー導線 — 最終ページのみ表示（読み終えた直後が最もコンバージョン高い） */}
       {page >= totalPages && <SnsCtaCard />}
