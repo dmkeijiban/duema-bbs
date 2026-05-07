@@ -3,6 +3,24 @@ import { createClient } from '@/lib/supabase-server'
 import { ThreadCard } from '@/components/ThreadCard'
 import { RecommendSection } from '@/components/RecommendSection'
 import { BottomNav } from '@/components/ThreadSortPage'
+import { SITE_URL } from '@/lib/site-config'
+
+export const metadata = {
+  title: '人気スレッドランキング | デュエマ掲示板',
+  description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。直近3日間のレス数が多いスレッドを順位付きで表示します。',
+  alternates: { canonical: `${SITE_URL}/ranking` },
+  openGraph: {
+    title: '人気スレッドランキング | デュエマ掲示板',
+    description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。直近3日間のレス数が多いスレッドを順位付きで表示します。',
+    url: `${SITE_URL}/ranking`,
+    type: 'website' as const,
+  },
+  twitter: {
+    card: 'summary' as const,
+    title: '人気スレッドランキング | デュエマ掲示板',
+    description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。直近3日間のレス数が多いスレッドを順位付きで表示します。',
+  },
+}
 import { Pagination } from '@/components/Pagination'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'

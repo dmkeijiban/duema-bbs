@@ -1,6 +1,22 @@
 import { ThreadSortPage } from '@/components/ThreadSortPage'
+import { SITE_URL } from '@/lib/site-config'
 
-export const metadata = { title: '新着スレッド一覧 | デュエマ掲示板' }
+export const metadata = {
+  title: '新着スレッド一覧 | デュエマ掲示板',
+  description: 'デュエマ（デュエルマスターズ）掲示板の新着スレッド一覧。新しく立てられたスレッドをまとめて確認できます。',
+  alternates: { canonical: `${SITE_URL}/new` },
+  openGraph: {
+    title: '新着スレッド一覧 | デュエマ掲示板',
+    description: 'デュエマ（デュエルマスターズ）掲示板の新着スレッド一覧。新しく立てられたスレッドをまとめて確認できます。',
+    url: `${SITE_URL}/new`,
+    type: 'website' as const,
+  },
+  twitter: {
+    card: 'summary' as const,
+    title: '新着スレッド一覧 | デュエマ掲示板',
+    description: 'デュエマ（デュエルマスターズ）掲示板の新着スレッド一覧。新しく立てられたスレッドをまとめて確認できます。',
+  },
+}
 
 interface Props {
   searchParams: Promise<{ page?: string }>

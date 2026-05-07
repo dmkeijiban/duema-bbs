@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { getCachedFixedPage } from '@/lib/cached-queries'
 import { renderBlock } from '@/components/FixedPageBlocks'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
+import { SITE_URL } from '@/lib/site-config'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -12,7 +13,30 @@ export async function generateMetadata({ params }: Props) {
   const { slug } = await params
   const page = await getCachedFixedPage(slug)
   if (!page) return {}
-  return { title: `${page.title} | デュエマ掲示板` }
+
+  const firstText = page.content.find(b => b.type === 'text')
+  const rawDesc = firstText && 'content' in firstText
+    ? firstText.content.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 120)
+    : ''
+  const description = rawDesc || `${page.title} - デュエマ（デュエルマスターズ）掲示板`
+  const url = `${SITE_URL}/${slug}`
+
+  return {
+    title: `${page.title} | デュエマ掲示板`,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title: `${page.title} | デュエマ掲示板`,
+      description,
+      url,
+      type: 'website' as const,
+    },
+    twitter: {
+      card: 'summary' as const,
+      title: `${page.title} | デュエマ掲示板`,
+      description,
+    },
+  }
 }
 
 export default async function FixedPageRoute({ params }: Props) {
