@@ -8,7 +8,6 @@ const InlineNewThread = dynamic(
   () => import('@/components/InlineNewThread').then(m => m.InlineNewThread)
 )
 import { RecommendSection } from '@/components/RecommendSection'
-import { CategorySummarySection } from '@/components/CategorySummarySection'
 import { SortTabs } from '@/components/SortTabs'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
@@ -232,9 +231,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
       <div className="max-w-screen-xl mx-auto px-2">
         {midNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
-
-        {/* まとめ記事セクション — 不要なら下の1行を削除するだけで戻せます */}
-        <Suspense fallback={null}><CategorySummarySection categoryName={category.name} /></Suspense>
 
         <CategoryThreadList category={category} sort={sort} page={page} />
 
