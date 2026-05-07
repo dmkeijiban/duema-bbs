@@ -336,7 +336,7 @@ export default async function Home({
         {/* まとめバナー（静的・即座に描画） */}
         <Link
           href="/summary"
-          className="mb-2 flex items-center justify-between px-3 py-2 border border-blue-200 bg-blue-50 text-sm text-blue-700 hover:bg-blue-100 transition-colors"
+          className="mb-2 flex items-center justify-between px-3 py-2 border border-blue-200 bg-blue-50 text-sm text-gray-900 hover:bg-blue-100 transition-colors"
         >
           <span>📊 人気スレッドまとめ（週間・月間ランキング）</span>
           <span className="text-xs ml-2 shrink-0">一覧へ</span>
