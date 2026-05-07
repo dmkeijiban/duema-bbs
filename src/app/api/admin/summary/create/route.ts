@@ -12,8 +12,8 @@ export async function POST(req: NextRequest) {
 
   const { title, slug, threadIds } = await req.json()
 
-  if (!title || !slug || !Array.isArray(threadIds) || threadIds.length === 0)
-    return NextResponse.json({ error: 'title・slug・threadIds は必須です' }, { status: 400 })
+  if (!title || !slug)
+    return NextResponse.json({ error: 'title・slug は必須です' }, { status: 400 })
 
   if (!/^[a-z0-9-]+$/.test(slug))
     return NextResponse.json({ error: 'slugは小文字英数字とハイフンのみ使用可' }, { status: 400 })
@@ -26,13 +26,29 @@ export async function POST(req: NextRequest) {
   const { data: existing } = await supabase.from('summaries').select('id').eq('slug', slug).maybeSingle()
   if (existing) return NextResponse.json({ error: 'そのslugは既に使われています' }, { status: 400 })
 
+  // threadIds が指定されていない場合はおすすめスレ（post_count上位）を自動使用
+  let resolvedIds: number[]
+  if (Array.isArray(threadIds) && threadIds.length > 0) {
+    resolvedIds = threadIds
+  } else {
+    const { data: top } = await supabase
+      .from('threads')
+      .select('id')
+      .eq('is_archived', false)
+      .order('post_count', { ascending: false })
+      .limit(10)
+    resolvedIds = (top ?? []).map((t: { id: number }) => t.id)
+    if (resolvedIds.length === 0)
+      return NextResponse.json({ error: 'スレッドが見つかりません' }, { status: 400 })
+  }
+
   const { data: threads } = await supabase
     .from('threads')
     .select('id, title, post_count, image_url, categories(name, color)')
-    .in('id', threadIds)
+    .in('id', resolvedIds)
 
-  const threadsJson = threadIds.map((id: number, i: number) => {
-    const t = (threads ?? []).find(th => th.id === id)
+  const threadsJson = resolvedIds.map((id: number, i: number) => {
+    const t = (threads ?? []).find((th: { id: number }) => th.id === id)
     if (!t) return null
     const cats = t.categories as unknown as { name: string; color: string } | null
     return {

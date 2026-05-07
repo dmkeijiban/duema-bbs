@@ -23,21 +23,20 @@ export async function FeaturedSummaries() {
   if (summaries.length === 0) return null
 
   return (
-    <div className="mb-2 border border-orange-200 bg-orange-50">
-      <div className="px-3 py-1.5 border-b border-orange-200 flex items-center justify-between">
-        <span className="text-xs font-bold text-orange-800">📝 注目まとめ</span>
-        <Link href="/summary" className="text-xs text-orange-700 hover:underline">一覧へ</Link>
+    <div className="mb-2 border border-gray-300 bg-white">
+      <div className="px-3 py-1.5 border-b border-gray-200 flex items-center justify-between">
+        <span className="text-xs font-bold text-gray-700">注目まとめ</span>
+        <Link href="/summary" className="text-xs text-blue-600 hover:underline">一覧へ</Link>
       </div>
-      <ul className="divide-y divide-orange-100">
+      <ul className="divide-y divide-gray-100">
         {summaries.map(s => (
           <li key={s.id}>
             <Link
               href={`/summary/${s.slug}`}
-              className="flex items-center px-3 py-2 hover:bg-orange-100 transition-colors gap-2"
+              className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 transition-colors"
             >
-              <span className="text-xs text-orange-700">📄</span>
               <span className="text-xs text-gray-800 flex-1 line-clamp-1">{s.title}</span>
-              <span className="text-[11px] text-orange-500 shrink-0">→</span>
+              <span className="text-[11px] text-gray-400 shrink-0 ml-2">▶</span>
             </Link>
           </li>
         ))}

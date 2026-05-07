@@ -1,15 +1,7 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-
-interface Thread {
-  id: number
-  title: string
-  post_count: number
-  image_url: string | null
-  categories: { name: string; color: string } | null
-}
 
 function slugify(title: string) {
   return title
@@ -21,13 +13,9 @@ function slugify(title: string) {
 }
 
 export default function AdminSummaryPage() {
-  // 手動まとめ作成
   const [title, setTitle] = useState('')
   const [slug, setSlug] = useState('')
   const [slugManual, setSlugManual] = useState(false)
-  const [searchQ, setSearchQ] = useState('')
-  const [searchResults, setSearchResults] = useState<Thread[]>([])
-  const [selected, setSelected] = useState<Thread[]>([])
   const [submitLog, setSubmitLog] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -40,25 +28,9 @@ export default function AdminSummaryPage() {
     if (!slugManual) setSlug(slugify(v))
   }
 
-  const search = useCallback(async (q: string) => {
-    const res = await fetch(`/api/admin/threads/search?q=${encodeURIComponent(q)}`)
-    const data = await res.json()
-    setSearchResults(data)
-  }, [])
-
-  const addThread = (t: Thread) => {
-    if (selected.find(s => s.id === t.id)) return
-    setSelected(prev => [...prev, t])
-  }
-  const removeThread = (id: number) => setSelected(prev => prev.filter(t => t.id !== id))
-  const moveUp = (i: number) => {
-    if (i === 0) return
-    setSelected(prev => { const a = [...prev]; [a[i-1], a[i]] = [a[i], a[i-1]]; return a })
-  }
-
   const submit = async () => {
-    if (!title || !slug || selected.length === 0) {
-      setSubmitLog('タイトル・slug・スレッドを入力してください')
+    if (!title || !slug) {
+      setSubmitLog('タイトル・slugを入力してください')
       return
     }
     setLoading(true)
@@ -67,12 +39,12 @@ export default function AdminSummaryPage() {
       const res = await fetch('/api/admin/summary/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, slug, threadIds: selected.map(t => t.id) }),
+        body: JSON.stringify({ title, slug }),
       })
       const json = await res.json()
       if (json.ok) {
         setSubmitLog(`✅ 作成完了！ → /summary/${json.slug}`)
-        setTitle(''); setSlug(''); setSelected([]); setSlugManual(false)
+        setTitle(''); setSlug(''); setSlugManual(false)
       } else {
         setSubmitLog(`❌ ${json.error}`)
       }
@@ -114,9 +86,9 @@ export default function AdminSummaryPage() {
         <div className="bg-white border border-gray-300 p-5 space-y-4">
           <h1 className="font-bold text-gray-800">✏️ 手動まとめを作成</h1>
           <p className="text-xs text-gray-500">
-            キーワード狙いのまとめページを自由に作成できます。<br />
-            作成したまとめは /summary/[slug] に公開され、トップページにも表示されます。<br />
-            <span className="text-red-500 font-medium">※ 事前にSupabaseのSQL Editorで supabase/add_manual_summary_type.sql を実行してください</span>
+            タイトルとslugを入力するだけで作成できます。<br />
+            スレッドは自動的におすすめスレ（投稿数TOP10）が使われます。<br />
+            作成したまとめは /summary/[slug] に公開され、トップページにも表示されます。
           </p>
 
           <div className="space-y-2">
@@ -144,59 +116,6 @@ export default function AdminSummaryPage() {
               <p className="text-[11px] text-gray-400 mt-0.5">小文字英数字とハイフンのみ</p>
             </div>
           </div>
-
-          {/* スレ検索 */}
-          <div>
-            <label className="text-xs text-gray-600 block mb-0.5">スレッドを検索して追加</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={searchQ}
-                onChange={e => setSearchQ(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && search(searchQ)}
-                placeholder="スレタイトルで検索"
-                className="flex-1 border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400"
-              />
-              <button
-                onClick={() => search(searchQ)}
-                className="px-3 py-1.5 text-sm text-white"
-                style={{ background: '#6c757d' }}
-              >
-                検索
-              </button>
-            </div>
-            {searchResults.length > 0 && (
-              <div className="mt-1 border border-gray-200 max-h-48 overflow-y-auto">
-                {searchResults.map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => addThread(t)}
-                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 border-b border-gray-100 flex items-center justify-between"
-                  >
-                    <span className="line-clamp-1 flex-1">{t.title}</span>
-                    <span className="text-gray-400 shrink-0 ml-2">{t.post_count}件 ＋</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 選択済みスレ */}
-          {selected.length > 0 && (
-            <div>
-              <p className="text-xs text-gray-600 mb-1">選択中のスレッド（上から順に掲載）</p>
-              <div className="border border-gray-200 divide-y divide-gray-100">
-                {selected.map((t, i) => (
-                  <div key={t.id} className="flex items-center gap-2 px-3 py-1.5">
-                    <span className="text-xs text-gray-400 w-4 shrink-0">{i + 1}</span>
-                    <span className="text-xs flex-1 line-clamp-1">{t.title}</span>
-                    <button onClick={() => moveUp(i)} disabled={i === 0} className="text-xs text-gray-400 disabled:opacity-30 px-1">↑</button>
-                    <button onClick={() => removeThread(t.id)} className="text-xs text-red-400 px-1">✕</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           <button
             onClick={submit}
