@@ -68,10 +68,10 @@ async function SummaryList() {
               <Link
                 key={s.slug}
                 href={`/summary/${s.slug}`}
-                className="flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between px-3 py-2.5 hover:bg-blue-50 transition-colors"
               >
-                <p className="text-sm text-gray-800 font-medium">{s.title}</p>
-                <span className="text-xs text-gray-400 ml-2 shrink-0">▶</span>
+                <p className="text-sm text-blue-700 font-medium">{s.title}</p>
+                <span className="text-xs text-blue-400 ml-2 shrink-0">▶</span>
               </Link>
             ))}
           </div>
@@ -80,23 +80,23 @@ async function SummaryList() {
 
       {weeklySummaries.length > 0 && (
         <section className="mb-4">
-          <h2 className="text-sm font-bold text-gray-700 px-2 py-1.5 border border-gray-300 bg-gray-50 mb-2">
-            📅 週間ランキング
+          <h2 className="text-sm font-bold text-blue-700 px-2 py-1.5 border border-blue-200 bg-blue-50 mb-2">
+            📊 人気スレッドまとめ
           </h2>
           <div className="border border-gray-300 divide-y divide-gray-200 bg-white">
             {weeklySummaries.map(s => (
               <Link
                 key={s.slug}
                 href={`/summary/${s.slug}`}
-                className="flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between px-3 py-2.5 hover:bg-blue-50 transition-colors"
               >
                 <div>
-                  <p className="text-sm text-gray-800 font-medium">{s.title}</p>
+                  <p className="text-sm text-blue-700 font-medium">{s.title}</p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {s.period_start} 〜 {s.period_end}
                   </p>
                 </div>
-                <span className="text-xs text-gray-400 ml-2 shrink-0">▶</span>
+                <span className="text-xs text-blue-400 ml-2 shrink-0">▶</span>
               </Link>
             ))}
           </div>

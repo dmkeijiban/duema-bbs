@@ -33,10 +33,10 @@ export async function FeaturedSummaries() {
           <Link
             key={s.id}
             href={`/summary/${s.slug}`}
-            className="flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors"
+            className="flex items-center justify-between px-3 py-2.5 hover:bg-blue-50 transition-colors"
           >
-            <p className="text-sm text-gray-800 font-medium line-clamp-1">{s.title}</p>
-            <span className="text-xs text-gray-400 ml-2 shrink-0">▶</span>
+            <p className="text-sm text-blue-700 font-medium line-clamp-1">{s.title}</p>
+            <span className="text-xs text-blue-400 ml-2 shrink-0">▶</span>
           </Link>
         ))}
       </div>
