@@ -7,7 +7,7 @@ interface Props {
 export function ShareXButton({ title }: Props) {
   const handleShare = () => {
     const url = window.location.href
-    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}&hashtags=デュエマ掲示板,デュエマ反応集,デュエマ`
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`
     window.open(tweetUrl, '_blank', 'noopener,noreferrer,width=600,height=400')
   }
 
