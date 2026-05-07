@@ -44,6 +44,19 @@ const ImageWithLink = ImageExtension.extend({
     }
     return imgNode
   },
+  // エディタ内では <img> のみで描画（<a> ラッパーなし）→ クリックによる外部遷移を防ぐ
+  // renderHTML() は変更せず、DB保存の HTML は引き続き <a><img></a> 形式
+  addNodeView() {
+    return ({ node }: { node: any }) => {
+      const img = document.createElement('img')
+      img.src = node.attrs.src || ''
+      if (node.attrs.alt) img.alt = node.attrs.alt
+      if (node.attrs.title) img.title = node.attrs.title
+      img.className = 'rich-img'
+      if (node.attrs.href) img.dataset.href = node.attrs.href
+      return { dom: img }
+    }
+  },
 })
 
 // インラインボタンノード（テキスト内に埋め込むリンクボタン）
@@ -377,15 +390,17 @@ export function RichTextEditor({ content, onChange }: Props) {
             return true
           }
 
-          // <a> クリック（テキストリンク・画像リンク）
-          const anchor = target.closest('a') as HTMLElement | null
-          if (!anchor) return false
-          event.preventDefault()
-
+          // 画像ノード（NodeView で <img> のみ描画、<a> なし）→ NodeSelection で判定
           if (selectedNode?.type.name === 'image' && selectedNode.attrs.href) {
             setLinkPopup({ x: px, y: py, from, href: selectedNode.attrs.href, type: 'imageLink' })
             return true
           }
+
+          // テキストリンク（<a> クリック）
+          const anchor = target.closest('a') as HTMLElement | null
+          if (!anchor) return false
+          event.preventDefault()
+
           const linkMark = selection.$from.marks().find(m => m.type.name === 'link')
           if (linkMark) {
             setLinkPopup({ x: px, y: py, from, href: linkMark.attrs.href, type: 'link' })
