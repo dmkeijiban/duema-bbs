@@ -14,6 +14,7 @@ import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
+import { FeaturedSummaries } from '@/components/FeaturedSummaries'
 import {
   getCachedCategories,
   getCachedActiveNotices,
@@ -328,6 +329,9 @@ export default async function Home({
         <Suspense fallback={null}>
           <TopNoticesServer />
         </Suspense>
+
+        {/* 注目まとめ（手動作成まとめのみ・データなければ非表示） — 不要なら下の1行削除で即リバート */}
+        <Suspense fallback={null}><FeaturedSummaries /></Suspense>
 
         {/* まとめバナー（静的・即座に描画） */}
         <Link

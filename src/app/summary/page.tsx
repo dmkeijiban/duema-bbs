@@ -52,11 +52,32 @@ async function SummaryList() {
     )
   }
 
+  const manualSummaries = (summaries as Summary[]).filter(s => s.type === 'manual')
   const weeklySummaries = (summaries as Summary[]).filter(s => s.type === 'weekly')
   const monthlySummaries = (summaries as Summary[]).filter(s => s.type === 'monthly')
 
   return (
     <>
+      {manualSummaries.length > 0 && (
+        <section className="mb-4">
+          <h2 className="text-sm font-bold text-gray-700 px-2 py-1.5 border border-gray-300 bg-orange-50 mb-2">
+            📝 特集まとめ
+          </h2>
+          <div className="border border-gray-300 divide-y divide-gray-200 bg-white">
+            {manualSummaries.map(s => (
+              <Link
+                key={s.slug}
+                href={`/summary/${s.slug}`}
+                className="flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors"
+              >
+                <p className="text-sm text-gray-800 font-medium">{s.title}</p>
+                <span className="text-xs text-gray-400 ml-2 shrink-0">▶</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {weeklySummaries.length > 0 && (
         <section className="mb-4">
           <h2 className="text-sm font-bold text-gray-700 px-2 py-1.5 border border-gray-300 bg-gray-50 mb-2">
