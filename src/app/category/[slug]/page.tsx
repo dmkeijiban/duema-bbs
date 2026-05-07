@@ -49,11 +49,13 @@ export async function generateMetadata({ params }: Props) {
       description: `デュエルマスターズ掲示板の「${category.name}」カテゴリ。`,
       url: `${BASE_URL}/category/${slug}`,
       type: 'website',
+      images: [{ url: `${BASE_URL}/logo.jpg`, width: 500, height: 500, alt: 'デュエマ掲示板' }],
     },
     twitter: {
-      card: 'summary',
+      card: 'summary' as const,
       title: `${category.name} | デュエマ掲示板`,
       description: `デュエルマスターズ掲示板の「${category.name}」カテゴリ。`,
+      images: [`${BASE_URL}/logo.jpg`],
     },
   }
 }
