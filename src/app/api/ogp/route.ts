@@ -34,10 +34,21 @@ function extractMeta(html: string, property: string): string | null {
   return null
 }
 
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+}
+
 function resolveUrl(base: string, imageUrl: string | null): string | null {
   if (!imageUrl) return null
   try {
-    return new URL(imageUrl, base).href
+    // og:image の content 属性に &amp; などのHTMLエンティティが含まれる場合を解決する
+    return new URL(decodeHtmlEntities(imageUrl), base).href
   } catch {
     return null
   }
