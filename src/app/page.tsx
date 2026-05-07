@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic'
 const InlineNewThread = dynamic(
   () => import('@/components/InlineNewThread').then(m => m.InlineNewThread)
 )
-import { RecommendSection } from '@/components/RecommendSection'
+import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { SortTabs } from '@/components/SortTabs'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
@@ -483,24 +483,4 @@ function TopNoticesSkeleton() {
   )
 }
 
-function RecommendSectionSkeleton() {
-  return (
-    <div className="mb-2 border border-gray-300 bg-white animate-pulse">
-      {/* h-5(20px) + py-1.5(6px*2) = 32px → 実コンテンツのテキスト行高と一致させCLS防止 */}
-      <div className="px-3 py-1.5 border-b border-gray-300 flex items-center gap-1.5">
-        <div className="h-5 bg-gray-200 rounded w-16" />
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 border-l border-t border-gray-300">
-        {[...Array(8)].map((_, i) => (
-          <div key={i} className="flex border-b border-r border-gray-300 overflow-hidden">
-            <div className="shrink-0 bg-gray-200 w-11 h-11 md:w-16 md:h-16" />
-            <div className="flex-1 px-1 py-0.5 flex flex-col gap-1 justify-center">
-              <div className="h-2 bg-gray-200 rounded w-full" />
-              <div className="h-2 bg-gray-200 rounded w-3/4" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
+// RecommendSectionSkeleton は @/components/RecommendSection からエクスポート済み

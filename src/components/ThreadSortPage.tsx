@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase-server'
 import { ThreadRow } from '@/components/ThreadRow'
-import { RecommendSection } from '@/components/RecommendSection'
+import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { Pagination } from '@/components/Pagination'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'
@@ -159,7 +159,7 @@ export async function ThreadSortPage({ sort, title, icon, page = 1 }: Props) {
   return (
     <div className="w-full px-0 py-0">
       <div className="max-w-screen-xl mx-auto px-2 pt-2">
-        <Suspense fallback={null}>
+        <Suspense fallback={<RecommendSectionSkeleton />}>
           <RecommendSection />
         </Suspense>
 

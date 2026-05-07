@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase-server'
 import { ThreadContent } from '@/components/ThreadContent'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { ShareXButton } from '@/components/ShareXButton'
-import { RecommendSection } from '@/components/RecommendSection'
+import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { incrementViewCount } from '@/app/actions/thread'
 import { Thread, Post, Category } from '@/types'
 import Link from 'next/link'
@@ -220,7 +220,7 @@ export default async function ThreadPage({ params, searchParams }: Props) {
         threadRules={threadRules}
         isAdmin={isAdmin}
         recommendSlot={
-          <Suspense fallback={null}>
+          <Suspense fallback={<RecommendSectionSkeleton />}>
             <RecommendSection />
           </Suspense>
         }

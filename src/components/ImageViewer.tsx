@@ -9,7 +9,6 @@ interface Props {
 
 export function ImageViewer({ src, alt = '添付画像' }: Props) {
   const [open, setOpen] = useState(false)
-  const [landscape, setLandscape] = useState(false)
 
   const close = useCallback(() => setOpen(false), [])
 
@@ -20,27 +19,30 @@ export function ImageViewer({ src, alt = '添付画像' }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [open, close])
 
-  const handleLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget
-    setLandscape(img.naturalWidth > img.naturalHeight)
-  }
-
   return (
     <>
-      {/* サムネ表示：横長画像は広く、縦長・正方形は280px固定 */}
-      <div style={{ maxWidth: landscape ? 500 : 280, width: '100%' }}>
+      {/*
+        CLS対策：
+        - maxWidthを500固定（landscape判定によるwidth変化を廃止）
+        - aspect-ratio: 4/3 で読み込み前からスペース確保
+        - object-fit: contain で縦長画像も正しく表示
+        - background-color でプレースホルダー表示
+      */}
+      <div style={{ maxWidth: 500, width: '100%' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
           alt={alt}
           loading="lazy"
-          onLoad={handleLoad}
           onClick={() => setOpen(true)}
           style={{
             width: '100%',
             height: 'auto',
             display: 'block',
             cursor: 'zoom-in',
+            aspectRatio: '4/3',
+            objectFit: 'contain',
+            backgroundColor: '#f3f4f6',
           }}
           className="hover:opacity-90"
         />
