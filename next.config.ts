@@ -38,7 +38,14 @@ const nextConfig: NextConfig = {
         // vercel.appドメインからカスタムドメインへ301リダイレクト（SEO重複回避）
         source: '/:path*',
         has: [{ type: 'host', value: 'duema-bbs.vercel.app' }],
-        destination: 'https://duema-bbs.com/:path*',
+        destination: 'https://www.duema-bbs.com/:path*',
+        permanent: true,
+      },
+      {
+        // non-wwwからwwwへ301リダイレクト（canonical統一）
+        source: '/:path*',
+        has: [{ type: 'host', value: 'duema-bbs.com' }],
+        destination: 'https://www.duema-bbs.com/:path*',
         permanent: true,
       },
     ]

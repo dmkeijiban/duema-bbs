@@ -2,6 +2,9 @@ import { MetadataRoute } from 'next'
 import { createPublicClient } from '@/lib/supabase-public'
 import { SITE_URL } from '@/lib/site-config'
 
+// キャッシュを無効化して毎回新しいスレッドを反映させる
+export const dynamic = 'force-dynamic'
+
 const BASE_URL = SITE_URL
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -52,13 +55,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const supabase = createPublicClient()
-    const [{ data: threads }, { data: categories }, { data: summaries }] = await Promise.all([
+    const [threadsResult, categoriesResult, summariesResult] = await Promise.allSettled([
       supabase
         .from('threads')
         .select('id, last_posted_at')
         .eq('is_archived', false)
         .order('last_posted_at', { ascending: false })
-        .limit(5000),
+        .limit(2000),
       supabase
         .from('categories')
         .select('slug')
@@ -71,21 +74,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .limit(100),
     ])
 
-    const categoryPages: MetadataRoute.Sitemap = (categories ?? []).map(cat => ({
+    const threads = threadsResult.status === 'fulfilled' ? (threadsResult.value.data ?? []) : []
+    const categories = categoriesResult.status === 'fulfilled' ? (categoriesResult.value.data ?? []) : []
+    const summaries = summariesResult.status === 'fulfilled' ? (summariesResult.value.data ?? []) : []
+
+    const categoryPages: MetadataRoute.Sitemap = categories.map(cat => ({
       url: `${BASE_URL}/category/${cat.slug}`,
       lastModified: new Date(),
       changeFrequency: 'hourly' as const,
       priority: 0.9,
     }))
 
-    const threadPages: MetadataRoute.Sitemap = (threads ?? []).map(thread => ({
+    const threadPages: MetadataRoute.Sitemap = threads.map(thread => ({
       url: `${BASE_URL}/thread/${thread.id}`,
       lastModified: thread.last_posted_at ? new Date(thread.last_posted_at) : new Date(),
       changeFrequency: 'daily' as const,
       priority: 0.8,
     }))
 
-    const summaryPages: MetadataRoute.Sitemap = (summaries ?? []).map(s => ({
+    const summaryPages: MetadataRoute.Sitemap = summaries.map(s => ({
       url: `${BASE_URL}/summary/${s.slug}`,
       lastModified: s.created_at ? new Date(s.created_at) : new Date(),
       changeFrequency: 'never' as const,
