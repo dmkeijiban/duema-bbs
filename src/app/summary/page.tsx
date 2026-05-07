@@ -81,7 +81,7 @@ async function SummaryList() {
       {weeklySummaries.length > 0 && (
         <section className="mb-4">
           <h2 className="text-sm font-bold text-blue-700 px-2 py-1.5 border border-blue-200 bg-blue-50 mb-2">
-            📊 人気スレッドまとめ
+            📊 人気スレッドまとめ（週間・月間ランキング）
           </h2>
           <div className="border border-gray-300 divide-y divide-gray-200 bg-white">
             {weeklySummaries.map(s => (
