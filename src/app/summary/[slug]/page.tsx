@@ -21,7 +21,7 @@ interface SummaryThread {
 
 interface Summary {
   id: number
-  type: 'weekly' | 'monthly'
+  type: 'weekly' | 'monthly' | 'manual'
   slug: string
   title: string
   period_start: string
@@ -52,7 +52,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const summary = await getSummary(slug)
   if (!summary) return {}
-  const desc = `${summary.period_start}〜${summary.period_end}の人気スレッドTOP5まとめ。デュエマ掲示板で盛り上がったスレッドをランキング形式で紹介します。`
+  const desc = summary.type === 'manual'
+    ? `${summary.title}。デュエマ掲示板の注目スレッドをまとめて紹介します。`
+    : `${summary.period_start}〜${summary.period_end}の人気スレッドTOP5まとめ。デュエマ掲示板で盛り上がったスレッドをランキング形式で紹介します。`
   const url = `${BASE_URL}/summary/${slug}`
   return {
     title: `${summary.title} | デュエマ掲示板`,
@@ -102,7 +104,9 @@ export default async function SummarySlugPage({ params }: Props) {
             headline: summary.title,
             url: `${BASE_URL}/summary/${summary.slug}`,
             datePublished: summary.created_at,
-            description: `${summary.period_start}〜${summary.period_end}の人気スレッドTOP5まとめ。`,
+            description: summary.type === 'manual'
+              ? `${summary.title}。デュエマ掲示板の注目スレッドまとめ。`
+              : `${summary.period_start}〜${summary.period_end}の人気スレッドTOP5まとめ。`,
             publisher: {
               '@type': 'Organization',
               name: 'デュエマ掲示板',
@@ -137,7 +141,7 @@ export default async function SummarySlugPage({ params }: Props) {
         <nav className="text-xs text-gray-500 mb-2 flex items-center gap-x-1 flex-wrap">
           <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
           <span>{'>'}</span>
-          <Link href="/summary" className="text-blue-600 hover:underline">週次・月次まとめ</Link>
+          <Link href="/summary" className="text-blue-600 hover:underline">まとめ一覧</Link>
           <span>{'>'}</span>
           <span className="truncate">{summary.title}</span>
         </nav>
@@ -145,9 +149,11 @@ export default async function SummarySlugPage({ params }: Props) {
         {/* ヘッダー */}
         <div className="mb-3 px-3 py-3 border border-gray-300 bg-white">
           <h1 className="font-bold text-base text-gray-800">{summary.title}</h1>
-          <p className="text-xs text-gray-400 mt-1">
-            集計期間：{summary.period_start} 〜 {summary.period_end}
-          </p>
+          {summary.type !== 'manual' && (
+            <p className="text-xs text-gray-400 mt-1">
+              集計期間：{summary.period_start} 〜 {summary.period_end}
+            </p>
+          )}
         </div>
 
         {/* スレッドランキング */}
@@ -195,8 +201,10 @@ export default async function SummarySlugPage({ params }: Props) {
                     {thread.title}
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
-                    この期間の投稿数：<span className="font-semibold text-gray-600">{thread.activity}</span>件
-                    ／ 総レス：{thread.post_count}件
+                    {summary.type !== 'manual' && (
+                      <>この期間の投稿数：<span className="font-semibold text-gray-600">{thread.activity}</span>件 ／ </>
+                    )}
+                    総レス：{thread.post_count}件
                   </p>
                 </div>
 
