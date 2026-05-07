@@ -94,7 +94,17 @@ export function LinkCard({ url }: { url: string }) {
             <img
               src={proxiedImage}
               alt=""
-              onError={e => { (e.target as HTMLImageElement).parentElement!.style.display = 'none' }}
+              referrerPolicy="no-referrer"
+              onError={e => {
+                const img = e.target as HTMLImageElement
+                // プロキシ失敗時はブラウザから直接取得を試みる（Refererなし）
+                if (data?.image && !img.dataset.directFallback) {
+                  img.dataset.directFallback = '1'
+                  img.src = data.image
+                } else {
+                  img.parentElement!.style.display = 'none'
+                }
+              }}
               style={{ width: '100%', height: '100%', objectFit: 'cover', minHeight: 112, display: 'block' }}
             />
           </div>
