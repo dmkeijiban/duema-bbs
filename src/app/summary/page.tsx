@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 interface Summary {
   id: number
-  type: 'weekly' | 'monthly'
+  type: 'weekly' | 'monthly' | 'manual'
   slug: string
   title: string
   period_start: string

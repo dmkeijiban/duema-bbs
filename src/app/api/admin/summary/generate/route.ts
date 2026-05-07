@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
   // 既存チェック（スキップ時もキャッシュをリフレッシュ）
   const { data: existing } = await supabase.from('summaries').select('id').eq('slug', slug).maybeSingle()
   if (existing) {
-    revalidateTag('summaries')
+    revalidateTag('summaries', { expire: 0 })
     revalidatePath('/category', 'layout')
     return NextResponse.json({ ok: true, skipped: true, slug })
   }

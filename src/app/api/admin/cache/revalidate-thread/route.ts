@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   if (!threadId || typeof threadId !== 'number')
     return NextResponse.json({ error: 'threadId が必要です' }, { status: 400 })
 
-  revalidateTag(`thread-${threadId}`)
+  revalidateTag(`thread-${threadId}`, { expire: 0 })
 
   return NextResponse.json({ ok: true, threadId })
 }
