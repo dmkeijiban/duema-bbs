@@ -24,6 +24,8 @@ function isSafeUrl(url: string): boolean {
   }
 }
 
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+
 export async function GET(req: NextRequest) {
   const rawUrl = req.nextUrl.searchParams.get('url')
   const rawReferer = req.nextUrl.searchParams.get('referer')
@@ -41,66 +43,52 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Disallowed url' }, { status: 403 })
   }
 
-  // refererパラメータがあれば元ページURL（corocoro.jpなどのCDNはページURLが必要）、なければホスト名
-  const parsed = new URL(url)
-  let refererHeader = `${parsed.protocol}//${parsed.hostname}/`
+  const imgHostOrigin = (() => {
+    const p = new URL(url)
+    return `${p.protocol}//${p.hostname}/`
+  })()
+
+  // ページURLのReferer
+  let pageReferer: string | null = null
   if (rawReferer) {
     try {
       const decoded = decodeURIComponent(rawReferer)
-      new URL(decoded) // バリデーション
-      refererHeader = decoded
-    } catch { /* 不正なら無視してデフォルト使用 */ }
+      new URL(decoded)
+      pageReferer = decoded
+    } catch { /* ignore */ }
   }
 
-  const fetchHeaders = {
-    Referer: refererHeader,
-    Origin: `${new URL(refererHeader).protocol}//${new URL(refererHeader).hostname}`,
-    'User-Agent':
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-    'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
-    'Sec-Fetch-Dest': 'image',
-    'Sec-Fetch-Mode': 'no-cors',
-    'Sec-Fetch-Site': 'same-site',
-  }
+  // Refererを3段階で試す：ページURL → 画像ホストのドメイン → なし
+  const attempts: Record<string, string>[] = [
+    ...(pageReferer ? [{ Referer: pageReferer, 'User-Agent': UA, Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8', 'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8' }] : []),
+    { Referer: imgHostOrigin, 'User-Agent': UA, Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8', 'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8' },
+    { 'User-Agent': UA, Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8', 'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8' },
+  ]
 
-  try {
-    let res = await fetch(url, {
-      headers: fetchHeaders,
-      next: { revalidate: 86400 }, // 24h キャッシュ
-      signal: AbortSignal.timeout(8000),
-    })
-
-    // 403の場合はReferer/Originを省いてリトライ
-    if (res.status === 403) {
-      res = await fetch(url, {
-        headers: {
-          'User-Agent': fetchHeaders['User-Agent'],
-          Accept: fetchHeaders.Accept,
-          'Accept-Language': fetchHeaders['Accept-Language'],
-        },
+  for (const headers of attempts) {
+    try {
+      const res = await fetch(url, {
+        headers,
+        cache: 'no-store', // Next.jsのデータキャッシュは使わずレスポンスヘッダーでVercelエッジキャッシュに委ねる
         signal: AbortSignal.timeout(8000),
       })
-    }
 
-    if (!res.ok) {
-      return NextResponse.json({ error: `Upstream ${res.status}` }, { status: res.status })
-    }
+      if (!res.ok) continue
 
-    const contentType = res.headers.get('content-type') ?? 'image/jpeg'
-    if (!contentType.startsWith('image/')) {
-      return NextResponse.json({ error: 'Not an image' }, { status: 400 })
-    }
+      const contentType = res.headers.get('content-type') ?? 'image/jpeg'
+      if (!contentType.startsWith('image/')) continue
 
-    const buffer = await res.arrayBuffer()
-    return new NextResponse(buffer, {
-      headers: {
-        'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=86400, stale-while-revalidate=3600',
-      },
-    })
-  } catch (err) {
-    console.error('ogp-image proxy error:', err)
-    return NextResponse.json({ error: 'Fetch failed' }, { status: 502 })
+      const buffer = await res.arrayBuffer()
+      return new NextResponse(buffer, {
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': 'public, max-age=86400, stale-while-revalidate=3600',
+        },
+      })
+    } catch {
+      continue
+    }
   }
+
+  return NextResponse.json({ error: 'Fetch failed' }, { status: 502 })
 }
