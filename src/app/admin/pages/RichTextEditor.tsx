@@ -86,6 +86,17 @@ const PageButton = Node.create({
       node.attrs.label,
     ]
   },
+  // エディタ内では <span> で描画 → <a> による外部遷移を防ぐ
+  // renderHTML() は変更せず、DB保存の HTML は引き続き <a> 形式
+  addNodeView() {
+    return ({ node }: { node: any }) => {
+      const dom = document.createElement('span')
+      dom.setAttribute('data-btn', '')
+      dom.className = 'page-btn'
+      dom.textContent = node.attrs.label
+      return { dom }
+    }
+  },
 })
 
 // インラインショップリンクノード（テキスト内に埋め込む色付きバッジリンク）
@@ -155,6 +166,18 @@ const ShopLink = Node.create({
       },
       `🛒 ${node.attrs.label}`,
     ]
+  },
+  // エディタ内では <span> で描画 → <a> による外部遷移を防ぐ
+  // renderHTML() は変更せず、DB保存の HTML は引き続き <a> 形式
+  addNodeView() {
+    return ({ node }: { node: any }) => {
+      const dom = document.createElement('span')
+      dom.setAttribute('data-shop', '')
+      dom.className = 'shop-link'
+      dom.style.backgroundColor = node.attrs.color
+      dom.textContent = `🛒 ${node.attrs.label}`
+      return { dom }
+    }
   },
 })
 
@@ -337,29 +360,36 @@ export function RichTextEditor({ content, onChange }: Props) {
         // エディタ内のリンクをクリック：外部遷移を防ぎ、URLポップアップを表示
         click: (view, event) => {
           const target = event.target as HTMLElement
-          // アンカー内クリックのみ処理（画像のアンカーも含む）
-          const anchor = target.closest('a') as HTMLElement | null
-          if (!anchor) return false
-          event.preventDefault()
           const px = event.clientX
           const py = event.clientY + 12
           // mousedown 時点で ProseMirror が selection をセット済みなのでそのまま使用
           const { selection } = view.state
           const selectedNode = selection instanceof NodeSelection ? selection.node : null
           const from = selection.from
+
+          // atom ノード（NodeView で span 化）は anchor なし → NodeSelection で先に判定
           if (selectedNode?.type.name === 'shopLink') {
             setLinkPopup({ x: px, y: py, from, href: selectedNode.attrs.href, type: 'shopLink', label: selectedNode.attrs.label, color: selectedNode.attrs.color })
-          } else if (selectedNode?.type.name === 'pageButton') {
+            return true
+          }
+          if (selectedNode?.type.name === 'pageButton') {
             setLinkPopup({ x: px, y: py, from, href: selectedNode.attrs.href, type: 'pageButton', label: selectedNode.attrs.label })
-          } else if (selectedNode?.type.name === 'image') {
-            if (selectedNode.attrs.href) {
-              setLinkPopup({ x: px, y: py, from, href: selectedNode.attrs.href, type: 'imageLink' })
-            }
-          } else {
-            const linkMark = selection.$from.marks().find(m => m.type.name === 'link')
-            if (linkMark) {
-              setLinkPopup({ x: px, y: py, from, href: linkMark.attrs.href, type: 'link' })
-            }
+            return true
+          }
+
+          // <a> クリック（テキストリンク・画像リンク）
+          const anchor = target.closest('a') as HTMLElement | null
+          if (!anchor) return false
+          event.preventDefault()
+
+          if (selectedNode?.type.name === 'image' && selectedNode.attrs.href) {
+            setLinkPopup({ x: px, y: py, from, href: selectedNode.attrs.href, type: 'imageLink' })
+            return true
+          }
+          const linkMark = selection.$from.marks().find(m => m.type.name === 'link')
+          if (linkMark) {
+            setLinkPopup({ x: px, y: py, from, href: linkMark.attrs.href, type: 'link' })
+            return true
           }
           return true
         },
@@ -728,8 +758,8 @@ export function RichTextEditor({ content, onChange }: Props) {
           max-width: 100%; height: auto; display: block; margin: 0.5em 0;
           cursor: pointer;
         }
-        /* インラインボタン・ショップリンクのエディタ内プレビュー */
-        .rich-editor-content a.page-btn {
+        /* インラインボタン・ショップリンクのエディタ内プレビュー（NodeViewでspan化） */
+        .rich-editor-content .page-btn {
           display: inline-block;
           padding: 4px 16px;
           background: #0d6efd;
@@ -737,10 +767,10 @@ export function RichTextEditor({ content, onChange }: Props) {
           text-decoration: none !important;
           font-weight: 500;
           border-radius: 2px;
-          cursor: default;
+          cursor: pointer;
           user-select: none;
         }
-        .rich-editor-content a.shop-link {
+        .rich-editor-content .shop-link {
           display: inline-flex;
           align-items: center;
           padding: 3px 12px;
@@ -748,15 +778,15 @@ export function RichTextEditor({ content, onChange }: Props) {
           text-decoration: none !important;
           font-weight: bold;
           border-radius: 9999px;
-          cursor: default;
+          cursor: pointer;
           user-select: none;
         }
         /* atom ノード選択時のビジュアルフィードバック */
-        .rich-editor-content a.shop-link.ProseMirror-selectednode {
+        .rich-editor-content .shop-link.ProseMirror-selectednode {
           box-shadow: 0 0 0 3px rgba(0,0,0,0.35);
           outline: none;
         }
-        .rich-editor-content a.page-btn.ProseMirror-selectednode {
+        .rich-editor-content .page-btn.ProseMirror-selectednode {
           box-shadow: 0 0 0 3px rgba(0,0,0,0.35);
           outline: none;
         }
