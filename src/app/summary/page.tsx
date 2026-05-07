@@ -8,8 +8,8 @@ import { Metadata } from 'next'
 export const revalidate = 3600
 
 export const metadata: Metadata = {
-  title: '週次・月次まとめ | デュエマ掲示板',
-  description: '毎週・毎月の人気スレッドTOP5まとめ一覧です。',
+  title: 'まとめ一覧 | デュエマ掲示板',
+  description: '人気記事まとめ・週間ランキング・月間ランキングの一覧です。',
 }
 
 interface Summary {
@@ -61,7 +61,7 @@ async function SummaryList() {
       {manualSummaries.length > 0 && (
         <section className="mb-4">
           <h2 className="text-sm font-bold text-gray-700 px-2 py-1.5 border border-gray-300 bg-orange-50 mb-2">
-            📝 特集まとめ
+            📝 人気記事まとめ
           </h2>
           <div className="border border-gray-300 divide-y divide-gray-200 bg-white">
             {manualSummaries.map(s => (
@@ -81,7 +81,7 @@ async function SummaryList() {
       {weeklySummaries.length > 0 && (
         <section className="mb-4">
           <h2 className="text-sm font-bold text-gray-700 px-2 py-1.5 border border-gray-300 bg-gray-50 mb-2">
-            📅 週次まとめ
+            📅 週間ランキング
           </h2>
           <div className="border border-gray-300 divide-y divide-gray-200 bg-white">
             {weeklySummaries.map(s => (
@@ -106,7 +106,7 @@ async function SummaryList() {
       {monthlySummaries.length > 0 && (
         <section>
           <h2 className="text-sm font-bold text-gray-700 px-2 py-1.5 border border-gray-300 bg-gray-50 mb-2">
-            🗓️ 月次まとめ
+            🗓️ 月間ランキング
           </h2>
           <div className="border border-gray-300 divide-y divide-gray-200 bg-white">
             {monthlySummaries.map(s => (
@@ -143,13 +143,12 @@ export default async function SummaryIndexPage() {
         <nav className="text-xs text-gray-500 mb-2 flex items-center gap-x-1">
           <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
           <span>{'>'}</span>
-          <span>週次・月次まとめ</span>
+          <span>まとめ一覧</span>
         </nav>
 
         {/* ヘッダー */}
         <div className="mb-3 px-3 py-2 border border-gray-300 bg-white">
-          <h1 className="font-bold text-sm text-gray-800">📊 週次・月次まとめ</h1>
-          <p className="text-xs text-gray-500 mt-0.5">毎週月曜日に先週の人気スレッドTOP5が自動生成されます</p>
+          <h1 className="font-bold text-sm text-gray-800">📋 まとめ一覧</h1>
         </div>
 
         <Suspense fallback={
