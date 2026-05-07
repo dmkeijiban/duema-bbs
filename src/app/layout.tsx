@@ -28,13 +28,13 @@ export const metadata: Metadata = {
     siteName: 'デュエマ掲示板',
     locale: 'ja_JP',
     type: 'website',
-    images: [{ url: `${SITE_URL}/logo.jpg`, width: 500, height: 500, alt: 'デュエマ掲示板' }],
+    images: [{ url: `${SITE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: 'デュエマ掲示板' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'デュエマ掲示板 | デュエルマスターズ専門掲示板',
     description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報など何でも語ろう。',
-    images: [`${SITE_URL}/logo.jpg`],
+    images: [`${SITE_URL}/default-thumbnail.jpg`],
   },
   verification: {
     google: 'fYOcWqqCUBFXoIWN_0CMoALvbJnuUcTpvdf01SGgLNM',
