@@ -28,7 +28,7 @@ const getCachedRecentSummaries = unstable_cache(
     return (data ?? []) as Summary[]
   },
   ['category-summaries'],
-  { revalidate: 3600 }
+  { revalidate: 3600, tags: ['summaries'] }
 )
 
 interface Props {

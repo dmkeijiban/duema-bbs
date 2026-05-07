@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 export const runtime = 'nodejs'
 
@@ -55,9 +55,13 @@ export async function POST(req: NextRequest) {
     title = `先週の人気スレッドTOP5（${mm}/${dd}〜${em}/${ed}）`
   }
 
-  // 既存チェック
+  // 既存チェック（スキップ時もキャッシュをリフレッシュ）
   const { data: existing } = await supabase.from('summaries').select('id').eq('slug', slug).maybeSingle()
-  if (existing) return NextResponse.json({ ok: true, skipped: true, slug })
+  if (existing) {
+    revalidateTag('summaries')
+    revalidatePath('/category', 'layout')
+    return NextResponse.json({ ok: true, skipped: true, slug })
+  }
 
   // 期間内の投稿を集計
   const { data: posts } = await supabase

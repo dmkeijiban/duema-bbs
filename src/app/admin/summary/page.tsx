@@ -39,17 +39,17 @@ export default function AdminSummaryPage() {
 
           <p className="text-xs text-gray-500">
             ボタンを押すと直近の投稿データからTOP5を集計してまとめを生成します。<br />
-            同じ期間のまとめが既に存在する場合はスキップされます。
+            同じ期間のまとめが既に存在する場合はスキップされます（キャッシュは更新）。
           </p>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <button
               onClick={() => generate('weekly')}
               disabled={loading}
               className="px-4 py-2 text-sm text-white disabled:opacity-50"
               style={{ background: '#0d6efd' }}
             >
-              {loading ? '生成中...' : '週次まとめを生成'}
+              {loading ? '処理中...' : '週次まとめを生成'}
             </button>
             <button
               onClick={() => generate('monthly')}
@@ -57,7 +57,7 @@ export default function AdminSummaryPage() {
               className="px-4 py-2 text-sm text-white disabled:opacity-50"
               style={{ background: '#198754' }}
             >
-              {loading ? '生成中...' : '月次まとめを生成'}
+              {loading ? '処理中...' : '月次まとめを生成'}
             </button>
           </div>
 
