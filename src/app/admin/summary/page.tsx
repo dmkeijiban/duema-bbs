@@ -28,6 +28,47 @@ interface SummaryItem {
   type: string
 }
 
+function SummaryRow({ s, onEdit, onToggle, onDelete, actionLoading }: {
+  s: SummaryItem
+  onEdit: (s: SummaryItem) => void
+  onToggle: (s: SummaryItem) => void
+  onDelete: (s: SummaryItem) => void
+  actionLoading: string | null
+}) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-2.5">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${s.published ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+            {s.published ? '公開中' : '非公開'}
+          </span>
+          <p className="text-sm font-medium text-gray-800 truncate">{s.title}</p>
+        </div>
+        <p className="text-[11px] text-gray-400">
+          /summary/{s.slug} · {new Date(s.created_at).toLocaleDateString('ja-JP')}
+        </p>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        <a href={`/summary/${s.slug}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-500 hover:underline">
+          表示 ↗
+        </a>
+        <button type="button" onClick={() => onEdit(s)}
+          className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-700">
+          編集
+        </button>
+        <button type="button" onClick={() => onToggle(s)} disabled={actionLoading === s.slug + '-publish'}
+          className={`text-xs px-2 py-1 border rounded disabled:opacity-50 ${s.published ? 'border-yellow-400 text-yellow-700 hover:bg-yellow-50' : 'border-green-400 text-green-700 hover:bg-green-50'}`}>
+          {actionLoading === s.slug + '-publish' ? '...' : s.published ? '非公開にする' : '公開する'}
+        </button>
+        <button type="button" onClick={() => onDelete(s)} disabled={actionLoading === s.slug + '-delete'}
+          className="text-xs px-2 py-1 border border-red-300 rounded text-red-600 hover:bg-red-50 disabled:opacity-50">
+          {actionLoading === s.slug + '-delete' ? '...' : '削除'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminSummaryPage() {
   // ── 作成・編集フォーム ────────────────────────────────────────
   const [mode, setMode] = useState<'create' | 'edit'>('create')
@@ -291,66 +332,33 @@ export default function AdminSummaryPage() {
           )}
         </div>
 
-        {/* ── 既存まとめ一覧 ─────────────────────── */}
+        {/* ── 手動記事一覧 ─────────────────────── */}
         <div className="bg-white border border-gray-300 p-5 space-y-3">
-          <h2 className="font-bold text-gray-800">📋 まとめ一覧</h2>
+          <h2 className="font-bold text-gray-800">📝 手動記事一覧</h2>
           {listLoading ? (
             <p className="text-xs text-gray-400">読み込み中...</p>
-          ) : summaries.length === 0 ? (
-            <p className="text-xs text-gray-400">まだ手動まとめはありません</p>
+          ) : summaries.filter(s => s.type === 'manual').length === 0 ? (
+            <p className="text-xs text-gray-400">まだ手動記事はありません</p>
           ) : (
             <div className="divide-y divide-gray-100 border border-gray-200">
-              {summaries.map(s => (
-                <div key={s.id} className="flex items-center gap-2 px-3 py-2.5">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${s.published ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {s.published ? '公開中' : '非公開'}
-                      </span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${s.type === 'manual' ? 'bg-blue-100 text-blue-600' : s.type === 'weekly' ? 'bg-purple-100 text-purple-600' : 'bg-orange-100 text-orange-600'}`}>
-                        {s.type === 'manual' ? '手動' : s.type === 'weekly' ? '週次' : '月次'}
-                      </span>
-                      <p className="text-sm font-medium text-gray-800 truncate">{s.title}</p>
-                    </div>
-                    <p className="text-[11px] text-gray-400">
-                      /summary/{s.slug} ·{' '}
-                      {new Date(s.created_at).toLocaleDateString('ja-JP')}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <a
-                      href={`/summary/${s.slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] text-blue-500 hover:underline"
-                    >
-                      表示 ↗
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => startEdit(s)}
-                      className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-700"
-                    >
-                      編集
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => togglePublish(s)}
-                      disabled={actionLoading === s.slug + '-publish'}
-                      className={`text-xs px-2 py-1 border rounded disabled:opacity-50 ${s.published ? 'border-yellow-400 text-yellow-700 hover:bg-yellow-50' : 'border-green-400 text-green-700 hover:bg-green-50'}`}
-                    >
-                      {actionLoading === s.slug + '-publish' ? '...' : s.published ? '非公開にする' : '公開する'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteSummary(s)}
-                      disabled={actionLoading === s.slug + '-delete'}
-                      className="text-xs px-2 py-1 border border-red-300 rounded text-red-600 hover:bg-red-50 disabled:opacity-50"
-                    >
-                      {actionLoading === s.slug + '-delete' ? '...' : '削除'}
-                    </button>
-                  </div>
-                </div>
+              {summaries.filter(s => s.type === 'manual').map(s => (
+                <SummaryRow key={s.id} s={s} onEdit={startEdit} onToggle={togglePublish} onDelete={deleteSummary} actionLoading={actionLoading} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── 週次・月次ランキング一覧 ─────────────────────── */}
+        <div className="bg-white border border-gray-300 p-5 space-y-3">
+          <h2 className="font-bold text-gray-800">📊 週間・月間ランキング一覧</h2>
+          {listLoading ? (
+            <p className="text-xs text-gray-400">読み込み中...</p>
+          ) : summaries.filter(s => s.type !== 'manual').length === 0 ? (
+            <p className="text-xs text-gray-400">自動生成まとめはありません</p>
+          ) : (
+            <div className="divide-y divide-gray-100 border border-gray-200">
+              {summaries.filter(s => s.type !== 'manual').map(s => (
+                <SummaryRow key={s.id} s={s} onEdit={startEdit} onToggle={togglePublish} onDelete={deleteSummary} actionLoading={actionLoading} />
               ))}
             </div>
           )}
