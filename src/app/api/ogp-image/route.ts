@@ -52,17 +52,36 @@ export async function GET(req: NextRequest) {
     } catch { /* 不正なら無視してデフォルト使用 */ }
   }
 
+  const fetchHeaders = {
+    Referer: refererHeader,
+    Origin: `${new URL(refererHeader).protocol}//${new URL(refererHeader).hostname}`,
+    'User-Agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+    'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
+    'Sec-Fetch-Dest': 'image',
+    'Sec-Fetch-Mode': 'no-cors',
+    'Sec-Fetch-Site': 'same-site',
+  }
+
   try {
-    const res = await fetch(url, {
-      headers: {
-        Referer: refererHeader,
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-      },
+    let res = await fetch(url, {
+      headers: fetchHeaders,
       next: { revalidate: 86400 }, // 24h キャッシュ
       signal: AbortSignal.timeout(8000),
     })
+
+    // 403の場合はReferer/Originを省いてリトライ
+    if (res.status === 403) {
+      res = await fetch(url, {
+        headers: {
+          'User-Agent': fetchHeaders['User-Agent'],
+          Accept: fetchHeaders.Accept,
+          'Accept-Language': fetchHeaders['Accept-Language'],
+        },
+        signal: AbortSignal.timeout(8000),
+      })
+    }
 
     if (!res.ok) {
       return NextResponse.json({ error: `Upstream ${res.status}` }, { status: res.status })

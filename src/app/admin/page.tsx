@@ -9,6 +9,7 @@ import {
 import { SettingEditFormClient } from './SettingEditFormClient'
 import { getAllSettings } from '@/lib/settings'
 import { Notice } from '@/components/NoticeBlock'
+import { ThreadCacheClear } from './ThreadCacheClear'
 
 const ADMIN_COOKIE = 'admin_auth'
 const THREADS_PER_PAGE = 60
@@ -194,7 +195,10 @@ export default async function AdminPage({
         />
       )}
 
-      {/* ① お知らせ管理 */}
+      {/* ① キャッシュクリア */}
+      <ThreadCacheClear />
+
+      {/* ② お知らせ管理 */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
           <h2 className="font-bold text-gray-700">📢 お知らせ管理</h2>
@@ -246,7 +250,7 @@ export default async function AdminPage({
         )}
       </div>
 
-      {/* ② サイトテキスト設定 */}
+      {/* ③ サイトテキスト設定 */}
       <div className="mb-4">
         <h2 className="font-bold text-gray-700 mb-2 pb-1 border-b border-gray-200">📝 サイトテキスト設定</h2>
         <div className="space-y-1">
@@ -265,7 +269,7 @@ export default async function AdminPage({
         </div>
       </div>
 
-      {/* ③ スレッド一覧 + レス一覧 */}
+      {/* ④ スレッド一覧 + レス一覧 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* スレッド一覧（2列グリッド） */}
         <div>
