@@ -5,6 +5,7 @@ import { BottomNav } from '@/components/ThreadSortPage'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { Metadata } from 'next'
+import { SummaryBodyRenderer } from '@/components/SummaryBodyRenderer'
 
 export const revalidate = 3600
 
@@ -179,10 +180,8 @@ export default async function SummarySlugPage({ params }: Props) {
 
         {/* 手書き本文（manualのみ） */}
         {summary.type === 'manual' && summary.body && (
-          <div className="mb-3 px-4 py-4 border border-gray-300 bg-white text-sm text-gray-800 leading-relaxed space-y-3">
-            {summary.body.split(/\n\n+/).map((para, i) => (
-              <p key={i} className="whitespace-pre-wrap">{para.trim()}</p>
-            ))}
+          <div className="mb-3 px-4 py-4 border border-gray-300 bg-white">
+            <SummaryBodyRenderer body={summary.body} />
           </div>
         )}
 
