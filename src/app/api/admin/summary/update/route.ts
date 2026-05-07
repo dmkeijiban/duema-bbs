@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   const { error } = await supabase.from('summaries').update(updates).eq('slug', slug)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  revalidateTag('summaries')
+  revalidateTag('summaries', { expire: 0 })
   revalidatePath(`/summary/${slug}`)
   revalidatePath('/summary')
   revalidatePath('/')
