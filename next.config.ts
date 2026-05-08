@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next'
+import { withSentryConfig } from '@sentry/nextjs'
 
 const nextConfig: NextConfig = {
   images: {
@@ -53,6 +54,28 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // 全ページへのセキュリティヘッダー
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
+          },
+        ],
+      },
+      {
         // Next.jsの静的アセット（JS/CSS/フォント）は不変なので1年キャッシュ
         source: '/_next/static/:path*',
         headers: [
@@ -85,4 +108,19 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+export default withSentryConfig(nextConfig, {
+  // Sentry組織・プロジェクトは環境変数 SENTRY_ORG / SENTRY_PROJECT で設定
+  silent: !process.env.CI,
+
+  // ソースマップをSentryへアップロード（本番ビルド時）
+  widenClientFileUpload: true,
+
+  // Next.js の Server Components のトレースを有効化
+  autoInstrumentServerFunctions: true,
+
+  // バンドルサイズ削減：Sentry のデバッグログを除去
+  disableLogger: true,
+
+  // ソースマップを本番バンドルに含めない（Sentryへのアップロードのみ）
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
+})
