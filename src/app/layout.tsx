@@ -5,6 +5,8 @@ import { Header } from '@/components/Header'
 import { SnsFloatingBar } from '@/components/SnsFloatingBar'
 import Link from 'next/link'
 import { SITE_URL } from '@/lib/site-config'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 const GA_ID = 'G-HDGDNYNMH4'
 
@@ -88,6 +90,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           `}
         </Script>
 
+        {/* Service Worker 登録 — PWA「ホームに追加」対応 */}
+        <Script id="sw-register" strategy="lazyOnload">
+          {`
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.register('/sw.js').catch(() => {});
+            }
+          `}
+        </Script>
+
         {/* Microsoft Clarity — lazyOnload でTTIへの影響を排除 */}
         <Script id="clarity-init" strategy="lazyOnload">
           {`
@@ -103,11 +114,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Header />
           <main className="flex-1">{children}</main>
           <SnsFloatingBar />
-          <footer className="bg-white border-t border-gray-200 py-3 mt-6">
-            <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-600">
-              ©<Link href="/">デュエマ掲示板</Link> — デュエル・マスターズ専門掲示板
+          <footer className="bg-white border-t border-gray-200 py-4 mt-6">
+            <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-600 space-y-1">
+              <div className="flex justify-center gap-4">
+                <Link href="/terms" className="hover:underline">利用規約</Link>
+                <Link href="/privacy" className="hover:underline">プライバシーポリシー</Link>
+                <Link href="/contact" className="hover:underline">お問い合わせ</Link>
+              </div>
+              <div>©<Link href="/">デュエマ掲示板</Link> — デュエル・マスターズ専門掲示板</div>
             </div>
           </footer>
+          <Analytics />
+          <SpeedInsights />
       </body>
     </html>
   )
