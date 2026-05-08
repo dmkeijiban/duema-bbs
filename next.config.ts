@@ -115,12 +115,16 @@ export default withSentryConfig(nextConfig, {
   // ソースマップをSentryへアップロード（本番ビルド時）
   widenClientFileUpload: true,
 
-  // Next.js の Server Components のトレースを有効化
-  autoInstrumentServerFunctions: true,
-
-  // バンドルサイズ削減：Sentry のデバッグログを除去
-  disableLogger: true,
-
   // ソースマップを本番バンドルに含めない（Sentryへのアップロードのみ）
   sourcemaps: { deleteSourcemapsAfterUpload: true },
+
+  webpack: {
+    // Next.js の Server Components のトレースを有効化
+    autoInstrumentServerFunctions: true,
+
+    treeshake: {
+      // バンドルサイズ削減：Sentry のデバッグログを除去
+      removeDebugLogging: true,
+    },
+  },
 })
