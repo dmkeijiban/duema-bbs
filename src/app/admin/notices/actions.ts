@@ -6,12 +6,13 @@ import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase-server'
 import { uploadImage, validateImageFile } from '@/lib/upload'
 import { v4 as uuidv4 } from 'uuid'
+import { verifyAdminCookie } from '@/lib/admin-auth'
 
 const ADMIN_COOKIE = 'admin_auth'
 
 async function requireAdmin() {
   const cookieStore = await cookies()
-  if (cookieStore.get(ADMIN_COOKIE)?.value !== process.env.ADMIN_PASSWORD) {
+  if (!verifyAdminCookie(cookieStore.get(ADMIN_COOKIE)?.value)) {
     redirect('/admin')
   }
 }

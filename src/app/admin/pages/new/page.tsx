@@ -1,10 +1,11 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { PageEditor } from '../PageEditor'
+import { verifyAdminCookie } from '@/lib/admin-auth'
 
 async function isAdmin() {
   const cookieStore = await cookies()
-  return cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+  return verifyAdminCookie(cookieStore.get('admin_auth')?.value)
 }
 
 export default async function NewPage() {

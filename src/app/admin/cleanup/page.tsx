@@ -3,12 +3,13 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { archiveThread, deleteThread, batchArchiveStale } from './actions'
 import { ConfirmDeleteButton } from '@/components/admin/ConfirmDeleteButton'
+import { verifyAdminCookie } from '@/lib/admin-auth'
 
 const ADMIN_COOKIE = 'admin_auth'
 
 async function isAdmin() {
   const cookieStore = await cookies()
-  return cookieStore.get(ADMIN_COOKIE)?.value === process.env.ADMIN_PASSWORD
+  return verifyAdminCookie(cookieStore.get(ADMIN_COOKIE)?.value)
 }
 
 export default async function CleanupPage() {

@@ -4,12 +4,13 @@ import { createClient } from '@/lib/supabase-server'
 import { createNotice, toggleNoticeActive, moveNotice, deleteNotice } from './actions'
 import { Notice } from '@/components/NoticeBlock'
 import { ConfirmDeleteButton } from '@/components/admin/ConfirmDeleteButton'
+import { verifyAdminCookie } from '@/lib/admin-auth'
 
 const ADMIN_COOKIE = 'admin_auth'
 
 async function isAdmin() {
   const cookieStore = await cookies()
-  return cookieStore.get(ADMIN_COOKIE)?.value === process.env.ADMIN_PASSWORD
+  return verifyAdminCookie(cookieStore.get(ADMIN_COOKIE)?.value)
 }
 
 const posLabel: Record<string, string> = { top: 'スレ上', mid: 'タブ下', bot: 'スレ下' }

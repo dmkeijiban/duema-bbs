@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { revalidatePath, revalidateTag } from 'next/cache'
+import { verifyAdminCookie } from '@/lib/admin-auth'
 
 export const runtime = 'nodejs'
 
@@ -14,7 +15,7 @@ function createAnonClient() {
 
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies()
-  const isAdmin = cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+  const isAdmin = verifyAdminCookie(cookieStore.get('admin_auth')?.value)
   if (!isAdmin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { type = 'weekly' } = await req.json().catch(() => ({}))

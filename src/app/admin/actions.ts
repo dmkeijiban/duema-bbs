@@ -6,24 +6,27 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { NoticeItem } from '@/components/NoticeBlock'
+import { createAdminCookieValue, isAdminPassword, verifyAdminCookie } from '@/lib/admin-auth'
 
 const ADMIN_COOKIE = 'admin_auth'
 
 async function checkAdmin() {
   const cookieStore = await cookies()
   const val = cookieStore.get(ADMIN_COOKIE)?.value
-  if (val !== process.env.ADMIN_PASSWORD) {
+  if (!verifyAdminCookie(val)) {
     throw new Error('Unauthorized')
   }
 }
 
 export async function adminLogin(formData: FormData) {
   const pw = formData.get('password') as string
-  if (pw && pw === process.env.ADMIN_PASSWORD) {
+  if (isAdminPassword(pw)) {
     const cookieStore = await cookies()
-    cookieStore.set(ADMIN_COOKIE, pw, {
+    cookieStore.set(ADMIN_COOKIE, createAdminCookieValue(), {
+      path: '/',
       httpOnly: true,
       sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 24 * 7, // 7日間
     })
     redirect('/admin')

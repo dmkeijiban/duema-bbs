@@ -4,10 +4,11 @@ import { createClient } from '@/lib/supabase-server'
 import { parseBlocks } from '@/types/fixed-pages'
 import { PageEditor } from '../PageEditor'
 import { DEFAULT_BLOCKS } from '../page-defaults'
+import { verifyAdminCookie } from '@/lib/admin-auth'
 
 async function isAdmin() {
   const cookieStore = await cookies()
-  return cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+  return verifyAdminCookie(cookieStore.get('admin_auth')?.value)
 }
 
 export default async function EditPage({ params }: { params: Promise<{ id: string }> }) {

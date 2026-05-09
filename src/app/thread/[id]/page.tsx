@@ -13,6 +13,7 @@ import { getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThr
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
+import { verifyAdminCookie } from '@/lib/admin-auth'
 
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
@@ -109,7 +110,7 @@ export default async function ThreadPage({ params, searchParams }: Props) {
   console.log(`[perf] thread/${threadId} init: ${Date.now() - t0}ms`)
 
   const sessionId = cookieStore.get('bbs_session')?.value ?? ''
-  const isAdmin = cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+  const isAdmin = verifyAdminCookie(cookieStore.get('admin_auth')?.value)
 
   // スレ・レスはキャッシュ済みクエリで取得（30秒TTL）、セッション依存データは直接取得
   // incrementViewCountは閲覧数を+1しつつ最新値を返す（awaitでfire-and-forget問題を解消）

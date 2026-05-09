@@ -9,6 +9,8 @@ import { v4 as uuidv4 } from 'uuid'
 import { uploadImage, validateImageFile } from '@/lib/upload'
 import { sendPushNotifications } from '@/app/actions/push-subscription'
 import { notifyNewThread } from '@/lib/discord'
+import { verifyAdminCookie } from '@/lib/admin-auth'
+import { checkSessionRateLimit } from '@/lib/rate-limit'
 
 async function getOrCreateSessionId(): Promise<string> {
   const cookieStore = await cookies()
@@ -51,10 +53,21 @@ export async function createThread(formData: FormData) {
     const ADMIN_ONLY = ['管理者連絡']
     if (cat && ADMIN_ONLY.includes(cat.name)) {
       const cookieStore = await cookies()
-      const isAdmin = cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+      const isAdmin = verifyAdminCookie(cookieStore.get('admin_auth')?.value)
       if (!isAdmin) return { error: 'このカテゴリは管理者のみ使用できます' }
     }
   }
+
+  const sessionId = await getOrCreateSessionId()
+  const rateLimitError = await checkSessionRateLimit(supabase, {
+    table: 'threads',
+    sessionId,
+    windowSeconds: 300,
+    minIntervalSeconds: 60,
+    maxInWindow: 3,
+    label: 'スレッド作成',
+  })
+  if (rateLimitError) return { error: rateLimitError }
 
   let imageUrl: string | null = null
   let imageWidth: number | null = null
@@ -70,8 +83,6 @@ export async function createThread(formData: FormData) {
     imageWidth = result.data.width || null
     imageHeight = result.data.height || null
   }
-
-  const sessionId = await getOrCreateSessionId()
 
   const insertData = {
     title,
@@ -149,6 +160,17 @@ export async function createPost(formData: FormData) {
 
   const supabase = await createClient()
 
+  const sessionId = await getOrCreateSessionId()
+  const rateLimitError = await checkSessionRateLimit(supabase, {
+    table: 'posts',
+    sessionId,
+    windowSeconds: 60,
+    minIntervalSeconds: 10,
+    maxInWindow: 5,
+    label: 'レス投稿',
+  })
+  if (rateLimitError) return { error: rateLimitError }
+
   const { data: maxPost } = await supabase
     .from('posts')
     .select('post_number')
@@ -173,8 +195,6 @@ export async function createPost(formData: FormData) {
     imageWidth = result.data.width || null
     imageHeight = result.data.height || null
   }
-
-  const sessionId = await getOrCreateSessionId()
 
   let { error } = await supabase.from('posts').insert({
     thread_id: threadId,

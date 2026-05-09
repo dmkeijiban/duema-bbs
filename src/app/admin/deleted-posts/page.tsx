@@ -5,17 +5,18 @@ import { redirect } from 'next/navigation'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase-admin'
 import Link from 'next/link'
+import { verifyAdminCookie } from '@/lib/admin-auth'
 
 async function checkAdmin() {
   const cookieStore = await cookies()
   const val = cookieStore.get('admin_auth')?.value
-  if (val !== process.env.ADMIN_PASSWORD) redirect('/admin/login')
+  if (!verifyAdminCookie(val)) redirect('/admin/login')
 }
 
 async function restorePost(formData: FormData) {
   'use server'
   const cookieStore = await cookies()
-  if (cookieStore.get('admin_auth')?.value !== process.env.ADMIN_PASSWORD) redirect('/admin/login')
+  if (!verifyAdminCookie(cookieStore.get('admin_auth')?.value)) redirect('/admin/login')
 
   const postId = parseInt(formData.get('postId') as string)
   const threadId = parseInt(formData.get('threadId') as string)

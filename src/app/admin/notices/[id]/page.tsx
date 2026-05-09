@@ -2,12 +2,13 @@ import { cookies } from 'next/headers'
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { NoticeEditClient } from '../NoticeEditClient'
+import { verifyAdminCookie } from '@/lib/admin-auth'
 
 const ADMIN_COOKIE = 'admin_auth'
 
 async function isAdmin() {
   const cookieStore = await cookies()
-  return cookieStore.get(ADMIN_COOKIE)?.value === process.env.ADMIN_PASSWORD
+  return verifyAdminCookie(cookieStore.get(ADMIN_COOKIE)?.value)
 }
 
 export default async function NoticeEditPage({ params }: { params: Promise<{ id: string }> }) {

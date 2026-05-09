@@ -3,12 +3,13 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { deletePage, togglePublished, movePage, createDefaultStaticPages } from './actions'
 import { ConfirmDeleteButton } from '@/components/admin/ConfirmDeleteButton'
+import { verifyAdminCookie } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
 
 async function isAdmin() {
   const cookieStore = await cookies()
-  return cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+  return verifyAdminCookie(cookieStore.get('admin_auth')?.value)
 }
 
 export default async function AdminPagesPage() {

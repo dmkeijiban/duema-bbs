@@ -3,6 +3,7 @@ import { NewThreadFormClient } from './NewThreadFormClient'
 import { ArrowLeft, PenSquare } from '@/components/Icons'
 import Link from 'next/link'
 import { cookies } from 'next/headers'
+import { verifyAdminCookie } from '@/lib/admin-auth'
 
 /** 管理者専用カテゴリ名（このカテゴリはスレ作成を管理者のみに制限） */
 export const ADMIN_ONLY_CATEGORIES = ['管理者連絡']
@@ -10,7 +11,7 @@ export const ADMIN_ONLY_CATEGORIES = ['管理者連絡']
 export default async function NewThreadPage() {
   const allCategories = await getCachedCategories()
   const cookieStore = await cookies()
-  const isAdmin = cookieStore.get('admin_auth')?.value === process.env.ADMIN_PASSWORD
+  const isAdmin = verifyAdminCookie(cookieStore.get('admin_auth')?.value)
   // 管理者でなければ管理者専用カテゴリを非表示にする
   const categories = isAdmin
     ? allCategories

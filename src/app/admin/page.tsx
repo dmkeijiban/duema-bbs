@@ -10,13 +10,14 @@ import { SettingEditFormClient } from './SettingEditFormClient'
 import { getAllSettings } from '@/lib/settings'
 import { Notice } from '@/components/NoticeBlock'
 import { ThreadCacheClear } from './ThreadCacheClear'
+import { verifyAdminCookie } from '@/lib/admin-auth'
 
 const ADMIN_COOKIE = 'admin_auth'
 const THREADS_PER_PAGE = 60
 
 async function isAdmin() {
   const cookieStore = await cookies()
-  return cookieStore.get(ADMIN_COOKIE)?.value === process.env.ADMIN_PASSWORD
+  return verifyAdminCookie(cookieStore.get(ADMIN_COOKIE)?.value)
 }
 
 function LoginPage({ error }: { error?: string }) {

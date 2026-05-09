@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { revalidateTag } from 'next/cache'
+import { verifyAdminCookie } from '@/lib/admin-auth'
 
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies()
-  if (cookieStore.get('admin_auth')?.value !== process.env.ADMIN_PASSWORD)
+  if (!verifyAdminCookie(cookieStore.get('admin_auth')?.value))
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { threadId } = await req.json()

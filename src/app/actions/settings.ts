@@ -3,13 +3,14 @@
 import { cookies } from 'next/headers'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase-server'
+import { verifyAdminCookie } from '@/lib/admin-auth'
 
 const ADMIN_COOKIE = 'admin_auth'
 
 async function checkAdmin() {
   const cookieStore = await cookies()
   const val = cookieStore.get(ADMIN_COOKIE)?.value
-  if (val !== process.env.ADMIN_PASSWORD) throw new Error('Unauthorized')
+  if (!verifyAdminCookie(val)) throw new Error('Unauthorized')
 }
 
 export async function updateSetting(key: string, value: string): Promise<{ error?: string }> {
