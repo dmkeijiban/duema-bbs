@@ -1,10 +1,13 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 import {
   adminDeleteThread, adminDeletePost,
   adminUpdateThread, adminUpdatePost,
   adminLogin,
+  adminAddNgWord, adminDisableNgWord,
+  adminBanSession, adminUnbanSession,
 } from './actions'
 import { SettingEditFormClient } from './SettingEditFormClient'
 import { getAllSettings } from '@/lib/settings'
@@ -14,6 +17,21 @@ import { verifyAdminCookie } from '@/lib/admin-auth'
 
 const ADMIN_COOKIE = 'admin_auth'
 const THREADS_PER_PAGE = 60
+
+type ModerationNgWord = {
+  id: number
+  word: string
+  note: string | null
+  created_at: string
+}
+
+type ModerationBan = {
+  id: number
+  ban_value: string
+  reason: string | null
+  created_at: string
+  expires_at: string | null
+}
 
 async function isAdmin() {
   const cookieStore = await cookies()
@@ -48,6 +66,7 @@ export default async function AdminPage({
   if (!(await isAdmin())) return <LoginPage error={sp.error} />
 
   const supabase = await createClient()
+  const adminSupabase = createAdminClient()
   const { data: categories } = await supabase.from('categories').select('id,name').order('sort_order')
 
   // スレッド一覧（ページネーション）
@@ -56,7 +75,7 @@ export default async function AdminPage({
 
   const { data: threads, count: threadCount } = await supabase
     .from('threads')
-    .select('id, title, body, post_count, is_archived, category_id, categories(name)', { count: 'exact' })
+    .select('id, title, body, post_count, is_archived, category_id, session_id, categories(name)', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(threadOffset, threadOffset + THREADS_PER_PAGE - 1)
 
@@ -77,6 +96,24 @@ export default async function AdminPage({
 
   // サイト設定
   const settings = await getAllSettings()
+  const [{ data: ngWords }, { data: sessionBans }] = await Promise.all([
+    adminSupabase
+      .from('moderation_ng_words')
+      .select('id, word, note, created_at')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(30)
+      .then(result => result.error ? { data: [] as ModerationNgWord[] } : result),
+    adminSupabase
+      .from('moderation_bans')
+      .select('id, ban_value, reason, created_at, expires_at')
+      .eq('ban_type', 'session')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(30)
+      .then(result => result.error ? { data: [] as ModerationBan[] } : result),
+  ])
+
   const SETTING_LABELS: Record<string, string> = {
     thread_rules: 'スレッド内ルール',
     new_thread_rules: '新規スレッド作成ルール',
@@ -91,7 +128,7 @@ export default async function AdminPage({
     const threadId = parseInt(sp.thread)
     const [{ data: t }, { data: p }] = await Promise.all([
       supabase.from('threads').select('id, title').eq('id', threadId).single(),
-      supabase.from('posts').select('id, post_number, author_name, body')
+      supabase.from('posts').select('id, post_number, author_name, body, session_id')
         .eq('thread_id', threadId).order('post_number', { ascending: true }),
     ])
     selectedThread = t
@@ -129,6 +166,57 @@ export default async function AdminPage({
       </div>
 
       {/* スレッド編集モーダル */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <section className="border border-gray-300 bg-white p-3">
+          <h2 className="font-bold text-gray-800 mb-2">NGワード</h2>
+          <form action={adminAddNgWord} className="flex gap-1 mb-2">
+            <input name="word" placeholder="禁止したい言葉" className="border border-gray-300 px-2 py-1 text-xs flex-1" required />
+            <input name="note" placeholder="メモ" className="border border-gray-300 px-2 py-1 text-xs flex-1" />
+            <button type="submit" className="px-2 py-1 text-xs text-white" style={{ background: '#0d6efd' }}>追加</button>
+          </form>
+          <div className="space-y-1 max-h-32 overflow-y-auto">
+            {(ngWords as ModerationNgWord[]).length === 0 ? (
+              <p className="text-xs text-gray-400">まだ登録なし</p>
+            ) : (
+              (ngWords as ModerationNgWord[]).map(word => (
+                <div key={word.id} className="flex items-center gap-2 border border-gray-200 px-2 py-1">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs font-bold text-gray-700">{word.word}</span>
+                    {word.note && <span className="text-[10px] text-gray-400 ml-2">{word.note}</span>}
+                  </div>
+                  <form action={adminDisableNgWord}>
+                    <input type="hidden" name="id" value={word.id} />
+                    <button type="submit" className="text-[10px] text-red-600 border border-red-300 px-1.5 py-0.5">無効</button>
+                  </form>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section className="border border-gray-300 bg-white p-3">
+          <h2 className="font-bold text-gray-800 mb-2">BAN中の投稿者</h2>
+          <div className="space-y-1 max-h-44 overflow-y-auto">
+            {(sessionBans as ModerationBan[]).length === 0 ? (
+              <p className="text-xs text-gray-400">BAN中のセッションなし</p>
+            ) : (
+              (sessionBans as ModerationBan[]).map(ban => (
+                <div key={ban.id} className="flex items-center gap-2 border border-gray-200 px-2 py-1">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] text-gray-500 break-all">{ban.ban_value}</p>
+                    {ban.reason && <p className="text-[10px] text-gray-400">理由: {ban.reason}</p>}
+                  </div>
+                  <form action={adminUnbanSession}>
+                    <input type="hidden" name="id" value={ban.id} />
+                    <button type="submit" className="text-[10px] text-blue-600 border border-blue-300 px-1.5 py-0.5">解除</button>
+                  </form>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+
       {editThread && (
         <div className="mb-4 border-2 border-blue-400 bg-blue-50 p-4">
           <h2 className="font-bold text-blue-800 mb-3">✏️ スレッド編集</h2>
@@ -297,6 +385,15 @@ export default async function AdminPage({
                   💬{t.post_count}{t.is_archived && ' 📂'}
                 </div>
                 <div className="flex gap-1 flex-wrap">
+                  {t.session_id && (
+                    <form action={adminBanSession} className="inline-flex">
+                      <input type="hidden" name="sessionId" value={t.session_id} />
+                      <input type="hidden" name="reason" value={`thread:${t.id}`} />
+                      <button type="submit" className="px-1.5 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity leading-none" style={{ background: '#111827' }}>
+                        BAN
+                      </button>
+                    </form>
+                  )}
                   <a href={`/admin?thread=${t.id}`}
                     className="px-1.5 py-0.5 text-[10px] text-blue-600 border border-blue-300 hover:bg-blue-50 leading-none">
                     レス
@@ -377,6 +474,16 @@ export default async function AdminPage({
                           削除
                         </button>
                       </form>
+                      {p.session_id && (
+                        <form action={adminBanSession} className="inline-flex">
+                          <input type="hidden" name="sessionId" value={p.session_id} />
+                          <input type="hidden" name="reason" value={`post:${p.id}`} />
+                          <input type="hidden" name="returnToThread" value={selectedThread.id} />
+                          <button type="submit" className="px-2 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity leading-none" style={{ background: '#111827' }}>
+                            BAN
+                          </button>
+                        </form>
+                      )}
                     </div>
                   </div>
                 </div>

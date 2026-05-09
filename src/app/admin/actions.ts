@@ -110,6 +110,63 @@ export async function adminUpdatePost(formData: FormData) {
   redirect(`/admin?thread=${threadId}`)
 }
 
+export async function adminAddNgWord(formData: FormData) {
+  await checkAdmin()
+  const word = (formData.get('word') as string)?.trim()
+  const note = (formData.get('note') as string)?.trim() || null
+  if (!word) redirect('/admin')
+
+  const supabase = createAdminClient()
+  await supabase
+    .from('moderation_ng_words')
+    .upsert({ word, note, is_active: true }, { onConflict: 'word' })
+
+  revalidatePath('/admin')
+  redirect('/admin')
+}
+
+export async function adminDisableNgWord(formData: FormData) {
+  await checkAdmin()
+  const id = parseInt(formData.get('id') as string)
+  const supabase = createAdminClient()
+  await supabase.from('moderation_ng_words').update({ is_active: false }).eq('id', id)
+
+  revalidatePath('/admin')
+  redirect('/admin')
+}
+
+export async function adminBanSession(formData: FormData) {
+  await checkAdmin()
+  const sessionId = (formData.get('sessionId') as string)?.trim()
+  const reason = (formData.get('reason') as string)?.trim() || 'admin'
+  const returnToThread = formData.get('returnToThread') as string | null
+  if (!sessionId) redirect(returnToThread ? `/admin?thread=${returnToThread}` : '/admin')
+
+  const supabase = createAdminClient()
+  await supabase
+    .from('moderation_bans')
+    .upsert({
+      ban_type: 'session',
+      ban_value: sessionId,
+      reason,
+      is_active: true,
+      expires_at: null,
+    }, { onConflict: 'ban_type,ban_value' })
+
+  revalidatePath('/admin')
+  redirect(returnToThread ? `/admin?thread=${returnToThread}` : '/admin')
+}
+
+export async function adminUnbanSession(formData: FormData) {
+  await checkAdmin()
+  const id = parseInt(formData.get('id') as string)
+  const supabase = createAdminClient()
+  await supabase.from('moderation_bans').update({ is_active: false }).eq('id', id)
+
+  revalidatePath('/admin')
+  redirect('/admin')
+}
+
 export async function adminToggleArchive(formData: FormData) {
   await checkAdmin()
   const threadId = parseInt(formData.get('threadId') as string)

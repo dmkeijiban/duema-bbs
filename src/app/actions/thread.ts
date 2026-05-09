@@ -11,6 +11,7 @@ import { sendPushNotifications } from '@/app/actions/push-subscription'
 import { notifyNewThread } from '@/lib/discord'
 import { verifyAdminCookie } from '@/lib/admin-auth'
 import { checkSessionRateLimit } from '@/lib/rate-limit'
+import { checkNgWords, checkSessionBan } from '@/lib/moderation'
 
 function hasHoneypotValue(formData: FormData): boolean {
   const value = formData.get('website')
@@ -66,6 +67,13 @@ export async function createThread(formData: FormData) {
   }
 
   const sessionId = await getOrCreateSessionId()
+  if (await checkSessionBan(supabase, sessionId)) {
+    return { error: 'Posting is restricted.' }
+  }
+  const ngWord = await checkNgWords(supabase, [title, body, authorName])
+  if (ngWord) {
+    return { error: `NG word detected: ${ngWord}` }
+  }
   const rateLimitError = await checkSessionRateLimit(supabase, {
     table: 'threads',
     sessionId,
@@ -170,6 +178,13 @@ export async function createPost(formData: FormData) {
   const supabase = await createClient()
 
   const sessionId = await getOrCreateSessionId()
+  if (await checkSessionBan(supabase, sessionId)) {
+    return { error: 'Posting is restricted.' }
+  }
+  const ngWord = await checkNgWords(supabase, [body, authorName])
+  if (ngWord) {
+    return { error: `NG word detected: ${ngWord}` }
+  }
   const rateLimitError = await checkSessionRateLimit(supabase, {
     table: 'posts',
     sessionId,
