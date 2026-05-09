@@ -60,8 +60,9 @@ export async function generateMetadata({ params }: Props) {
     .slice(0, 150)
   const baseUrl = SITE_URL
   // OG画像はX共有用に /api/og で 1200×675 (16:9) に統一クロップ
+  // v=2: XのOGPキャッシュ・VercelエッジキャッシュをURL変更で強制更新
   const ogImageUrl = ogImage
-    ? `${baseUrl}/api/og?url=${encodeURIComponent(ogImage)}`
+    ? `${baseUrl}/api/og?v=2&url=${encodeURIComponent(ogImage)}`
     : undefined
 
   return {
