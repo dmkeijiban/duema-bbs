@@ -74,7 +74,7 @@ async function renderOgImage(imageUrl: string): Promise<Buffer> {
 
 export async function GET(_req: NextRequest, { params }: Props) {
   const { id } = await params
-  const threadId = parseInt(id)
+  const threadId = parseInt(id.replace(/\.jpg$/i, ''))
   if (isNaN(threadId)) return new NextResponse('Invalid thread id', { status: 400 })
 
   const imageUrl = await getThreadImage(threadId)
