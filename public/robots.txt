@@ -1,7 +1,15 @@
+User-agent: Twitterbot
+Allow: /
+Allow: /api/og
+Allow: /api/og/
+
 User-agent: *
 Allow: /
+Allow: /api/og
+Allow: /api/og/
 
-# 管理画面・API・ユーザー個別ページはクロール不要
+# Private/admin/API pages do not need general crawling.
+# Keep /api/og crawlable because X/Twitter uses it for card images.
 Disallow: /admin/
 Disallow: /api/
 Disallow: /settings
