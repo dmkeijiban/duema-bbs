@@ -44,6 +44,7 @@ export function NewThreadFormClient({ categories }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="px-6 py-6 space-y-5">
+      <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
       {/* カテゴリ */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">

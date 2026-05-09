@@ -126,6 +126,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
 
       {/* フォーム */}
       <form onSubmit={handleSubmit}>
+        <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
         <table className="w-full text-sm border-collapse" style={{ tableLayout: 'fixed' }}>
           <tbody>
             <tr className="border-b border-gray-200">

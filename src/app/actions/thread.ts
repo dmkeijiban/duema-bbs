@@ -12,6 +12,11 @@ import { notifyNewThread } from '@/lib/discord'
 import { verifyAdminCookie } from '@/lib/admin-auth'
 import { checkSessionRateLimit } from '@/lib/rate-limit'
 
+function hasHoneypotValue(formData: FormData): boolean {
+  const value = formData.get('website')
+  return typeof value === 'string' && value.trim().length > 0
+}
+
 async function getOrCreateSessionId(): Promise<string> {
   const cookieStore = await cookies()
   const existing = cookieStore.get('bbs_session')?.value
@@ -27,6 +32,8 @@ async function getOrCreateSessionId(): Promise<string> {
 }
 
 export async function createThread(formData: FormData) {
+  if (hasHoneypotValue(formData)) return { error: '投稿に失敗しました' }
+
   const title = (formData.get('title') as string)?.trim()
   const body = (formData.get('body') as string)?.trim()
   const authorName = (formData.get('author_name') as string)?.trim() || '名無しのデュエリスト'
@@ -146,6 +153,8 @@ export async function createThread(formData: FormData) {
 }
 
 export async function createPost(formData: FormData) {
+  if (hasHoneypotValue(formData)) return { error: '投稿に失敗しました' }
+
   const threadId = parseInt(formData.get('thread_id') as string)
   const body = (formData.get('body') as string)?.trim()
   const authorName = (formData.get('author_name') as string)?.trim() || '名無しのデュエリスト'

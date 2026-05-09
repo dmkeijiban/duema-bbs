@@ -53,6 +53,7 @@ export function InlineNewThread({ categories, newThreadRules, isAdmin }: Props) 
 
           {/* フォーム */}
           <form onSubmit={handleSubmit} className="text-sm">
+            <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
             <div className="grid gap-0" style={{ gridTemplateColumns: '5rem 1fr' }}>
               {/* タイトル */}
               <label htmlFor="new-thread-title" className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">タイトル</label>
