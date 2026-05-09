@@ -14,7 +14,13 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  return NextResponse.next()
+  const response = NextResponse.next()
+
+  if (request.method === 'GET' && pathname === '/' && request.nextUrl.search === '') {
+    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
+  }
+
+  return response
 }
 
 export const config = {
