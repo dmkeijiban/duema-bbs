@@ -7,11 +7,11 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: 'Twitterbot',
-        allow: ['/', '/api/og', '/api/og/'],
+        allow: ['/', '/api/og', '/api/og/', '/og/', '/og/thread/'],
       },
       {
         userAgent: '*',
-        allow: ['/', '/api/og', '/api/og/'],
+        allow: ['/', '/api/og', '/api/og/', '/og/', '/og/thread/'],
         disallow: [
           '/admin/',
           '/api/',

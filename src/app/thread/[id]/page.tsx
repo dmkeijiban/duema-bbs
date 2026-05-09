@@ -59,10 +59,10 @@ export async function generateMetadata({ params }: Props) {
     .trim()
     .slice(0, 150)
   const baseUrl = SITE_URL
-  // OG画像はX共有用に /api/og で 1200×675 (16:9) に統一クロップ
-  // v=2: XのOGPキャッシュ・VercelエッジキャッシュをURL変更で強制更新
+  // Use a stable, query-free image URL for X cards. Twitterbot can be picky
+  // with long query-string image URLs, even when the endpoint returns 200.
   const ogImageUrl = ogImage
-    ? `${baseUrl}/api/og?v=3&url=${encodeURIComponent(ogImage)}`
+    ? `${baseUrl}/og/thread/${id}`
     : undefined
 
   return {
