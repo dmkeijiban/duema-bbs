@@ -1,6 +1,7 @@
 import { getCachedTopThreads } from '@/lib/cached-queries'
 import Link from 'next/link'
 import Image from 'next/image'
+import { seededShuffle } from '@/lib/stable-shuffle'
 
 /** CLS防止用スケルトン — fallback={null}の代わりに使う */
 export function RecommendSectionSkeleton() {
@@ -25,23 +26,11 @@ export function RecommendSectionSkeleton() {
 }
 
 // 30分ごとに変わるseedで安定シャッフル（タブ切り替えでは変わらない）
-function seededShuffle<T>(arr: T[], seed: number): T[] {
-  const a = [...arr]
-  let s = seed
-  for (let i = a.length - 1; i > 0; i--) {
-    s = (s * 1664525 + 1013904223) & 0xffffffff
-    const j = Math.abs(s) % (i + 1);
-    [a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
-
 export async function RecommendSection() {
   const raw = await getCachedTopThreads()
   if (raw.length === 0) return null
 
-  const seed = Math.floor(Date.now() / (1000 * 60 * 30)) // 30分ごとに変化
-  const threads = seededShuffle(raw, seed).slice(0, 8)
+  const threads = seededShuffle(raw).slice(0, 8)
 
   return (
     <div className="mb-2 border border-gray-300 bg-white">

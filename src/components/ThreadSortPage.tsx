@@ -4,6 +4,7 @@ import { ThreadRow } from '@/components/ThreadRow'
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { Pagination } from '@/components/Pagination'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
+import { seededShuffle } from '@/lib/stable-shuffle'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 
@@ -36,11 +37,7 @@ async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
       .eq('is_archived', false)
       .limit(500)
     const all = rawThreads ? await withFallbackThumbnails(supabase, rawThreads) : []
-    for (let i = all.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [all[i], all[j]] = [all[j], all[i]]
-    }
-    const threads = all.slice(0, PAGE_SIZE) as (Thread & { categories: Category | null })[]
+    const threads = seededShuffle(all).slice(0, PAGE_SIZE) as (Thread & { categories: Category | null })[]
     if (threads.length === 0) {
       return (
         <div className="text-center py-16 text-gray-500 bg-white border border-gray-300">

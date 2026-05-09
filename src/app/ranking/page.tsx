@@ -21,7 +21,6 @@ export const metadata = {
     description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。直近3日間のレス数が多いスレッドを順位付きで表示します。',
   },
 }
-import { Pagination } from '@/components/Pagination'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
@@ -30,7 +29,9 @@ const PAGE_SIZE = 100
 
 async function RankingList({ page }: { page: number }) {
   const supabase = await createClient()
-  const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+  const recentSince = new Date()
+  recentSince.setDate(recentSince.getDate() - 3)
+  const since = recentSince.toISOString()
   const offset = (page - 1) * PAGE_SIZE
 
   // 過去3日間の件数確認
@@ -57,17 +58,6 @@ async function RankingList({ page }: { page: number }) {
   const { data: rawThreads } = await dataQuery
 
   // 総ページ数
-  const totalCount = useRecent
-    ? (recentCount ?? 0)
-    : await (async () => {
-        const { count } = await supabase
-          .from('threads')
-          .select('*', { count: 'exact', head: true })
-          .eq('is_archived', false)
-        return count ?? 0
-      })()
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
-
   const withImages = rawThreads && rawThreads.length > 0
     ? await withFallbackThumbnails(supabase, rawThreads)
     : []

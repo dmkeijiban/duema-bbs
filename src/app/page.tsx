@@ -10,6 +10,7 @@ import { RecommendSection, RecommendSectionSkeleton } from '@/components/Recomme
 import { SortTabs } from '@/components/SortTabs'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
+import { seededShuffle } from '@/lib/stable-shuffle'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
@@ -62,11 +63,7 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
       .limit(100)
     if (categoryId !== null) q = q.eq('category_id', categoryId)
     const { data: raw } = await q
-    const all = raw ? await withFallbackThumbnails(supabase, raw) : []
-    for (let i = all.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [all[i], all[j]] = [all[j], all[i]]
-    }
+    const all = seededShuffle(raw ? await withFallbackThumbnails(supabase, raw) : [])
     if (all.length === 0) return <ThreadEmpty searchQ={undefined} />
     return (
       <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
@@ -468,6 +465,7 @@ function SortTabsSkeleton({ sort }: { sort: string }) {
 // NoticeBlock は常に height:80 の画像行を持つため、スケルトンも同じ高さに固定する。
 // これにより、ストリーミング SSR でコンテンツが差し込まれても
 // 後続要素が移動せず CLS = 0 になる。
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function TopNoticesSkeleton() {
   return (
     <div className="mb-2 animate-pulse">

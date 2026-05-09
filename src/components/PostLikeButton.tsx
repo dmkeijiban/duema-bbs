@@ -1,18 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 export function PostLikeButton({ likeKey }: { likeKey: string }) {
-  const [liked, setLiked] = useState(false)
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
+  const [liked, setLiked] = useState(() => {
+    if (typeof window === 'undefined') return false
     try {
       const stored = JSON.parse(localStorage.getItem('liked_posts') || '[]') as string[]
-      setLiked(stored.includes(likeKey))
-    } catch { /* ignore */ }
-  }, [likeKey])
+      return stored.includes(likeKey)
+    } catch {
+      return false
+    }
+  })
 
   const handleLike = () => {
     try {
@@ -24,10 +23,6 @@ export function PostLikeButton({ likeKey }: { likeKey: string }) {
       localStorage.setItem('liked_posts', JSON.stringify(updated))
       setLiked(newLiked)
     } catch { /* ignore */ }
-  }
-
-  if (!mounted) {
-    return <span className="text-[13px]" style={{ color: '#e8a0b0' }}>♡</span>
   }
 
   return (

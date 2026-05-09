@@ -12,7 +12,13 @@ type PermissionState = 'default' | 'granted' | 'denied' | 'unsupported'
 const STORAGE_KEY = (threadId: number) => `push_sub_${threadId}`
 
 export function PushSubscribeButton({ threadId }: Props) {
-  const [permission, setPermission] = useState<PermissionState>('default')
+  const [permission, setPermission] = useState<PermissionState>(() => {
+    if (typeof window === 'undefined') return 'default'
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+      return 'unsupported'
+    }
+    return Notification.permission as PermissionState
+  })
   const [subscribed, setSubscribed] = useState(false)
   const [endpoint, setEndpoint] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()

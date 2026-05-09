@@ -12,7 +12,6 @@ interface Props {
 export function MobileMenu({ navPages }: Props) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
-  const [archived, setArchived] = useState('')
   const router = useRouter()
 
   const search = (e: React.FormEvent) => {
@@ -20,7 +19,6 @@ export function MobileMenu({ navPages }: Props) {
     if (!q.trim()) return
     const params = new URLSearchParams()
     params.set('q', q.trim())
-    if (archived === '1') params.set('archived', '1')
     router.push(`/?${params.toString()}`)
     setOpen(false)
   }

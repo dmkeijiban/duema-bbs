@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { Thread, Post, Category } from '@/types'
+import { Thread, Category } from '@/types'
 import { deleteOwnThread, deleteOwnPost, removeFavorite } from '@/app/actions/delete'
 import { formatRelativeTime, formatDateTimeJP } from '@/lib/utils'
 import type { FavThread, MyPost } from '@/app/settings/page'

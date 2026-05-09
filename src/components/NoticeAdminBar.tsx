@@ -33,7 +33,7 @@ function NoticeModal({
     editing?.items?.length ? editing.items : [emptyItem()]
   )
   const [headerText, setHeaderText] = useState(editing?.header_text ?? '')
-  const [sortOrder, setSortOrder] = useState<number>(editing?.sort_order ?? 0)
+  const [sortOrder] = useState<number>(editing?.sort_order ?? 0)
   const [isActive, setIsActive] = useState<boolean>(editing?.is_active ?? true)
   const [showInThread, setShowInThread] = useState<boolean>(editing?.show_in_thread ?? false)
   const [uploading, setUploading] = useState<boolean[]>([])

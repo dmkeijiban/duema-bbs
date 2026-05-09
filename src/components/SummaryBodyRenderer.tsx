@@ -48,7 +48,6 @@ function parseBody(html: string): React.ReactNode[] {
   // クライアント側だけで動けばよい
 
   const parts: React.ReactNode[] = []
-  let remaining = html
   let key = 0
 
   // マーカーパターン

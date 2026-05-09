@@ -16,6 +16,10 @@ export default async function CleanupPage() {
   if (!(await isAdmin())) redirect('/admin')
 
   const supabase = await createClient()
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  const sixMonthsAgo = new Date()
+  sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180)
 
   // ① 未回答スレッド（0レス、7日以上前）
   const { data: zeroReply } = await supabase
@@ -23,7 +27,7 @@ export default async function CleanupPage() {
     .select('id, title, created_at, post_count')
     .eq('is_archived', false)
     .eq('post_count', 0)
-    .lt('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+    .lt('created_at', sevenDaysAgo.toISOString())
     .order('created_at', { ascending: true })
     .limit(100)
 
@@ -33,7 +37,7 @@ export default async function CleanupPage() {
     .select('id, title, post_count, last_posted_at')
     .eq('is_archived', false)
     .lt('post_count', 5)
-    .lt('last_posted_at', new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString())
+    .lt('last_posted_at', sixMonthsAgo.toISOString())
     .order('last_posted_at', { ascending: true })
     .limit(100)
 

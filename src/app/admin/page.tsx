@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase-server'
 import {
   adminDeleteThread, adminDeletePost,
   adminUpdateThread, adminUpdatePost,
-  adminToggleArchive, adminLogin,
+  adminLogin,
 } from './actions'
 import { SettingEditFormClient } from './SettingEditFormClient'
 import { getAllSettings } from '@/lib/settings'

@@ -42,6 +42,7 @@ export function NoticeBlock({ notice, priority }: { notice: Notice; priority?: b
                   fill
                   className="object-cover"
                   loading="eager"
+                  priority={priority && i === 0}
                   sizes="(max-width: 768px) 50vw, 25vw"
                 />
               )}

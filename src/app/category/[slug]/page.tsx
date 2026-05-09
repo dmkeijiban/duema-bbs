@@ -11,6 +11,7 @@ import { RecommendSection } from '@/components/RecommendSection'
 import { SortTabs } from '@/components/SortTabs'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
+import { seededShuffle } from '@/lib/stable-shuffle'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
@@ -82,11 +83,7 @@ async function CategoryThreadList({
       .eq('is_archived', false)
       .eq('category_id', category.id)
       .limit(100)
-    const all = raw ? await withFallbackThumbnails(supabase, raw) : []
-    for (let i = all.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [all[i], all[j]] = [all[j], all[i]]
-    }
+    const all = seededShuffle(raw ? await withFallbackThumbnails(supabase, raw) : [])
     if (all.length === 0) return <CategoryThreadEmpty />
     return (
       <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">

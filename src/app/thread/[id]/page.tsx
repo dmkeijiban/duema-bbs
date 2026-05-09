@@ -91,15 +91,11 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function ThreadPage({ params, searchParams }: Props) {
-  const t0 = Date.now()
-
   const [{ id }, { page: pageStr }] = await Promise.all([params, searchParams])
   const threadId = parseInt(id)
   if (isNaN(threadId)) notFound()
 
   const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
-  const offset = (page - 1) * POSTS_PER_PAGE
-
   // cookies + supabase client + キャッシュ済みデータを同時並列で取得
   const [cookieStore, supabase, threadRules, threadNotices] = await Promise.all([
     cookies(),
@@ -107,14 +103,11 @@ export default async function ThreadPage({ params, searchParams }: Props) {
     getCachedSetting('thread_rules', THREAD_RULES_DEFAULT),
     getCachedThreadNotices(),
   ])
-  console.log(`[perf] thread/${threadId} init: ${Date.now() - t0}ms`)
-
   const sessionId = cookieStore.get('bbs_session')?.value ?? ''
   const isAdmin = verifyAdminCookie(cookieStore.get('admin_auth')?.value)
 
   // スレ・レスはキャッシュ済みクエリで取得（30秒TTL）、セッション依存データは直接取得
   // incrementViewCountは閲覧数を+1しつつ最新値を返す（awaitでfire-and-forget問題を解消）
-  const tQ = Date.now()
   const [thread, postsResult, favResult, freshViewCount] = await Promise.all([
     getCachedThread(threadId),
     getCachedThreadPosts(threadId, page),
@@ -123,16 +116,12 @@ export default async function ThreadPage({ params, searchParams }: Props) {
       : Promise.resolve({ data: null }),
     incrementViewCount(threadId),
   ])
-  console.log(`[perf] thread/${threadId} queries: ${Date.now() - tQ}ms`)
-
   if (!thread) notFound()
 
   const isFavorited = !!favResult.data
   const posts = postsResult.data
   const count = postsResult.count
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / POSTS_PER_PAGE))
-
-  console.log(`[perf] thread/${threadId} total: ${Date.now() - t0}ms, posts=${posts?.length}`)
 
   const typedThread = thread as unknown as Thread & { categories: Category | null }
 
