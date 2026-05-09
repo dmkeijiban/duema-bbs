@@ -51,26 +51,27 @@ export async function GET(req: NextRequest) {
 
     let processed: Buffer
     if (isGif) {
-      // GIF: 16:9 キャンバスに収まるよう縮小し、上下左右を黒でパディング
+      // GIF: 16:9 キャンバスに収まるよう縮小し、上下左右を黒でパディング（JPEG変換でアニメーションは消えるがOGP用途では問題なし）
       processed = await sharp(buffer)
         .resize(OG_WIDTH, OG_HEIGHT, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 1 } })
-        .webp({ quality: 85 })
+        .jpeg({ quality: 85 })
         .toBuffer()
     } else {
       // その他: 中央をトリミングして 1200×675 に固定
+      // JPEG を使用: X(Twitter) の OGP カードは WebP 非対応のため
       processed = await sharp(buffer)
         .resize(OG_WIDTH, OG_HEIGHT, {
           fit: 'cover',
           position: 'centre',
           withoutEnlargement: false,
         })
-        .webp({ quality: 85 })
+        .jpeg({ quality: 85 })
         .toBuffer()
     }
 
     return new NextResponse(new Uint8Array(processed), {
       headers: {
-        'Content-Type': 'image/webp',
+        'Content-Type': 'image/jpeg',
         'Cache-Control': 'public, max-age=86400, stale-while-revalidate=3600',
       },
     })
