@@ -17,11 +17,18 @@ const TABS = [
   { label: 'ランダム', sort: 'random', icon: '🎲', short: 'ランダ' },
 ]
 
+const ROOT_SORT_HREF: Record<string, string> = {
+  recent: '/',
+  new: '/new',
+  popular: '/ranking',
+  random: '/random',
+}
+
 export function SortTabs({ currentSort, currentCategory, categories, basePath }: Props) {
   const getTabHref = (sort: string) => {
     if (basePath) return `${basePath}?sort=${sort}`
     if (currentCategory) return `/category/${currentCategory}?sort=${sort}`
-    return `/?sort=${sort}`
+    return ROOT_SORT_HREF[sort] ?? '/'
   }
 
   return (

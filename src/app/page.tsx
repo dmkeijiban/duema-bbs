@@ -247,7 +247,7 @@ async function SortTabsServer({ params }: { params: SearchParams }) {
 }
 
 // ── InlineNewThread（カテゴリ＋スレ作成ルール取得後に差し替え）
-async function InlineNewThreadServer({ params }: { params: SearchParams }) {
+async function InlineNewThreadServer() {
   const [categories, newThreadRules] = await Promise.all([
     getCachedCategories(),
     getCachedSetting(
@@ -271,12 +271,8 @@ async function InlineNewThreadServer({ params }: { params: SearchParams }) {
 // 即座にストリームされ LCP 要素（HomeBannerFallback）が
 // ブラウザに届く。
 // ──────────────────────────────────────────────────
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<SearchParams>
-}) {
-  const params = await searchParams   // searchParams の解決のみ（DB なし・即時）
+export default async function Home() {
+  const params: SearchParams = {}
 
   const isConfigured =
     process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http') &&
@@ -366,7 +362,7 @@ export default async function Home({
 
         {/* スレ作成フォーム: 遅延ロードで可視領域外のレンダリングコストを下げる */}
         <Suspense fallback={null}>
-          <InlineNewThreadServer params={params} />
+          <InlineNewThreadServer />
         </Suspense>
 
         <SnsCtaCard />
