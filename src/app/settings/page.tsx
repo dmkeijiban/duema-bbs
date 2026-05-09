@@ -4,7 +4,10 @@ import Link from 'next/link'
 import { SettingsTabs } from '@/components/SettingsTabs'
 import { Thread, Post, Category } from '@/types'
 
-export const metadata = { title: '個人設定 | デュエマ掲示板' }
+export const metadata = {
+  title: '個人設定 | デュエマ掲示板',
+  robots: { index: false, follow: false },
+}
 
 export type FavThread = Thread & {
   categories: Category | null

@@ -7,6 +7,7 @@ import { cookies } from 'next/headers'
 
 export const metadata = {
   title: 'お気に入りスレッド | デュエルBBS',
+  robots: { index: false, follow: false },
 }
 
 export default async function FavoritesPage() {

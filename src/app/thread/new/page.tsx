@@ -6,6 +6,11 @@ import { cookies } from 'next/headers'
 import { verifyAdminCookie } from '@/lib/admin-auth'
 
 /** 管理者専用カテゴリ名（このカテゴリはスレ作成を管理者のみに制限） */
+export const metadata = {
+  title: 'スレッド作成 | デュエマ掲示板',
+  robots: { index: false, follow: false },
+}
+
 export const ADMIN_ONLY_CATEGORIES = ['管理者連絡']
 
 export default async function NewThreadPage() {
