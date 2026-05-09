@@ -47,6 +47,11 @@ export const getCachedFixedPage = (slug: string): Promise<FixedPage | null> =>
   )()
 
 type ThreadRow = { id: number; title: string; image_url: string | null; post_count: number }
+type RelatedThreadRow = ThreadRow & {
+  category_id: number | null
+  created_at: string | null
+  last_posted_at: string | null
+}
 
 export const THREAD_PAGE_SIZE = 60
 export const POPULAR_PAGE_SIZE = 100
@@ -119,6 +124,120 @@ export const getCachedTopThreads = unstable_cache(
   ['top-threads'],
   { revalidate: 300, tags: ['threads'] }
 )
+
+const COMMON_RECOMMEND_WORDS = new Set([
+  'デュエマ',
+  'デュエルマスターズ',
+  '新カード',
+  'カード',
+  '公開',
+  '判明',
+  'これ',
+  'それ',
+  'どう',
+  'スレ',
+  'まとめ',
+])
+
+function extractRecommendKeywords(title: string) {
+  const keywords = new Set<string>()
+
+  for (const match of title.matchAll(/[《『「](.*?)[》』」]/g)) {
+    const value = match[1]?.trim()
+    if (value && value.length >= 2) keywords.add(value)
+  }
+
+  const normalized = title
+    .replace(/[【】《》『』「」（）()[\]！？!?、。・／/｜|:：]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  for (const token of normalized.match(/[A-Za-z0-9一-龠ぁ-んァ-ヶー]{2,}/g) ?? []) {
+    if (!COMMON_RECOMMEND_WORDS.has(token)) keywords.add(token)
+  }
+
+  return [...keywords].slice(0, 8)
+}
+
+function scoreRelatedThread(
+  thread: RelatedThreadRow,
+  keywords: string[],
+  categoryId: number | null,
+) {
+  let score = Math.min(thread.post_count ?? 0, 30)
+
+  if (categoryId !== null && thread.category_id === categoryId) score += 40
+
+  for (const keyword of keywords) {
+    if (thread.title.includes(keyword)) score += keyword.length >= 5 ? 35 : 22
+  }
+
+  const lastPostedAt = thread.last_posted_at ?? thread.created_at
+  if (lastPostedAt) {
+    const ageHours = (new Date().getTime() - new Date(lastPostedAt).getTime()) / 36e5
+    if (ageHours <= 72) score += 12
+    else if (ageHours <= 168) score += 6
+  }
+
+  return score
+}
+
+export function getCachedRelatedThreads(
+  threadId: number,
+  title: string,
+  categoryId: number | null,
+) {
+  return unstable_cache(
+    async () => {
+      const supabase = createPublicClient()
+      const keywords = extractRecommendKeywords(title)
+      const select = 'id, title, image_url, post_count, category_id, created_at, last_posted_at'
+
+      const sameCategoryQuery = categoryId === null
+        ? Promise.resolve({ data: [] })
+        : supabase
+            .from('threads')
+            .select(select)
+            .eq('is_archived', false)
+            .eq('category_id', categoryId)
+            .neq('id', threadId)
+            .order('last_posted_at', { ascending: false })
+            .limit(80)
+
+      const popularQuery = supabase
+        .from('threads')
+        .select(select)
+        .eq('is_archived', false)
+        .neq('id', threadId)
+        .order('post_count', { ascending: false })
+        .limit(40)
+
+      const [{ data: sameCategory }, { data: popular }] = await Promise.all([
+        sameCategoryQuery,
+        popularQuery,
+      ])
+
+      const byId = new Map<number, RelatedThreadRow>()
+      for (const thread of [...(sameCategory ?? []), ...(popular ?? [])] as RelatedThreadRow[]) {
+        byId.set(thread.id, thread)
+      }
+
+      const ranked = [...byId.values()]
+        .map(thread => ({
+          thread,
+          score: scoreRelatedThread(thread, keywords, categoryId),
+        }))
+        .sort((a, b) => b.score - a.score || b.thread.post_count - a.thread.post_count)
+        .slice(0, 8)
+        .map(item => item.thread)
+
+      if (ranked.length === 0) return getCachedTopThreads()
+      return withFallbackThumbnails(supabase, ranked)
+    },
+    [`related-threads-${threadId}-${categoryId ?? 'none'}`],
+    { revalidate: 300, tags: [`thread-${threadId}`, 'threads'] }
+  )()
+}
 
 const THREAD_POSTS_PER_PAGE = 50
 

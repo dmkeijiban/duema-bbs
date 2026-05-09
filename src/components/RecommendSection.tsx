@@ -1,4 +1,4 @@
-import { getCachedTopThreads } from '@/lib/cached-queries'
+import { getCachedRelatedThreads, getCachedTopThreads } from '@/lib/cached-queries'
 import Link from 'next/link'
 import Image from 'next/image'
 import { seededShuffle } from '@/lib/stable-shuffle'
@@ -26,8 +26,16 @@ export function RecommendSectionSkeleton() {
 }
 
 // 30分ごとに変わるseedで安定シャッフル（タブ切り替えでは変わらない）
-export async function RecommendSection() {
-  const raw = await getCachedTopThreads()
+interface Props {
+  threadId?: number
+  title?: string
+  categoryId?: number | null
+}
+
+export async function RecommendSection({ threadId, title, categoryId = null }: Props = {}) {
+  const raw = threadId && title
+    ? await getCachedRelatedThreads(threadId, title, categoryId)
+    : await getCachedTopThreads()
   if (raw.length === 0) return null
 
   const threads = seededShuffle(raw).slice(0, 8)

@@ -212,7 +212,11 @@ export default async function ThreadPage({ params, searchParams }: Props) {
         isAdmin={isAdmin}
         recommendSlot={
           <Suspense fallback={<RecommendSectionSkeleton />}>
-            <RecommendSection />
+            <RecommendSection
+              threadId={threadId}
+              title={typedThread.title}
+              categoryId={typedThread.category_id}
+            />
           </Suspense>
         }
       />
