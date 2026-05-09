@@ -20,7 +20,7 @@ const TABS = [
 export function SortTabs({ currentSort, currentCategory, categories, basePath }: Props) {
   const getTabHref = (sort: string) => {
     if (basePath) return `${basePath}?sort=${sort}`
-    if (currentCategory) return `/?category=${currentCategory}&sort=${sort}`
+    if (currentCategory) return `/category/${currentCategory}?sort=${sort}`
     return `/?sort=${sort}`
   }
 

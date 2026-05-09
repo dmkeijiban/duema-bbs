@@ -36,6 +36,12 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: '/',
+        has: [{ type: 'query', key: 'category', value: '(?<category>[^&]+)' }],
+        destination: '/category/:category',
+        permanent: true,
+      },
+      {
         // vercel.appドメインからカスタムドメインへ301リダイレクト（SEO重複回避）
         source: '/:path*',
         has: [{ type: 'host', value: 'duema-bbs.vercel.app' }],
