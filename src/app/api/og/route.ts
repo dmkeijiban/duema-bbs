@@ -6,13 +6,23 @@ export const runtime = 'nodejs'
 const OG_WIDTH = 1200
 const OG_HEIGHT = 675
 
-// SSRF対策: Supabase Storage の公開URLのみ許可
+// SSRF対策: プライベートIPをブロック、公開HTTPSのみ許可
 function isAllowedUrl(url: string): boolean {
   try {
     const { protocol, hostname } = new URL(url)
     if (protocol !== 'https:') return false
-    // *.supabase.co の Storage 公開URL のみ許可
-    return /^[a-z0-9]+\.supabase\.co$/.test(hostname)
+    // プライベートIP・ローカルホストをブロック
+    if (
+      hostname === 'localhost' ||
+      hostname === '::1' ||
+      /^127\./.test(hostname) ||
+      /^10\./.test(hostname) ||
+      /^192\.168\./.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) ||
+      /^169\.254\./.test(hostname) ||
+      /^0\./.test(hostname)
+    ) return false
+    return true
   } catch {
     return false
   }
@@ -58,7 +68,7 @@ export async function GET(req: NextRequest) {
         .toBuffer()
     }
 
-    return new NextResponse(processed.buffer as ArrayBuffer, {
+    return new NextResponse(new Uint8Array(processed), {
       headers: {
         'Content-Type': 'image/webp',
         'Cache-Control': 'public, max-age=86400, stale-while-revalidate=3600',
