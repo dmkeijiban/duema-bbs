@@ -1,7 +1,6 @@
 'use client'
 
 import { useEditor, EditorContent, mergeAttributes, Node } from '@tiptap/react'
-import { NodeSelection } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import LinkExtension from '@tiptap/extension-link'
 import ImageExtension from '@tiptap/extension-image'
@@ -197,6 +196,7 @@ export function SummaryRichTextEditor({ content, onChange }: Props) {
   const [toolbarFixed, setToolbarFixed] = useState(false)
   const [toolbarHeight, setToolbarHeight] = useState(0)
   const [toolbarFixedStyle, setToolbarFixedStyle] = useState<CSSProperties>({})
+  const lastLoadedContentRef = useRef<string | null>(null)
 
   // YouTube埋め込みダイアログ
   const [ytDialog, setYtDialog] = useState(false)
@@ -273,6 +273,16 @@ export function SummaryRichTextEditor({ content, onChange }: Props) {
       attributes: { class: 'summary-editor-content', spellCheck: 'false' },
     },
   })
+
+  useEffect(() => {
+    if (!editor || lastLoadedContentRef.current === content) return
+
+    const nextHtml = toHtml(content)
+    if (editor.getHTML() !== nextHtml) {
+      editor.commands.setContent(nextHtml, { emitUpdate: false })
+    }
+    lastLoadedContentRef.current = content
+  }, [content, editor])
 
   const setLink = () => {
     if (!editor) return
