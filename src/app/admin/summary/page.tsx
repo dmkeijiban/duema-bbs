@@ -88,6 +88,7 @@ export default function AdminSummaryPage() {
   // ── 自動生成 ─────────────────────────────────────────────────
   const [genLog, setGenLog] = useState('')
   const [genLoading, setGenLoading] = useState(false)
+  const [draftSeedLoading, setDraftSeedLoading] = useState(false)
 
   // ── 公開/非公開・削除 ─────────────────────────────────────
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -237,6 +238,28 @@ export default function AdminSummaryPage() {
     }
   }
 
+  const seedSeoDraft = async () => {
+    setDraftSeedLoading(true)
+    setSubmitLog('SEO下書きを登録中...')
+    try {
+      const res = await fetch('/api/admin/summary/seed-seo-draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const json = await res.json()
+      if (json.ok) {
+        setSubmitLog(`✅ SEO下書きを非公開で登録しました！ /summary/${json.slug}`)
+        await loadList()
+      } else {
+        setSubmitLog(`❌ ${json.error}`)
+      }
+    } catch (e) {
+      setSubmitLog(String(e))
+    } finally {
+      setDraftSeedLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-3xl mx-auto space-y-4">
@@ -266,6 +289,23 @@ export default function AdminSummaryPage() {
               スレッドは自動的におすすめスレ（投稿数TOP10）が使われます。<br />
               作成したまとめは /summary/[slug] に公開され、トップページにも表示されます。
             </p>
+          )}
+
+          {mode === 'create' && (
+            <div className="border border-amber-200 bg-amber-50 p-3 flex items-center justify-between gap-3">
+              <p className="text-xs text-amber-800">
+                SEO用の下書き「デュエマ高騰・新カード・環境・デッキ相談の見方まとめ」を非公開で登録できます。
+              </p>
+              <button
+                type="button"
+                onClick={seedSeoDraft}
+                disabled={draftSeedLoading}
+                className="shrink-0 px-3 py-1.5 text-xs text-white disabled:opacity-50"
+                style={{ background: '#d97706' }}
+              >
+                {draftSeedLoading ? '登録中...' : 'SEO下書きを登録'}
+              </button>
+            </div>
           )}
 
           <div className="space-y-3">
