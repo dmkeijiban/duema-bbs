@@ -79,6 +79,7 @@ export default function AdminSummaryPage() {
   const [slugManual, setSlugManual] = useState(false)
   const [submitLog, setSubmitLog] = useState('')
   const [loading, setLoading] = useState(false)
+  const [publishOnCreate, setPublishOnCreate] = useState(false)
 
   // ── 既存まとめ一覧 ────────────────────────────────────────────
   const [summaries, setSummaries] = useState<SummaryItem[]>([])
@@ -118,6 +119,7 @@ export default function AdminSummaryPage() {
     setBody('')
     setSlugManual(false)
     setSubmitLog('')
+    setPublishOnCreate(false)
   }
 
   const startEdit = (s: SummaryItem) => {
@@ -128,6 +130,7 @@ export default function AdminSummaryPage() {
     setBody(s.body ?? '')
     setSlugManual(true)
     setSubmitLog('')
+    setPublishOnCreate(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -140,11 +143,11 @@ export default function AdminSummaryPage() {
         const res = await fetch('/api/admin/summary/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, slug, body }),
+          body: JSON.stringify({ title, slug, body, published: publishOnCreate }),
         })
         const json = await res.json()
         if (json.ok) {
-          setSubmitLog(`✅ 作成完了！ → /summary/${json.slug}`)
+          setSubmitLog(publishOnCreate ? `✅ 作成完了！ → /summary/${json.slug}` : `✅ 非公開の下書きとして作成完了！ /summary/${json.slug}`)
           resetForm()
           await loadList()
         } else {
@@ -302,6 +305,18 @@ export default function AdminSummaryPage() {
             </div>
           </div>
 
+          {mode === 'create' && (
+            <label className="flex items-center gap-2 text-xs text-gray-600">
+              <input
+                type="checkbox"
+                checked={publishOnCreate}
+                onChange={e => setPublishOnCreate(e.target.checked)}
+                className="h-4 w-4"
+              />
+              作成と同時に公開する（確認前の記事はオフ推奨）
+            </label>
+          )}
+
           <div className="flex items-center gap-3">
             <button
               onClick={submit}
@@ -311,7 +326,7 @@ export default function AdminSummaryPage() {
             >
               {loading
                 ? (mode === 'create' ? '作成中...' : '保存中...')
-                : (mode === 'create' ? 'まとめを作成・公開' : '変更を保存')}
+                : (mode === 'create' ? (publishOnCreate ? 'まとめを作成・公開' : '非公開で下書き作成') : '変更を保存')}
             </button>
             {mode === 'edit' && (
               <a

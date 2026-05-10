@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   if (!verifyAdminCookie(cookieStore.get('admin_auth')?.value))
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { title, slug, body, threadIds } = await req.json()
+  const { title, slug, body, threadIds, published } = await req.json()
 
   if (!title || !slug)
     return NextResponse.json({ error: 'title・slug は必須です' }, { status: 400 })
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   const { error } = await supabase.from('summaries').insert({
     type: 'manual', slug, title,
     period_start: today, period_end: today,
-    threads: threadsJson, published: true,
+    threads: threadsJson, published: published === true,
     body: body ?? null,
   })
 
