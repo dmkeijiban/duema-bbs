@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420" role="img" aria-label="Meta map illustration">
+  <rect width="960" height="420" fill="#f8fafc"/>
+  <rect x="60" y="54" width="840" height="312" rx="28" fill="#ffffff" stroke="#cbd5e1" stroke-width="3"/>
+  <circle cx="248" cy="210" r="86" fill="#dcfce7" stroke="#22c55e" stroke-width="6"/>
+  <circle cx="480" cy="132" r="72" fill="#dbeafe" stroke="#3b82f6" stroke-width="6"/>
+  <circle cx="682" cy="248" r="90" fill="#fee2e2" stroke="#ef4444" stroke-width="6"/>
+  <path d="M318 178 C362 142 396 130 410 130" fill="none" stroke="#64748b" stroke-width="10" stroke-linecap="round"/>
+  <path d="M542 158 C590 182 620 206 634 226" fill="none" stroke="#64748b" stroke-width="10" stroke-linecap="round"/>
+  <path d="M598 268 C482 322 382 294 318 244" fill="none" stroke="#64748b" stroke-width="10" stroke-linecap="round"/>
+  <rect x="208" y="198" width="80" height="24" rx="12" fill="#16a34a"/>
+  <rect x="444" y="120" width="72" height="24" rx="12" fill="#2563eb"/>
+  <rect x="638" y="236" width="88" height="24" rx="12" fill="#dc2626"/>
+</svg>

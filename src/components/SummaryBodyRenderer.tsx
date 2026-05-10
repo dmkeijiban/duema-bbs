@@ -43,7 +43,7 @@ function TwitterEmbed({ tweetId }: { tweetId: string }) {
 // Tiptapが出力したHTML文字列を解析し、
 // data-youtube / data-tweet / data-link-card の div をReactコンポーネントに置換する
 function normalizeSummaryHtml(html: string): string {
-  return html
+  let next = html
     .replace(/href=(["'])\/category\/card\1/g, 'href=$1/category/new-cards$1')
     .replace(/href=(["'])\/category\/cs\1/g, 'href=$1/category/tournament$1')
     .replace(/<a\b([^>]*)>/gi, (tag) => {
@@ -52,6 +52,33 @@ function normalizeSummaryHtml(html: string): string {
       if (!/\srel=/i.test(next)) next = next.replace(/>$/, ' rel="noopener noreferrer">')
       return next
     })
+
+  if (!next.includes('/summary-assets/duema-price-watch.svg')) {
+    next = next.replace(
+      '<h2>デュエマ高騰情報を見るときのポイント</h2>',
+      '<h2>デュエマ高騰情報を見るときのポイント</h2><figure><img src="/summary-assets/duema-price-watch.svg" alt="デュエマの高騰情報を確認するイメージ" loading="lazy" /></figure>',
+    )
+  }
+  if (!next.includes('/summary-assets/duema-new-card.svg')) {
+    next = next.replace(
+      '<h2>新カード情報は「強さ」だけで見ない</h2>',
+      '<h2>新カード情報は「強さ」だけで見ない</h2><figure><img src="/summary-assets/duema-new-card.svg" alt="新カード情報を整理するイメージ" loading="lazy" /></figure>',
+    )
+  }
+  if (!next.includes('/summary-assets/duema-meta-map.svg')) {
+    next = next.replace(
+      '<h2>環境を見るなら「入賞数」と「増えそうな理由」を分ける</h2>',
+      '<h2>環境を見るなら「入賞数」と「増えそうな理由」を分ける</h2><figure><img src="/summary-assets/duema-meta-map.svg" alt="デュエマ環境の変化を整理するイメージ" loading="lazy" /></figure>',
+    )
+  }
+  if (!next.includes('/summary-assets/duema-deck-talk.svg')) {
+    next = next.replace(
+      '<h2>デッキ相談は情報が多いほど回答されやすい</h2>',
+      '<h2>デッキ相談は情報が多いほど回答されやすい</h2><figure><img src="/summary-assets/duema-deck-talk.svg" alt="デッキ相談で意見交換するイメージ" loading="lazy" /></figure>',
+    )
+  }
+
+  return next
 }
 
 function parseBody(html: string): React.ReactNode[] {
