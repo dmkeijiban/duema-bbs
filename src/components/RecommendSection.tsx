@@ -60,7 +60,7 @@ export async function RecommendSection({ threadId, title, categoryId = null }: P
                   src={imgSrc}
                   alt=""
                   fill
-                  className={thread.image_url ? 'object-cover' : 'object-contain'}
+                  className="object-cover"
                   sizes="256px"
                   quality={85}
                   priority={idx === 0}

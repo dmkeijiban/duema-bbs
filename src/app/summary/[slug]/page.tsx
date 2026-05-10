@@ -211,7 +211,7 @@ export default async function SummarySlugPage({ params }: Props) {
                     src={thread.image_url ?? '/default-thumbnail.jpg'}
                     alt={thread.title}
                     fill
-                    className={thread.image_url ? 'object-cover' : 'object-contain'}
+                    className="object-cover"
                     sizes="56px"
                   />
                 </div>
