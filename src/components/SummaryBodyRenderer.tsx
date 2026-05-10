@@ -42,7 +42,20 @@ function TwitterEmbed({ tweetId }: { tweetId: string }) {
 // ── HTMLパーサー（サーバーサイド非依存） ───────────────────────────
 // Tiptapが出力したHTML文字列を解析し、
 // data-youtube / data-tweet / data-link-card の div をReactコンポーネントに置換する
+function normalizeSummaryHtml(html: string): string {
+  return html
+    .replace(/href=(["'])\/category\/card\1/g, 'href=$1/category/new-cards$1')
+    .replace(/href=(["'])\/category\/cs\1/g, 'href=$1/category/tournament$1')
+    .replace(/<a\b([^>]*)>/gi, (tag) => {
+      let next = tag
+      if (!/\starget=/i.test(next)) next = next.replace(/>$/, ' target="_blank">')
+      if (!/\srel=/i.test(next)) next = next.replace(/>$/, ' rel="noopener noreferrer">')
+      return next
+    })
+}
+
 function parseBody(html: string): React.ReactNode[] {
+  const normalizedHtml = normalizeSummaryHtml(html)
   // DOMParser はブラウザ専用なので、正規表現でマーカーを検出する
   // サーバーサイドレンダリング時はそのまま innerHTML で表示されるので
   // クライアント側だけで動けばよい
@@ -58,7 +71,7 @@ function parseBody(html: string): React.ReactNode[] {
 
   let m: RegExpExecArray | null
   const re = new RegExp(markerRe.source, 'gi')
-  while ((m = re.exec(html)) !== null) {
+  while ((m = re.exec(normalizedHtml)) !== null) {
     matches.push({ index: m.index, full: m[0], type: m[1], value: m[2] })
   }
 
@@ -68,14 +81,14 @@ function parseBody(html: string): React.ReactNode[] {
       <div
         key="body"
         className="summary-body-html"
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={{ __html: normalizedHtml }}
       />,
     ]
   }
 
   for (const match of matches) {
     // マーカー前のHTML
-    const before = html.slice(lastIndex, match.index)
+    const before = normalizedHtml.slice(lastIndex, match.index)
     if (before.trim()) {
       parts.push(
         <div
@@ -100,7 +113,7 @@ function parseBody(html: string): React.ReactNode[] {
   }
 
   // 最後のHTML
-  const tail = html.slice(lastIndex)
+  const tail = normalizedHtml.slice(lastIndex)
   if (tail.trim()) {
     parts.push(
       <div
