@@ -17,6 +17,12 @@ export async function POST() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 
+  const { data: existing } = await supabase
+    .from('summaries')
+    .select('published')
+    .eq('slug', SEO_SUMMARY_DRAFT.slug)
+    .maybeSingle()
+
   const { data: top } = await supabase
     .from('threads')
     .select('id, title, post_count, image_url, categories(name, color)')
@@ -47,7 +53,7 @@ export async function POST() {
       period_start: today,
       period_end: today,
       threads: threadsJson,
-      published: false,
+      published: existing?.published ?? false,
       body: SEO_SUMMARY_DRAFT.body,
     },
     { onConflict: 'slug' },
