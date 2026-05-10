@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 
-export const DEFAULT_THREAD_THUMBNAIL = '/default-thumbnail.jpg'
+export const DEFAULT_THREAD_THUMBNAIL = '/default-thread-thumbnail.svg'
 
 /**
  * スレに画像がない場合、最初に画像付きのレスの画像をサムネとして使う。

@@ -2,6 +2,7 @@ import { getCachedRelatedThreads, getCachedTopThreads } from '@/lib/cached-queri
 import Link from 'next/link'
 import Image from 'next/image'
 import { seededShuffle } from '@/lib/stable-shuffle'
+import { DEFAULT_THREAD_THUMBNAIL } from '@/lib/thumbnail'
 
 /** CLS防止用スケルトン — fallback={null}の代わりに使う */
 export function RecommendSectionSkeleton() {
@@ -48,7 +49,7 @@ export async function RecommendSection({ threadId, title, categoryId = null }: P
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 border-l border-t border-gray-300">
         {threads.map((thread, idx) => {
-          const imgSrc = thread.image_url ?? '/default-thumbnail.jpg'
+          const imgSrc = thread.image_url ?? DEFAULT_THREAD_THUMBNAIL
           return (
             <Link
               key={thread.id}

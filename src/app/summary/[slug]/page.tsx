@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { Suspense } from 'react'
 import { Metadata } from 'next'
 import { SummaryBodyRenderer } from '@/components/SummaryBodyRenderer'
+import { DEFAULT_THREAD_THUMBNAIL } from '@/lib/thumbnail'
 
 export const revalidate = 3600
 
@@ -208,7 +209,7 @@ export default async function SummarySlugPage({ params }: Props) {
                 {/* サムネイル */}
                 <div className="relative shrink-0 w-14 h-14 bg-gray-100 border border-gray-200 overflow-hidden">
                   <Image
-                    src={thread.image_url ?? '/default-thumbnail.jpg'}
+                    src={thread.image_url ?? DEFAULT_THREAD_THUMBNAIL}
                     alt={thread.title}
                     fill
                     className="object-cover"
