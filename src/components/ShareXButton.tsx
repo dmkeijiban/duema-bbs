@@ -4,10 +4,13 @@ interface Props {
   title: string
 }
 
+const X_SHARE_SUFFIX = '#デュエマ @dmkeijiban'
+
 export function ShareXButton({ title }: Props) {
   const handleShare = () => {
-    const url = window.location.href
-    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`
+    const url = `${window.location.origin}${window.location.pathname}`
+    const text = `${title.trim()} ${url} ${X_SHARE_SUFFIX}`
+    const tweetUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}`
     window.open(tweetUrl, '_blank', 'noopener,noreferrer,width=600,height=400')
   }
 
