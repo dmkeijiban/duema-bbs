@@ -3,6 +3,7 @@ import { createPublicClient } from '@/lib/supabase-public'
 import { RecommendSection } from '@/components/RecommendSection'
 import { BottomNav } from '@/components/ThreadSortPage'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Suspense } from 'react'
 import { Metadata } from 'next'
 import { SummaryBodyRenderer } from '@/components/SummaryBodyRenderer'
@@ -113,6 +114,7 @@ export default async function SummarySlugPage({ params }: Props) {
   const threads = summary.threads ?? []
   const threadIds = threads.map(t => t.id)
   const livePostCounts = await getLivePostCounts(threadIds)
+  const hasBodyImage = /<img\b/i.test(summary.body ?? '')
 
   return (
     <div className="w-full px-0 py-0">
@@ -181,6 +183,11 @@ export default async function SummarySlugPage({ params }: Props) {
         {/* 手書き本文（manualのみ） */}
         {summary.type === 'manual' && summary.body && (
           <div className="mb-3 px-4 py-4 border border-gray-300 bg-white">
+            {!hasBodyImage && (
+              <div className="relative mb-4 w-full max-w-xl aspect-[1200/630] bg-gray-100 border border-gray-200">
+                <Image src="/default-thumbnail.jpg" alt="デュエマ掲示板の注目スレッドまとめ" fill className="object-cover" sizes="640px" priority />
+              </div>
+            )}
             <SummaryBodyRenderer body={summary.body} />
           </div>
         )}
@@ -199,17 +206,15 @@ export default async function SummarySlugPage({ params }: Props) {
                 className="flex items-start gap-3 px-3 py-3 hover:bg-gray-50 transition-colors"
               >
                 {/* サムネイル */}
-                {thread.image_url ? (
-                  <img
-                    src={thread.image_url}
+                <div className="relative shrink-0 w-14 h-14 bg-gray-100 border border-gray-200 overflow-hidden">
+                  <Image
+                    src={thread.image_url ?? '/default-thumbnail.jpg'}
                     alt={thread.title}
-                    className="shrink-0 w-14 h-14 object-cover border border-gray-200"
+                    fill
+                    className={thread.image_url ? 'object-cover' : 'object-contain'}
+                    sizes="56px"
                   />
-                ) : (
-                  <div className="shrink-0 w-14 h-14 bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-300 text-xs">
-                    No img
-                  </div>
-                )}
+                </div>
 
                 {/* テキスト */}
                 <div className="flex-1 min-w-0">

@@ -47,24 +47,33 @@ export async function RecommendSection({ threadId, title, categoryId = null }: P
         <span className="font-bold text-sm" style={{ color: '#004085' }}>オススメ</span>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 border-l border-t border-gray-300">
-        {threads.map((thread, idx) => (
-          <Link
-            key={thread.id}
-            href={`/thread/${thread.id}`}
-            className="flex bg-white hover:bg-gray-50 border-b border-r border-gray-300 overflow-hidden"
-          >
-            <div className="relative shrink-0 bg-gray-100 overflow-hidden w-11 h-11 md:w-16 md:h-16">
-              {thread.image_url && (
-                <Image src={thread.image_url} alt="" fill className="object-cover" sizes="256px" quality={85} priority={idx === 0} />
-              )}
-            </div>
-            <div className="px-1 py-0.5 flex-1 min-w-0">
-              <p className="text-[10px] md:text-[13px] leading-snug text-gray-800 line-clamp-3 break-all">
-                {thread.title}
-              </p>
-            </div>
-          </Link>
-        ))}
+        {threads.map((thread, idx) => {
+          const imgSrc = thread.image_url ?? '/default-thumbnail.jpg'
+          return (
+            <Link
+              key={thread.id}
+              href={`/thread/${thread.id}`}
+              className="flex bg-white hover:bg-gray-50 border-b border-r border-gray-300 overflow-hidden"
+            >
+              <div className="relative shrink-0 bg-gray-100 overflow-hidden w-11 h-11 md:w-16 md:h-16">
+                <Image
+                  src={imgSrc}
+                  alt=""
+                  fill
+                  className={thread.image_url ? 'object-cover' : 'object-contain'}
+                  sizes="256px"
+                  quality={85}
+                  priority={idx === 0}
+                />
+              </div>
+              <div className="px-1 py-0.5 flex-1 min-w-0">
+                <p className="text-[10px] md:text-[13px] leading-snug text-gray-800 line-clamp-3 break-all">
+                  {thread.title}
+                </p>
+              </div>
+            </Link>
+          )
+        })}
       </div>
     </div>
   )
