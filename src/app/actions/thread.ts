@@ -10,7 +10,6 @@ import { uploadImage, validateImageFile } from '@/lib/upload'
 import { sendPushNotifications } from '@/app/actions/push-subscription'
 import { notifyNewThread } from '@/lib/discord'
 import { verifyAdminCookie } from '@/lib/admin-auth'
-import { checkSessionRateLimit } from '@/lib/rate-limit'
 import { checkNgWords, checkSessionBan } from '@/lib/moderation'
 
 function hasHoneypotValue(formData: FormData): boolean {
@@ -74,15 +73,6 @@ export async function createThread(formData: FormData) {
   if (ngWord) {
     return { error: `NG word detected: ${ngWord}` }
   }
-  const rateLimitError = await checkSessionRateLimit(supabase, {
-    table: 'threads',
-    sessionId,
-    windowSeconds: 300,
-    minIntervalSeconds: 60,
-    maxInWindow: 3,
-    label: 'スレッド作成',
-  })
-  if (rateLimitError) return { error: rateLimitError }
 
   let imageUrl: string | null = null
   let imageWidth: number | null = null
@@ -185,15 +175,6 @@ export async function createPost(formData: FormData) {
   if (ngWord) {
     return { error: `NG word detected: ${ngWord}` }
   }
-  const rateLimitError = await checkSessionRateLimit(supabase, {
-    table: 'posts',
-    sessionId,
-    windowSeconds: 60,
-    minIntervalSeconds: 10,
-    maxInWindow: 5,
-    label: 'レス投稿',
-  })
-  if (rateLimitError) return { error: rateLimitError }
 
   const { data: maxPost } = await supabase
     .from('posts')
