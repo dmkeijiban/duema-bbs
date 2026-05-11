@@ -46,7 +46,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
         const targetPage = Math.ceil(postNumber / POSTS_PER_PAGE)
         const url = targetPage <= 1
           ? `/thread/${threadId}#post-${scrollTarget}`
-          : `/thread/${threadId}?page=${targetPage}#post-${scrollTarget}`
+          : `/thread/${threadId}/p/${targetPage}#post-${scrollTarget}`
         router.push(url)
         setScrollTarget(null)
       }

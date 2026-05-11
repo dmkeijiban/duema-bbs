@@ -42,6 +42,12 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: '/thread/:id',
+        has: [{ type: 'query', key: 'page', value: '(?<page>[^&]+)' }],
+        destination: '/thread/:id/p/:page',
+        permanent: true,
+      },
+      {
         // vercel.appドメインからカスタムドメインへ301リダイレクト（SEO重複回避）
         source: '/:path*',
         has: [{ type: 'host', value: 'duema-bbs.vercel.app' }],
@@ -92,6 +98,15 @@ const nextConfig: NextConfig = {
       },
       {
         source: '/thread/:id',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, s-maxage=30, stale-while-revalidate=300',
+          },
+        ],
+      },
+      {
+        source: '/thread/:id/p/:page',
         headers: [
           {
             key: 'Cache-Control',

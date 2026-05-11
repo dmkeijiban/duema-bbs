@@ -115,14 +115,14 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
       {totalPages > 1 && (
         <div className="flex items-center gap-1 py-2 mt-2 text-sm">
           {page > 1 && (
-            <Link href={`/thread/${threadId}?page=${page - 1}`} className="px-3 py-1 border border-gray-300 text-blue-600 hover:bg-gray-50">
+            <Link href={page - 1 <= 1 ? `/thread/${threadId}` : `/thread/${threadId}/p/${page - 1}`} className="px-3 py-1 border border-gray-300 text-blue-600 hover:bg-gray-50">
               前へ
             </Link>
           )}
           {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
             <Link
               key={p}
-              href={p === 1 ? `/thread/${threadId}` : `/thread/${threadId}?page=${p}`}
+              href={p === 1 ? `/thread/${threadId}` : `/thread/${threadId}/p/${p}`}
               className="px-3 py-1 border text-sm"
               style={
                 p === page
@@ -134,7 +134,7 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
             </Link>
           ))}
           {page < totalPages && (
-            <Link href={`/thread/${threadId}?page=${page + 1}`} className="px-3 py-1 border border-gray-300 text-blue-600 hover:bg-gray-50">
+            <Link href={`/thread/${threadId}/p/${page + 1}`} className="px-3 py-1 border border-gray-300 text-blue-600 hover:bg-gray-50">
               次へ
             </Link>
           )}

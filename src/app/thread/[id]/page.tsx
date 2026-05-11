@@ -25,7 +25,6 @@ const THREAD_RULES_DEFAULT = `1.アンカーはレス番号をクリックで自
 
 interface Props {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ page?: string }>
 }
 
 export async function generateMetadata({ params }: Props) {
@@ -72,12 +71,15 @@ export async function generateMetadata({ params }: Props) {
   }
 }
 
-export default async function ThreadPage({ params, searchParams }: Props) {
-  const [{ id }, { page: pageStr }] = await Promise.all([params, searchParams])
+export default async function ThreadPage({ params }: Props) {
+  const { id } = await params
   const threadId = parseInt(id)
   if (isNaN(threadId)) notFound()
 
-  const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
+  return renderThreadPage(threadId, 1)
+}
+
+export async function renderThreadPage(threadId: number, page: number) {
   const [threadRules, threadNotices] = await Promise.all([
     getCachedSetting('thread_rules', THREAD_RULES_DEFAULT),
     getCachedThreadNotices(),
