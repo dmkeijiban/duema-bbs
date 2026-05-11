@@ -15,6 +15,7 @@ import { SITE_URL } from '@/lib/site-config'
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
 export const revalidate = 30
+export const dynamic = 'force-static'
 
 const THREAD_RULES_DEFAULT = `1.アンカーはレス番号をクリックで自動入力できます。
 2.誹謗中傷・暴言・煽り・スレッドと無関係な投稿は削除・規制対象です。
