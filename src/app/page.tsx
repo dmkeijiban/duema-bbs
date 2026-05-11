@@ -268,8 +268,12 @@ async function InlineNewThreadServer() {
 // 即座にストリームされ LCP 要素（HomeBannerFallback）が
 // ブラウザに届く。
 // ──────────────────────────────────────────────────
-export default async function Home() {
-  const params: SearchParams = {}
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>
+}) {
+  const params = await searchParams
 
   const isConfigured =
     process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http') &&
