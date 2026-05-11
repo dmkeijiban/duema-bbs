@@ -7,6 +7,14 @@
     {
       "path": "/api/summary/cron",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/youtube/check",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/youtube/subscribe",
+      "schedule": "0 */12 * * *"
     }
   ]
 }
