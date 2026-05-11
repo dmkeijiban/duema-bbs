@@ -4,7 +4,6 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase-server'
-import { createPublicClient } from '@/lib/supabase-public'
 import { hasJapanese } from '@/lib/spam'
 import { v4 as uuidv4 } from 'uuid'
 import { uploadImage, validateImageFile } from '@/lib/upload'
@@ -17,7 +16,6 @@ function hasHoneypotValue(formData: FormData): boolean {
   const value = formData.get('website')
   return typeof value === 'string' && value.trim().length > 0
 }
-
 async function getOrCreateSessionId(): Promise<string> {
   const cookieStore = await cookies()
   const existing = cookieStore.get('bbs_session')?.value
@@ -31,7 +29,6 @@ async function getOrCreateSessionId(): Promise<string> {
   })
   return newId
 }
-
 export async function createThread(formData: FormData) {
   if (hasHoneypotValue(formData)) return { error: '投稿に失敗しました' }
 
@@ -300,15 +297,4 @@ export async function toggleFavorite(threadId: number) {
     revalidatePath(`/thread/${threadId}`)
     return { favorited: true }
   }
-}
-
-export async function incrementViewCount(threadId: number): Promise<number> {
-  const supabase = createPublicClient()
-  await supabase.rpc('increment_view_count', { thread_id: threadId })
-  const { data } = await supabase
-    .from('threads')
-    .select('view_count')
-    .eq('id', threadId)
-    .single()
-  return data?.view_count ?? 0
 }

@@ -1,12 +1,11 @@
 import { notFound } from 'next/navigation'
-import { after } from 'next/server'
 import { Suspense } from 'react'
 import { ThreadContent } from '@/components/ThreadContent'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { ShareXButton } from '@/components/ShareXButton'
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
-import { incrementViewCount } from '@/app/actions/thread'
 import { Thread, Post, Category } from '@/types'
+import { ThreadViewPing } from '@/components/ThreadViewPing'
 import Link from 'next/link'
 import { getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
@@ -83,7 +82,6 @@ export default async function ThreadPage({ params, searchParams }: Props) {
   ])
 
   // スレ・レスはキャッシュ済みクエリで取得（30秒TTL）
-  // 閲覧数更新は after() に回して、初期表示の待ち時間に含めない
   const [thread, postsResult] = await Promise.all([
     getCachedThread(threadId),
     getCachedThreadPosts(threadId, page),
@@ -94,16 +92,11 @@ export default async function ThreadPage({ params, searchParams }: Props) {
   const typedThread = thread as unknown as Thread & { categories: Category | null }
   const totalPages = Math.max(1, Math.ceil((typedThread.post_count ?? 0) / POSTS_PER_PAGE))
 
-  after(() => {
-    incrementViewCount(threadId).catch(error => {
-      console.error('incrementViewCount error:', error)
-    })
-  })
-
   const baseUrl = SITE_URL
 
   return (
     <div className="max-w-screen-xl mx-auto px-2 py-2 text-sm overflow-x-hidden">
+      <ThreadViewPing threadId={threadId} />
       {/* SEO: DiscussionForumPosting構造化データ（JSON-LD） */}
       <script
         type="application/ld+json"
