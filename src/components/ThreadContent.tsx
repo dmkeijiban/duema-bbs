@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Post, Thread, Category } from '@/types'
 import { PostItem, renderBody } from './PostItem'
 import { NewPostForm } from './NewPostForm'
@@ -10,6 +10,7 @@ import { formatDateTimeJP } from '@/lib/utils'
 import Link from 'next/link'
 import { ImageViewer } from './ImageViewer'
 import { resolveImageUrl } from '@/lib/utils'
+import { getThreadViewerState } from '@/lib/thread-viewer-client'
 
 interface Props {
   posts: Post[]
@@ -18,16 +19,29 @@ interface Props {
   isArchived: boolean
   page: number
   totalPages: number
-  sessionId: string
   recommendSlot?: React.ReactNode
   threadRules?: string
-  isAdmin?: boolean
 }
 
 type DisplayPost = Post & { displayNumber: number }
 
-export function ThreadContent({ posts, threadId, thread, isArchived, page, totalPages, sessionId, recommendSlot, threadRules, isAdmin }: Props) {
+export function ThreadContent({ posts, threadId, thread, isArchived, page, totalPages, recommendSlot, threadRules }: Props) {
   const [bodyValue, setBodyValue] = useState('')
+  const [sessionId, setSessionId] = useState('')
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    getThreadViewerState(threadId)
+      .then(data => {
+        if (cancelled) return
+        setSessionId(data.sessionId)
+        setIsAdmin(data.isAdmin)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [threadId])
 
   const handleAnchorClick = (displayNum: number) => {
     setBodyValue(prev => prev ? prev + `>>${displayNum}\n` : `>>${displayNum}\n`)

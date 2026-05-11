@@ -1,15 +1,16 @@
 'use client'
 
-import { useState, useTransition, useRef } from 'react'
+import { useEffect, useState, useTransition, useRef } from 'react'
 import { toggleFavorite } from '@/app/actions/thread'
 import { subscribeToThread } from '@/app/actions/email-subscription'
+import { getThreadViewerState } from '@/lib/thread-viewer-client'
 
 interface Props {
   threadId: number
-  initialFavorited: boolean
+  initialFavorited?: boolean
 }
 
-export function FavoriteButton({ threadId, initialFavorited }: Props) {
+export function FavoriteButton({ threadId, initialFavorited = false }: Props) {
   const [favorited, setFavorited] = useState(initialFavorited)
   const [isPending, startTransition] = useTransition()
 
@@ -19,6 +20,17 @@ export function FavoriteButton({ threadId, initialFavorited }: Props) {
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle')
   const [emailError, setEmailError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getThreadViewerState(threadId)
+      .then(data => {
+        if (!cancelled) setFavorited(data.isFavorited)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [threadId])
 
   const handleClick = () => {
     startTransition(async () => {

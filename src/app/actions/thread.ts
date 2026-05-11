@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase-server'
+import { createPublicClient } from '@/lib/supabase-public'
 import { hasJapanese } from '@/lib/spam'
 import { v4 as uuidv4 } from 'uuid'
 import { uploadImage, validateImageFile } from '@/lib/upload'
@@ -302,7 +303,7 @@ export async function toggleFavorite(threadId: number) {
 }
 
 export async function incrementViewCount(threadId: number): Promise<number> {
-  const supabase = await createClient()
+  const supabase = createPublicClient()
   await supabase.rpc('increment_view_count', { thread_id: threadId })
   const { data } = await supabase
     .from('threads')

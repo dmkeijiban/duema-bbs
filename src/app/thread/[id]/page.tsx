@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation'
 import { after } from 'next/server'
 import { Suspense } from 'react'
-import { createClient } from '@/lib/supabase-server'
 import { ThreadContent } from '@/components/ThreadContent'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { ShareXButton } from '@/components/ShareXButton'
@@ -9,12 +8,10 @@ import { RecommendSection, RecommendSectionSkeleton } from '@/components/Recomme
 import { incrementViewCount } from '@/app/actions/thread'
 import { Thread, Post, Category } from '@/types'
 import Link from 'next/link'
-import { cookies } from 'next/headers'
 import { getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
-import { verifyAdminCookie } from '@/lib/admin-auth'
 
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
@@ -80,28 +77,19 @@ export default async function ThreadPage({ params, searchParams }: Props) {
   if (isNaN(threadId)) notFound()
 
   const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
-  // cookies + supabase client + キャッシュ済みデータを同時並列で取得
-  const [cookieStore, supabase, threadRules, threadNotices] = await Promise.all([
-    cookies(),
-    createClient(),
+  const [threadRules, threadNotices] = await Promise.all([
     getCachedSetting('thread_rules', THREAD_RULES_DEFAULT),
     getCachedThreadNotices(),
   ])
-  const sessionId = cookieStore.get('bbs_session')?.value ?? ''
-  const isAdmin = verifyAdminCookie(cookieStore.get('admin_auth')?.value)
 
-  // スレ・レスはキャッシュ済みクエリで取得（30秒TTL）、セッション依存データは直接取得
+  // スレ・レスはキャッシュ済みクエリで取得（30秒TTL）
   // 閲覧数更新は after() に回して、初期表示の待ち時間に含めない
-  const [thread, postsResult, favResult] = await Promise.all([
+  const [thread, postsResult] = await Promise.all([
     getCachedThread(threadId),
     getCachedThreadPosts(threadId, page),
-    sessionId
-      ? supabase.from('favorites').select('id').eq('session_id', sessionId).eq('thread_id', threadId).single()
-      : Promise.resolve({ data: null }),
   ])
   if (!thread) notFound()
 
-  const isFavorited = !!favResult.data
   const posts = postsResult.data
   const typedThread = thread as unknown as Thread & { categories: Category | null }
   const totalPages = Math.max(1, Math.ceil((typedThread.post_count ?? 0) / POSTS_PER_PAGE))
@@ -175,7 +163,7 @@ export default async function ThreadPage({ params, searchParams }: Props) {
       <div className="border border-gray-300 bg-white mb-3 px-3 py-2">
         <div className="flex items-center gap-1.5 flex-wrap">
           <h1 className="font-bold text-gray-800 leading-snug text-base">{typedThread.title}</h1>
-          <FavoriteButton threadId={threadId} initialFavorited={isFavorited} />
+          <FavoriteButton threadId={threadId} />
           <ShareXButton title={typedThread.title} />
         </div>
         <div className="text-xs text-gray-500 mt-0.5">
@@ -194,9 +182,7 @@ export default async function ThreadPage({ params, searchParams }: Props) {
         isArchived={typedThread.is_archived}
         page={page}
         totalPages={totalPages}
-        sessionId={sessionId}
         threadRules={threadRules}
-        isAdmin={isAdmin}
         recommendSlot={
           <Suspense fallback={<RecommendSectionSkeleton />}>
             <RecommendSection
