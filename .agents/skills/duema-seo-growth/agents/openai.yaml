@@ -1,0 +1,6 @@
+interface:
+  display_name: "Duema SEO Growth"
+  short_description: "SEO and structured-data rules for Duema BBS"
+  default_prompt: "Use $duema-seo-growth to improve duema-bbs SEO, summaries, and internal links."
+policy:
+  allow_implicit_invocation: true

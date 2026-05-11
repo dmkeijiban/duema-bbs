@@ -1,0 +1,6 @@
+interface:
+  display_name: "SNS Growth JP"
+  short_description: "Japanese SNS growth and monetization rules"
+  default_prompt: "Use $sns-growth-jp to plan Japanese SNS growth content and monetization experiments."
+policy:
+  allow_implicit_invocation: true

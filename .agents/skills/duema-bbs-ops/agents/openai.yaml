@@ -1,0 +1,6 @@
+interface:
+  display_name: "Duema BBS Ops"
+  short_description: "Project rules for safely operating Duema BBS"
+  default_prompt: "Use $duema-bbs-ops to safely operate and improve the duema-bbs project."
+policy:
+  allow_implicit_invocation: true
