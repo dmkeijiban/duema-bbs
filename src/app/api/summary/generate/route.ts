@@ -1,166 +1,183 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
+import { createAdminClient } from '@/lib/supabase-admin'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-// Supabase anon クライアント（summariesテーブルはanonでINSERT可）
-function createAnonClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
+type SummaryType = 'weekly' | 'monthly'
+
+type ThreadRow = {
+  id: number
+  title: string
+  post_count: number
+  image_url: string | null
+  categories: { name: string | null; color: string | null } | null
 }
 
-function getLastWeekRange(): { start: Date; end: Date; slug: string; title: string } {
+function pad(value: number) {
+  return String(value).padStart(2, '0')
+}
+
+function getLastWeekRange() {
   const now = new Date()
-  // UTC月曜日を起点に計算
-  const day = now.getUTCDay() // 0=Sun, 1=Mon, ...
+  const day = now.getUTCDay()
   const daysToLastMonday = day === 0 ? 13 : day + 6
-  const lastMonday = new Date(now)
-  lastMonday.setUTCDate(now.getUTCDate() - daysToLastMonday)
-  lastMonday.setUTCHours(0, 0, 0, 0)
+  const start = new Date(now)
+  start.setUTCDate(now.getUTCDate() - daysToLastMonday)
+  start.setUTCHours(0, 0, 0, 0)
 
-  const lastSunday = new Date(lastMonday)
-  lastSunday.setUTCDate(lastMonday.getUTCDate() + 6)
-  lastSunday.setUTCHours(23, 59, 59, 999)
+  const end = new Date(start)
+  end.setUTCDate(start.getUTCDate() + 6)
+  end.setUTCHours(23, 59, 59, 999)
 
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const mm = pad(lastMonday.getUTCMonth() + 1)
-  const dd = pad(lastMonday.getUTCDate())
-  const yyyy = lastMonday.getUTCFullYear()
-  const slug = `weekly-${yyyy}-${mm}-${dd}`
+  const startMonth = pad(start.getUTCMonth() + 1)
+  const startDay = pad(start.getUTCDate())
+  const endMonth = pad(end.getUTCMonth() + 1)
+  const endDay = pad(end.getUTCDate())
 
-  const endMm = pad(lastSunday.getUTCMonth() + 1)
-  const endDd = pad(lastSunday.getUTCDate())
-  const title = `先週の人気スレッドTOP5（${mm}/${dd}〜${endMm}/${endDd}）`
-
-  return { start: lastMonday, end: lastSunday, slug, title }
+  return {
+    start,
+    end,
+    slug: `weekly-${start.getUTCFullYear()}-${startMonth}-${startDay}`,
+    title: `先週の人気スレッドTOP5（${startMonth}/${startDay}〜${endMonth}/${endDay}）`,
+  }
 }
 
-function getLastMonthRange(): { start: Date; end: Date; slug: string; title: string } {
+function getLastMonthRange() {
   const now = new Date()
-  const firstOfThisMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-  const firstOfLastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))
-  const lastOfLastMonth = new Date(firstOfThisMonth.getTime() - 1)
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1) - 1)
+  const year = start.getUTCFullYear()
+  const month = pad(start.getUTCMonth() + 1)
 
-  const yyyy = firstOfLastMonth.getUTCFullYear()
-  const mm = String(firstOfLastMonth.getUTCMonth() + 1).padStart(2, '0')
-  const slug = `monthly-${yyyy}-${mm}`
-  const title = `${yyyy}年${mm}月の人気スレッドTOP5`
+  return {
+    start,
+    end,
+    slug: `monthly-${year}-${month}`,
+    title: `${year}年${month}月の人気スレッドTOP5`,
+  }
+}
 
-  return { start: firstOfLastMonth, end: lastOfLastMonth, slug, title }
+function getRange(type: SummaryType) {
+  return type === 'monthly' ? getLastMonthRange() : getLastWeekRange()
+}
+
+async function getTopThreadIdsByActivity(
+  supabase: ReturnType<typeof createAdminClient>,
+  start: Date,
+  end: Date,
+) {
+  const { data: posts, error } = await supabase
+    .from('posts')
+    .select('thread_id')
+    .gte('created_at', start.toISOString())
+    .lte('created_at', end.toISOString())
+    .eq('is_deleted', false)
+
+  if (error) throw new Error(error.message)
+
+  const countMap: Record<number, number> = {}
+  for (const post of posts ?? []) {
+    if (post.thread_id) countMap[post.thread_id] = (countMap[post.thread_id] ?? 0) + 1
+  }
+
+  const topIds = Object.entries(countMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id]) => Number(id))
+
+  return { topIds, countMap }
+}
+
+async function getFallbackPopularThreadIds(supabase: ReturnType<typeof createAdminClient>) {
+  const { data, error } = await supabase
+    .from('threads')
+    .select('id')
+    .eq('is_archived', false)
+    .order('post_count', { ascending: false })
+    .limit(5)
+
+  if (error) throw new Error(error.message)
+  return (data ?? []).map(thread => thread.id as number)
 }
 
 export async function GET(req: NextRequest) {
-  // CRON_SECRET による認証
   const authHeader = req.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const typeParam = req.nextUrl.searchParams.get('type') ?? 'weekly'
-  const isMonthly = typeParam === 'monthly'
+  const typeParam = req.nextUrl.searchParams.get('type')
+  const type: SummaryType = typeParam === 'monthly' ? 'monthly' : 'weekly'
+  const { start, end, slug, title } = getRange(type)
+  const supabase = createAdminClient()
 
-  const { start, end, slug, title } = isMonthly
-    ? getLastMonthRange()
-    : getLastWeekRange()
-
-  const supabase = createAnonClient()
-
-  // 既存チェック（重複INSERT防止）
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from('summaries')
     .select('id')
     .eq('slug', slug)
     .maybeSingle()
 
-  if (existing) {
-    return NextResponse.json({ ok: true, skipped: true, slug })
+  if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
+  if (existing) return NextResponse.json({ ok: true, skipped: true, slug })
+
+  const { topIds: activityTopIds, countMap } = await getTopThreadIdsByActivity(supabase, start, end)
+  const usedFallback = activityTopIds.length < 3
+  const topIds = usedFallback ? await getFallbackPopularThreadIds(supabase) : activityTopIds
+
+  if (topIds.length === 0) {
+    return NextResponse.json({ error: 'No threads found for summary' }, { status: 500 })
   }
 
-  // 対象期間のpostsを取得（thread_idのみ）
-  const { data: posts, error: postsError } = await supabase
-    .from('posts')
-    .select('thread_id')
-    .gte('created_at', start.toISOString())
-    .lte('created_at', end.toISOString())
-
-  if (postsError) {
-    console.error('posts fetch error:', postsError)
-    return NextResponse.json({ error: postsError.message }, { status: 500 })
-  }
-
-  // スレッドごとの投稿数集計
-  const countMap: Record<number, number> = {}
-  for (const p of posts ?? []) {
-    if (p.thread_id) {
-      countMap[p.thread_id] = (countMap[p.thread_id] ?? 0) + 1
-    }
-  }
-
-  if (Object.keys(countMap).length === 0) {
-    return NextResponse.json({ ok: true, skipped: true, reason: 'no posts in range', slug })
-  }
-
-  // 上位5スレッドのIDを取得
-  const top5Ids = Object.entries(countMap)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([id]) => Number(id))
-
-  // スレッド詳細取得
   const { data: threads, error: threadError } = await supabase
     .from('threads')
-    .select('id, title, post_count, image_url, category_id, categories(name, color)')
-    .in('id', top5Ids)
+    .select('id, title, post_count, image_url, categories(name, color)')
+    .in('id', topIds)
 
-  if (threadError) {
-    console.error('threads fetch error:', threadError)
-    return NextResponse.json({ error: threadError.message }, { status: 500 })
-  }
+  if (threadError) return NextResponse.json({ error: threadError.message }, { status: 500 })
 
-  // top5Ids の順序に並べ直してランク付け
-  const threadsJson = top5Ids.map((id, i) => {
-    const t = (threads ?? []).find(th => th.id === id)
-    if (!t) return null
-    const cats = t.categories as unknown as { name: string; color: string } | null
-    return {
-      id: t.id,
-      title: t.title,
-      post_count: t.post_count,
-      activity: countMap[id] ?? 0,
-      image_url: t.image_url ?? null,
-      category_name: cats?.name ?? null,
-      category_color: cats?.color ?? null,
-      rank: i + 1,
-    }
-  }).filter(Boolean)
+  const threadRows = (threads ?? []) as unknown as ThreadRow[]
+  const threadsJson = topIds
+    .map((id, index) => {
+      const thread = threadRows.find(item => item.id === id)
+      if (!thread) return null
 
-  // summaries INSERT
-  const periodStart = start.toISOString().slice(0, 10)
-  const periodEnd = end.toISOString().slice(0, 10)
-
-  const { error: insertError } = await supabase
-    .from('summaries')
-    .insert({
-      type: isMonthly ? 'monthly' : 'weekly',
-      slug,
-      title,
-      period_start: periodStart,
-      period_end: periodEnd,
-      threads: threadsJson,
-      published: true,
+      return {
+        id: thread.id,
+        title: thread.title,
+        post_count: thread.post_count,
+        activity: countMap[id] ?? 0,
+        image_url: thread.image_url ?? null,
+        category_name: thread.categories?.name ?? null,
+        category_color: thread.categories?.color ?? null,
+        rank: index + 1,
+      }
     })
+    .filter(Boolean)
 
-  if (insertError) {
-    console.error('insert error:', insertError)
-    return NextResponse.json({ error: insertError.message }, { status: 500 })
-  }
+  const { error: insertError } = await supabase.from('summaries').insert({
+    type,
+    slug,
+    title,
+    period_start: start.toISOString().slice(0, 10),
+    period_end: end.toISOString().slice(0, 10),
+    threads: threadsJson,
+    published: true,
+  })
 
+  if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
+
+  revalidateTag('summaries', { expire: 0 })
   revalidatePath('/summary')
+  revalidatePath('/')
 
-  return NextResponse.json({ ok: true, slug, title, threadCount: threadsJson.length })
+  return NextResponse.json({
+    ok: true,
+    slug,
+    title,
+    threadCount: threadsJson.length,
+    usedFallback,
+  })
 }
