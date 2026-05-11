@@ -17,6 +17,8 @@ const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 export const revalidate = 30
 export const dynamic = 'force-static'
 
+const DEFAULT_AUTHOR_NAME = '名無しのデュエリスト'
+
 const THREAD_RULES_DEFAULT = `1.アンカーはレス番号をクリックで自動入力できます。
 2.誹謗中傷・暴言・煽り・スレッドと無関係な投稿は削除・規制対象です。
 他サイト・特定個人への中傷・暴言は禁止です。
@@ -26,6 +28,41 @@ const THREAD_RULES_DEFAULT = `1.アンカーはレス番号をクリックで自
 
 interface Props {
   params: Promise<{ id: string }>
+}
+
+function cleanStructuredText(value: string | null | undefined, fallback = '') {
+  const cleaned = (value ?? '')
+    .replace(/>>?\d+/g, '')
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+  return cleaned || fallback
+}
+
+function cleanAuthorName(value: string | null | undefined) {
+  return (value ?? '').trim() || DEFAULT_AUTHOR_NAME
+}
+
+function removeEmptyStructuredData<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value
+      .map(item => removeEmptyStructuredData(item))
+      .filter(item => item !== undefined && item !== null && item !== '') as T
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .map(([key, item]) => [key, removeEmptyStructuredData(item)])
+        .filter(([, item]) => {
+          if (item === undefined || item === null || item === '') return false
+          if (Array.isArray(item) && item.length === 0) return false
+          return !(typeof item === 'object' && !Array.isArray(item) && Object.keys(item).length === 0)
+        }),
+    ) as T
+  }
+
+  return value
 }
 
 export async function generateMetadata({ params }: Props) {
@@ -42,6 +79,7 @@ export async function generateMetadata({ params }: Props) {
     .trim()
     .slice(0, 150)
   const baseUrl = SITE_URL
+  const metadataDescription = desc || thread.title
   // Use a stable, query-free image URL for X cards. Twitterbot can be picky
   // with long query-string image URLs, even when the endpoint returns 200.
   const ogImageUrl = ogImage
@@ -50,13 +88,13 @@ export async function generateMetadata({ params }: Props) {
 
   return {
     title: `${thread.title} | デュエマ掲示板`,
-    description: desc,
+    description: metadataDescription,
     alternates: {
       canonical: `${baseUrl}/thread/${id}`,
     },
     openGraph: {
       title: thread.title,
-      description: desc,
+      description: metadataDescription,
       url: `${baseUrl}/thread/${id}`,
       type: 'article',
       images: ogImageUrl
@@ -66,7 +104,7 @@ export async function generateMetadata({ params }: Props) {
     twitter: {
       card: ogImageUrl ? 'summary_large_image' : 'summary',
       title: thread.title,
-      description: desc,
+      description: metadataDescription,
       images: ogImageUrl ? [ogImageUrl] : [],
     },
   }
@@ -98,6 +136,35 @@ export async function renderThreadPage(threadId: number, page: number) {
   const totalPages = Math.max(1, Math.ceil((typedThread.post_count ?? 0) / POSTS_PER_PAGE))
 
   const baseUrl = SITE_URL
+  const canonicalUrl = `${baseUrl}/thread/${threadId}`
+  const structuredText = cleanStructuredText(typedThread.body, typedThread.title)
+  const structuredImage = typedThread.image_url ? `${baseUrl}/og/thread/${threadId}.jpg` : undefined
+  const discussionStructuredData = removeEmptyStructuredData({
+    "@context": "https://schema.org",
+    "@type": "DiscussionForumPosting",
+    "@id": `${canonicalUrl}#discussion`,
+    "headline": typedThread.title,
+    "url": canonicalUrl,
+    "mainEntityOfPage": canonicalUrl,
+    "datePublished": typedThread.created_at,
+    "dateModified": typedThread.last_posted_at ?? typedThread.created_at,
+    "author": {
+      "@type": "Person",
+      "name": cleanAuthorName(typedThread.author_name),
+    },
+    "text": structuredText,
+    "description": structuredText.slice(0, 160),
+    "image": structuredImage ? [structuredImage] : undefined,
+    "comment": (posts ?? []).map(post => ({
+      "@type": "Comment",
+      "datePublished": post.created_at,
+      "text": cleanStructuredText(post.body, 'コメント'),
+      "author": {
+        "@type": "Person",
+        "name": cleanAuthorName(post.author_name),
+      },
+    })),
+  })
 
   return (
     <div className="max-w-screen-xl mx-auto px-2 py-2 text-sm overflow-x-hidden">
@@ -106,15 +173,7 @@ export async function renderThreadPage(threadId: number, page: number) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "DiscussionForumPosting",
-            "headline": typedThread.title,
-            "url": `${baseUrl}/thread/${threadId}`,
-            "datePublished": typedThread.created_at,
-            "dateModified": typedThread.last_posted_at ?? typedThread.created_at,
-            "description": typedThread.body.replace(/>>?\d+/g, '').replace(/[\r\n]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 100),
-          })
+          __html: JSON.stringify(discussionStructuredData)
         }}
       />
       <script
