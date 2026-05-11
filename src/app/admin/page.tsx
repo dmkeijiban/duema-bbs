@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import {
@@ -301,6 +302,9 @@ export default async function AdminPage({
             <a href="/admin/summary" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
               📊 まとめ生成
             </a>
+            <Link href="/admin/comment-import" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
+              コメント一括取り込み
+            </Link>
             <a href="/admin/regen-thumbnails" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
               🖼 サムネ再生成
             </a>
