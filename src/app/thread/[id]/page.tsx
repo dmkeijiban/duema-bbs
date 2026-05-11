@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { after } from 'next/server'
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase-server'
 import { ThreadContent } from '@/components/ThreadContent'
@@ -31,28 +32,11 @@ interface Props {
 
 export async function generateMetadata({ params }: Props) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: thread } = await supabase
-    .from('threads')
-    .select('title, body, image_url')
-    .eq('id', parseInt(id))
-    .single()
+  const thread = await getCachedThread(parseInt(id))
 
   if (!thread) return { title: 'スレッドが見つかりません' }
 
-  let ogImage: string | undefined = thread.image_url ?? undefined
-  if (!ogImage) {
-    const { data: postImg } = await supabase
-      .from('posts')
-      .select('image_url')
-      .eq('thread_id', parseInt(id))
-      .not('image_url', 'is', null)
-      .order('post_number', { ascending: true })
-      .limit(1)
-      .single()
-    ogImage = postImg?.image_url ?? undefined
-  }
-
+  const ogImage: string | undefined = thread.image_url ?? undefined
   const desc = thread.body
     .replace(/>>?\d+/g, '')      // >>123 アンカー除去
     .replace(/[\r\n]+/g, ' ')    // 改行をスペースに
@@ -107,23 +91,26 @@ export default async function ThreadPage({ params, searchParams }: Props) {
   const isAdmin = verifyAdminCookie(cookieStore.get('admin_auth')?.value)
 
   // スレ・レスはキャッシュ済みクエリで取得（30秒TTL）、セッション依存データは直接取得
-  // incrementViewCountは閲覧数を+1しつつ最新値を返す（awaitでfire-and-forget問題を解消）
-  const [thread, postsResult, favResult, freshViewCount] = await Promise.all([
+  // 閲覧数更新は after() に回して、初期表示の待ち時間に含めない
+  const [thread, postsResult, favResult] = await Promise.all([
     getCachedThread(threadId),
     getCachedThreadPosts(threadId, page),
     sessionId
       ? supabase.from('favorites').select('id').eq('session_id', sessionId).eq('thread_id', threadId).single()
       : Promise.resolve({ data: null }),
-    incrementViewCount(threadId),
   ])
   if (!thread) notFound()
 
   const isFavorited = !!favResult.data
   const posts = postsResult.data
-  const count = postsResult.count
-  const totalPages = Math.max(1, Math.ceil((count ?? 0) / POSTS_PER_PAGE))
-
   const typedThread = thread as unknown as Thread & { categories: Category | null }
+  const totalPages = Math.max(1, Math.ceil((typedThread.post_count ?? 0) / POSTS_PER_PAGE))
+
+  after(() => {
+    incrementViewCount(threadId).catch(error => {
+      console.error('incrementViewCount error:', error)
+    })
+  })
 
   const baseUrl = SITE_URL
 
@@ -192,7 +179,7 @@ export default async function ThreadPage({ params, searchParams }: Props) {
           <ShareXButton title={typedThread.title} />
         </div>
         <div className="text-xs text-gray-500 mt-0.5">
-          {typedThread.post_count}件 ／ 閲覧 {freshViewCount}
+          {typedThread.post_count}件 ／ 閲覧 {typedThread.view_count}
         </div>
       </div>
 

@@ -261,14 +261,14 @@ export const getCachedThreadPosts = (threadId: number, page: number) =>
     async () => {
       const supabase = createPublicClient()
       const offset = (page - 1) * THREAD_POSTS_PER_PAGE
-      const { data, count } = await supabase
+      const { data } = await supabase
         .from('posts')
-        .select('id, thread_id, post_number, body, author_name, image_url, created_at', { count: 'exact' })
+        .select('id, thread_id, post_number, body, author_name, image_url, created_at')
         .eq('thread_id', threadId)
         .eq('is_deleted', false)
         .order('post_number', { ascending: true })
         .range(offset, offset + THREAD_POSTS_PER_PAGE - 1)
-      return { data: data ?? [], count: count ?? 0 }
+      return { data: data ?? [] }
     },
     [`thread-posts-${threadId}-p${page}`],
     { revalidate: 30, tags: [`thread-${threadId}`, 'threads'] }
