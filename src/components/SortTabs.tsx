@@ -19,9 +19,9 @@ const TABS = [
 
 const ROOT_SORT_HREF: Record<string, string> = {
   recent: '/',
-  new: '/new',
-  popular: '/ranking',
-  random: '/random',
+  new: '/?sort=new',
+  popular: '/?sort=popular',
+  random: '/?sort=random',
 }
 
 export function SortTabs({ currentSort, currentCategory, categories, basePath }: Props) {
