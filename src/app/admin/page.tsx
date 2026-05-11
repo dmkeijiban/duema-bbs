@@ -308,9 +308,6 @@ export default async function AdminPage({
             <Link href="/admin/x-replies" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
               Xリプライ取得
             </Link>
-            <a href="/admin/regen-thumbnails" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
-              🖼 サムネ再生成
-            </a>
             <a href="/admin/deleted-posts" className="px-3 py-1 text-xs border border-orange-400 text-orange-600 hover:bg-orange-50">
               🗑️ 削除済みレス
             </a>
