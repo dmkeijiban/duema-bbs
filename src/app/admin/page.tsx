@@ -13,7 +13,6 @@ import {
 import { SettingEditFormClient } from './SettingEditFormClient'
 import { getAllSettings } from '@/lib/settings'
 import { Notice } from '@/components/NoticeBlock'
-import { ThreadCacheClear } from './ThreadCacheClear'
 import { verifyAdminCookie } from '@/lib/admin-auth'
 
 const ADMIN_COOKIE = 'admin_auth'
@@ -285,9 +284,6 @@ export default async function AdminPage({
         />
       )}
 
-      {/* ① キャッシュクリア */}
-      <ThreadCacheClear />
-
       {/* ② お知らせ管理 */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
@@ -366,7 +362,7 @@ export default async function AdminPage({
       </div>
 
       {/* ④ スレッド一覧 + レス一覧 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className={selectedThread ? 'grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(22rem,1fr)] gap-4' : 'grid grid-cols-1 gap-4'}>
         {/* スレッド一覧（2列グリッド） */}
         <div>
           <div className="flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
@@ -379,7 +375,7 @@ export default async function AdminPage({
           </div>
 
           {/* 2列グリッド表示 */}
-          <div className="grid grid-cols-2 gap-1">
+          <div className={selectedThread ? 'grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-1.5' : 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-1.5'}>
             {threads?.map(t => (
               <div key={t.id} className="bg-white border border-gray-200 p-1.5">
                 <a href={`/thread/${t.id}`} target="_blank" className="text-blue-600 hover:underline line-clamp-1 text-[11px] block mb-0.5">
