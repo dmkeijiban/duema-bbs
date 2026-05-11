@@ -1,0 +1,13 @@
+name = "duema-cron-worker"
+main = "src/index.ts"
+compatibility_date = "2026-05-11"
+
+[vars]
+SITE_URL = "https://www.duema-bbs.com"
+
+[triggers]
+crons = [
+  "*/5 * * * *",
+  "5 16 * * *",
+  "15 0 * * *"
+]
