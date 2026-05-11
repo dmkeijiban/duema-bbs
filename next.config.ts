@@ -91,6 +91,15 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        source: '/thread/:id',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, s-maxage=30, stale-while-revalidate=300',
+          },
+        ],
+      },
+      {
         // Next.jsの静的アセット（JS/CSS/フォント）は不変なので1年キャッシュ
         source: '/_next/static/:path*',
         headers: [
