@@ -305,6 +305,9 @@ export default async function AdminPage({
             <Link href="/admin/comment-import" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
               コメント一括取り込み
             </Link>
+            <Link href="/admin/x-replies" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
+              Xリプライ取得
+            </Link>
             <a href="/admin/regen-thumbnails" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
               🖼 サムネ再生成
             </a>
