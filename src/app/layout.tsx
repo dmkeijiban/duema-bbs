@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { SITE_URL } from '@/lib/site-config'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
+import { PostHogEventBridge } from '@/components/PostHogEventBridge'
 
 const GA_ID = 'G-HDGDNYNMH4'
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY
@@ -128,6 +129,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Header />
           <main className="flex-1">{children}</main>
           <SnsFloatingBar />
+          <PostHogEventBridge />
           <footer className="bg-white border-t border-gray-200 py-4 mt-6">
             <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-600 space-y-1">
               <div className="flex justify-center gap-4">

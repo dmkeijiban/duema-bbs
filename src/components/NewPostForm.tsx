@@ -7,6 +7,7 @@ import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { SettingEditButton } from './SettingEditButton'
 import { PushSubscribeButton } from './PushSubscribeButton'
+import { capturePostHogEvent } from '@/lib/posthog-events'
 
 const POSTS_PER_PAGE = 50
 
@@ -72,6 +73,11 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
         if (result?.error) {
           setError(result.error)
         } else {
+          capturePostHogEvent('reply_submit_success', {
+            thread_id: threadId,
+            category_slug: thread.categories?.slug ?? null,
+            has_image: Boolean(file),
+          })
           onBodyChange('')
           setAuthorName('')
           if (fileInputRef.current) fileInputRef.current.value = ''

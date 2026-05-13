@@ -1,5 +1,7 @@
 'use client'
 
+import { capturePostHogEvent } from '@/lib/posthog-events'
+
 interface Props {
   title: string
 }
@@ -11,6 +13,12 @@ export function ShareXButton({ title }: Props) {
     const url = `${window.location.origin}${window.location.pathname}`
     const text = `${title.trim()} ${url} ${X_SHARE_SUFFIX}`
     const tweetUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}`
+
+    capturePostHogEvent('x_share_click', {
+      path: window.location.pathname,
+      title,
+    })
+
     window.open(tweetUrl, '_blank', 'noopener,noreferrer,width=600,height=400')
   }
 
@@ -21,7 +29,7 @@ export function ShareXButton({ title }: Props) {
       style={{ background: '#000' }}
       title="Xでシェア"
     >
-      𝕏
+      X
     </button>
   )
 }
