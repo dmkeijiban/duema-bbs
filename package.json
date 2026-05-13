@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "content:article": "node scripts/content/generate-history-article.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.52.0",
