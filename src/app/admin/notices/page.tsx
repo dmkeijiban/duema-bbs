@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase-server'
 import { createNotice, toggleNoticeActive, moveNotice, deleteNotice } from './actions'
 import { Notice } from '@/components/NoticeBlock'
@@ -30,7 +31,7 @@ export default async function NoticesAdminPage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-gray-800">📢 お知らせ管理</h1>
         <div className="flex gap-3">
-          <a href="/admin" className="text-xs text-gray-500 hover:underline">← 管理画面に戻る</a>
+          <Link href="/admin" className="text-xs text-gray-500 hover:underline">← 管理画面に戻る</Link>
           <form action={createNotice}>
             <button type="submit"
               className="px-4 py-1.5 text-white text-xs font-medium"

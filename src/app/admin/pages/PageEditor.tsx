@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
+import Link from 'next/link'
 import type { Block } from '@/types/fixed-pages'
 import { savePage, uploadPageImage, type PageInput } from './actions'
 import { RichTextEditor } from './RichTextEditor'
@@ -366,7 +367,7 @@ export function PageEditor({ initial }: Props) {
           style={{ background: isPending ? '#6c757d' : '#0d6efd' }}>
           {isPending ? '保存中...' : '保存する'}
         </button>
-        <a href="/admin/pages" className="text-xs text-gray-500 hover:underline">← キャンセル</a>
+        <Link href="/admin/pages" className="text-xs text-gray-500 hover:underline">← キャンセル</Link>
         {status && <span className="text-xs text-red-600">{status}</span>}
       </div>
     </div>

@@ -75,7 +75,7 @@ function json(data: unknown, status = 200) {
   })
 }
 
-export default {
+const handler = {
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(
       runJobs(env, jobsForCron(controller.cron)).then(results => {
@@ -111,3 +111,5 @@ export default {
     return json({ error: 'Not found' }, 404)
   },
 }
+
+export default handler

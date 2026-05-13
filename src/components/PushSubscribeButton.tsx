@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { saveSubscription, deleteSubscription } from '@/app/actions/push-subscription'
 
 interface Props {
@@ -19,26 +19,16 @@ export function PushSubscribeButton({ threadId }: Props) {
     }
     return Notification.permission as PermissionState
   })
-  const [subscribed, setSubscribed] = useState(false)
-  const [endpoint, setEndpoint] = useState<string | null>(null)
+  const [subscribed, setSubscribed] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return !!localStorage.getItem(STORAGE_KEY(threadId))
+  })
+  const [endpoint, setEndpoint] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    return localStorage.getItem(STORAGE_KEY(threadId))
+  })
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState('')
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-      setPermission('unsupported')
-      return
-    }
-    setPermission(Notification.permission as PermissionState)
-
-    // localStorage から購読済みエンドポイントを復元
-    const stored = localStorage.getItem(STORAGE_KEY(threadId))
-    if (stored) {
-      setSubscribed(true)
-      setEndpoint(stored)
-    }
-  }, [threadId])
 
   if (permission === 'unsupported') return null
   if (permission === 'denied') {

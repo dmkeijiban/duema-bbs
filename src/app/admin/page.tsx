@@ -158,7 +158,7 @@ export default async function AdminPage({
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-gray-800">🛠 管理画面</h1>
         <div className="flex gap-3">
-          <a href="/" className="text-xs text-blue-600 hover:underline">サイトに戻る</a>
+          <Link href="/" className="text-xs text-blue-600 hover:underline">サイトに戻る</Link>
           <form action={logout}>
             <button type="submit" className="text-xs text-gray-500 hover:underline">ログアウト</button>
           </form>
@@ -246,9 +246,9 @@ export default async function AdminPage({
               <button type="submit" className="px-4 py-1.5 text-white text-xs font-medium" style={{ background: '#0d6efd' }}>
                 保存
               </button>
-              <a href="/admin" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600">
+              <Link href="/admin" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600">
                 キャンセル
-              </a>
+              </Link>
             </div>
           </form>
         </div>
@@ -289,33 +289,33 @@ export default async function AdminPage({
         <div className="flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
           <h2 className="font-bold text-gray-700">📢 お知らせ管理</h2>
           <div className="flex gap-2 flex-wrap">
-            <a href="/admin/cleanup" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
+            <Link href="/admin/cleanup" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
               🧹 データ整理
-            </a>
-            <a href="/admin/categories" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
+            </Link>
+            <Link href="/admin/categories" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
               🗂 カテゴリ管理
-            </a>
+            </Link>
             <Link href="/admin/article-drafts" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
               記事下書き取り込み
             </Link>
-            <a href="/admin/summary" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
+            <Link href="/admin/summary" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
               📊 まとめ生成
-            </a>
+            </Link>
             <Link href="/admin/comment-import" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
               コメント一括取り込み
             </Link>
             <Link href="/admin/x-replies" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
               Xリプライ取得
             </Link>
-            <a href="/admin/deleted-posts" className="px-3 py-1 text-xs border border-orange-400 text-orange-600 hover:bg-orange-50">
+            <Link href="/admin/deleted-posts" className="px-3 py-1 text-xs border border-orange-400 text-orange-600 hover:bg-orange-50">
               🗑️ 削除済みレス
-            </a>
-            <a href="/admin/pages" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#198754' }}>
+            </Link>
+            <Link href="/admin/pages" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#198754' }}>
               📄 固定ページ管理
-            </a>
-            <a href="/admin/notices" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#2563eb' }}>
+            </Link>
+            <Link href="/admin/notices" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#2563eb' }}>
               お知らせ管理画面へ
-            </a>
+            </Link>
           </div>
         </div>
         {notices && notices.length > 0 ? (

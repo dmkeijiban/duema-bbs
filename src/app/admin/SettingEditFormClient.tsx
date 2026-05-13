@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { updateSetting } from '@/app/actions/settings'
 import { SettingRichEditor } from './SettingRichEditor'
 
@@ -39,9 +40,9 @@ export function SettingEditFormClient({ settingKey, initialValue, label }: Props
             style={{ background: '#6f42c1' }}>
             {isPending ? '保存中...' : '保存'}
           </button>
-          <a href="/admin" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600">
+          <Link href="/admin" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600">
             キャンセル
-          </a>
+          </Link>
           {error && <span className="text-xs text-red-600">{error}</span>}
         </div>
       </div>

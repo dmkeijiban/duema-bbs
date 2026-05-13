@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { redirect, notFound } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase-server'
 import { NoticeEditClient } from '../NoticeEditClient'
 import { verifyAdminCookie } from '@/lib/admin-auth'
@@ -31,7 +32,7 @@ export default async function NoticeEditPage({ params }: { params: Promise<{ id:
     <div className="max-w-4xl mx-auto px-3 py-4 text-sm">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-gray-800">✏️ お知らせ編集</h1>
-        <a href="/admin/notices" className="text-xs text-gray-500 hover:underline">← 一覧に戻る</a>
+        <Link href="/admin/notices" className="text-xs text-gray-500 hover:underline">← 一覧に戻る</Link>
       </div>
       <div className="bg-white border border-gray-200 p-4">
         <NoticeEditClient notice={{

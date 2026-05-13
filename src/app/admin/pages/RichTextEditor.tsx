@@ -47,6 +47,7 @@ const ImageWithLink = ImageExtension.extend({
   // エディタ内では <img> のみで描画（<a> ラッパーなし）→ クリックによる外部遷移を防ぐ
   // renderHTML() は変更せず、DB保存の HTML は引き続き <a><img></a> 形式
   addNodeView() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return ({ node }: { node: any }) => {
       const img = document.createElement('img')
       img.src = node.attrs.src || ''
@@ -102,6 +103,7 @@ const PageButton = Node.create({
   // エディタ内では <span> で描画 → <a> による外部遷移を防ぐ
   // renderHTML() は変更せず、DB保存の HTML は引き続き <a> 形式
   addNodeView() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return ({ node }: { node: any }) => {
       const dom = document.createElement('span')
       dom.setAttribute('data-btn', '')
@@ -183,6 +185,7 @@ const ShopLink = Node.create({
   // エディタ内では <span> で描画 → <a> による外部遷移を防ぐ
   // renderHTML() は変更せず、DB保存の HTML は引き続き <a> 形式
   addNodeView() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return ({ node }: { node: any }) => {
       const dom = document.createElement('span')
       dom.setAttribute('data-shop', '')

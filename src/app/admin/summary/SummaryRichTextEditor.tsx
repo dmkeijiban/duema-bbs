@@ -68,6 +68,7 @@ const ImageWithLink = ImageExtension.extend({
     return imgNode
   },
   addNodeView() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return ({ node }: { node: any }) => {
       const img = document.createElement('img')
       img.src = node.attrs.src || ''
@@ -101,6 +102,7 @@ const YouTubeEmbed = Node.create({
     return ['div', { 'data-youtube': node.attrs.videoId }]
   },
   addNodeView() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return ({ node }: { node: any }) => {
       const dom = document.createElement('div')
       dom.style.cssText =
@@ -132,6 +134,7 @@ const TwitterEmbed = Node.create({
     return ['div', { 'data-tweet': node.attrs.tweetId }]
   },
   addNodeView() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return ({ node }: { node: any }) => {
       const dom = document.createElement('div')
       dom.style.cssText =
@@ -163,6 +166,7 @@ const LinkCardEmbed = Node.create({
     return ['div', { 'data-link-card': node.attrs.url }]
   },
   addNodeView() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return ({ node }: { node: any }) => {
       const dom = document.createElement('div')
       dom.style.cssText =

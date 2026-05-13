@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase-server'
 import { archiveThread, deleteThread, batchArchiveStale } from './actions'
 import { ConfirmDeleteButton } from '@/components/admin/ConfirmDeleteButton'
@@ -49,7 +50,7 @@ export default async function CleanupPage() {
     <div className="max-w-4xl mx-auto px-3 py-4 text-sm">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-gray-800">🧹 データ整理</h1>
-        <a href="/admin" className="text-xs text-gray-500 hover:underline">← 管理画面に戻る</a>
+        <Link href="/admin" className="text-xs text-gray-500 hover:underline">← 管理画面に戻る</Link>
       </div>
 
       <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 text-xs text-yellow-800 space-y-1">

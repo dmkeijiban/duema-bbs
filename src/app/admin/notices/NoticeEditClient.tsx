@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { saveNotice, uploadNoticeImage } from './actions'
 
 interface NoticeItem {
@@ -212,10 +213,10 @@ export function NoticeEditClient({ notice }: { notice: NoticeData }) {
           style={{ background: '#2563eb' }}>
           {isPending ? '保存中…' : '💾 保存する'}
         </button>
-        <a href="/admin/notices"
+        <Link href="/admin/notices"
           className="px-6 py-2 text-sm border border-gray-300 text-gray-600 hover:bg-gray-50">
           キャンセル
-        </a>
+        </Link>
       </div>
     </form>
   )

@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase-server'
 import { addCategory, deleteCategory, moveCategory } from './actions'
 import { ConfirmDeleteButton } from '@/components/admin/ConfirmDeleteButton'
@@ -32,7 +33,7 @@ export default async function CategoriesPage({
     <div className="max-w-2xl mx-auto px-3 py-4 text-sm">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-gray-800">🗂 カテゴリ管理</h1>
-        <a href="/admin" className="text-xs text-gray-500 hover:underline">← 管理画面に戻る</a>
+        <Link href="/admin" className="text-xs text-gray-500 hover:underline">← 管理画面に戻る</Link>
       </div>
 
       {error && (
