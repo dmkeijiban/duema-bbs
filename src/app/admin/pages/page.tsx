@@ -26,6 +26,9 @@ export default async function AdminPagesPage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-gray-800">📄 固定ページ管理</h1>
         <div className="flex items-center gap-2">
+          <a href="/admin/article-drafts" className="px-3 py-1.5 text-xs text-white font-medium" style={{ background: '#6f42c1' }}>
+            記事下書き取り込み
+          </a>
           <a href="/admin/pages/new" className="px-3 py-1.5 text-xs text-white font-medium" style={{ background: '#0d6efd' }}>
             ＋ 新規作成
           </a>

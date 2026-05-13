@@ -295,6 +295,9 @@ export default async function AdminPage({
             <a href="/admin/categories" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
               🗂 カテゴリ管理
             </a>
+            <Link href="/admin/article-drafts" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
+              記事下書き取り込み
+            </Link>
             <a href="/admin/summary" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
               📊 まとめ生成
             </a>
