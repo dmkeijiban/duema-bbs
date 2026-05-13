@@ -33,6 +33,28 @@ npm.cmd run content:article -- --url https://dmwiki.net/DM26-RP1 --no-images
 - `*.source.json`: 抽出した商品情報、カード情報、公式画像候補ログ
 - `*.quality.json`: 品質チェック結果
 
+## 管理画面へ入れる
+
+生成済みMarkdownは管理画面から取り込めます。
+
+```text
+/admin/article-drafts
+```
+
+取り込むと、固定ページに以下の状態で保存されます。
+
+- 公開OFF
+- ナビ非表示
+- Markdown本文をテキスト/画像ブロックへ変換
+
+確認後、固定ページ編集画面で公開してください。
+
+ローカルCLIで直接取り込む場合:
+
+```powershell
+npm.cmd run content:import-draft -- --file "2026-05-13-DM26-RP1-「逆札篇-第1弾-逆転神VS切札竜」.md"
+```
+
 ## 取得元
 
 - 商品・カード情報: デュエル・マスターズ Wiki
