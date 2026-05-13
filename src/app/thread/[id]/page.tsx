@@ -137,6 +137,7 @@ export async function renderThreadPage(threadId: number, page: number) {
 
   const baseUrl = SITE_URL
   const canonicalUrl = `${baseUrl}/thread/${threadId}`
+  const currentPageUrl = page <= 1 ? canonicalUrl : `${canonicalUrl}/p/${page}`
   const structuredText = cleanStructuredText(typedThread.body, typedThread.title)
   const structuredImage = typedThread.image_url ? `${baseUrl}/og/thread/${threadId}.jpg` : undefined
   const discussionStructuredData = removeEmptyStructuredData({
@@ -151,19 +152,27 @@ export async function renderThreadPage(threadId: number, page: number) {
     "author": {
       "@type": "Person",
       "name": cleanAuthorName(typedThread.author_name),
+      "url": `${canonicalUrl}#post-1`,
     },
     "text": structuredText,
     "description": structuredText.slice(0, 160),
     "image": structuredImage ? [structuredImage] : undefined,
-    "comment": (posts ?? []).map(post => ({
-      "@type": "Comment",
-      "datePublished": post.created_at,
-      "text": cleanStructuredText(post.body, 'コメント'),
-      "author": {
-        "@type": "Person",
-        "name": cleanAuthorName(post.author_name),
-      },
-    })),
+    "comment": (posts ?? []).map(post => {
+      const displayNumber = post.post_number + 1
+      const postUrl = currentPageUrl + '#post-' + displayNumber
+
+      return {
+        "@type": "Comment",
+        "url": postUrl,
+        "datePublished": post.created_at,
+        "text": cleanStructuredText(post.body, 'Comment'),
+        "author": {
+          "@type": "Person",
+          "name": cleanAuthorName(post.author_name),
+          "url": postUrl,
+        },
+      }
+    }),
   })
 
   return (
