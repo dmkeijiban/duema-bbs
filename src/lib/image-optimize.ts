@@ -9,7 +9,6 @@ export interface OptimizedImage {
   byteSize: number
 }
 
-// GIFはアニメーション保持のためそのまま返す
 export async function optimizeImage(
   file: File,
   options: { maxWidth?: number; maxHeight?: number; quality?: number } = {}
@@ -17,6 +16,7 @@ export async function optimizeImage(
   const { maxWidth = 1200, maxHeight = 1200, quality = 82 } = options
   const inputBuffer = Buffer.from(await file.arrayBuffer())
 
+  // Keep GIFs as-is so animated images do not lose animation.
   if (file.type === 'image/gif') {
     return {
       buffer: inputBuffer,
@@ -29,6 +29,7 @@ export async function optimizeImage(
   }
 
   const { data, info } = await sharp(inputBuffer)
+    .rotate()
     .resize(maxWidth, maxHeight, { fit: 'inside', withoutEnlargement: true })
     .webp({ quality })
     .toBuffer({ resolveWithObject: true })
@@ -43,9 +44,6 @@ export async function optimizeImage(
   }
 }
 
-// サムネイル用（スレッド一覧カード: 80x80px表示）
-// fit:inside でアスペクト比を保持。スレッド詳細でも同じ URL を使うため比率を維持する。
-// withoutEnlargement:false により小さい画像も最大400pxまで引き上げ、Retina(3x=240px)に対応。
 export async function optimizeThumbnail(file: File): Promise<OptimizedImage> {
   const inputBuffer = Buffer.from(await file.arrayBuffer())
 
@@ -54,19 +52,18 @@ export async function optimizeThumbnail(file: File): Promise<OptimizedImage> {
   }
 
   const { data, info } = await sharp(inputBuffer)
-    .resize(400, 400, { fit: 'inside', withoutEnlargement: false })
-    .webp({ quality: 85 })
+    .rotate()
+    .resize(640, 640, { fit: 'inside', withoutEnlargement: false })
+    .webp({ quality: 88 })
     .toBuffer({ resolveWithObject: true })
 
   return { buffer: data, contentType: 'image/webp', ext: 'webp', width: info.width, height: info.height, byteSize: info.size }
 }
 
-// レス画像用（インライン表示: 最大横幅いっぱい）
 export async function optimizePostImage(file: File): Promise<OptimizedImage> {
-  return optimizeImage(file, { maxWidth: 1200, maxHeight: 1600, quality: 83 })
+  return optimizeImage(file, { maxWidth: 1600, maxHeight: 2000, quality: 84 })
 }
 
-// バナー用（NoticeBlock: 横長）
 export async function optimizeBannerImage(file: File): Promise<OptimizedImage> {
-  return optimizeImage(file, { maxWidth: 1200, maxHeight: 400, quality: 85 })
+  return optimizeImage(file, { maxWidth: 1600, maxHeight: 600, quality: 86 })
 }

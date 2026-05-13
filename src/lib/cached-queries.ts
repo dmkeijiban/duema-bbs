@@ -58,9 +58,14 @@ export const POPULAR_PAGE_SIZE = 100
 
 export const getCachedCategories = unstable_cache(
   async () => {
-    const supabase = createPublicClient()
-    const { data } = await supabase.from('categories').select('*').order('sort_order')
-    return data ?? []
+    try {
+      const supabase = createPublicClient()
+      const { data } = await supabase.from('categories').select('*').order('sort_order')
+      return data ?? []
+    } catch (error) {
+      console.warn('categories fetch failed:', error)
+      return []
+    }
   },
   ['categories'],
   { revalidate: 300, tags: ['categories'] }
@@ -68,13 +73,18 @@ export const getCachedCategories = unstable_cache(
 
 export const getCachedActiveNotices = unstable_cache(
   async () => {
-    const supabase = createPublicClient()
-    const { data } = await supabase
-      .from('notices')
-      .select('*')
-      .eq('is_active', true)
-      .order('sort_order')
-    return data ?? []
+    try {
+      const supabase = createPublicClient()
+      const { data } = await supabase
+        .from('notices')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order')
+      return data ?? []
+    } catch (error) {
+      console.warn('active notices fetch failed:', error)
+      return []
+    }
   },
   ['notices-active'],
   { revalidate: 60, tags: ['notices'] }
@@ -82,14 +92,19 @@ export const getCachedActiveNotices = unstable_cache(
 
 export const getCachedThreadNotices = unstable_cache(
   async () => {
-    const supabase = createPublicClient()
-    const { data } = await supabase
-      .from('notices')
-      .select('*')
-      .eq('is_active', true)
-      .eq('show_in_thread', true)
-      .order('sort_order')
-    return data ?? []
+    try {
+      const supabase = createPublicClient()
+      const { data } = await supabase
+        .from('notices')
+        .select('*')
+        .eq('is_active', true)
+        .eq('show_in_thread', true)
+        .order('sort_order')
+      return data ?? []
+    } catch (error) {
+      console.warn('thread notices fetch failed:', error)
+      return []
+    }
   },
   ['notices-thread'],
   { revalidate: 60, tags: ['notices'] }
@@ -97,13 +112,18 @@ export const getCachedThreadNotices = unstable_cache(
 
 export const getCachedSetting = unstable_cache(
   async (key: string, fallback = '') => {
-    const supabase = createPublicClient()
-    const { data } = await supabase
-      .from('site_settings')
-      .select('value')
-      .eq('key', key)
-      .single()
-    return data?.value ?? fallback
+    try {
+      const supabase = createPublicClient()
+      const { data } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', key)
+        .single()
+      return data?.value ?? fallback
+    } catch (error) {
+      console.warn(`setting fetch failed for ${key}:`, error)
+      return fallback
+    }
   },
   ['setting'],
   { revalidate: 300, tags: ['settings'] }
@@ -111,15 +131,20 @@ export const getCachedSetting = unstable_cache(
 
 export const getCachedTopThreads = unstable_cache(
   async () => {
-    const supabase = createPublicClient()
-    const { data: raw } = await supabase
-      .from('threads')
-      .select('id, title, image_url, post_count')
-      .eq('is_archived', false)
-      .order('post_count', { ascending: false })
-      .limit(20)
-    if (!raw || raw.length === 0) return []
-    return withFallbackThumbnails(supabase, raw as ThreadRow[])
+    try {
+      const supabase = createPublicClient()
+      const { data: raw } = await supabase
+        .from('threads')
+        .select('id, title, image_url, post_count')
+        .eq('is_archived', false)
+        .order('post_count', { ascending: false })
+        .limit(20)
+      if (!raw || raw.length === 0) return []
+      return withFallbackThumbnails(supabase, raw as ThreadRow[])
+    } catch (error) {
+      console.warn('top threads fetch failed:', error)
+      return []
+    }
   },
   ['top-threads'],
   { revalidate: 300, tags: ['threads'] }

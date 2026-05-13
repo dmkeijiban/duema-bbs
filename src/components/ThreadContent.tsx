@@ -1,15 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Post, Thread, Category } from '@/types'
 import { PostItem, renderBody } from './PostItem'
 import { NewPostForm } from './NewPostForm'
 import { PostLikeButton } from './PostLikeButton'
 import { ReportButton } from './ReportButton'
-import { formatDateTimeJP } from '@/lib/utils'
-import Link from 'next/link'
+import { formatDateTimeJP, resolveImageUrl } from '@/lib/utils'
 import { ImageViewer } from './ImageViewer'
-import { resolveImageUrl } from '@/lib/utils'
 import { getThreadViewerState } from '@/lib/thread-viewer-client'
 
 interface Props {
@@ -58,16 +57,15 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
     }
   }
 
-  const displayPosts: DisplayPost[] = posts.map(p => ({
-    ...p,
-    displayNumber: p.post_number + 1,
+  const displayPosts: DisplayPost[] = posts.map(post => ({
+    ...post,
+    displayNumber: post.post_number + 1,
   }))
 
   const threadSessionId = (thread as Thread & { session_id?: string }).session_id ?? ''
 
   return (
     <>
-      {/* OP post */}
       <div className="border border-gray-300 bg-white">
         <div id="post-1" className="border-b border-gray-200 last:border-b-0">
           <div className="px-2 py-1 text-xs flex items-center gap-1 flex-wrap" style={{ background: '#f5f5f5' }}>
@@ -78,7 +76,7 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
               style={{ color: '#0d6efd' }}
               title=">>1を本文に挿入"
             >
-              ▶1
+              &gt;&gt;1
             </button>
             <span className="inline-block px-0.5 text-white text-[10px] leading-4" style={{ background: '#dc3545' }}>スレ主</span>
             <span className="font-medium text-gray-700">{thread.author_name}</span>
@@ -96,7 +94,6 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
           )}
         </div>
 
-        {/* Replies */}
         {displayPosts.map(post => (
           <PostItem
             key={post.id}
@@ -111,7 +108,6 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
         ))}
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center gap-1 py-2 mt-2 text-sm">
           {page > 1 && (
@@ -119,18 +115,18 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
               前へ
             </Link>
           )}
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNumber => (
             <Link
-              key={p}
-              href={p === 1 ? `/thread/${threadId}` : `/thread/${threadId}/p/${p}`}
+              key={pageNumber}
+              href={pageNumber === 1 ? `/thread/${threadId}` : `/thread/${threadId}/p/${pageNumber}`}
               className="px-3 py-1 border text-sm"
               style={
-                p === page
+                pageNumber === page
                   ? { background: '#0d6efd', color: '#fff', borderColor: '#0d6efd' }
                   : { borderColor: '#dee2e6', color: '#0d6efd' }
               }
             >
-              {p}
+              {pageNumber}
             </Link>
           ))}
           {page < totalPages && (
@@ -141,12 +137,10 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
         </div>
       )}
 
-      {/* オススメ（返信フォームの上） */}
       {recommendSlot && (
         <div className="mt-3">{recommendSlot}</div>
       )}
 
-      {/* Reply form (bottom) */}
       {!isArchived && (
         <div id="reply-form-bottom" className="mt-3">
           <NewPostForm
@@ -162,10 +156,9 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
 
       {isArchived && (
         <div className="mt-3 px-4 py-3 text-sm text-center text-gray-500 border border-gray-300 bg-white">
-          このスレッドは過去ログです。レスできません。
+          このスレッドは過去ログです。レスはできません。
         </div>
       )}
-
     </>
   )
 }

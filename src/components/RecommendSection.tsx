@@ -34,9 +34,16 @@ interface Props {
 }
 
 export async function RecommendSection({ threadId, title, categoryId = null }: Props = {}) {
-  const raw = threadId && title
-    ? await getCachedRelatedThreads(threadId, title, categoryId)
-    : await getCachedTopThreads()
+  const raw = await (async () => {
+    try {
+      return threadId && title
+        ? await getCachedRelatedThreads(threadId, title, categoryId)
+        : await getCachedTopThreads()
+    } catch (error) {
+      console.warn('recommend section fetch failed:', error)
+      return []
+    }
+  })()
   if (raw.length === 0) return null
 
   const threads = seededShuffle(raw).slice(0, 8)
@@ -45,7 +52,7 @@ export async function RecommendSection({ threadId, title, categoryId = null }: P
     <div className="mb-2 border border-gray-300 bg-white">
       <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-gray-300" style={{ background: '#fff' }}>
         <span style={{ color: '#004085', fontSize: 13 }}>🔖</span>
-        <span className="font-bold text-sm" style={{ color: '#004085' }}>オススメ</span>
+        <span className="font-bold text-sm" style={{ color: '#004085' }}>おすすめ</span>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 border-l border-t border-gray-300">
         {threads.map((thread, idx) => {
