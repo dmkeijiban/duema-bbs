@@ -71,11 +71,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: desc,
       url,
       type: 'article',
+      images: [{ url: `${BASE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: summary.title }],
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image' as const,
       title: summary.title,
       description: desc,
+      images: [`${BASE_URL}/default-thumbnail.jpg`],
     },
   }
 }

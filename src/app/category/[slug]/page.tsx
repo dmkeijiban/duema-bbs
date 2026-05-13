@@ -39,24 +39,28 @@ export async function generateMetadata({ params }: Props) {
   const category = cats.find(c => c.slug === slug)
   if (!category) return { title: 'カテゴリが見つかりません' }
 
+  const desc = category.description
+    ? `${category.description} — デュエマ掲示板`
+    : `デュエルマスターズ（デュエマ）掲示板の「${category.name}」カテゴリ。デッキ相談・カード評価・大会情報など幅広く語ろう。`
+
   return {
     title: `${category.name} | デュエマ掲示板`,
-    description: `デュエルマスターズ掲示板の「${category.name}」カテゴリ。`,
+    description: desc,
     alternates: {
       canonical: `${BASE_URL}/category/${slug}`,
     },
     openGraph: {
       title: `${category.name} | デュエマ掲示板`,
-      description: `デュエルマスターズ掲示板の「${category.name}」カテゴリ。`,
+      description: desc,
       url: `${BASE_URL}/category/${slug}`,
       type: 'website',
-      images: [{ url: `${BASE_URL}/logo.jpg`, width: 500, height: 500, alt: 'デュエマ掲示板' }],
+      images: [{ url: `${BASE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: `${category.name} | デュエマ掲示板` }],
     },
     twitter: {
-      card: 'summary' as const,
+      card: 'summary_large_image' as const,
       title: `${category.name} | デュエマ掲示板`,
-      description: `デュエルマスターズ掲示板の「${category.name}」カテゴリ。`,
-      images: [`${BASE_URL}/logo.jpg`],
+      description: desc,
+      images: [`${BASE_URL}/default-thumbnail.jpg`],
     },
   }
 }

@@ -10,11 +10,13 @@ export const metadata = {
     description: 'デュエマ（デュエルマスターズ）掲示板のスレッド更新順一覧。最近レスが付いたスレッドを新しい順に確認できます。',
     url: `${SITE_URL}/update`,
     type: 'website' as const,
+    images: [{ url: `${SITE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: '更新順一覧 | デュエマ掲示板' }],
   },
   twitter: {
-    card: 'summary' as const,
+    card: 'summary_large_image' as const,
     title: '更新順一覧 | デュエマ掲示板',
     description: 'デュエマ（デュエルマスターズ）掲示板のスレッド更新順一覧。最近レスが付いたスレッドを新しい順に確認できます。',
+    images: [`${SITE_URL}/default-thumbnail.jpg`],
   },
 }
 

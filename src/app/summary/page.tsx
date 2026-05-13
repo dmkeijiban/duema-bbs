@@ -4,26 +4,27 @@ import { BottomNav } from '@/components/ThreadSortPage'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { Metadata } from 'next'
+import { SITE_URL } from '@/lib/site-config'
 
 export const revalidate = 3600
 export const dynamic = 'force-dynamic'
 
-const SUMMARY_URL = 'https://www.duema-bbs.com/summary'
-
 export const metadata: Metadata = {
   title: 'まとめ一覧 | デュエマ掲示板',
-  description: '人気記事まとめ、週間ランキング、月間ランキングの一覧です。',
-  alternates: { canonical: SUMMARY_URL },
+  description: 'デュエマ（デュエルマスターズ）掲示板の人気記事まとめ・週間ランキング・月間ランキングの一覧。話題スレッドをまとめてチェックしよう。',
+  alternates: { canonical: `${SITE_URL}/summary` },
   openGraph: {
     title: 'まとめ一覧 | デュエマ掲示板',
-    description: 'デュエマ掲示板の人気スレッドまとめとランキング一覧です。',
-    url: SUMMARY_URL,
-    type: 'website',
+    description: 'デュエマ（デュエルマスターズ）掲示板の人気記事まとめ・週間ランキング・月間ランキングの一覧。話題スレッドをまとめてチェックしよう。',
+    url: `${SITE_URL}/summary`,
+    type: 'website' as const,
+    images: [{ url: `${SITE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: 'まとめ一覧 | デュエマ掲示板' }],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image' as const,
     title: 'まとめ一覧 | デュエマ掲示板',
-    description: 'デュエマ掲示板の人気スレッドまとめとランキング一覧です。',
+    description: 'デュエマ（デュエルマスターズ）掲示板の人気記事まとめ・週間ランキング・月間ランキングの一覧。話題スレッドをまとめてチェックしよう。',
+    images: [`${SITE_URL}/default-thumbnail.jpg`],
   },
 }
 

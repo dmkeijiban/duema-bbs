@@ -14,11 +14,13 @@ export const metadata = {
     description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。直近3日間のレス数が多いスレッドを順位付きで表示します。',
     url: `${SITE_URL}/ranking`,
     type: 'website' as const,
+    images: [{ url: `${SITE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: '人気スレッドランキング | デュエマ掲示板' }],
   },
   twitter: {
-    card: 'summary' as const,
+    card: 'summary_large_image' as const,
     title: '人気スレッドランキング | デュエマ掲示板',
     description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。直近3日間のレス数が多いスレッドを順位付きで表示します。',
+    images: [`${SITE_URL}/default-thumbnail.jpg`],
   },
 }
 import { withFallbackThumbnails } from '@/lib/thumbnail'

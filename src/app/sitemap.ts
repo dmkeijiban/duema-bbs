@@ -2,8 +2,8 @@ import { MetadataRoute } from 'next'
 import { createPublicClient } from '@/lib/supabase-public'
 import { SITE_URL } from '@/lib/site-config'
 
-// キャッシュを無効化して毎回新しいスレッドを反映させる
-export const dynamic = 'force-dynamic'
+// 1時間ごとに再生成（force-dynamicはクロール毎にDBクエリが走るため廃止）
+export const revalidate = 3600
 
 const BASE_URL = SITE_URL
 

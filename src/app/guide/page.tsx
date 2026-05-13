@@ -8,6 +8,19 @@ export const metadata = {
   title: '使い方 | デュエマ掲示板',
   description: 'デュエマ掲示板の使い方ガイド。スレッドの立て方・レスの付け方・画像投稿・お気に入り登録など基本操作を解説します。',
   alternates: { canonical: `${SITE_URL}/guide` },
+  openGraph: {
+    title: '使い方 | デュエマ掲示板',
+    description: 'デュエマ掲示板の使い方ガイド。スレッドの立て方・レスの付け方・画像投稿・お気に入り登録など基本操作を解説します。',
+    url: `${SITE_URL}/guide`,
+    type: 'website' as const,
+    images: [{ url: `${SITE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: 'デュエマ掲示板 使い方' }],
+  },
+  twitter: {
+    card: 'summary_large_image' as const,
+    title: '使い方 | デュエマ掲示板',
+    description: 'デュエマ掲示板の使い方ガイド。スレッドの立て方・レスの付け方・画像投稿・お気に入り登録など基本操作を解説します。',
+    images: [`${SITE_URL}/default-thumbnail.jpg`],
+  },
 }
 
 const FAQ_ITEMS = [
