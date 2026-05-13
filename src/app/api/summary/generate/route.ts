@@ -15,6 +15,8 @@ type ThreadRow = {
   categories: { name: string | null; color: string | null } | null
 }
 
+const SUMMARY_RANKING_LIMIT = 10
+
 function pad(value: number) {
   return String(value).padStart(2, '0')
 }
@@ -40,7 +42,7 @@ function getLastWeekRange() {
     start,
     end,
     slug: `weekly-${start.getUTCFullYear()}-${startMonth}-${startDay}`,
-    title: `先週の人気スレッドTOP5（${startMonth}/${startDay}〜${endMonth}/${endDay}）`,
+    title: `先週の人気スレッドTOP10（${startMonth}/${startDay}〜${endMonth}/${endDay}）`,
   }
 }
 
@@ -55,7 +57,7 @@ function getLastMonthRange() {
     start,
     end,
     slug: `monthly-${year}-${month}`,
-    title: `${year}年${month}月の人気スレッドTOP5`,
+    title: `${year}年${month}月の人気スレッドTOP10`,
   }
 }
 
@@ -84,7 +86,7 @@ async function getTopThreadIdsByActivity(
 
   const topIds = Object.entries(countMap)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
+    .slice(0, SUMMARY_RANKING_LIMIT)
     .map(([id]) => Number(id))
 
   return { topIds, countMap }
@@ -96,7 +98,7 @@ async function getFallbackPopularThreadIds(supabase: ReturnType<typeof createAdm
     .select('id')
     .eq('is_archived', false)
     .order('post_count', { ascending: false })
-    .limit(5)
+    .limit(SUMMARY_RANKING_LIMIT)
 
   if (error) throw new Error(error.message)
   return (data ?? []).map(thread => thread.id as number)

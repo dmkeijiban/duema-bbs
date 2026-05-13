@@ -60,7 +60,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ? (summary.body
         ? summary.body.replace(/\n/g, ' ').slice(0, 120)
         : `${summary.title}。デュエマ掲示板の注目スレッドをまとめて紹介します。`)
-    : `${summary.period_start}〜${summary.period_end}の人気スレッドTOP5まとめ。デュエマ掲示板で盛り上がったスレッドをランキング形式で紹介します。`
+    : `${summary.period_start}〜${summary.period_end}の人気スレッドTOP10まとめ。デュエマ掲示板で盛り上がったスレッドをランキング形式で紹介します。`
   const url = `${BASE_URL}/summary/${slug}`
   return {
     title: `${summary.title} | デュエマ掲示板`,
@@ -131,7 +131,7 @@ export default async function SummarySlugPage({ params }: Props) {
             datePublished: summary.created_at,
             description: summary.type === 'manual'
               ? (summary.body ? summary.body.replace(/\n/g, ' ').slice(0, 120) : `${summary.title}。デュエマ掲示板の注目スレッドまとめ。`)
-              : `${summary.period_start}〜${summary.period_end}の人気スレッドTOP5まとめ。`,
+              : `${summary.period_start}〜${summary.period_end}の人気スレッドTOP10まとめ。`,
             publisher: {
               '@type': 'Organization',
               name: 'デュエマ掲示板',

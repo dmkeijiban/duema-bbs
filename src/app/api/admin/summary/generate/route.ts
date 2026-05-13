@@ -6,6 +6,8 @@ import { verifyAdminCookie } from '@/lib/admin-auth'
 
 export const runtime = 'nodejs'
 
+const SUMMARY_RANKING_LIMIT = 10
+
 function createAnonClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,7 +36,7 @@ export async function POST(req: NextRequest) {
     const yyyy = firstOfLastMonth.getUTCFullYear()
     const mm = String(firstOfLastMonth.getUTCMonth() + 1).padStart(2, '0')
     slug = `monthly-${yyyy}-${mm}`
-    title = `${yyyy}年${mm}月の人気スレッドTOP5`
+    title = `${yyyy}年${mm}月の人気スレッドTOP10`
   } else {
     // 先週
     const day = now.getUTCDay()
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
     const em = pad(lastSunday.getUTCMonth() + 1)
     const ed = pad(lastSunday.getUTCDate())
     slug = `weekly-${lastMonday.getUTCFullYear()}-${mm}-${dd}`
-    title = `先週の人気スレッドTOP5（${mm}/${dd}〜${em}/${ed}）`
+    title = `先週の人気スレッドTOP10（${mm}/${dd}〜${em}/${ed}）`
   }
 
   // 既存チェック（スキップ時もキャッシュをリフレッシュ）
@@ -77,31 +79,31 @@ export async function POST(req: NextRequest) {
   }
 
   // データが少なければ全期間のpost_countで代用
-  let top5Ids: number[]
+  let topThreadIds: number[]
   if (Object.keys(countMap).length < 3) {
     const { data: topThreads } = await supabase
       .from('threads')
       .select('id')
       .eq('is_archived', false)
       .order('post_count', { ascending: false })
-      .limit(5)
-    top5Ids = (topThreads ?? []).map(t => t.id)
-    for (const id of top5Ids) if (!countMap[id]) countMap[id] = 0
+      .limit(SUMMARY_RANKING_LIMIT)
+    topThreadIds = (topThreads ?? []).map(t => t.id)
+    for (const id of topThreadIds) if (!countMap[id]) countMap[id] = 0
   } else {
-    top5Ids = Object.entries(countMap)
+    topThreadIds = Object.entries(countMap)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
+      .slice(0, SUMMARY_RANKING_LIMIT)
       .map(([id]) => Number(id))
   }
 
-  if (top5Ids.length === 0) return NextResponse.json({ error: 'スレッドがありません' }, { status: 400 })
+  if (topThreadIds.length === 0) return NextResponse.json({ error: 'スレッドがありません' }, { status: 400 })
 
   const { data: threads } = await supabase
     .from('threads')
     .select('id, title, post_count, image_url, categories(name, color)')
-    .in('id', top5Ids)
+    .in('id', topThreadIds)
 
-  const threadsJson = top5Ids.map((id, i) => {
+  const threadsJson = topThreadIds.map((id, i) => {
     const t = (threads ?? []).find(th => th.id === id)
     if (!t) return null
     const cats = t.categories as unknown as { name: string; color: string } | null

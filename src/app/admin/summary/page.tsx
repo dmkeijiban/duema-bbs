@@ -423,7 +423,7 @@ export default function AdminSummaryPage() {
         <div className="bg-white border border-gray-300 p-5 space-y-4">
           <h2 className="font-bold text-gray-800">🔄 自動まとめを手動生成</h2>
           <p className="text-xs text-gray-500">
-            直近データからTOP5を集計します。同じ期間が既に存在する場合はスキップ（キャッシュ更新のみ）。
+            直近データからTOP10を集計します。同じ期間が既に存在する場合はスキップ（キャッシュ更新のみ）。
           </p>
           <div className="flex gap-3">
             <button onClick={() => generate('weekly')} disabled={genLoading}
