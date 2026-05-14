@@ -21,7 +21,7 @@ export async function POST(_request: Request, { params }: Props) {
       .maybeSingle()
 
     if (readError || !current) {
-      return NextResponse.json({ error: 'Summary not found' }, { status: 404 })
+      throw new Error('Summary not found by admin client')
     }
 
     viewCount = (current.view_count ?? 0) + 1
@@ -33,15 +33,21 @@ export async function POST(_request: Request, { params }: Props) {
     const supabase = createPublicClient()
     try {
       await supabase.rpc('increment_summary_view_count', { summary_slug: slug })
-      const { data } = await supabase
-        .from('summaries')
-        .select('view_count')
-        .eq('slug', slug)
-        .maybeSingle()
-      viewCount = data?.view_count ?? null
     } catch {
       // Older DBs may not have the RPC yet. The page should still work.
     }
+
+    const { data } = await supabase
+      .from('summaries')
+      .select('view_count')
+      .eq('slug', slug)
+      .maybeSingle()
+
+    if (!data) {
+      return NextResponse.json({ error: 'Summary not found' }, { status: 404 })
+    }
+
+    viewCount = data.view_count ?? null
   }
 
   return NextResponse.json({ ok: true, view_count: viewCount }, {
