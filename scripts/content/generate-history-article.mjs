@@ -41,6 +41,8 @@ const HISTORY_KEYWORDS = [
   'キャッスル',
 ]
 
+const CARD_ANGLE_RE = /《[^》]+》/g
+
 function parseArgs(argv) {
   const args = {
     url: null,
@@ -111,6 +113,14 @@ function stripTags(html) {
   )
 }
 
+function extractBodyHtml(html) {
+  const start = html.indexOf('<div id="body">')
+  if (start < 0) return html
+  const afterStart = html.slice(start)
+  const end = afterStart.search(/<div id="note">|<hr class="full_hr" \/>/)
+  return end > 0 ? afterStart.slice(0, end) : afterStart
+}
+
 function normalizeSpaces(value) {
   return String(value ?? '').replace(/\s+/g, ' ').trim()
 }
@@ -156,9 +166,10 @@ function extractProductTitle(html) {
 }
 
 function extractProductSegment(html) {
-  const start = html.search(/<h2[^>]*id="content_1_0"/)
+  const body = extractBodyHtml(html)
+  const start = body.search(/<h2[^>]*id="content_1_0"/)
   if (start < 0) return html
-  const afterStart = html.slice(start)
+  const afterStart = body.slice(start)
   const end = afterStart.search(/<h3[^>]*id="content_1_13"/)
   return end > 0 ? afterStart.slice(0, end) : afterStart
 }
@@ -226,10 +237,11 @@ function selectMajorCards(product, maxCards) {
 }
 
 function extractCardFacts(html, card) {
-  const text = stripTags(extractProductSegment(html))
+  const bodyHtml = extractBodyHtml(html)
+  const text = stripTags(bodyHtml)
   const start = text.indexOf(bareCardName(card.name))
   const focused = start >= 0 ? text.slice(start, start + 2600) : text.slice(0, 2600)
-  const related = [...focused.matchAll(/《[^》]+》/g)]
+  const related = [...focused.matchAll(CARD_ANGLE_RE)]
     .map(match => match[0])
     .filter(name => name !== card.name)
     .filter((name, index, array) => array.indexOf(name) === index)
@@ -248,12 +260,136 @@ function extractCardFacts(html, card) {
     'Q・ブレイカー',
   ].filter(word => focused.includes(word))
 
+  const profile = extractCardProfile(bodyHtml)
+
   return {
     ...card,
+    profile,
     factsText: focused,
     related,
     mechanics,
   }
+}
+
+function extractFirstCardTableRows(html) {
+  const table = html.match(/<table class="style_table"[\s\S]*?<\/table>/i)?.[0] || ''
+  if (!table) return []
+  return [...table.matchAll(/<td[^>]*class="style_td"[^>]*>([\s\S]*?)<\/td>/gi)]
+    .map(match => compactJapaneseSpaces(stripTags(match[1])))
+    .filter(Boolean)
+}
+
+function extractCardProfile(html) {
+  const rows = extractFirstCardTableRows(html)
+  const first = rows[0] || ''
+  const second = rows[1] || ''
+  const cost = first.match(/\((\d+)\)/)?.[1] || ''
+  const civilization = first.match(/[^\s　]+文明/)?.[0] || ''
+  const rarity = first.match(/\b(DMR|OR|SR|VR|R|UC|C)\b/)?.[1] || ''
+  const type = second.includes('：') ? second.split('：')[0].trim() : ''
+  const racePart = second.includes('：') ? second.split('：').slice(1).join('：') : second
+  const power = racePart.match(/(?:\s|　)(\d+|∞)$/)?.[1] || ''
+  const races = racePart.replace(/(?:\s|　)(\d+|∞)$/, '').split('/').map(part => part.trim()).filter(Boolean)
+  const abilities = rows
+    .slice(2)
+    .filter(row => !/^ハイパーモード/.test(row))
+    .map(row => row.replace(/[。]+$/g, '').trim())
+    .filter(Boolean)
+    .slice(0, 8)
+
+  return {
+    rows,
+    rarity,
+    civilization,
+    cost,
+    type,
+    races,
+    power,
+    abilities,
+  }
+}
+
+function cardSpecSentence(card) {
+  const profile = card.profile || {}
+  const chunks = []
+  if (profile.civilization || profile.cost) {
+    chunks.push(`${profile.civilization || '文明不明'}${profile.cost ? `・コスト${profile.cost}` : ''}`)
+  }
+  if (profile.type) chunks.push(profile.type)
+  if (profile.races?.length) chunks.push(`種族は${profile.races.slice(0, 3).join('／')}`)
+  if (profile.power) chunks.push(`パワー${profile.power}`)
+  return chunks.length ? `${card.name}は、${chunks.join('、')}のカード。` : `${card.name}は、この商品で目を引く1枚だ。`
+}
+
+function abilityDigest(card) {
+  const abilities = card.profile?.abilities || []
+  if (!abilities.length) return ''
+  const picked = abilities
+    .filter(ability => !/^T・ブレイカー$|^W・ブレイカー$|^Q・ブレイカー$/.test(ability))
+    .slice(0, 3)
+  if (!picked.length) return `能力は${abilities.slice(0, 3).join('、')}。`
+  return `主な能力は、${picked.join('。')}。`
+}
+
+function relatedSentence(card) {
+  const related = card.related || []
+  if (!related.length) return ''
+  return `文脈としては${related.slice(0, 3).join('、')}とのつながりが見える。`
+}
+
+function cardRoleSentence(card) {
+  const text = card.factsText
+  const abilities = (card.profile?.abilities || []).join('。')
+  const name = card.name
+  if (abilities.includes('離れない')) {
+    return `${name}は、単体の耐性ではなく盤面全体の保護に寄せたカードだ。昔の「倒れにくい切り札」という印象を、味方をまとめて守る方向へ広げている。`
+  }
+  if (abilities.includes('手札以外から出ない') || abilities.includes('召喚以外の方法で出る時')) {
+    return `${name}は、派手なフィニッシャーというより、相手の踏み倒しや横展開を抑えてゲームの速度を整えるメタカードとして働く。`
+  }
+  if (abilities.includes('手札から捨てられる時')) {
+    return `${name}は、昔のバイケンらしいカウンター性を残しながら、ブロッカーとスピードアタッカーで素引きしても腐りにくい形へ寄せられている。`
+  }
+  if (abilities.includes('シールド化') || abilities.includes('タップする')) {
+    return `${name}は、シールドを増やす動きと相手の盤面を止める動きがつながっており、攻める前にテンポを取るカードとして読める。`
+  }
+  if (abilities.includes('パワーを+')) {
+    return `${name}は、昔の大呪文らしい一撃感を残しながら、低コストのエレメントを並べる今のゲームに合わせて唱えやすくしている。`
+  }
+  if (text.includes('足止め') || text.includes('攻撃もブロックもできない')) {
+    return `${name}の役割は、ただ殴る大型ではなく、相手の攻撃と防御を一度止めてから安全に詰めるコントロール寄りのフィニッシャーに近い。`
+  }
+  if (text.includes('踏み倒し') || text.includes('コストを支払わず')) {
+    return `${name}は、盤面やリソースを広げるための札として読むと分かりやすい。昔のロマンを、今の展開速度に合わせて短い手順へ圧縮している。`
+  }
+  if (text.includes('除去') || text.includes('破壊') || text.includes('選ぶ')) {
+    return `${name}は、単体でゲームを終わらせるというより、相手の盤面に触りながら次の攻めを通すための干渉札として価値が出る。`
+  }
+  if (text.includes('ドロー') || text.includes('手札')) {
+    return `${name}は、派手な名前に対して役割はかなり実務的だ。手札やリソースを整え、次の行動へつなぐところに現代的な意味がある。`
+  }
+  return `${name}は、昔の名前をそのまま飾るのではなく、現在のゲームで担当できる仕事を与え直されたカードとして見ると輪郭がはっきりする。`
+}
+
+function defaultPerspectiveSentence(card) {
+  const abilities = (card.profile?.abilities || []).join('。')
+  const type = card.profile?.type || ''
+  if (type.includes('G城')) {
+    return '城というカードタイプは、場に出して終わりではなく、シールドゾーンをどう使うかまで含めてゲームの見え方を変える。'
+  }
+  if (type.includes('呪文')) {
+    return 'インビンシブル呪文の名前には、昔から「唱えればゲームが大きく動く」重さがあった。'
+  }
+  if (abilities.includes('手札以外から出ない') || abilities.includes('召喚以外の方法で出る時')) {
+    return 'この手のメタ能力は、派手さよりも環境の速度に対する回答として読むと意味が見えやすい。'
+  }
+  if (abilities.includes('墓地')) {
+    return '墓地に触るカードは、昔の闇文明らしい嫌らしさと、今のリソースゲームの細かさが重なりやすい。'
+  }
+  if (abilities.includes('手札から捨てられる時')) {
+    return 'バイケン系のカードは、手札にあるだけで相手の行動を少し歪めるところに独特の味がある。'
+  }
+  return '過去の名前を借りたカードは、名前だけで評価すると見誤りやすい。'
 }
 
 function inferCut(product) {
@@ -266,26 +402,27 @@ function inferCut(product) {
   return 'カードリスト以上に、時代の移り変わりが見える商品'
 }
 
-function cardParagraph(card, product) {
+function cardParagraph(card) {
   const name = card.name
   const bare = bareCardName(name)
-  const related = card.related.length ? '関連カードの存在も見えるが、ここでは名前の連想よりも、このカード自身が今のゲームで何を担当するかを見たい。' : ''
-  const mechanics = card.mechanics.length ? `能力面では${card.mechanics.join('、')}が文脈になる。` : ''
-  const modern = product.newAbility ? `${product.newAbility}という新しい速度感の中で、昔の名前が単なる再録ではなく別の役割を与えられている。` : '昔の印象を残しながら、今のゲームで役割を持てる形に寄せている。'
+  const spec = cardSpecSentence(card)
+  const ability = abilityDigest(card)
+  const related = relatedSentence(card)
+  const role = cardRoleSentence(card)
 
-  if (bare.includes('ボルメテウス')) {
-    return `${name}は、この弾の方向性をもっとも分かりやすく示すカードだ。ボルメテウスという名前は、長くシールドへの干渉とフィニッシャーの記憶を背負ってきた。ここで面白いのは、その記憶をそのまま置き直すのではなく、今のゲーム速度に合わせて「着地してから何を残すか」まで含めて再設計しているところにある。${mechanics}${related}${modern}`
+  if (bare.includes('ボルメテウス・リバース')) {
+    return `${spec}${ability}\n\nボルメテウスという名前は、長くシールドへの干渉とフィニッシャーの記憶を背負ってきた。ここで面白いのは、その記憶をそのまま置き直すのではなく、ブロッカーや選ばれない耐性、攻撃もブロックも止める効果によって「着地してから生き残る」方向へ寄せているところにある。${related}${role}昔のボルメテウスがシールドを焼いて逆転を断つカードだったなら、このカードは相手の反撃を一度止めてから勝ち筋を作る、コントロール寄りのボルメテウスだ。`
   }
 
   if (bare.includes('ヘヴィ') || bare.includes('メタル') || bare.includes('龍神')) {
-    return `${name}は、かつて複数枚をそろえることで成立していたロマンを、現代的な1枚の圧力へ圧縮したような存在に見える。昔のゴッド的な魅力は「そろった時の迫力」にあったが、今のデュエマではそこに到達する前のテンポも問われる。だからこそ、このカードは懐古の象徴でありながら、実際にはかなり現代向けの自己完結性を意識して読むべきカードになっている。${mechanics}${related}${modern}`
+    return `${spec}${ability}\n\nかつて複数枚をそろえることで成立していたロマンを、現代的な1枚の圧力へ圧縮したようなカードである。昔のゴッド的な魅力は「そろった時の迫力」にあったが、今のデュエマではそこに到達する前のテンポも問われる。${related}${role}懐古の象徴でありながら、実際にはかなり現代向けの自己完結性を意識して読むべき1枚になっている。`
   }
 
   if (bare.includes('インビンシブル') || bare.includes('デル・フィン') || bare.includes('チャクラ')) {
-    return `${name}は、カード名から受ける印象と現代デュエマで期待される役割のズレが面白い。昔なら大技や制圧のイメージが先に立つ名前でも、今はそれだけでは間に合わない。盤面に触る、手札や展開に絡む、相手の動きを縛る。そうした「今必要な仕事」を背負わせることで、古い名前が現在のカードとして読めるようになっている。${mechanics}${related}${modern}`
+    return `${spec}${ability}\n\nカード名から受ける印象と、現代デュエマで期待される役割のズレが面白い。昔なら大技や制圧のイメージが先に立つ名前でも、今はそれだけでは間に合わない。盤面に触る、手札や展開に絡む、相手の動きを縛る。${related}${role}古い名前に、現在必要な仕事を背負わせることで、新しいカードとして読めるようになっている。`
   }
 
-  return `${name}は、単に過去の名前を借りたカードとして見るより、昔の記憶をどこまで現在のゲームに接続できるかを見る方が面白い。名前に反応する層と、性能から入る現役プレイヤーの視線がずれるからこそ、このカードには読み物としての引っかかりがある。${mechanics}${related}${modern}`
+  return `${spec}${ability}\n\n${defaultPerspectiveSentence(card)}${related}${role}名前に反応する層と、性能から入る現役プレイヤーの視線が少しずれるからこそ、このカードには読み物としての引っかかりがある。`
 }
 
 function buildArticle(product, cards) {
@@ -314,9 +451,9 @@ function buildArticle(product, cards) {
     paragraphs.push(`${product.revivalGimmicks.join('')}長く新カードが出ていなかったギミックが戻ってくる時、重要なのは「昔と同じことができるか」ではない。今の速度で使った時に、どの部分が残り、どの部分が別物になったのか。そこにこの弾の読みどころがある。`)
   }
 
-  paragraphs.push('## 主要カードを見る')
+  paragraphs.push('## 名前は昔、役割は今。主要カードを読む')
   for (const card of cards) {
-    paragraphs.push(`### ${card.name}`)
+    paragraphs.push(`### ${headingForCard(card)}`)
     paragraphs.push(cardParagraph(card, product))
   }
 
@@ -327,6 +464,19 @@ function buildArticle(product, cards) {
   paragraphs.push(`${leadTitle}は、勝舞編の復刻ではなく、勝舞編の再設計だった。過去を飾るための懐古ではなく、過去の名前を使って今のデュエマを組み直す。その意味で、この弾はカードリスト以上に、デュエマが自分の歴史をどう扱うかを見せる商品になっている。`)
 
   return paragraphs.join('\n\n')
+}
+
+function headingForCard(card) {
+  const bare = bareCardName(card.name)
+  if (bare.includes('ボルメテウス・リバース')) return '水文明になったボルメテウス'
+  if (bare.includes('ボルメテウス・ハック')) return '小型ボルメテウスは、踏み倒しを止める側へ回った'
+  if (bare.includes('ヘヴィ') || bare.includes('メタル') || bare.includes('龍神')) return 'ヘヴィ・メタルは、ついに1枚に圧縮された'
+  if (bare.includes('ギャラクシー')) return '不滅のギャラクシーは、守る範囲を変えた'
+  if (bare.includes('チャクラ') || bare.includes('デル・フィン')) return '制圧札の名前に、今のテンポを与える'
+  if (bare.includes('ヴェノム') || bare.includes('ランブル')) return '除去と圧力を同時に持つ闇のリメイク'
+  if (bare.includes('ニバイケン')) return 'バイケンは、刺さるカードからいつ引いても仕事をするカードへ'
+  if (bare.includes('ハッスル') || bare.includes('キャッスル')) return '城はリソース札から、盤面に干渉するカードへ'
+  return `${bare}が担う現在の役割`
 }
 
 function extractArticleCardNames(markdown) {
@@ -413,6 +563,11 @@ function runQualityChecks(markdown, imageMap) {
   if (!/^# .+/.test(markdown)) issues.push('タイトル見出しがありません')
   if (!markdown.includes('昔') || !markdown.includes('今')) issues.push('昔と今の対比が弱い可能性があります')
   if (markdown.includes('Wikiによると')) issues.push('「Wikiによると」を使っています')
+  if (markdown.includes('主要カードを見る')) issues.push('説明的すぎる見出しが残っています')
+  if (/能力面では|文脈になる|このカード自身が今のゲームで何を担当するかを見たい/.test(markdown)) {
+    issues.push('抽象的な定型文が残っています')
+  }
+  if (cardNames.length < MIN_MAJOR_CARDS) issues.push(`紹介カード数が${MIN_MAJOR_CARDS}枚未満です`)
   if (cardNames.length === 0) issues.push('《カード名》表記が見つかりません')
   for (const [name, image] of imageMap.entries()) {
     if (image.status === 'found' && !markdown.includes(`![${bareCardName(name)}](`)) {
@@ -462,12 +617,12 @@ async function main() {
   }
 
   let markdown = buildArticle(product, cards)
-  const articleCardNames = extractArticleCardNames(markdown)
   const imageMap = new Map()
   const imageLog = []
 
   if (args.images) {
-    for (const cardName of articleCardNames) {
+    const imageTargets = cards.map(card => card.name)
+    for (const cardName of imageTargets) {
       console.log(`[article] search official image: ${cardName}`)
       const result = await searchOfficialCard(cardName, product.productCode)
       imageMap.set(cardName, result)
