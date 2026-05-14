@@ -224,10 +224,11 @@ export function SummaryBodyRenderer({ body }: Props) {
           letter-spacing: 0;
           word-break: normal;
           overflow-wrap: break-word;
+          width: 100%;
         }
         .summary-body-html p {
           margin: 0 0 1.35em;
-          max-width: 48em;
+          max-width: none;
         }
         .summary-body-html p:last-child { margin-bottom: 0; }
         .summary-body-html h1 {
@@ -235,7 +236,7 @@ export function SummaryBodyRenderer({ body }: Props) {
           line-height: 1.35;
           font-weight: 800;
           margin: 0 0 28px;
-          max-width: 48em;
+          max-width: none;
           color: #111827;
         }
         .summary-body-html h2 {
@@ -243,7 +244,7 @@ export function SummaryBodyRenderer({ body }: Props) {
           line-height: 1.45;
           font-weight: 800;
           margin: 52px 0 20px;
-          max-width: 48em;
+          max-width: none;
           padding: 0 0 8px;
           border-bottom: 2px solid #e5e7eb;
           color: #111827;
@@ -253,7 +254,7 @@ export function SummaryBodyRenderer({ body }: Props) {
           line-height: 1.5;
           font-weight: 700;
           margin: 34px 0 16px;
-          max-width: 48em;
+          max-width: none;
           color: #111827;
         }
         .summary-body-html a {
@@ -264,13 +265,13 @@ export function SummaryBodyRenderer({ body }: Props) {
           list-style: disc;
           padding-left: 1.5em;
           margin: 0 0 1em;
-          max-width: 48em;
+          max-width: none;
         }
         .summary-body-html ol {
           list-style: decimal;
           padding-left: 1.5em;
           margin: 0 0 1em;
-          max-width: 48em;
+          max-width: none;
         }
         .summary-body-html li { margin-bottom: 0.25em; }
         .summary-body-html strong,
