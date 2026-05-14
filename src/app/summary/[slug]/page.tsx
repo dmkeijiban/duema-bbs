@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createPublicClient } from '@/lib/supabase-public'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { RecommendSection } from '@/components/RecommendSection'
 import { BottomNav } from '@/components/ThreadSortPage'
 import Link from 'next/link'
@@ -54,6 +55,37 @@ async function getSummary(slug: string): Promise<Summary | null> {
     .eq('published', true)
     .maybeSingle()
   return data as Summary | null
+}
+
+async function incrementSummaryView(summary: Summary): Promise<number> {
+  const nextCount = (summary.view_count ?? 0) + 1
+
+  try {
+    const supabase = createAdminClient()
+    const { error } = await supabase
+      .from('summaries')
+      .update({ view_count: nextCount })
+      .eq('id', summary.id)
+
+    if (!error) return nextCount
+  } catch {
+    // Fall back to the public RPC below.
+  }
+
+  try {
+    const supabase = createPublicClient()
+    await supabase.rpc('increment_summary_view_count', { summary_slug: summary.slug })
+    const { data } = await supabase
+      .from('summaries')
+      .select('view_count')
+      .eq('id', summary.id)
+      .maybeSingle()
+    if (typeof data?.view_count === 'number') return data.view_count
+  } catch {
+    // View counts are best-effort and must never block article reading.
+  }
+
+  return summary.view_count ?? 0
 }
 
 import { SITE_URL } from '@/lib/site-config'
@@ -160,6 +192,9 @@ export default async function SummarySlugPage({ params }: Props) {
     getLivePostCounts(threadIds),
     summary.type === 'manual' ? getSummaryComments(summary.slug) : Promise.resolve({ comments: [], enabled: false }),
   ])
+  const displayViewCount = summary.type === 'manual'
+    ? await incrementSummaryView(summary)
+    : (summary.view_count ?? 0)
   const safeBody = sanitizeSummaryHtml(summary.body ?? '')
   const hasBodyImage = /<img\b/i.test(safeBody)
   const description = summary.type === 'manual'
@@ -236,7 +271,7 @@ export default async function SummarySlugPage({ params }: Props) {
           {summary.type === 'manual' && (
             <SummaryViewPing
               slug={summary.slug}
-              initialViewCount={summary.view_count ?? 0}
+              initialViewCount={displayViewCount}
               commentCount={commentsResult.comments.length}
               className="text-xs text-gray-500 mt-2"
             />
