@@ -49,7 +49,6 @@ function escapeHtml(value) {
 function inlineMarkdown(value) {
   return escapeHtml(value)
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/《([^》]+)》/g, '<span class="card-name">《$1》</span>')
 }
 
 function markdownToHtml(markdown) {
