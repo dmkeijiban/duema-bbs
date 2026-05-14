@@ -196,7 +196,7 @@ export default async function SummarySlugPage({ params }: Props) {
         )}
 
         {/* スレッドランキング */}
-        {threads.length === 0 ? (
+        {summary.type === 'manual' && threads.length === 0 ? null : threads.length === 0 ? (
           <div className="text-center py-12 text-gray-500 bg-white border border-gray-300">
             <p>この期間の投稿データがありません</p>
           </div>

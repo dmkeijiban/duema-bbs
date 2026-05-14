@@ -73,42 +73,48 @@ function inlineMarkdownToHtml(value) {
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
 }
 
-function pushTextBlock(blocks, lines) {
+function pushHtmlParagraphs(parts, lines) {
   if (lines.length === 0) return
   const html = lines
     .join('\n')
     .split(/\n{2,}/)
     .map(paragraph => `<p>${inlineMarkdownToHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
     .join('')
-  if (html) blocks.push({ type: 'text', content: html })
+  if (html) parts.push(html)
   lines.length = 0
 }
 
-function markdownToBlocks(markdown) {
-  const blocks = []
+function markdownToSummaryHtml(markdown) {
+  const parts = []
   const textLines = []
+  let skippedTitle = false
 
   for (const line of markdown.split(/\r?\n/)) {
     const image = line.match(/^!\[([^\]]*)\]\((https?:\/\/[^)]+)\)\s*$/)
     if (image) {
-      pushTextBlock(blocks, textLines)
-      blocks.push({ type: 'image', url: image[2], alt: image[1] })
+      pushHtmlParagraphs(parts, textLines)
+      parts.push(`<p><img src="${escapeHtml(image[2])}" alt="${escapeHtml(image[1])}" loading="lazy"></p>`)
       continue
     }
 
     const heading = line.match(/^(#{1,4})\s+(.+)$/)
     if (heading) {
-      pushTextBlock(blocks, textLines)
-      const level = Math.min(heading[1].length, 3)
-      blocks.push({ type: 'text', content: `<h${level}>${inlineMarkdownToHtml(heading[2])}</h${level}>` })
+      pushHtmlParagraphs(parts, textLines)
+      const rawLevel = heading[1].length
+      if (rawLevel === 1 && !skippedTitle) {
+        skippedTitle = true
+        continue
+      }
+      const level = Math.min(rawLevel + 1, 3)
+      parts.push(`<h${level}>${inlineMarkdownToHtml(heading[2])}</h${level}>`)
       continue
     }
 
     textLines.push(line)
   }
 
-  pushTextBlock(blocks, textLines)
-  return blocks
+  pushHtmlParagraphs(parts, textLines)
+  return parts.join('\n')
 }
 
 function titleFromMarkdown(markdown, fallback) {
@@ -128,7 +134,7 @@ async function uniqueSlug(supabase, base) {
   const cleanBase = normalizeSlug(base) || 'article-draft'
   for (let i = 0; i < 100; i += 1) {
     const slug = i === 0 ? cleanBase : `${cleanBase}-${i + 1}`
-    const { data, error } = await supabase.from('fixed_pages').select('id').eq('slug', slug).maybeSingle()
+    const { data, error } = await supabase.from('summaries').select('id').eq('slug', slug).maybeSingle()
     if (error) throw error
     if (!data) return slug
   }
@@ -157,20 +163,20 @@ async function main() {
   const raw = await fs.readFile(path.join(DRAFT_DIR, args.file), 'utf8')
   const { body } = parseFrontmatter(raw)
   const title = titleFromMarkdown(body, args.file)
-  const blocks = markdownToBlocks(body)
   const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } })
   const slug = await uniqueSlug(supabase, slugFromDraft(args.file))
+  const today = new Date().toISOString().slice(0, 10)
 
-  const { data, error } = await supabase.from('fixed_pages').insert({
+  const { data, error } = await supabase.from('summaries').insert({
+    type: 'manual',
     title,
     slug,
-    nav_label: title,
-    content: blocks,
-    is_published: false,
-    show_in_nav: false,
-    sort_order: 80,
-    external_url: null,
-  }).select('id, slug, title, is_published, show_in_nav').single()
+    period_start: today,
+    period_end: today,
+    threads: [],
+    published: false,
+    body: markdownToSummaryHtml(body),
+  }).select('id, slug, title, published, type').single()
 
   if (error) throw error
   console.log(JSON.stringify(data, null, 2))

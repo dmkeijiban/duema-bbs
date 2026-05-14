@@ -72,6 +72,17 @@ function pushTextBlock(blocks: Block[], lines: string[]) {
   lines.length = 0
 }
 
+function pushHtmlParagraphs(parts: string[], lines: string[]) {
+  if (lines.length === 0) return
+  const html = lines
+    .join('\n')
+    .split(/\n{2,}/)
+    .map(paragraph => `<p>${inlineMarkdownToHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
+    .join('')
+  if (html) parts.push(html)
+  lines.length = 0
+}
+
 export function markdownToBlocks(markdown: string): Block[] {
   const blocks: Block[] = []
   const lines = markdown.split(/\r?\n/)
@@ -98,6 +109,39 @@ export function markdownToBlocks(markdown: string): Block[] {
 
   pushTextBlock(blocks, textLines)
   return blocks
+}
+
+export function markdownToSummaryHtml(markdown: string): string {
+  const parts: string[] = []
+  const textLines: string[] = []
+  let skippedTitle = false
+
+  for (const line of markdown.split(/\r?\n/)) {
+    const image = line.match(/^!\[([^\]]*)\]\((https?:\/\/[^)]+)\)\s*$/)
+    if (image) {
+      pushHtmlParagraphs(parts, textLines)
+      parts.push(`<p><img src="${escapeHtml(image[2])}" alt="${escapeHtml(image[1])}" loading="lazy"></p>`)
+      continue
+    }
+
+    const heading = line.match(/^(#{1,4})\s+(.+)$/)
+    if (heading) {
+      pushHtmlParagraphs(parts, textLines)
+      const rawLevel = heading[1].length
+      if (rawLevel === 1 && !skippedTitle) {
+        skippedTitle = true
+        continue
+      }
+      const level = Math.min(rawLevel + 1, 3)
+      parts.push(`<h${level}>${inlineMarkdownToHtml(heading[2])}</h${level}>`)
+      continue
+    }
+
+    textLines.push(line)
+  }
+
+  pushHtmlParagraphs(parts, textLines)
+  return parts.join('\n')
 }
 
 function titleFromMarkdown(markdown: string, fallback: string) {
@@ -152,4 +196,3 @@ export async function readArticleDraft(file: string): Promise<ArticleDraft> {
     blocks: markdownToBlocks(body),
   }
 }
-
