@@ -14,6 +14,7 @@ import { SummaryCommentSection, SummaryComment } from '@/components/SummaryComme
 import { summaryTextExcerpt, sanitizeSummaryHtml } from '@/lib/summary-content'
 
 export const revalidate = 3600
+export const dynamic = 'force-dynamic'
 
 interface SummaryThread {
   id: number
@@ -167,7 +168,6 @@ export default async function SummarySlugPage({ params }: Props) {
 
   return (
     <div className="w-full px-0 py-0">
-      {summary.type === 'manual' && <SummaryViewPing slug={summary.slug} />}
       {/* SEO: Article + ItemList 構造化データ */}
       <script
         type="application/ld+json"
@@ -234,9 +234,12 @@ export default async function SummarySlugPage({ params }: Props) {
             </p>
           )}
           {summary.type === 'manual' && (
-            <p className="text-xs text-gray-500 mt-2">
-              コメント {commentsResult.comments.length}件 ／ 閲覧 {summary.view_count ?? 0}
-            </p>
+            <SummaryViewPing
+              slug={summary.slug}
+              initialViewCount={summary.view_count ?? 0}
+              commentCount={commentsResult.comments.length}
+              className="text-xs text-gray-500 mt-2"
+            />
           )}
         </div>
 

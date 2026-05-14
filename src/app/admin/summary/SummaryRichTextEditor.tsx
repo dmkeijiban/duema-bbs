@@ -203,6 +203,7 @@ export function SummaryRichTextEditor({ content, onChange }: Props) {
   const [toolbarHeight, setToolbarHeight] = useState(0)
   const [toolbarFixedStyle, setToolbarFixedStyle] = useState<CSSProperties>({})
   const lastLoadedContentRef = useRef<string | null>(null)
+  const lastEmittedContentRef = useRef<string | null>(null)
 
   // YouTube埋め込みダイアログ
   const [ytDialog, setYtDialog] = useState(false)
@@ -273,19 +274,42 @@ export function SummaryRichTextEditor({ content, onChange }: Props) {
       LinkCardEmbed,
     ],
     content: toHtml(content),
-    onUpdate: ({ editor }) => { onChange(editor.getHTML()); syncImageState(editor) },
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML()
+      lastEmittedContentRef.current = html
+      onChange(html)
+      syncImageState(editor)
+    },
     onSelectionUpdate: ({ editor }) => { syncImageState(editor) },
     editorProps: {
       attributes: { class: 'summary-editor-content', spellCheck: 'false' },
+      handleDOMEvents: {
+        keydown: (_view, event) => {
+          if (event.key !== 'Enter') return false
+          const scrollX = window.scrollX
+          const scrollY = window.scrollY
+          requestAnimationFrame(() => window.scrollTo(scrollX, scrollY))
+          setTimeout(() => window.scrollTo(scrollX, scrollY), 0)
+          return false
+        },
+      },
     },
   })
 
   useEffect(() => {
     if (!editor || lastLoadedContentRef.current === content) return
+    if (content === lastEmittedContentRef.current) {
+      lastLoadedContentRef.current = content
+      return
+    }
+    if (editor.isFocused) return
 
     const nextHtml = toHtml(content)
     if (editor.getHTML() !== nextHtml) {
+      const scrollX = window.scrollX
+      const scrollY = window.scrollY
       editor.commands.setContent(nextHtml, { emitUpdate: false })
+      requestAnimationFrame(() => window.scrollTo(scrollX, scrollY))
     }
     lastLoadedContentRef.current = content
   }, [content, editor])
@@ -508,35 +532,46 @@ export function SummaryRichTextEditor({ content, onChange }: Props) {
       <style>{`
         .summary-editor-content {
           min-height: 300px;
-          padding: 12px 14px;
-          font-size: 14px;
-          line-height: 1.75;
+          padding: 24px 32px;
+          font-size: 17px;
+          line-height: 1.95;
+          color: #1f2937;
+          letter-spacing: 0;
+          word-break: normal;
+          overflow-wrap: break-word;
           outline: none;
         }
-        .summary-editor-content p { margin-bottom: 0.75em; }
+        .summary-editor-content p { margin: 0 0 1.35em; }
         .summary-editor-content p:last-child { margin-bottom: 0; }
         .summary-editor-content h2 {
-          font-size: 1.25em;
-          font-weight: bold;
-          margin-top: 1.4em;
-          margin-bottom: 0.5em;
+          font-size: 25px;
+          line-height: 1.45;
+          font-weight: 800;
+          margin: 52px 0 20px;
           border-bottom: 2px solid #e5e7eb;
-          padding-bottom: 0.25em;
+          padding: 0 0 8px;
+          color: #111827;
         }
         .summary-editor-content h3 {
-          font-size: 1.1em;
-          font-weight: bold;
-          margin-top: 1.2em;
-          margin-bottom: 0.4em;
+          font-size: 21px;
+          line-height: 1.5;
+          font-weight: 700;
+          margin: 34px 0 16px;
+          color: #111827;
         }
         .summary-editor-content a, .rich-link { color: #2563eb; text-decoration: underline; }
-        .summary-editor-content ul { list-style: disc; padding-left: 1.5em; margin-bottom: 0.75em; }
-        .summary-editor-content ol { list-style: decimal; padding-left: 1.5em; margin-bottom: 0.75em; }
+        .summary-editor-content ul { list-style: disc; padding-left: 1.5em; margin: 0 0 1em; }
+        .summary-editor-content ol { list-style: decimal; padding-left: 1.5em; margin: 0 0 1em; }
         .summary-editor-content li { margin-bottom: 0.25em; }
         .summary-editor-content strong { font-weight: bold; }
         .summary-editor-content em { font-style: italic; }
         .rich-img, .summary-editor-content img {
-          max-width: 100%; height: auto; display: block; margin: 0.5em 0;
+          max-width: 340px;
+          width: 100%;
+          height: auto;
+          display: block;
+          margin: 24px auto 34px;
+          border-radius: 10px;
         }
         .summary-editor-content .ProseMirror-selectednode {
           outline: 3px solid #3b82f6;
