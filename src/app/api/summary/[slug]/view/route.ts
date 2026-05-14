@@ -18,7 +18,6 @@ export async function POST(_request: Request, { params }: Props) {
       .from('summaries')
       .select('view_count')
       .eq('slug', slug)
-      .eq('published', true)
       .maybeSingle()
 
     if (readError || !current) {
@@ -30,7 +29,6 @@ export async function POST(_request: Request, { params }: Props) {
       .from('summaries')
       .update({ view_count: viewCount })
       .eq('slug', slug)
-      .eq('published', true)
   } catch {
     const supabase = createPublicClient()
     try {
@@ -39,7 +37,6 @@ export async function POST(_request: Request, { params }: Props) {
         .from('summaries')
         .select('view_count')
         .eq('slug', slug)
-        .eq('published', true)
         .maybeSingle()
       viewCount = data?.view_count ?? null
     } catch {
