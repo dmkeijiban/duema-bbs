@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { verifyAdminCookie } from '@/lib/admin-auth'
 import { listArticleDrafts } from '@/lib/article-drafts'
 import { importArticleDraft } from './actions'
@@ -25,8 +26,8 @@ export default async function ArticleDraftsPage({
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-gray-800">記事下書き取り込み</h1>
         <div className="flex items-center gap-3">
-          <a href="/admin/pages" className="text-xs text-blue-600 hover:underline">固定ページ一覧</a>
-          <a href="/admin" className="text-xs text-gray-500 hover:underline">管理画面</a>
+          <Link href="/admin/pages" className="text-xs text-blue-600 hover:underline">固定ページ一覧</Link>
+          <Link href="/admin" className="text-xs text-gray-500 hover:underline">管理画面</Link>
         </div>
       </div>
 
