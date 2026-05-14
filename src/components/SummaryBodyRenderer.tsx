@@ -141,29 +141,38 @@ export function SummaryBodyRenderer({ body }: Props) {
       {nodes}
       <style>{`
         .summary-body-html {
-          font-size: 14px;
-          line-height: 1.8;
+          font-size: 16.5px;
+          line-height: 1.85;
           color: #1f2937;
           word-break: break-word;
           overflow-wrap: anywhere;
         }
         .summary-body-html p {
-          margin-bottom: 0.85em;
+          margin: 0 0 1.1em;
         }
         .summary-body-html p:last-child { margin-bottom: 0; }
+        .summary-body-html h1 {
+          font-size: 32px;
+          line-height: 1.35;
+          font-weight: 800;
+          margin: 0 0 24px;
+          color: #111827;
+        }
         .summary-body-html h2 {
-          font-size: 1.2em;
-          font-weight: bold;
-          margin-top: 1.5em;
-          margin-bottom: 0.5em;
-          padding-bottom: 0.3em;
+          font-size: 25px;
+          line-height: 1.45;
+          font-weight: 800;
+          margin: 48px 0 18px;
+          padding-bottom: 8px;
           border-bottom: 2px solid #e5e7eb;
+          color: #111827;
         }
         .summary-body-html h3 {
-          font-size: 1.05em;
-          font-weight: bold;
-          margin-top: 1.2em;
-          margin-bottom: 0.4em;
+          font-size: 21px;
+          line-height: 1.5;
+          font-weight: 700;
+          margin: 32px 0 14px;
+          color: #111827;
         }
         .summary-body-html a {
           color: #2563eb;
@@ -180,13 +189,42 @@ export function SummaryBodyRenderer({ body }: Props) {
           margin-bottom: 0.75em;
         }
         .summary-body-html li { margin-bottom: 0.25em; }
-        .summary-body-html strong { font-weight: bold; }
+        .summary-body-html strong,
+        .summary-body-html .card-name { font-weight: 700; }
         .summary-body-html em { font-style: italic; }
         .summary-body-html img {
-          max-width: 100%;
+          max-width: 340px;
+          width: 100%;
           height: auto;
           display: block;
-          margin: 0.75em 0;
+          margin: 18px auto 28px;
+          border-radius: 10px;
+        }
+        .summary-body-html figure.card-image {
+          margin: 18px auto 28px;
+          text-align: center;
+        }
+        .summary-body-html figure.card-image img {
+          margin: 0 auto;
+        }
+        @media (max-width: 640px) {
+          .summary-body-html {
+            font-size: 16px;
+            line-height: 1.8;
+          }
+          .summary-body-html h1 {
+            font-size: 26px;
+          }
+          .summary-body-html h2 {
+            font-size: 22px;
+            margin-top: 40px;
+          }
+          .summary-body-html h3 {
+            font-size: 19px;
+          }
+          .summary-body-html img {
+            max-width: 300px;
+          }
         }
       `}</style>
     </div>

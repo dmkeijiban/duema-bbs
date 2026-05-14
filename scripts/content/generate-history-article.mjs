@@ -8,6 +8,8 @@ const ROOT_DIR = path.resolve(__dirname, '../..')
 const DEFAULT_OUT_DIR = path.join(ROOT_DIR, 'drafts/articles')
 const DM_WIKI_ORIGIN = 'https://dmwiki.net'
 const OFFICIAL_CARD_ORIGIN = 'https://dm.takaratomy.co.jp'
+const MIN_MAJOR_CARDS = 8
+const DEFAULT_MAJOR_CARDS = 10
 
 const BANNED_TERMS = [
   'こんにちは',
@@ -43,7 +45,7 @@ function parseArgs(argv) {
   const args = {
     url: null,
     outDir: DEFAULT_OUT_DIR,
-    maxCards: 5,
+    maxCards: DEFAULT_MAJOR_CARDS,
     format: 'markdown',
     images: true,
   }
@@ -52,7 +54,7 @@ function parseArgs(argv) {
     const arg = argv[i]
     if (arg === '--url') args.url = argv[++i]
     else if (arg === '--out') args.outDir = path.resolve(argv[++i])
-    else if (arg === '--max-cards') args.maxCards = Number(argv[++i] || 5)
+    else if (arg === '--max-cards') args.maxCards = Number(argv[++i] || DEFAULT_MAJOR_CARDS)
     else if (arg === '--no-images') args.images = false
     else if (arg === '--help' || arg === '-h') args.help = true
   }
@@ -63,7 +65,7 @@ function parseArgs(argv) {
 function usage() {
   return `Usage:
   npm run content:article -- --url https://dmwiki.net/DM26-RP1
-  node scripts/content/generate-history-article.mjs --url https://dmwiki.net/DM26-RP1 --max-cards 5
+  node scripts/content/generate-history-article.mjs --url https://dmwiki.net/DM26-RP1 --max-cards 10
 `
 }
 
@@ -441,6 +443,7 @@ async function main() {
     console.log(usage())
     return
   }
+  args.maxCards = Math.max(args.maxCards, MIN_MAJOR_CARDS)
 
   await fs.mkdir(args.outDir, { recursive: true })
   console.log(`[article] fetch wiki: ${args.url}`)
