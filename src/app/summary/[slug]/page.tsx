@@ -203,7 +203,7 @@ export default async function SummarySlugPage({ params }: Props) {
         </nav>
 
         {/* ヘッダー */}
-        <div className="mb-3 px-4 py-4 md:px-6 md:py-5 border border-gray-300 bg-white">
+        <div className={`mb-3 px-4 py-4 md:px-6 md:py-5 border border-gray-300 bg-white ${summary.type === 'manual' ? 'mx-auto max-w-4xl' : ''}`}>
           <div className="flex items-start justify-between gap-3">
             <h1 className="font-extrabold text-2xl md:text-[32px] leading-snug text-gray-900">{summary.title}</h1>
             {summary.type === 'manual' && (
@@ -226,9 +226,9 @@ export default async function SummarySlugPage({ params }: Props) {
 
         {/* 手書き本文（manualのみ） */}
         {summary.type === 'manual' && summary.body && (
-          <div className="mb-3 px-4 py-5 md:px-8 md:py-7 border border-gray-300 bg-white">
+          <div className="mb-3 mx-auto max-w-4xl px-4 py-6 md:px-10 md:py-8 lg:px-14 border border-gray-300 bg-white">
             {!hasBodyImage && (
-              <div className="relative mb-4 w-full max-w-xl aspect-[1200/630] bg-gray-100 border border-gray-200">
+              <div className="relative mb-6 mx-auto w-full max-w-2xl aspect-[1200/630] bg-gray-100 border border-gray-200">
                 <Image src="/default-thumbnail.jpg" alt="デュエマ掲示板の注目スレッドまとめ" fill className="object-cover" sizes="640px" priority />
               </div>
             )}

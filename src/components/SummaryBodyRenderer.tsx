@@ -57,8 +57,40 @@ function normalizeSummaryHtml(html: string): string {
   return next
 }
 
+function splitReadableParagraphs(html: string): string {
+  return html.replace(/<p>([\s\S]*?)<\/p>/gi, (full: string, inner: string) => {
+    const textOnly = inner.replace(/<[^>]+>/g, '').trim()
+    if (textOnly.length < 120 || /<[a-z][\s\S]*>/i.test(inner)) return full
+
+    const sentences = inner
+      .match(/[^。！？!?]+[。！？!?]?/g)
+      ?.map((sentence: string) => sentence.trim())
+      .filter(Boolean)
+
+    if (!sentences || sentences.length < 3) return full
+
+    const groups: string[] = []
+    let current = ''
+
+    for (const sentence of sentences) {
+      const next = current ? `${current}${sentence}` : sentence
+      if (current && next.replace(/<[^>]+>/g, '').length > 140) {
+        groups.push(current)
+        current = sentence
+      } else {
+        current = next
+      }
+    }
+
+    if (current) groups.push(current)
+    if (groups.length < 2) return full
+
+    return groups.map(group => `<p>${group}</p>`).join('\n')
+  })
+}
+
 function parseBody(html: string): React.ReactNode[] {
-  const normalizedHtml = normalizeSummaryHtml(sanitizeSummaryHtml(html))
+  const normalizedHtml = splitReadableParagraphs(normalizeSummaryHtml(sanitizeSummaryHtml(html)))
   // DOMParser はブラウザ専用なので、正規表現でマーカーを検出する
   // サーバーサイドレンダリング時はそのまま innerHTML で表示されるので
   // クライアント側だけで動けばよい
@@ -181,30 +213,37 @@ export function SummaryBodyRenderer({ body }: Props) {
         </div>
       )}
       <style>{`
+        .summary-body-root {
+          max-width: 820px;
+          margin: 0 auto;
+        }
         .summary-body-html {
-          font-size: 16.5px;
-          line-height: 1.85;
+          font-size: 17px;
+          line-height: 2;
           color: #1f2937;
-          word-break: break-word;
-          overflow-wrap: anywhere;
+          letter-spacing: 0;
+          word-break: normal;
+          overflow-wrap: break-word;
         }
         .summary-body-html p {
-          margin: 0 0 1.1em;
-          max-width: 42em;
+          margin: 0 auto 1.35em;
+          max-width: 760px;
         }
         .summary-body-html p:last-child { margin-bottom: 0; }
         .summary-body-html h1 {
           font-size: 32px;
           line-height: 1.35;
           font-weight: 800;
-          margin: 0 0 24px;
+          margin: 0 auto 28px;
+          max-width: 760px;
           color: #111827;
         }
         .summary-body-html h2 {
           font-size: 25px;
           line-height: 1.45;
           font-weight: 800;
-          margin: 48px 0 18px;
+          margin: 56px auto 22px;
+          max-width: 760px;
           padding-bottom: 8px;
           border-bottom: 2px solid #e5e7eb;
           color: #111827;
@@ -213,7 +252,8 @@ export function SummaryBodyRenderer({ body }: Props) {
           font-size: 21px;
           line-height: 1.5;
           font-weight: 700;
-          margin: 32px 0 14px;
+          margin: 38px auto 16px;
+          max-width: 760px;
           color: #111827;
         }
         .summary-body-html a {
@@ -223,12 +263,14 @@ export function SummaryBodyRenderer({ body }: Props) {
         .summary-body-html ul {
           list-style: disc;
           padding-left: 1.5em;
-          margin-bottom: 0.75em;
+          margin: 0 auto 1em;
+          max-width: 760px;
         }
         .summary-body-html ol {
           list-style: decimal;
           padding-left: 1.5em;
-          margin-bottom: 0.75em;
+          margin: 0 auto 1em;
+          max-width: 760px;
         }
         .summary-body-html li { margin-bottom: 0.25em; }
         .summary-body-html strong,
@@ -239,31 +281,45 @@ export function SummaryBodyRenderer({ body }: Props) {
           width: 100%;
           height: auto;
           display: block;
-          margin: 18px auto 28px;
+          margin: 24px auto 34px;
           border-radius: 10px;
           cursor: zoom-in;
         }
         .summary-body-html figure.card-image {
-          margin: 18px auto 28px;
+          margin: 24px auto 34px;
           text-align: center;
         }
         .summary-body-html figure.card-image img {
           margin: 0 auto;
         }
         @media (max-width: 640px) {
+          .summary-body-root {
+            max-width: none;
+          }
           .summary-body-html {
             font-size: 16px;
-            line-height: 1.8;
+            line-height: 1.9;
+          }
+          .summary-body-html p,
+          .summary-body-html h1,
+          .summary-body-html h2,
+          .summary-body-html h3,
+          .summary-body-html ul,
+          .summary-body-html ol {
+            max-width: none;
           }
           .summary-body-html h1 {
             font-size: 26px;
           }
           .summary-body-html h2 {
             font-size: 22px;
-            margin-top: 40px;
+            margin-top: 42px;
           }
           .summary-body-html h3 {
             font-size: 19px;
+          }
+          .summary-body-html p {
+            margin-bottom: 1.25em;
           }
           .summary-body-html img {
             max-width: 300px;
