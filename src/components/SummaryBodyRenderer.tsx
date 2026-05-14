@@ -1,8 +1,9 @@
 'use client'
 
-import { Suspense, useMemo } from 'react'
+import { Suspense, useMemo, useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { LinkCard } from './LinkCard'
+import { sanitizeSummaryHtml } from '@/lib/summary-content'
 
 // react-tweet は重いので遅延ロード
 const Tweet = dynamic(() => import('react-tweet').then(m => ({ default: m.Tweet })), {
@@ -57,7 +58,7 @@ function normalizeSummaryHtml(html: string): string {
 }
 
 function parseBody(html: string): React.ReactNode[] {
-  const normalizedHtml = normalizeSummaryHtml(html)
+  const normalizedHtml = normalizeSummaryHtml(sanitizeSummaryHtml(html))
   // DOMParser はブラウザ専用なので、正規表現でマーカーを検出する
   // サーバーサイドレンダリング時はそのまま innerHTML で表示されるので
   // クライアント側だけで動けばよい
@@ -135,10 +136,50 @@ interface Props {
 
 export function SummaryBodyRenderer({ body }: Props) {
   const nodes = useMemo(() => parseBody(body), [body])
+  const [openImage, setOpenImage] = useState<string | null>(null)
+  const closeImage = useCallback(() => setOpenImage(null), [])
+
+  useEffect(() => {
+    if (!openImage) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeImage()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [openImage, closeImage])
 
   return (
-    <div className="summary-body-root">
+    <div
+      className="summary-body-root"
+      onClick={(event) => {
+        const target = event.target as HTMLElement
+        const img = target.closest('.summary-body-html img') as HTMLImageElement | null
+        if (img?.src) setOpenImage(img.src)
+      }}
+    >
       {nodes}
+      {openImage && (
+        <div
+          onClick={closeImage}
+          className="fixed inset-0 z-[9999] bg-black/85 flex items-center justify-center p-3 cursor-zoom-out"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={openImage}
+            alt=""
+            onClick={event => event.stopPropagation()}
+            className="max-w-[96vw] max-h-[92vh] object-contain cursor-default"
+          />
+          <button
+            type="button"
+            onClick={closeImage}
+            className="absolute top-3 right-4 text-white text-3xl leading-none opacity-80"
+            aria-label="閉じる"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <style>{`
         .summary-body-html {
           font-size: 16.5px;
@@ -149,6 +190,7 @@ export function SummaryBodyRenderer({ body }: Props) {
         }
         .summary-body-html p {
           margin: 0 0 1.1em;
+          max-width: 42em;
         }
         .summary-body-html p:last-child { margin-bottom: 0; }
         .summary-body-html h1 {
@@ -199,6 +241,7 @@ export function SummaryBodyRenderer({ body }: Props) {
           display: block;
           margin: 18px auto 28px;
           border-radius: 10px;
+          cursor: zoom-in;
         }
         .summary-body-html figure.card-image {
           margin: 18px auto 28px;

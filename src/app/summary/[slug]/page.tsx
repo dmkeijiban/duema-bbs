@@ -8,6 +8,10 @@ import { Suspense } from 'react'
 import { Metadata } from 'next'
 import { SummaryBodyRenderer } from '@/components/SummaryBodyRenderer'
 import { DEFAULT_THREAD_THUMBNAIL } from '@/lib/thumbnail'
+import { SummaryActionBar } from '@/components/SummaryActionBar'
+import { SummaryViewPing } from '@/components/SummaryViewPing'
+import { SummaryCommentSection, SummaryComment } from '@/components/SummaryCommentSection'
+import { summaryTextExcerpt, sanitizeSummaryHtml } from '@/lib/summary-content'
 
 export const revalidate = 3600
 
@@ -32,6 +36,8 @@ interface Summary {
   threads: SummaryThread[]
   created_at: string
   body: string | null
+  view_count?: number | null
+  comment_count?: number | null
 }
 
 interface Props {
@@ -58,7 +64,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!summary) return {}
   const desc = summary.type === 'manual'
     ? (summary.body
-        ? summary.body.replace(/\n/g, ' ').slice(0, 120)
+        ? summaryTextExcerpt(summary.body, 120)
         : `${summary.title}。デュエマ掲示板の注目スレッドをまとめて紹介します。`)
     : `${summary.period_start}〜${summary.period_end}の人気スレッドTOP10まとめ。デュエマ掲示板で盛り上がったスレッドをランキング形式で紹介します。`
   const url = `${BASE_URL}/summary/${slug}`
@@ -108,6 +114,23 @@ async function getLivePostCounts(threadIds: number[]): Promise<Map<number, numbe
   return map
 }
 
+async function getSummaryComments(summaryId: number): Promise<{ comments: SummaryComment[]; enabled: boolean }> {
+  const supabase = createPublicClient()
+  try {
+    const { data, error } = await supabase
+      .from('summary_comments')
+      .select('id, comment_number, body, author_name, created_at')
+      .eq('summary_id', summaryId)
+      .eq('is_deleted', false)
+      .order('comment_number', { ascending: true })
+      .limit(100)
+    if (error) return { comments: [], enabled: false }
+    return { comments: (data ?? []) as SummaryComment[], enabled: true }
+  } catch {
+    return { comments: [], enabled: false }
+  }
+}
+
 export default async function SummarySlugPage({ params }: Props) {
   const { slug } = await params
   const summary = await getSummary(slug)
@@ -116,11 +139,19 @@ export default async function SummarySlugPage({ params }: Props) {
 
   const threads = summary.threads ?? []
   const threadIds = threads.map(t => t.id)
-  const livePostCounts = await getLivePostCounts(threadIds)
-  const hasBodyImage = /<img\b/i.test(summary.body ?? '')
+  const [livePostCounts, commentsResult] = await Promise.all([
+    getLivePostCounts(threadIds),
+    summary.type === 'manual' ? getSummaryComments(summary.id) : Promise.resolve({ comments: [], enabled: false }),
+  ])
+  const safeBody = sanitizeSummaryHtml(summary.body ?? '')
+  const hasBodyImage = /<img\b/i.test(safeBody)
+  const description = summary.type === 'manual'
+    ? summaryTextExcerpt(safeBody, 160)
+    : `${summary.period_start}〜${summary.period_end}の人気スレッドTOP10まとめ。`
 
   return (
     <div className="w-full px-0 py-0">
+      {summary.type === 'manual' && <SummaryViewPing slug={summary.slug} />}
       {/* SEO: Article + ItemList 構造化データ */}
       <script
         type="application/ld+json"
@@ -131,9 +162,7 @@ export default async function SummarySlugPage({ params }: Props) {
             headline: summary.title,
             url: `${BASE_URL}/summary/${summary.slug}`,
             datePublished: summary.created_at,
-            description: summary.type === 'manual'
-              ? (summary.body ? summary.body.replace(/\n/g, ' ').slice(0, 120) : `${summary.title}。デュエマ掲示板の注目スレッドまとめ。`)
-              : `${summary.period_start}〜${summary.period_end}の人気スレッドTOP10まとめ。`,
+            description,
             publisher: {
               '@type': 'Organization',
               name: 'デュエマ掲示板',
@@ -175,10 +204,22 @@ export default async function SummarySlugPage({ params }: Props) {
 
         {/* ヘッダー */}
         <div className="mb-3 px-4 py-4 md:px-6 md:py-5 border border-gray-300 bg-white">
-          <h1 className="font-extrabold text-2xl md:text-[32px] leading-snug text-gray-900">{summary.title}</h1>
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="font-extrabold text-2xl md:text-[32px] leading-snug text-gray-900">{summary.title}</h1>
+            {summary.type === 'manual' && (
+              <div className="shrink-0">
+                <SummaryActionBar slug={summary.slug} title={summary.title} />
+              </div>
+            )}
+          </div>
           {summary.type !== 'manual' && (
             <p className="text-xs text-gray-400 mt-1">
               集計期間：{summary.period_start} 〜 {summary.period_end}
+            </p>
+          )}
+          {summary.type === 'manual' && (
+            <p className="text-xs text-gray-500 mt-2">
+              コメント {commentsResult.comments.length}件 ／ 閲覧 {summary.view_count ?? 0}
             </p>
           )}
         </div>
@@ -191,8 +232,23 @@ export default async function SummarySlugPage({ params }: Props) {
                 <Image src="/default-thumbnail.jpg" alt="デュエマ掲示板の注目スレッドまとめ" fill className="object-cover" sizes="640px" priority />
               </div>
             )}
-            <SummaryBodyRenderer body={summary.body} />
+            <SummaryBodyRenderer body={safeBody} />
           </div>
+        )}
+
+        {summary.type === 'manual' && (
+          <>
+            <Suspense fallback={null}>
+              <RecommendSection title={`${summary.title} ${description}`} />
+            </Suspense>
+            <SummaryCommentSection
+              summaryId={summary.id}
+              slug={summary.slug}
+              title={summary.title}
+              comments={commentsResult.comments}
+              enabled={commentsResult.enabled}
+            />
+          </>
         )}
 
         {/* スレッドランキング */}

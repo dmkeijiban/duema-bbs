@@ -6,6 +6,7 @@ import LinkExtension from '@tiptap/extension-link'
 import ImageExtension from '@tiptap/extension-image'
 import { useRef, useState, useEffect, type CSSProperties } from 'react'
 import { uploadPageImage } from '../pages/actions'
+import { cleanSummaryEditorHtml } from '@/lib/summary-content'
 
 // ── ヘルパー関数 ────────────────────────────────────────────────────
 function extractYouTubeId(url: string): string | null {
@@ -179,8 +180,9 @@ const LinkCardEmbed = Node.create({
 
 function toHtml(content: string): string {
   if (!content) return '<p></p>'
-  if (content.trimStart().startsWith('<')) return content
-  return content
+  const cleaned = cleanSummaryEditorHtml(content)
+  if (cleaned.trimStart().startsWith('<')) return cleaned
+  return cleaned
     .split('\n')
     .map(line => `<p>${line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') || '<br>'}</p>`)
     .join('')
