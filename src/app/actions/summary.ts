@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase-server'
 import { hasJapanese } from '@/lib/spam'
 import { checkNgWords, checkSessionBan } from '@/lib/moderation'
 
+const SUMMARY_COMMENT_PREFIX = '[summary-comment]'
+
 function hasHoneypotValue(formData: FormData): boolean {
   const value = formData.get('website')
   return typeof value === 'string' && value.trim().length > 0
@@ -49,24 +51,90 @@ export async function createSummaryComment(formData: FormData) {
   const ngWord = await checkNgWords(supabase, [body, authorName])
   if (ngWord) return { error: `NG word detected: ${ngWord}` }
 
-  const { count } = await supabase
-    .from('summary_comments')
-    .select('id', { count: 'exact', head: true })
-    .eq('summary_id', summaryId)
-    .eq('is_deleted', false)
+  const commentThreadTitle = `${SUMMARY_COMMENT_PREFIX} ${slug}`
+  const { data: existingThread, error: threadFetchError } = await supabase
+    .from('threads')
+    .select('id')
+    .eq('title', commentThreadTitle)
+    .maybeSingle()
 
-  const { error } = await supabase.from('summary_comments').insert({
-    summary_id: summaryId,
-    comment_number: (count ?? 0) + 1,
+  if (threadFetchError) {
+    console.error('Summary comment thread fetch error:', threadFetchError)
+    return { error: 'コメント欄の取得に失敗しました' }
+  }
+
+  let thread = existingThread
+
+  if (!thread?.id) {
+    const insertData = {
+      title: commentThreadTitle,
+      body: `Article comments for summary ${summaryId}`,
+      author_name: '記事コメント',
+      session_id: sessionId,
+      is_archived: true,
+    }
+
+    let createResult = await supabase
+      .from('threads')
+      .insert(insertData)
+      .select('id')
+      .single()
+
+    if (createResult.error && (createResult.error.code === '42703' || createResult.error.message?.includes('is_archived'))) {
+      createResult = await supabase
+        .from('threads')
+        .insert({
+          title: commentThreadTitle,
+          body: `Article comments for summary ${summaryId}`,
+          author_name: '記事コメント',
+          session_id: sessionId,
+        })
+        .select('id')
+        .single()
+    }
+
+    if (createResult.error || !createResult.data) {
+      console.error('Summary comment thread create error:', createResult.error)
+      return { error: 'コメント欄の作成に失敗しました' }
+    }
+
+    thread = createResult.data
+  }
+
+  const { data: maxPost } = await supabase
+    .from('posts')
+    .select('post_number')
+    .eq('thread_id', thread.id)
+    .order('post_number', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const nextPostNumber = (maxPost?.post_number ?? 0) + 1
+
+  let { error } = await supabase.from('posts').insert({
+    thread_id: thread.id,
+    post_number: nextPostNumber,
     body,
     author_name: authorName,
     session_id: sessionId,
   })
 
+  if (error && (error.code === '42703' || error.message?.includes('session_id'))) {
+    const { error: retryError } = await supabase.from('posts').insert({
+      thread_id: thread.id,
+      post_number: nextPostNumber,
+      body,
+      author_name: authorName,
+    })
+    error = retryError
+  }
+
   if (error) {
     console.error('Summary comment insert error:', error)
-    return { error: '記事コメント機能のDB準備がまだです' }
+    return { error: 'コメントの投稿に失敗しました' }
   }
+
+  await supabase.rpc('increment_post_count', { p_thread_id: thread.id })
 
   revalidateTag('summaries', { expire: 0 })
   revalidatePath(`/summary/${slug}`)

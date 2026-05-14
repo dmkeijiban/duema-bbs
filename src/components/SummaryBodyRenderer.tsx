@@ -60,7 +60,7 @@ function normalizeSummaryHtml(html: string): string {
 function splitReadableParagraphs(html: string): string {
   return html.replace(/<p>([\s\S]*?)<\/p>/gi, (full: string, inner: string) => {
     const textOnly = inner.replace(/<[^>]+>/g, '').trim()
-    if (textOnly.length < 90 || /<[a-z][\s\S]*>/i.test(inner)) return full
+    if (textOnly.length < 120 || /<[a-z][\s\S]*>/i.test(inner)) return full
 
     const sentences = inner
       .match(/[^。！？!?]+[。！？!?]?/g)
@@ -74,7 +74,7 @@ function splitReadableParagraphs(html: string): string {
 
     for (const sentence of sentences) {
       const next = current ? `${current}${sentence}` : sentence
-      if (current && next.replace(/<[^>]+>/g, '').length > 110) {
+      if (current && next.replace(/<[^>]+>/g, '').length > 150) {
         groups.push(current)
         current = sentence
       } else {
@@ -214,54 +214,46 @@ export function SummaryBodyRenderer({ body }: Props) {
       )}
       <style>{`
         .summary-body-root {
-          max-width: 780px;
-          margin: 0 auto;
+          max-width: none;
+          margin: 0;
         }
         .summary-body-html {
           font-size: 17px;
-          line-height: 2.05;
+          line-height: 1.95;
           color: #1f2937;
           letter-spacing: 0;
           word-break: normal;
           overflow-wrap: break-word;
         }
         .summary-body-html p {
-          margin: 0 auto 1.55em;
-          max-width: 690px;
-        }
-        .summary-body-html > p:first-of-type {
-          font-size: 18px;
-          line-height: 2;
-          color: #111827;
+          margin: 0 0 1.35em;
+          max-width: 48em;
         }
         .summary-body-html p:last-child { margin-bottom: 0; }
         .summary-body-html h1 {
           font-size: 32px;
           line-height: 1.35;
           font-weight: 800;
-          margin: 0 auto 28px;
-          max-width: 720px;
+          margin: 0 0 28px;
+          max-width: 48em;
           color: #111827;
         }
         .summary-body-html h2 {
-          font-size: 27px;
+          font-size: 25px;
           line-height: 1.45;
           font-weight: 800;
-          margin: 64px auto 24px;
-          max-width: 720px;
-          padding: 12px 0 10px;
-          border-top: 3px solid #1d4ed8;
-          border-bottom: 1px solid #dbeafe;
+          margin: 52px 0 20px;
+          max-width: 48em;
+          padding: 0 0 8px;
+          border-bottom: 2px solid #e5e7eb;
           color: #111827;
         }
         .summary-body-html h3 {
-          font-size: 22px;
+          font-size: 21px;
           line-height: 1.5;
           font-weight: 700;
-          margin: 42px auto 18px;
-          max-width: 720px;
-          padding-left: 12px;
-          border-left: 4px solid #2563eb;
+          margin: 34px 0 16px;
+          max-width: 48em;
           color: #111827;
         }
         .summary-body-html a {
@@ -271,14 +263,14 @@ export function SummaryBodyRenderer({ body }: Props) {
         .summary-body-html ul {
           list-style: disc;
           padding-left: 1.5em;
-          margin: 0 auto 1em;
-          max-width: 690px;
+          margin: 0 0 1em;
+          max-width: 48em;
         }
         .summary-body-html ol {
           list-style: decimal;
           padding-left: 1.5em;
-          margin: 0 auto 1em;
-          max-width: 690px;
+          margin: 0 0 1em;
+          max-width: 48em;
         }
         .summary-body-html li { margin-bottom: 0.25em; }
         .summary-body-html strong,

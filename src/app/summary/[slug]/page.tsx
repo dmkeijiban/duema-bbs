@@ -114,18 +114,34 @@ async function getLivePostCounts(threadIds: number[]): Promise<Map<number, numbe
   return map
 }
 
-async function getSummaryComments(summaryId: number): Promise<{ comments: SummaryComment[]; enabled: boolean }> {
+async function getSummaryComments(slug: string): Promise<{ comments: SummaryComment[]; enabled: boolean }> {
   const supabase = createPublicClient()
   try {
+    const commentThreadTitle = `[summary-comment] ${slug}`
+    const { data: thread } = await supabase
+      .from('threads')
+      .select('id')
+      .eq('title', commentThreadTitle)
+      .maybeSingle()
+
+    if (!thread?.id) return { comments: [], enabled: true }
+
     const { data, error } = await supabase
-      .from('summary_comments')
-      .select('id, comment_number, body, author_name, created_at')
-      .eq('summary_id', summaryId)
+      .from('posts')
+      .select('id, post_number, body, author_name, created_at')
+      .eq('thread_id', thread.id)
       .eq('is_deleted', false)
-      .order('comment_number', { ascending: true })
+      .order('post_number', { ascending: true })
       .limit(100)
     if (error) return { comments: [], enabled: false }
-    return { comments: (data ?? []) as SummaryComment[], enabled: true }
+    const comments = (data ?? []).map(post => ({
+      id: post.id,
+      comment_number: post.post_number,
+      body: post.body,
+      author_name: post.author_name,
+      created_at: post.created_at,
+    })) as SummaryComment[]
+    return { comments, enabled: true }
   } catch {
     return { comments: [], enabled: false }
   }
@@ -141,7 +157,7 @@ export default async function SummarySlugPage({ params }: Props) {
   const threadIds = threads.map(t => t.id)
   const [livePostCounts, commentsResult] = await Promise.all([
     getLivePostCounts(threadIds),
-    summary.type === 'manual' ? getSummaryComments(summary.id) : Promise.resolve({ comments: [], enabled: false }),
+    summary.type === 'manual' ? getSummaryComments(summary.slug) : Promise.resolve({ comments: [], enabled: false }),
   ])
   const safeBody = sanitizeSummaryHtml(summary.body ?? '')
   const hasBodyImage = /<img\b/i.test(safeBody)
@@ -203,7 +219,7 @@ export default async function SummarySlugPage({ params }: Props) {
         </nav>
 
         {/* ヘッダー */}
-        <div className={`mb-3 px-4 py-4 md:px-6 md:py-5 border border-gray-300 bg-white ${summary.type === 'manual' ? 'mx-auto max-w-4xl' : ''}`}>
+        <div className="mb-3 px-4 py-4 md:px-6 md:py-5 border border-gray-300 bg-white">
           <div className="flex items-start justify-between gap-3">
             <h1 className="font-extrabold text-2xl md:text-[32px] leading-snug text-gray-900">{summary.title}</h1>
             {summary.type === 'manual' && (
@@ -226,7 +242,7 @@ export default async function SummarySlugPage({ params }: Props) {
 
         {/* 手書き本文（manualのみ） */}
         {summary.type === 'manual' && summary.body && (
-          <div className="mb-3 mx-auto max-w-4xl px-4 py-6 md:px-10 md:py-8 lg:px-14 border border-gray-300 bg-white">
+          <div className="mb-3 px-4 py-6 md:px-8 md:py-8 border border-gray-300 bg-white">
             {!hasBodyImage && (
               <div className="relative mb-6 mx-auto w-full max-w-2xl aspect-[1200/630] bg-gray-100 border border-gray-200">
                 <Image src="/default-thumbnail.jpg" alt="デュエマ掲示板の注目スレッドまとめ" fill className="object-cover" sizes="640px" priority />
