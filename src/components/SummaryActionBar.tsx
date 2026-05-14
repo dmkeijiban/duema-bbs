@@ -12,7 +12,6 @@ const X_SHARE_SUFFIX = '#デュエマ'
 
 export function SummaryActionBar({ slug, title }: Props) {
   const [favorited, setFavorited] = useState(false)
-  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     setFavorited(localStorage.getItem(`summary-favorite:${slug}`) === '1')
@@ -31,13 +30,6 @@ export function SummaryActionBar({ slug, title }: Props) {
     const text = `${title.trim()} ${url} ${X_SHARE_SUFFIX}`
     capturePostHogEvent('summary_x_share_click', { slug, title })
     window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer,width=600,height=400')
-  }
-
-  const copyUrl = async () => {
-    await navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}`)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1400)
-    capturePostHogEvent('summary_url_copy', { slug })
   }
 
   return (
@@ -59,14 +51,6 @@ export function SummaryActionBar({ slug, title }: Props) {
         title="Xで共有"
       >
         X
-      </button>
-      <button
-        type="button"
-        onClick={copyUrl}
-        className="text-xs px-2 h-8 border border-gray-300 rounded text-gray-700 bg-white hover:bg-gray-50"
-        title="URLをコピー"
-      >
-        {copied ? 'コピー済' : 'URL'}
       </button>
     </div>
   )
