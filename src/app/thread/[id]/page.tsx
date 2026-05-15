@@ -84,7 +84,7 @@ export async function generateMetadata({ params }: Props) {
   // with long query-string image URLs, even when the endpoint returns 200.
   const ogImageUrl = ogImage
     ? `${baseUrl}/og/thread/${id}.jpg`
-    : undefined
+    : `${baseUrl}/default-thumbnail.jpg`
 
   return {
     title: `${thread.title} | デュエマ掲示板`,
@@ -97,15 +97,13 @@ export async function generateMetadata({ params }: Props) {
       description: metadataDescription,
       url: `${baseUrl}/thread/${id}`,
       type: 'article',
-      images: ogImageUrl
-        ? [{ url: ogImageUrl, width: 1200, height: 675, alt: thread.title }]
-        : [],
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: thread.title }],
     },
     twitter: {
-      card: ogImageUrl ? 'summary_large_image' : 'summary',
+      card: 'summary_large_image',
       title: thread.title,
       description: metadataDescription,
-      images: ogImageUrl ? [ogImageUrl] : [],
+      images: [ogImageUrl],
     },
   }
 }
