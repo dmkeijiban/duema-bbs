@@ -42,10 +42,7 @@ export const metadata: Metadata = {
     images: [`${SITE_URL}/default-thumbnail.jpg`],
   },
   verification: {
-    google: [
-      'fYOcWqqCUBFXoIWN_0CMoALvbJnuUcTpvdf01SGgLNM',
-      'Mtk8Z-uHvz-fGR6NnhKnBa6IMGXmTSFcufMKvaUVCpE',
-    ],
+    google: 'Mtk8Z-uHvz-fGR6NnhKnBa6IMGXmTSFcufMKvaUVCpE',
   },
 }
 
