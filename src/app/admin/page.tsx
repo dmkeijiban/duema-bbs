@@ -14,6 +14,7 @@ import { SettingEditFormClient } from './SettingEditFormClient'
 import { getAllSettings } from '@/lib/settings'
 import { Notice } from '@/components/NoticeBlock'
 import { verifyAdminCookie } from '@/lib/admin-auth'
+import { TypefullyQueueWidget } from './TypefullyQueueWidget'
 
 const ADMIN_COOKIE = 'admin_auth'
 const THREADS_PER_PAGE = 60
@@ -310,6 +311,12 @@ export default async function AdminPage({
             <Link href="/admin/deleted-posts" className="px-3 py-1 text-xs border border-orange-400 text-orange-600 hover:bg-orange-50">
               🗑️ 削除済みレス
             </Link>
+            <Link href="/admin/x-posts" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#1da1f2' }}>
+              🐦 X投稿管理
+            </Link>
+            <Link href="/admin/x-schedule" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#0f766e' }}>
+              📅 スケジュール
+            </Link>
             <Link href="/admin/pages" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#198754' }}>
               📄 固定ページ管理
             </Link>
@@ -344,6 +351,9 @@ export default async function AdminPage({
           <p className="text-xs text-gray-400 py-2">お知らせはまだありません</p>
         )}
       </div>
+
+      {/* ② Typefully 予約キュー */}
+      <TypefullyQueueWidget />
 
       {/* ③ サイトテキスト設定 */}
       <div className="mb-4">
