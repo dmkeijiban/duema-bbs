@@ -1,8 +1,9 @@
 'use client'
 
-import { Suspense, useMemo } from 'react'
+import { Suspense, useMemo, useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { LinkCard } from './LinkCard'
+import { sanitizeSummaryHtml } from '@/lib/summary-content'
 
 // react-tweet は重いので遅延ロード
 const Tweet = dynamic(() => import('react-tweet').then(m => ({ default: m.Tweet })), {
@@ -56,8 +57,40 @@ function normalizeSummaryHtml(html: string): string {
   return next
 }
 
+function splitReadableParagraphs(html: string): string {
+  return html.replace(/<p>([\s\S]*?)<\/p>/gi, (full: string, inner: string) => {
+    const textOnly = inner.replace(/<[^>]+>/g, '').trim()
+    if (textOnly.length < 120 || /<[a-z][\s\S]*>/i.test(inner)) return full
+
+    const sentences = inner
+      .match(/[^。！？!?]+[。！？!?]?/g)
+      ?.map((sentence: string) => sentence.trim())
+      .filter(Boolean)
+
+    if (!sentences || sentences.length < 3) return full
+
+    const groups: string[] = []
+    let current = ''
+
+    for (const sentence of sentences) {
+      const next = current ? `${current}${sentence}` : sentence
+      if (current && next.replace(/<[^>]+>/g, '').length > 150) {
+        groups.push(current)
+        current = sentence
+      } else {
+        current = next
+      }
+    }
+
+    if (current) groups.push(current)
+    if (groups.length < 2) return full
+
+    return groups.map(group => `<p>${group}</p>`).join('\n')
+  })
+}
+
 function parseBody(html: string): React.ReactNode[] {
-  const normalizedHtml = normalizeSummaryHtml(html)
+  const normalizedHtml = splitReadableParagraphs(normalizeSummaryHtml(sanitizeSummaryHtml(html)))
   // DOMParser はブラウザ専用なので、正規表現でマーカーを検出する
   // サーバーサイドレンダリング時はそのまま innerHTML で表示されるので
   // クライアント側だけで動けばよい
@@ -135,35 +168,94 @@ interface Props {
 
 export function SummaryBodyRenderer({ body }: Props) {
   const nodes = useMemo(() => parseBody(body), [body])
+  const [openImage, setOpenImage] = useState<string | null>(null)
+  const closeImage = useCallback(() => setOpenImage(null), [])
+
+  useEffect(() => {
+    if (!openImage) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeImage()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [openImage, closeImage])
 
   return (
-    <div className="summary-body-root">
+    <div
+      className="summary-body-root"
+      onClick={(event) => {
+        const target = event.target as HTMLElement
+        const img = target.closest('.summary-body-html img') as HTMLImageElement | null
+        if (img?.src) setOpenImage(img.src)
+      }}
+    >
       {nodes}
+      {openImage && (
+        <div
+          onClick={closeImage}
+          className="fixed inset-0 z-[9999] bg-black/85 flex items-center justify-center p-3 cursor-zoom-out"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={openImage}
+            alt=""
+            onClick={event => event.stopPropagation()}
+            className="max-w-[96vw] max-h-[92vh] object-contain cursor-default"
+          />
+          <button
+            type="button"
+            onClick={closeImage}
+            className="absolute top-3 right-4 text-white text-3xl leading-none opacity-80"
+            aria-label="閉じる"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <style>{`
+        .summary-body-root {
+          max-width: none;
+          margin: 0;
+        }
         .summary-body-html {
-          font-size: 14px;
-          line-height: 1.8;
+          font-size: 17px;
+          line-height: 1.95;
           color: #1f2937;
-          word-break: break-word;
-          overflow-wrap: anywhere;
+          letter-spacing: 0;
+          word-break: normal;
+          overflow-wrap: break-word;
+          width: 100%;
         }
         .summary-body-html p {
-          margin-bottom: 0.85em;
+          margin: 0 0 1.35em;
+          max-width: none;
         }
         .summary-body-html p:last-child { margin-bottom: 0; }
+        .summary-body-html h1 {
+          font-size: 32px;
+          line-height: 1.35;
+          font-weight: 800;
+          margin: 0 0 28px;
+          max-width: none;
+          color: #111827;
+        }
         .summary-body-html h2 {
-          font-size: 1.2em;
-          font-weight: bold;
-          margin-top: 1.5em;
-          margin-bottom: 0.5em;
-          padding-bottom: 0.3em;
+          font-size: 25px;
+          line-height: 1.45;
+          font-weight: 800;
+          margin: 52px 0 20px;
+          max-width: none;
+          padding: 0 0 8px;
           border-bottom: 2px solid #e5e7eb;
+          color: #111827;
         }
         .summary-body-html h3 {
-          font-size: 1.05em;
-          font-weight: bold;
-          margin-top: 1.2em;
-          margin-bottom: 0.4em;
+          font-size: 21px;
+          line-height: 1.5;
+          font-weight: 700;
+          margin: 34px 0 16px;
+          max-width: none;
+          color: #111827;
         }
         .summary-body-html a {
           color: #2563eb;
@@ -172,21 +264,67 @@ export function SummaryBodyRenderer({ body }: Props) {
         .summary-body-html ul {
           list-style: disc;
           padding-left: 1.5em;
-          margin-bottom: 0.75em;
+          margin: 0 0 1em;
+          max-width: none;
         }
         .summary-body-html ol {
           list-style: decimal;
           padding-left: 1.5em;
-          margin-bottom: 0.75em;
+          margin: 0 0 1em;
+          max-width: none;
         }
         .summary-body-html li { margin-bottom: 0.25em; }
-        .summary-body-html strong { font-weight: bold; }
+        .summary-body-html strong,
+        .summary-body-html .card-name { font-weight: 700; }
         .summary-body-html em { font-style: italic; }
         .summary-body-html img {
-          max-width: 100%;
+          max-width: 340px;
+          width: 100%;
           height: auto;
           display: block;
-          margin: 0.75em 0;
+          margin: 24px auto 34px;
+          border-radius: 10px;
+          cursor: zoom-in;
+        }
+        .summary-body-html figure.card-image {
+          margin: 24px auto 34px;
+          text-align: center;
+        }
+        .summary-body-html figure.card-image img {
+          margin: 0 auto;
+        }
+        @media (max-width: 640px) {
+          .summary-body-root {
+            max-width: none;
+          }
+          .summary-body-html {
+            font-size: 16px;
+            line-height: 1.9;
+          }
+          .summary-body-html p,
+          .summary-body-html h1,
+          .summary-body-html h2,
+          .summary-body-html h3,
+          .summary-body-html ul,
+          .summary-body-html ol {
+            max-width: none;
+          }
+          .summary-body-html h1 {
+            font-size: 26px;
+          }
+          .summary-body-html h2 {
+            font-size: 22px;
+            margin-top: 42px;
+          }
+          .summary-body-html h3 {
+            font-size: 19px;
+          }
+          .summary-body-html p {
+            margin-bottom: 1.25em;
+          }
+          .summary-body-html img {
+            max-width: 300px;
+          }
         }
       `}</style>
     </div>

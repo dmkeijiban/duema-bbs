@@ -27,9 +27,10 @@ export async function POST(req: NextRequest) {
   const { data: existing } = await supabase.from('summaries').select('id').eq('slug', slug).maybeSingle()
   if (existing) return NextResponse.json({ error: 'そのslugは既に使われています' }, { status: 400 })
 
-  // threadIds が指定されていない場合はおすすめスレ（post_count上位）を自動使用
+  // threadIds が未指定の場合はおすすめスレ（post_count上位）を自動使用。
+  // 空配列が明示された場合は、読み物記事としてスレ一覧なしで作る。
   let resolvedIds: number[]
-  if (Array.isArray(threadIds) && threadIds.length > 0) {
+  if (Array.isArray(threadIds)) {
     resolvedIds = threadIds
   } else {
     const { data: top } = await supabase
@@ -43,10 +44,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'スレッドが見つかりません' }, { status: 400 })
   }
 
-  const { data: threads } = await supabase
-    .from('threads')
-    .select('id, title, post_count, image_url, categories(name, color)')
-    .in('id', resolvedIds)
+  const { data: threads } = resolvedIds.length > 0
+    ? await supabase
+        .from('threads')
+        .select('id, title, post_count, image_url, categories(name, color)')
+        .in('id', resolvedIds)
+    : { data: [] }
 
   const threadsJson = resolvedIds.map((id: number, i: number) => {
     const t = (threads ?? []).find((th: { id: number }) => th.id === id)

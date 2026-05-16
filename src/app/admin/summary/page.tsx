@@ -262,7 +262,7 @@ export default function AdminSummaryPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
-      <div className="max-w-3xl mx-auto space-y-4">
+      <div className="max-w-screen-xl mx-auto space-y-4">
         <div className="flex items-center gap-2">
           <Link href="/admin" className="text-xs text-blue-600 hover:underline">← 管理TOP</Link>
           <span className="text-xs text-gray-400">/</span>
