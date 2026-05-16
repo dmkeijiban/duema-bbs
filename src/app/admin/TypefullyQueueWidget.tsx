@@ -1,23 +1,19 @@
 /**
  * TypefullyQueueWidget — サーバーコンポーネント
- * Typefully REST API から予約済み下書き一覧を取得して管理画面に表示する。
+ * Typefully MCP エンドポイント経由で予約済み下書き一覧を取得して管理画面に表示する。
  *
- * Typefully REST API: GET https://api.typefully.com/v1/drafts?filter=scheduled
- * ヘッダー: X-API-KEY: Bearer <token>
+ * MCP エンドポイント: POST https://mcp.typefully.com/mcp
+ * ツール: typefully_list_drafts
+ * ヘッダー: Authorization: Bearer <TYPEFULLY_API_KEY>
  */
 
 interface TypefullyDraft {
-  id: string
-  num_tweets?: number
+  id: number
+  preview?: string
   scheduled_date?: string | null
-  last_tweet_text?: string
-  created_at?: string
-  // MCP 経由で作成したときの X プラットフォーム情報
-  platforms?: {
-    x?: {
-      posts?: Array<{ text?: string }>
-    }
-  }
+  draft_title?: string
+  private_url?: string
+  status?: string
 }
 
 async function fetchScheduledDrafts(): Promise<{
@@ -29,43 +25,88 @@ async function fetchScheduledDrafts(): Promise<{
   const apiKey = process.env.TYPEFULLY_API_KEY
   if (!apiKey) return { ok: false, error: 'TYPEFULLY_API_KEY が未設定です' }
 
-  try {
-    const res = await fetch('https://api.typefully.com/v1/drafts?filter=scheduled', {
-      headers: {
-        'X-API-KEY': `Bearer ${apiKey}`,
+  const socialSetIdStr = process.env.TYPEFULLY_SOCIAL_SET_ID
+  const socialSetId = socialSetIdStr ? Number(socialSetIdStr) : 306286
+
+  const body = {
+    jsonrpc: '2.0',
+    method: 'tools/call',
+    params: {
+      name: 'typefully_list_drafts',
+      arguments: {
+        social_set_id: socialSetId,
+        status: 'scheduled',
+        order_by: 'scheduled_date',
+        limit: 50,
       },
+    },
+    id: 1,
+  }
+
+  try {
+    const res = await fetch('https://mcp.typefully.com/mcp', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+      },
+      body: JSON.stringify(body),
       cache: 'no-store',
     })
 
-    const text = await res.text()
+    const rawText = await res.text()
 
-    if (!res.ok) {
-      return {
-        ok: false,
-        error: `Typefully API ${res.status} ${res.statusText}`,
-        rawSample: text.slice(0, 200),
+    // SSE 形式: "data: {...}" 行をパースする
+    let parsed: Record<string, unknown> | null = null
+    for (const line of rawText.split('\n')) {
+      if (line.startsWith('data: ')) {
+        try {
+          parsed = JSON.parse(line.slice(6))
+          break
+        } catch {
+          // continue
+        }
       }
     }
 
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(text)
-    } catch {
-      return { ok: false, error: 'レスポンスのJSONパース失敗', rawSample: text.slice(0, 200) }
+    if (!parsed) {
+      return {
+        ok: false,
+        error: 'MCP レスポンスのパース失敗',
+        rawSample: rawText.slice(0, 200),
+      }
     }
 
-    // Typefully は配列を直接返す場合と { drafts: [...] } の場合がある
-    const drafts: TypefullyDraft[] = Array.isArray(parsed)
-      ? (parsed as TypefullyDraft[])
-      : ((parsed as Record<string, unknown>)?.drafts as TypefullyDraft[] | undefined) ?? []
+    if (parsed.error) {
+      const err = parsed.error as Record<string, unknown>
+      return { ok: false, error: String(err.message ?? JSON.stringify(err)) }
+    }
 
+    // result.content[0].text に JSON 文字列が入っている
+    const result = parsed.result as Record<string, unknown> | undefined
+    const content = result?.content as Array<{ text?: string }> | undefined
+    const jsonText = content?.[0]?.text
+
+    if (!jsonText) {
+      return { ok: false, error: 'MCP result.content[0].text が空です', rawSample: rawText.slice(0, 200) }
+    }
+
+    let listData: { results?: TypefullyDraft[] }
+    try {
+      listData = JSON.parse(jsonText)
+    } catch {
+      return { ok: false, error: 'MCP inner JSON パース失敗', rawSample: jsonText.slice(0, 200) }
+    }
+
+    const drafts: TypefullyDraft[] = listData.results ?? []
     return { ok: true, drafts }
   } catch (err) {
     return { ok: false, error: String(err) }
   }
 }
 
-/** ISO → JST 表示 "M/D HH:MM" */
+/** ISO UTC → JST 表示 "M/D HH:MM" */
 function formatJst(iso: string): string {
   try {
     return new Date(iso).toLocaleString('ja-JP', {
@@ -78,14 +119,6 @@ function formatJst(iso: string): string {
   } catch {
     return iso
   }
-}
-
-/** 投稿本文の先頭を取得（last_tweet_text もしくは platforms.x.posts[0].text）*/
-function getDraftText(draft: TypefullyDraft): string {
-  if (draft.last_tweet_text) return draft.last_tweet_text
-  const firstPost = draft.platforms?.x?.posts?.[0]
-  if (firstPost?.text) return firstPost.text
-  return '（本文なし）'
 }
 
 export async function TypefullyQueueWidget() {
@@ -123,7 +156,7 @@ export async function TypefullyQueueWidget() {
             </pre>
           )}
           <p className="mt-1 text-[10px] text-red-500">
-            .env.local の TYPEFULLY_API_KEY を確認してください。
+            .env.local の TYPEFULLY_API_KEY / TYPEFULLY_SOCIAL_SET_ID を確認してください。
           </p>
         </div>
       ) : !result.drafts || result.drafts.length === 0 ? (
@@ -131,12 +164,13 @@ export async function TypefullyQueueWidget() {
       ) : (
         <div className="space-y-1">
           {result.drafts.slice(0, 14).map((draft) => {
-            const text = getDraftText(draft)
+            const text = draft.preview ?? '（本文なし）'
             const preview = text.replace(/\n/g, ' ').slice(0, 70) + (text.length > 70 ? '…' : '')
+            const href = draft.private_url ?? 'https://app.typefully.com/'
             return (
               <a
                 key={draft.id}
-                href={`https://app.typefully.com/drafts/${draft.id}`}
+                href={href}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-white border border-gray-200 p-2 flex items-start gap-2 hover:bg-blue-50 transition-colors"
@@ -147,11 +181,6 @@ export async function TypefullyQueueWidget() {
                 <p className="text-xs text-gray-700 flex-1 leading-snug">
                   {preview}
                 </p>
-                {draft.num_tweets && draft.num_tweets > 1 && (
-                  <span className="shrink-0 text-[10px] text-gray-400">
-                    {draft.num_tweets}連投
-                  </span>
-                )}
               </a>
             )
           })}
