@@ -103,8 +103,13 @@ export async function TypefullyQueueWidget() {
           )}
         </h2>
         <div className="flex items-center gap-2">
-          <a href="/admin/x-posts" className="text-xs text-blue-600 hover:underline">
-            X投稿管理 →
+          <a
+            href="https://app.typefully.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-blue-600 hover:underline"
+          >
+            Typefully で管理 →
           </a>
         </div>
       </div>
@@ -129,9 +134,12 @@ export async function TypefullyQueueWidget() {
             const text = getDraftText(draft)
             const preview = text.replace(/\n/g, ' ').slice(0, 70) + (text.length > 70 ? '…' : '')
             return (
-              <div
+              <a
                 key={draft.id}
-                className="bg-white border border-gray-200 p-2 flex items-start gap-2"
+                href={`https://app.typefully.com/drafts/${draft.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-white border border-gray-200 p-2 flex items-start gap-2 hover:bg-blue-50 transition-colors"
               >
                 <span className="shrink-0 text-[10px] px-1.5 py-0.5 border border-blue-300 text-blue-700 bg-blue-50 font-mono whitespace-nowrap">
                   {draft.scheduled_date ? formatJst(draft.scheduled_date) : '日時未設定'}
@@ -144,7 +152,7 @@ export async function TypefullyQueueWidget() {
                     {draft.num_tweets}連投
                   </span>
                 )}
-              </div>
+              </a>
             )
           })}
           {result.drafts.length > 14 && (
