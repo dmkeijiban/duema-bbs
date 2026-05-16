@@ -1,6 +1,5 @@
 import type { MetadataRoute } from 'next'
-
-const siteUrl = 'https://www.duema-bbs.com'
+import { SITE_URL } from '@/lib/site-config'
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -22,6 +21,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: `${siteUrl}/sitemap.xml`,
+    sitemap: `${SITE_URL}/sitemap.xml`,
   }
 }

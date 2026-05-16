@@ -134,6 +134,11 @@ export default async function SummarySlugPage({ params }: Props) {
             description: summary.type === 'manual'
               ? (summary.body ? summary.body.replace(/\n/g, ' ').slice(0, 120) : `${summary.title}。デュエマ掲示板の注目スレッドまとめ。`)
               : `${summary.period_start}〜${summary.period_end}の人気スレッドTOP10まとめ。`,
+            author: {
+              '@type': 'Organization',
+              name: 'デュエマ掲示板',
+              url: BASE_URL,
+            },
             publisher: {
               '@type': 'Organization',
               name: 'デュエマ掲示板',
