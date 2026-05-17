@@ -256,7 +256,7 @@ async function CategoryQuickNav() {
       {categories.map((cat: { id: number; name: string; slug: string; color?: string | null }) => (
         <Link
           key={cat.id}
-          href={`/?category=${cat.slug}`}
+          href={`/category/${cat.slug}`}
           className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold text-white hover:opacity-80 active:opacity-70 transition-opacity"
           style={{ background: cat.color ?? '#6c757d' }}
         >
@@ -331,29 +331,6 @@ export default async function Home({
     <div className="w-full px-0 py-0">
       {/* SEO: スクリーンリーダー・Googleのみ向けH1 */}
       <h1 className="sr-only">デュエマ掲示板 - デュエルマスターズ専門掲示板</h1>
-
-      {/* SEO: WebSite構造化データ（JSON-LD） */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "WebSite",
-            "name": "デュエマ掲示板",
-            "alternateName": "デュエルマスターズ専門掲示板",
-            "url": `${SITE_URL}`,
-            "description": "デュエルマスターズ専門の掲示板。デッキ相談・カード評価・大会情報など。",
-            "potentialAction": {
-              "@type": "SearchAction",
-              "target": {
-                "@type": "EntryPoint",
-                "urlTemplate": `${SITE_URL}/?q={search_term_string}`
-              },
-              "query-input": "required name=search_term_string"
-            }
-          })
-        }}
-      />
 
       <div className="max-w-screen-xl mx-auto px-2 pt-2">
         <Suspense fallback={<RecommendSectionSkeleton />}>
