@@ -124,6 +124,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     }))
 
+    const POSTS_PER_PAGE = 50
     const threadPages: MetadataRoute.Sitemap = threads.map(thread => {
       const count = thread.post_count ?? 0
       const priority = count >= 50 ? 0.9 : count >= 20 ? 0.85 : count >= 10 ? 0.8 : 0.7
@@ -134,6 +135,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority,
       }
     })
+
+    // Paginated thread pages (p2, p3) for threads with enough posts.
+    // These need their own sitemap entries so Googlebot discovers and indexes
+    // unique per-page content (each page is ISR pre-rendered with its own canonical).
+    const paginatedThreadPages: MetadataRoute.Sitemap = []
+    for (const thread of threads) {
+      const count = thread.post_count ?? 0
+      if (count <= POSTS_PER_PAGE) continue
+      const totalPages = Math.ceil(count / POSTS_PER_PAGE)
+      const basePriority = count >= 50 ? 0.8 : 0.7
+      for (let p = 2; p <= Math.min(totalPages, 3); p++) {
+        paginatedThreadPages.push({
+          url: `${BASE_URL}/thread/${thread.id}/p/${p}`,
+          lastModified: thread.last_posted_at ? new Date(thread.last_posted_at) : new Date(),
+          changeFrequency: 'daily' as const,
+          priority: basePriority - 0.1, // slightly lower than page 1
+        })
+      }
+    }
 
     const summaryPages: MetadataRoute.Sitemap = summaries.map(s => ({
       url: `${BASE_URL}/summary/${s.slug}`,
@@ -151,7 +171,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.5,
       }))
 
-    return [...staticPages, ...fixedPageEntries, ...categoryPages, ...threadPages, ...summaryPages]
+    return [...staticPages, ...fixedPageEntries, ...categoryPages, ...threadPages, ...paginatedThreadPages, ...summaryPages]
   } catch {
     return staticPages
   }
