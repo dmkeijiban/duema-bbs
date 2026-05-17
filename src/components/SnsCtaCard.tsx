@@ -37,7 +37,7 @@ export async function SnsCtaCard() {
             <XLogo size={16} />
             <span>Xでフォロー</span>
           </a>
-          <span className="text-[11px] text-gray-500 leading-tight text-center">大会速報・カード情報</span>
+          <span className="text-[11px] text-gray-500 leading-tight text-center">カード情報・デュエマ大喜利開催中</span>
         </div>
 
         {/* YouTube */}
@@ -52,7 +52,7 @@ export async function SnsCtaCard() {
             <YouTubeLogo size={16} />
             <span>チャンネル登録</span>
           </a>
-          <span className="text-[11px] text-gray-500 leading-tight text-center">デュエマ動画を毎週配信</span>
+          <span className="text-[11px] text-gray-500 leading-tight text-center">デュエマ反応集を毎日配信</span>
         </div>
 
         {/* Discord */}

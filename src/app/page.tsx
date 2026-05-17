@@ -339,27 +339,6 @@ export default async function Home({
           <span className="text-xs ml-2 shrink-0">一覧へ</span>
         </Link>
 
-        {/* ── 1A: プライマリ CTA ────────────────────────────────────────
-            初来訪者が「次に何をするか」迷わないよう、最優先導線を1本に絞る。
-            新着スレ一覧へ誘導（primary）＋スレ作成への動線（secondary）。
-            不要なら下の <div>〜</div> ブロックを削除するだけで即リバート可能。 */}
-        <div className="flex items-center gap-2 mb-3">
-          <Link
-            href="/?sort=new"
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-sm rounded transition-colors"
-          >
-            <span>📋</span>
-            <span>まず新着スレを見る</span>
-            <span className="opacity-80">→</span>
-          </Link>
-          <Link
-            href="/?sort=new#inline-new-thread"
-            className="shrink-0 flex items-center justify-center gap-1 px-3 py-2.5 border border-blue-500 text-blue-600 hover:bg-blue-50 active:bg-blue-100 font-semibold text-sm rounded transition-colors"
-          >
-            <span>＋</span>
-            <span>スレを立てる</span>
-          </Link>
-        </div>
       </div>
 
       {/* SortTabs: カテゴリ一覧が必要。スケルトンで正確な高さを維持し CLS 防止 */}
