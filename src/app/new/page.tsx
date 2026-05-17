@@ -10,11 +10,13 @@ export const metadata = {
     description: 'デュエマ（デュエルマスターズ）掲示板の新着スレッド一覧。新しく立てられたスレッドをまとめて確認できます。',
     url: `${SITE_URL}/new`,
     type: 'website' as const,
+    images: [{ url: `${SITE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: '新着スレッド一覧 | デュエマ掲示板' }],
   },
   twitter: {
-    card: 'summary' as const,
+    card: 'summary_large_image' as const,
     title: '新着スレッド一覧 | デュエマ掲示板',
     description: 'デュエマ（デュエルマスターズ）掲示板の新着スレッド一覧。新しく立てられたスレッドをまとめて確認できます。',
+    images: [`${SITE_URL}/default-thumbnail.jpg`],
   },
 }
 
