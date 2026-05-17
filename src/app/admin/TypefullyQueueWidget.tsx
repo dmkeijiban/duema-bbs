@@ -1,9 +1,9 @@
 /**
  * TypefullyQueueWidget — サーバーコンポーネント
- * Typefully REST API で予約済み下書き一覧を取得して管理画面に表示する。
+ * Typefully REST API v2 で予約済み下書き一覧を取得して管理画面に表示する。
  *
- * REST API: GET https://api.typefully.com/v1/drafts/?filter=scheduled
- * ヘッダー: X-API-KEY: Bearer <TYPEFULLY_API_KEY>
+ * REST API: GET https://api.typefully.com/v2/social-sets/{id}/drafts?status=scheduled
+ * ヘッダー: Authorization: Bearer <TYPEFULLY_API_KEY>
  */
 
 interface TypefullyDraft {
@@ -24,11 +24,15 @@ async function fetchScheduledDrafts(): Promise<{
   const apiKey = process.env.TYPEFULLY_API_KEY
   if (!apiKey) return { ok: false, error: 'TYPEFULLY_API_KEY が未設定です' }
 
+  const socialSetId = process.env.TYPEFULLY_SOCIAL_SET_ID
+  if (!socialSetId) return { ok: false, error: 'TYPEFULLY_SOCIAL_SET_ID が未設定です' }
+
   try {
-    const res = await fetch('https://api.typefully.com/v1/drafts/?filter=scheduled&limit=50', {
+    const url = `https://api.typefully.com/v2/social-sets/${socialSetId}/drafts?status=scheduled&order_by=scheduled_date&limit=50`
+    const res = await fetch(url, {
       method: 'GET',
       headers: {
-        'X-API-KEY': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       cache: 'no-store',
     })
@@ -38,7 +42,7 @@ async function fetchScheduledDrafts(): Promise<{
       return { ok: false, error: `HTTP ${res.status}`, rawSample: text.slice(0, 200) }
     }
 
-    let data: { drafts?: TypefullyDraft[]; data?: TypefullyDraft[] }
+    let data: { results?: TypefullyDraft[] }
     try {
       data = await res.json()
     } catch {
@@ -46,14 +50,7 @@ async function fetchScheduledDrafts(): Promise<{
       return { ok: false, error: 'JSON パース失敗', rawSample: text.slice(0, 200) }
     }
 
-    // Typefully REST API は { drafts: [...] } / { data: [...] } / { results: [...] } または配列を返す場合がある
-    const anyData = data as Record<string, unknown>
-    const drafts: TypefullyDraft[] = (
-      anyData.drafts as TypefullyDraft[] | undefined ??
-      anyData.data as TypefullyDraft[] | undefined ??
-      anyData.results as TypefullyDraft[] | undefined ??
-      (Array.isArray(data) ? (data as TypefullyDraft[]) : [])
-    )
+    const drafts: TypefullyDraft[] = data.results ?? []
     return { ok: true, drafts }
   } catch (err) {
     return { ok: false, error: String(err) }
@@ -110,7 +107,7 @@ export async function TypefullyQueueWidget() {
             </pre>
           )}
           <p className="mt-1 text-[10px] text-red-500">
-            .env.local の TYPEFULLY_API_KEY / TYPEFULLY_SOCIAL_SET_ID を確認してください。
+            .env.local の TYPEFULLY_API_KEY (Typefully API キー) / TYPEFULLY_SOCIAL_SET_ID (ソーシャルセットID) を確認してください。
           </p>
         </div>
       ) : !result.drafts || result.drafts.length === 0 ? (
