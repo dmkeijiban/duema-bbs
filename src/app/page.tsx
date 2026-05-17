@@ -387,7 +387,7 @@ export default async function Home({
         {/* ── Step 2: カテゴリクイックナビ ──────────────────────────────
             カテゴリページへの内部リンクを増やし、Googleの巡回効率を上げる。
             削除するだけで即リバート可能。 */}
-        <Suspense fallback={null}>
+        <Suspense fallback={<CategoryQuickNavSkeleton />}>
           <CategoryQuickNav />
         </Suspense>
 
@@ -534,6 +534,22 @@ function TopNoticesSkeleton() {
           <div key={i} style={{ flex: 1, height: 80 }} className="bg-gray-100" />
         ))}
       </div>
+    </div>
+  )
+}
+
+// CategoryQuickNav のスケルトン：fallback={null} だと後続要素が CLS を起こすため
+// 実際のバッジと同じ高さ・gap・mb を持つプレースホルダーで高さを確保する。
+function CategoryQuickNavSkeleton() {
+  return (
+    <div className="flex flex-wrap gap-1.5 mb-2">
+      {[...Array(7)].map((_, i) => (
+        <div
+          key={i}
+          className="h-6 rounded bg-gray-200 animate-pulse"
+          style={{ width: [52, 64, 56, 48, 72, 60, 52][i] }}
+        />
+      ))}
     </div>
   )
 }
