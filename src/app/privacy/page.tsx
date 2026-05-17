@@ -2,9 +2,12 @@ import Link from 'next/link'
 import { getCachedFixedPage } from '@/lib/cached-queries'
 import { renderBlock } from '@/components/FixedPageBlocks'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
+import { SITE_URL } from '@/lib/site-config'
 
 export const metadata = {
   title: 'プライバシーポリシー | デュエマ掲示板',
+  description: 'デュエマ掲示板のプライバシーポリシー。収集情報・利用目的・Cookie・Google Analytics等の取り扱いについて説明します。',
+  alternates: { canonical: `${SITE_URL}/privacy` },
 }
 
 const DEFAULT_PRIVACY = `1. 収集する情報

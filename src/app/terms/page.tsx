@@ -2,9 +2,12 @@ import Link from 'next/link'
 import { getCachedFixedPage } from '@/lib/cached-queries'
 import { renderBlock } from '@/components/FixedPageBlocks'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
+import { SITE_URL } from '@/lib/site-config'
 
 export const metadata = {
   title: '利用規約 | デュエマ掲示板',
+  description: 'デュエマ掲示板の利用規約。禁止事項・免責事項・コンテンツポリシーなど本サービスのルールを定めています。',
+  alternates: { canonical: `${SITE_URL}/terms` },
 }
 
 const DEFAULT_TERMS = `1. はじめに

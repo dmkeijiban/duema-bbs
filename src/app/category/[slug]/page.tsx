@@ -219,13 +219,14 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         {topNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
       </div>
 
-      {/* パンくず */}
+      {/* パンくず + H1 */}
       <div className="max-w-screen-xl mx-auto px-2 mb-1">
         <nav className="text-xs text-gray-600 flex items-center gap-x-1" aria-label="パンくずリスト">
           <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
           <span>{'>'}</span>
           <span>カテゴリ：{category.name}</span>
         </nav>
+        <h1 className="text-sm font-bold text-gray-900 mt-0.5">{category.name} のスレッド一覧</h1>
       </div>
 
       <SortTabs currentSort={sort} currentCategory={slug} categories={categories} basePath={basePath} />
