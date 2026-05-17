@@ -196,18 +196,32 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   return (
     <div className="w-full px-0 py-0">
-      {/* SEO: BreadcrumbList構造化データ（JSON-LD） */}
+      {/* SEO: BreadcrumbList + DiscussionForum構造化データ */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            "itemListElement": [
-              { "@type": "ListItem", "position": 1, "name": "TOP", "item": BASE_URL },
-              { "@type": "ListItem", "position": 2, "name": `カテゴリ『${category.name}』`, "item": `${BASE_URL}/category/${slug}` },
-            ],
-          })
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "TOP", "item": BASE_URL },
+                { "@type": "ListItem", "position": 2, "name": `カテゴリ『${category.name}』`, "item": `${BASE_URL}/category/${slug}` },
+              ],
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "DiscussionForum",
+              "@id": `${BASE_URL}/category/${slug}#forum`,
+              "name": `${category.name} | デュエマ掲示板`,
+              "description": category.description
+                ? `${category.description} — デュエマ掲示板`
+                : `デュエルマスターズ（デュエマ）掲示板の「${category.name}」カテゴリ。`,
+              "url": `${BASE_URL}/category/${slug}`,
+              "inLanguage": "ja",
+              "isPartOf": { "@id": `${BASE_URL}/#website` },
+            },
+          ])
         }}
       />
 

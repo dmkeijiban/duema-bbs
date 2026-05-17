@@ -137,6 +137,10 @@ export async function renderThreadPage(threadId: number, page: number) {
   const currentPageUrl = page <= 1 ? canonicalUrl : `${canonicalUrl}/p/${page}`
   const structuredText = cleanStructuredText(typedThread.body, typedThread.title)
   const structuredImage = typedThread.image_url ? `${baseUrl}/og/thread/${threadId}.jpg` : undefined
+  const categoryForumId = typedThread.categories
+    ? `${baseUrl}/category/${typedThread.categories.slug}#forum`
+    : `${baseUrl}/#forum`
+
   const discussionStructuredData = removeEmptyStructuredData({
     "@context": "https://schema.org",
     "@type": "DiscussionForumPosting",
@@ -146,6 +150,12 @@ export async function renderThreadPage(threadId: number, page: number) {
     "mainEntityOfPage": canonicalUrl,
     "datePublished": typedThread.created_at,
     "dateModified": typedThread.last_posted_at ?? typedThread.created_at,
+    "isPartOf": { "@id": categoryForumId },
+    "publisher": {
+      "@type": "Organization",
+      "@id": `${baseUrl}/#organization`,
+      "name": "デュエマ掲示板",
+    },
     "author": {
       "@type": "Person",
       "name": cleanAuthorName(typedThread.author_name),

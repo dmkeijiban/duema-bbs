@@ -59,6 +59,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'WebSite',
+              '@id': `${SITE_URL}/#website`,
               name: 'デュエマ掲示板',
               alternateName: 'デュエルマスターズ専門掲示板',
               url: SITE_URL,
@@ -66,12 +67,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               inLanguage: 'ja',
               publisher: {
                 '@type': 'Organization',
+                '@id': `${SITE_URL}/#organization`,
                 name: 'デュエマ掲示板',
                 url: SITE_URL,
                 logo: {
                   '@type': 'ImageObject',
                   url: `${SITE_URL}/logo.jpg`,
                 },
+                sameAs: [
+                  snsUrls.x,
+                  snsUrls.youtube,
+                  snsUrls.discord,
+                ].filter(Boolean),
               },
               potentialAction: {
                 '@type': 'SearchAction',
