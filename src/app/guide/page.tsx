@@ -92,6 +92,19 @@ export default async function GuidePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
+              { "@type": "ListItem", "position": 2, "name": "使い方", "item": `${SITE_URL}/guide` },
+            ],
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'FAQPage',
             mainEntity: FAQ_ITEMS.map(item => ({
