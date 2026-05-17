@@ -15,7 +15,6 @@ import { SITE_URL } from '@/lib/site-config'
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
 export const revalidate = 30
-export const dynamic = 'force-static'
 
 const DEFAULT_AUTHOR_NAME = '名無しのデュエリスト'
 

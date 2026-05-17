@@ -6,7 +6,6 @@ interface Props {
 }
 
 export const revalidate = 30
-export const dynamic = 'force-static'
 
 export { generateMetadata } from '../../page'
 
