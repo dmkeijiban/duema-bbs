@@ -22,44 +22,53 @@ export async function SnsCtaCard() {
         </p>
       </div>
 
-      {/* ボタン群 */}
-      <div className="bg-white px-4 py-4 flex flex-col sm:flex-row gap-2.5 justify-center">
+      {/* ボタン群 — 1B: 各ボタンに理由ラベルを追加してクリック動機を補強 */}
+      <div className="bg-white px-4 py-4 flex flex-col sm:flex-row gap-3 justify-center">
 
         {/* X */}
-        <a
-          href={sns.x}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-white text-sm font-bold transition-all duration-150 hover:opacity-85 active:scale-95 shadow-sm"
-          style={{ background: '#000' }}
-        >
-          <XLogo size={16} />
-          <span>Xでフォロー</span>
-        </a>
+        <div className="flex flex-col items-center gap-1">
+          <a
+            href={sns.x}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-white text-sm font-bold transition-all duration-150 hover:opacity-85 active:scale-95 shadow-sm w-full sm:w-auto"
+            style={{ background: '#000' }}
+          >
+            <XLogo size={16} />
+            <span>Xでフォロー</span>
+          </a>
+          <span className="text-[11px] text-gray-500 leading-tight text-center">大会速報・カード情報</span>
+        </div>
 
         {/* YouTube */}
-        <a
-          href={sns.youtube}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-white text-sm font-bold transition-all duration-150 hover:opacity-85 active:scale-95 shadow-sm"
-          style={{ background: '#ff0000' }}
-        >
-          <YouTubeLogo size={16} />
-          <span>チャンネル登録</span>
-        </a>
+        <div className="flex flex-col items-center gap-1">
+          <a
+            href={sns.youtube}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-white text-sm font-bold transition-all duration-150 hover:opacity-85 active:scale-95 shadow-sm w-full sm:w-auto"
+            style={{ background: '#ff0000' }}
+          >
+            <YouTubeLogo size={16} />
+            <span>チャンネル登録</span>
+          </a>
+          <span className="text-[11px] text-gray-500 leading-tight text-center">デュエマ動画を毎週配信</span>
+        </div>
 
         {/* Discord */}
-        <a
-          href={sns.discord}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-white text-sm font-bold transition-all duration-150 hover:opacity-85 active:scale-95 shadow-sm"
-          style={{ background: '#5865F2' }}
-        >
-          <DiscordLogo size={16} />
-          <span>Discordに参加</span>
-        </a>
+        <div className="flex flex-col items-center gap-1">
+          <a
+            href={sns.discord}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-white text-sm font-bold transition-all duration-150 hover:opacity-85 active:scale-95 shadow-sm w-full sm:w-auto"
+            style={{ background: '#5865F2' }}
+          >
+            <DiscordLogo size={16} />
+            <span>Discordに参加</span>
+          </a>
+          <span className="text-[11px] text-gray-500 leading-tight text-center">リアルタイムで対戦相手を募集</span>
+        </div>
 
       </div>
     </div>
