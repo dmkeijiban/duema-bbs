@@ -11,10 +11,22 @@ import { getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThr
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
+import { createPublicClient } from '@/lib/supabase-public'
 
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
 export const revalidate = 30
+
+export async function generateStaticParams() {
+  const supabase = createPublicClient()
+  const { data } = await supabase
+    .from('threads')
+    .select('id')
+    .eq('is_archived', false)
+    .order('post_count', { ascending: false })
+    .limit(100)
+  return (data ?? []).map(t => ({ id: String(t.id) }))
+}
 
 const DEFAULT_AUTHOR_NAME = '名無しのデュエリスト'
 
