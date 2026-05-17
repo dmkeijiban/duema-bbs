@@ -329,6 +329,26 @@ export default async function Home({
 
   return (
     <div className="w-full px-0 py-0">
+      {/* SEO: DiscussionForum構造化データ — Googleにフォームサイトと認識させる */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'DiscussionForum',
+            '@id': `${SITE_URL}/#forum`,
+            name: 'デュエマ掲示板',
+            description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報・環境考察など何でも語ろう。',
+            url: SITE_URL,
+            inLanguage: 'ja',
+            publisher: {
+              '@type': 'Organization',
+              '@id': `${SITE_URL}/#organization`,
+              name: 'デュエマ掲示板',
+            },
+          }),
+        }}
+      />
       {/* SEO: スクリーンリーダー・Googleのみ向けH1 */}
       <h1 className="sr-only">デュエマ掲示板 - デュエルマスターズ専門掲示板</h1>
 
