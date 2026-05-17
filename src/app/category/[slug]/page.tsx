@@ -109,8 +109,29 @@ async function CategoryThreadList({
 
   if (threads.length === 0) return <CategoryThreadEmpty />
 
+  const listName = sort === 'popular' ? `人気スレッド（${category.name}）` : `${category.name} スレッド一覧`
+
   return (
     <>
+      {/* SEO: ItemList構造化データ — カテゴリ内スレッド一覧をGoogleに伝える */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'ItemList',
+            name: listName,
+            url: `${BASE_URL}/category/${category.slug}`,
+            numberOfItems: threads.length,
+            itemListElement: threads.map((thread, i) => ({
+              '@type': 'ListItem',
+              position: (page - 1) * THREAD_PAGE_SIZE + i + 1,
+              name: thread.title,
+              url: `${BASE_URL}/thread/${thread.id}`,
+            })),
+          }),
+        }}
+      />
       {sort === 'popular' && (
         <div className="mb-2 px-3 py-1.5 border border-gray-300 bg-white flex items-baseline gap-2">
           <span className="font-bold text-sm text-gray-800">📊 人気スレッド</span>
