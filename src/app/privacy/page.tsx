@@ -13,11 +13,13 @@ export const metadata = {
     description: 'デュエマ掲示板のプライバシーポリシー。収集情報・利用目的・Cookie・Google Analytics等の取り扱いについて説明します。',
     url: `${SITE_URL}/privacy`,
     type: 'website' as const,
+    images: [{ url: `${SITE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: 'プライバシーポリシー | デュエマ掲示板' }],
   },
   twitter: {
-    card: 'summary' as const,
+    card: 'summary_large_image' as const,
     title: 'プライバシーポリシー | デュエマ掲示板',
     description: 'デュエマ掲示板のプライバシーポリシー。収集情報・利用目的・Cookie・Google Analytics等の取り扱いについて説明します。',
+    images: [`${SITE_URL}/default-thumbnail.jpg`],
   },
 }
 
