@@ -225,10 +225,12 @@ export default async function SummarySlugPage({ params }: Props) {
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'Article',
+            '@id': `${BASE_URL}/summary/${summary.slug}#article`,
             headline: summary.title,
             url: `${BASE_URL}/summary/${summary.slug}`,
             datePublished: summary.created_at,
             dateModified: summary.created_at,
+            isPartOf: { '@id': `${BASE_URL}/#website` },
             description,
             publisher: {
               '@type': 'Organization',
