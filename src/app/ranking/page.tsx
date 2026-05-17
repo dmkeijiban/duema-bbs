@@ -1,9 +1,11 @@
 import { Suspense } from 'react'
-import { createClient } from '@/lib/supabase-server'
+import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadCard } from '@/components/ThreadCard'
 import { RecommendSection } from '@/components/RecommendSection'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { SITE_URL } from '@/lib/site-config'
+
+export const revalidate = 3600
 
 export const metadata = {
   title: '人気スレッドランキング | デュエマ掲示板',
@@ -30,7 +32,7 @@ import Link from 'next/link'
 const PAGE_SIZE = 100
 
 async function RankingList({ page }: { page: number }) {
-  const supabase = await createClient()
+  const supabase = createPublicClient()
   const recentSince = new Date()
   recentSince.setDate(recentSince.getDate() - 3)
   const since = recentSince.toISOString()
