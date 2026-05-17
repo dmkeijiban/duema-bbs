@@ -166,6 +166,18 @@ export async function renderThreadPage(threadId: number, page: number) {
     "text": structuredText,
     "description": structuredText.slice(0, 160),
     "image": structuredImage ? [structuredImage] : undefined,
+    "interactionStatistic": [
+      {
+        "@type": "InteractionCounter",
+        "interactionType": { "@type": "CommentAction" },
+        "userInteractionCount": typedThread.post_count ?? 0,
+      },
+      ...(typedThread.view_count != null ? [{
+        "@type": "InteractionCounter",
+        "interactionType": { "@type": "ViewAction" },
+        "userInteractionCount": typedThread.view_count,
+      }] : []),
+    ],
     "comment": (posts ?? []).map(post => {
       const displayNumber = post.post_number + 1
       const postUrl = currentPageUrl + '#post-' + displayNumber
