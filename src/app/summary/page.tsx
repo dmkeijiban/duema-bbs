@@ -97,6 +97,31 @@ async function SummaryList() {
 
   return (
     <>
+      {/* SEO: CollectionPage + ItemList 構造化データ — まとめ一覧をGoogleに伝える */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'CollectionPage',
+            name: 'まとめ一覧',
+            url: `${SITE_URL}/summary`,
+            description: 'デュエマ（デュエルマスターズ）掲示板の人気記事まとめ・週間ランキング・月間ランキングの一覧。',
+            inLanguage: 'ja',
+            publisher: { '@id': `${SITE_URL}/#organization` },
+            mainEntity: {
+              '@type': 'ItemList',
+              numberOfItems: summaries.length,
+              itemListElement: summaries.map((s, i) => ({
+                '@type': 'ListItem',
+                position: i + 1,
+                name: s.title,
+                url: `${SITE_URL}/summary/${s.slug}`,
+              })),
+            },
+          }),
+        }}
+      />
       {manualSummaries.length > 0 && (
         <section className="mb-4">
           <h2 className="text-sm font-bold text-gray-700 px-2 py-1.5 border border-gray-300 bg-orange-50 mb-2">
