@@ -1,10 +1,9 @@
 /**
  * TypefullyQueueWidget — サーバーコンポーネント
- * Typefully MCP エンドポイント経由で予約済み下書き一覧を取得して管理画面に表示する。
+ * Typefully REST API で予約済み下書き一覧を取得して管理画面に表示する。
  *
- * MCP エンドポイント: POST https://mcp.typefully.com/mcp
- * ツール: typefully_list_drafts
- * ヘッダー: Authorization: Bearer <TYPEFULLY_API_KEY>
+ * REST API: GET https://api.typefully.com/v1/drafts/?filter=scheduled
+ * ヘッダー: X-API-KEY: Bearer <TYPEFULLY_API_KEY>
  */
 
 interface TypefullyDraft {
@@ -25,81 +24,30 @@ async function fetchScheduledDrafts(): Promise<{
   const apiKey = process.env.TYPEFULLY_API_KEY
   if (!apiKey) return { ok: false, error: 'TYPEFULLY_API_KEY が未設定です' }
 
-  const socialSetIdStr = process.env.TYPEFULLY_SOCIAL_SET_ID
-  const socialSetId = socialSetIdStr ? Number(socialSetIdStr) : 306286
-
-  const body = {
-    jsonrpc: '2.0',
-    method: 'tools/call',
-    params: {
-      name: 'typefully_list_drafts',
-      arguments: {
-        social_set_id: socialSetId,
-        status: 'scheduled',
-        order_by: 'scheduled_date',
-        limit: 50,
-      },
-    },
-    id: 1,
-  }
-
   try {
-    const res = await fetch('https://mcp.typefully.com/mcp', {
-      method: 'POST',
+    const res = await fetch('https://api.typefully.com/v1/drafts/?filter=scheduled&limit=50', {
+      method: 'GET',
       headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json, text/event-stream',
+        'X-API-KEY': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(body),
       cache: 'no-store',
     })
 
-    const rawText = await res.text()
-
-    // SSE 形式: "data: {...}" 行をパースする
-    let parsed: Record<string, unknown> | null = null
-    for (const line of rawText.split('\n')) {
-      if (line.startsWith('data: ')) {
-        try {
-          parsed = JSON.parse(line.slice(6))
-          break
-        } catch {
-          // continue
-        }
-      }
+    if (!res.ok) {
+      const text = await res.text()
+      return { ok: false, error: `HTTP ${res.status}`, rawSample: text.slice(0, 200) }
     }
 
-    if (!parsed) {
-      return {
-        ok: false,
-        error: 'MCP レスポンスのパース失敗',
-        rawSample: rawText.slice(0, 200),
-      }
-    }
-
-    if (parsed.error) {
-      const err = parsed.error as Record<string, unknown>
-      return { ok: false, error: String(err.message ?? JSON.stringify(err)) }
-    }
-
-    // result.content[0].text に JSON 文字列が入っている
-    const result = parsed.result as Record<string, unknown> | undefined
-    const content = result?.content as Array<{ text?: string }> | undefined
-    const jsonText = content?.[0]?.text
-
-    if (!jsonText) {
-      return { ok: false, error: 'MCP result.content[0].text が空です', rawSample: rawText.slice(0, 200) }
-    }
-
-    let listData: { results?: TypefullyDraft[] }
+    let data: { drafts?: TypefullyDraft[]; data?: TypefullyDraft[] }
     try {
-      listData = JSON.parse(jsonText)
+      data = await res.json()
     } catch {
-      return { ok: false, error: 'MCP inner JSON パース失敗', rawSample: jsonText.slice(0, 200) }
+      const text = await res.text()
+      return { ok: false, error: 'JSON パース失敗', rawSample: text.slice(0, 200) }
     }
 
-    const drafts: TypefullyDraft[] = listData.results ?? []
+    // Typefully REST API は { drafts: [...] } または配列を返す場合がある
+    const drafts: TypefullyDraft[] = data.drafts ?? data.data ?? (Array.isArray(data) ? (data as TypefullyDraft[]) : [])
     return { ok: true, drafts }
   } catch (err) {
     return { ok: false, error: String(err) }
