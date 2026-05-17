@@ -29,7 +29,7 @@ export function LinkCard({ url }: { url: string }) {
       <a
         href={url}
         target="_blank"
-        rel="noopener noreferrer"
+        rel="nofollow noopener noreferrer"
         className="text-blue-600 underline break-all block my-1 text-sm"
       >
         {url}
@@ -67,7 +67,7 @@ export function LinkCard({ url }: { url: string }) {
     <a
       href={url}
       target="_blank"
-      rel="noopener noreferrer"
+      rel="nofollow noopener noreferrer"
       className="hover:bg-gray-50 transition-colors"
       style={{
         maxWidth: 620,
