@@ -166,6 +166,9 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
                   className="w-full px-2 py-1.5 text-sm resize-y focus:outline-none"
                   style={{ border: '1px solid #80bdff' }}
                 />
+                <div className={`text-right text-[11px] mt-0.5 ${bodyValue.length >= 2800 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                  {bodyValue.length} / 3000
+                </div>
               </td>
             </tr>
             <tr className="border-b border-gray-200">
