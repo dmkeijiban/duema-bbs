@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { createClient } from '@/lib/supabase-server'
+import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadRow } from '@/components/ThreadRow'
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { Pagination } from '@/components/Pagination'
@@ -26,7 +26,7 @@ interface Props {
 }
 
 async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
-  const supabase = await createClient()
+  const supabase = createPublicClient()
   const isArchived = sort === 'archived'
   const basePath = sort === 'recent' ? '/update' : sort === 'new' ? '/new' : sort === 'random' ? '/random' : '/archived'
 
