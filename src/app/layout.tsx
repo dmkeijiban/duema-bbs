@@ -3,6 +3,7 @@ import Script from 'next/script'
 import './globals.css'
 import { Header } from '@/components/Header'
 import { getSnsUrls } from '@/lib/sns-server'
+import { getCachedCategories } from '@/lib/cached-queries'
 import Link from 'next/link'
 import { SITE_URL } from '@/lib/site-config'
 import { Analytics } from '@vercel/analytics/react'
@@ -48,7 +49,7 @@ export const metadata: Metadata = {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const snsUrls = await getSnsUrls()
+  const [snsUrls, categories] = await Promise.all([getSnsUrls(), getCachedCategories()])
   return (
     <html lang="ja" suppressHydrationWarning>
       <head>
@@ -156,7 +157,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <LazyFloatingBar snsUrls={snsUrls} />
           <LazyPostHogBridge />
           <footer className="bg-white border-t border-gray-200 py-4 mt-6">
-            <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-600 space-y-1">
+            <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-600 space-y-2">
+              {categories.length > 0 && (
+                <div className="flex justify-center flex-wrap gap-x-3 gap-y-1">
+                  {categories.map((cat: { id: number; slug: string; name: string }) => (
+                    <Link key={cat.id} href={`/category/${cat.slug}`} className="hover:underline">
+                      {cat.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
               <div className="flex justify-center gap-4">
                 <Link href="/about" className="hover:underline">運営者情報</Link>
                 <Link href="/terms" className="hover:underline">利用規約</Link>

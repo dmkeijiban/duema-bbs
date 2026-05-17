@@ -96,6 +96,8 @@ export async function generateMetadata({ params }: Props) {
       description: metadataDescription,
       url: `${baseUrl}/thread/${id}`,
       type: 'article',
+      publishedTime: thread.created_at,
+      modifiedTime: thread.last_posted_at ?? thread.created_at,
       images: [{ url: ogImageUrl, width: 1200, height: 630, alt: thread.title }],
     },
     twitter: {
