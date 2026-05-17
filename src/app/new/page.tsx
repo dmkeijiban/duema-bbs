@@ -1,6 +1,9 @@
 import { ThreadSortPage } from '@/components/ThreadSortPage'
 import { SITE_URL } from '@/lib/site-config'
 
+// 1分キャッシュ（createPublicClient に切り替えたため ISR が有効）
+export const revalidate = 60
+
 export const metadata = {
   title: '新着スレッド一覧 | デュエマ掲示板',
   description: 'デュエマ（デュエルマスターズ）掲示板の新着スレッド一覧。新しく立てられたスレッドをまとめて確認できます。',
