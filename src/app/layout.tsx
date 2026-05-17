@@ -93,6 +93,41 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           }}
         />
 
+        {/* 構造化データ：Organization 独立エンティティ（WebSite の publisher @id と同一ノード）
+            Google がサイト運営者エンティティをナレッジグラフに登録しやすくなる */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              '@id': `${SITE_URL}/#organization`,
+              name: 'デュエマ掲示板',
+              alternateName: 'デュエルマスターズ掲示板',
+              url: SITE_URL,
+              description: 'デュエルマスターズ（デュエマ）専門の掲示板コミュニティ。デッキ相談・カード評価・大会情報・環境考察など何でも語ろう。',
+              logo: {
+                '@type': 'ImageObject',
+                '@id': `${SITE_URL}/#logo`,
+                url: `${SITE_URL}/logo.jpg`,
+                contentUrl: `${SITE_URL}/logo.jpg`,
+                caption: 'デュエマ掲示板ロゴ',
+              },
+              contactPoint: {
+                '@type': 'ContactPoint',
+                url: `${SITE_URL}/contact`,
+                contactType: 'customer support',
+                availableLanguage: 'Japanese',
+              },
+              sameAs: [
+                snsUrls.x,
+                snsUrls.youtube,
+                snsUrls.discord,
+              ].filter(Boolean),
+            }),
+          }}
+        />
+
         {/* Supabase ストレージへの早期接続でLCPの画像取得を高速化 */}
         <link rel="preconnect" href="https://nodgfukqvuwvgfnlzvnh.supabase.co" />
         <link rel="dns-prefetch" href="https://nodgfukqvuwvgfnlzvnh.supabase.co" />
