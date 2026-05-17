@@ -48,8 +48,19 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical: `${SITE_URL}/category/${cat.slug}` },
-    openGraph: { title, description, url: `${SITE_URL}/category/${cat.slug}` },
-    twitter: { title, description },
+    openGraph: {
+      title,
+      description,
+      url: `${SITE_URL}/category/${cat.slug}`,
+      type: 'website' as const,
+      images: [{ url: `${SITE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: title }],
+    },
+    twitter: {
+      card: 'summary_large_image' as const,
+      title,
+      description,
+      images: [`${SITE_URL}/default-thumbnail.jpg`],
+    },
   }
 }
 
@@ -341,6 +352,7 @@ export default async function Home({
             description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報・環境考察など何でも語ろう。',
             url: SITE_URL,
             inLanguage: 'ja',
+            isPartOf: { '@id': `${SITE_URL}/#website` },
             publisher: {
               '@type': 'Organization',
               '@id': `${SITE_URL}/#organization`,
