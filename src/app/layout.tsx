@@ -128,6 +128,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           }}
         />
 
+        {/* RSS フィード — Googlebot の巡回頻度向上・フィードリーダー対応 */}
+        <link rel="alternate" type="application/rss+xml" title={`${SITE_URL.replace('https://', '')} RSS`} href={`${SITE_URL}/feed.xml`} />
+
         {/* Supabase ストレージへの早期接続でLCPの画像取得を高速化 */}
         <link rel="preconnect" href="https://nodgfukqvuwvgfnlzvnh.supabase.co" />
         <link rel="dns-prefetch" href="https://nodgfukqvuwvgfnlzvnh.supabase.co" />
