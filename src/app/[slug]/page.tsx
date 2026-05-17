@@ -4,9 +4,21 @@ import { getCachedFixedPage } from '@/lib/cached-queries'
 import { renderBlock } from '@/components/FixedPageBlocks'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
+import { createPublicClient } from '@/lib/supabase-public'
+
+export const revalidate = 300
 
 interface Props {
   params: Promise<{ slug: string }>
+}
+
+export async function generateStaticParams() {
+  const supabase = createPublicClient()
+  const { data } = await supabase
+    .from('fixed_pages')
+    .select('slug')
+    .eq('is_published', true)
+  return (data ?? []).map(p => ({ slug: p.slug }))
 }
 
 export async function generateMetadata({ params }: Props) {
