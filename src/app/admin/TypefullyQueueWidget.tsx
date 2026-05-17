@@ -46,8 +46,14 @@ async function fetchScheduledDrafts(): Promise<{
       return { ok: false, error: 'JSON パース失敗', rawSample: text.slice(0, 200) }
     }
 
-    // Typefully REST API は { drafts: [...] } または配列を返す場合がある
-    const drafts: TypefullyDraft[] = data.drafts ?? data.data ?? (Array.isArray(data) ? (data as TypefullyDraft[]) : [])
+    // Typefully REST API は { drafts: [...] } / { data: [...] } / { results: [...] } または配列を返す場合がある
+    const anyData = data as Record<string, unknown>
+    const drafts: TypefullyDraft[] = (
+      anyData.drafts as TypefullyDraft[] | undefined ??
+      anyData.data as TypefullyDraft[] | undefined ??
+      anyData.results as TypefullyDraft[] | undefined ??
+      (Array.isArray(data) ? (data as TypefullyDraft[]) : [])
+    )
     return { ok: true, drafts }
   } catch (err) {
     return { ok: false, error: String(err) }
