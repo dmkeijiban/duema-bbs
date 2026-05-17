@@ -72,10 +72,32 @@ async function RankingList({ page }: { page: number }) {
     )
   }
 
+  const typedThreads = withImages as (Thread & { categories: Category | null })[]
+
   return (
     <>
+      {/* SEO: ItemList構造化データ — ランキング順リストをGoogleに伝える */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "name": "人気スレッドランキング（過去3日間）",
+            "description": "デュエマ掲示板の過去3日間でレス数が多い人気スレッドランキング",
+            "url": `${SITE_URL}/ranking`,
+            "numberOfItems": typedThreads.length,
+            "itemListElement": typedThreads.map((thread, i) => ({
+              "@type": "ListItem",
+              "position": offset + i + 1,
+              "name": thread.title,
+              "url": `${SITE_URL}/thread/${thread.id}`,
+            })),
+          }),
+        }}
+      />
       <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
-        {(withImages as (Thread & { categories: Category | null })[]).map((thread, i) => (
+        {typedThreads.map((thread, i) => (
           <ThreadCard key={thread.id} thread={thread} rank={offset + i + 1} />
         ))}
       </div>
