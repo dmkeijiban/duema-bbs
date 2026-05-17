@@ -30,11 +30,13 @@ export async function generateMetadata({ params }: Props) {
       description,
       url,
       type: 'website' as const,
+      images: [{ url: `${SITE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: `${page.title} | デュエマ掲示板` }],
     },
     twitter: {
-      card: 'summary' as const,
+      card: 'summary_large_image' as const,
       title: `${page.title} | デュエマ掲示板`,
       description,
+      images: [`${SITE_URL}/default-thumbnail.jpg`],
     },
   }
 }
