@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { Post, Thread, Category } from '@/types'
 import { PostItem, renderBody } from './PostItem'
@@ -10,6 +11,11 @@ import { ReportButton } from './ReportButton'
 import { formatDateTimeJP, resolveImageUrl } from '@/lib/utils'
 import { ImageViewer } from './ImageViewer'
 import { getThreadViewerState } from '@/lib/thread-viewer-client'
+
+const InlinePushSubscribeButton = dynamic(
+  () => import('./PushSubscribeButton').then(mod => mod.PushSubscribeButton),
+  { ssr: false },
+)
 
 interface Props {
   posts: Post[]
@@ -89,7 +95,7 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
           </div>
           {thread.image_url && (
             <div className="px-3 pb-2">
-              <ImageViewer src={resolveImageUrl(thread.image_url)!} />
+              <ImageViewer src={resolveImageUrl(thread.image_url)!} alt={thread.title} priority />
             </div>
           )}
         </div>
@@ -134,6 +140,13 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
               次へ
             </Link>
           )}
+        </div>
+      )}
+
+      {!isArchived && (
+        <div className="mt-3 border border-gray-300 bg-white px-3 py-2 text-xs text-gray-700 flex flex-wrap items-center gap-2">
+          <span>このスレの新着レスを通知で受け取る</span>
+          <InlinePushSubscribeButton threadId={threadId} hideWhenSubscribed />
         </div>
       )}
 

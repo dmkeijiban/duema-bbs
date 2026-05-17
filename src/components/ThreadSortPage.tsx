@@ -91,8 +91,8 @@ async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
     return (
       <>
         <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
-          {(threads as (Thread & { categories: Category | null })[]).map((thread) => (
-            <ThreadCard key={thread.id} thread={thread} />
+          {(threads as (Thread & { categories: Category | null })[]).map((thread, index) => (
+            <ThreadCard key={thread.id} thread={thread} priority={index === 0} />
           ))}
         </div>
         <Pagination currentPage={page} totalPages={totalPages} basePath={basePath} />

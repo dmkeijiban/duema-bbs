@@ -5,9 +5,10 @@ import { useState, useEffect, useCallback } from 'react'
 interface Props {
   src: string
   alt?: string
+  priority?: boolean
 }
 
-export function ImageViewer({ src, alt = '添付画像' }: Props) {
+export function ImageViewer({ src, alt = '添付画像', priority = false }: Props) {
   const [open, setOpen] = useState(false)
 
   const close = useCallback(() => setOpen(false), [])
@@ -21,19 +22,14 @@ export function ImageViewer({ src, alt = '添付画像' }: Props) {
 
   return (
     <>
-      {/*
-        CLS対策：
-        - maxWidthを500固定（landscape判定によるwidth変化を廃止）
-        - aspect-ratio: 4/3 で読み込み前からスペース確保
-        - object-fit: contain で縦長画像も正しく表示
-        - background-color でプレースホルダー表示
-      */}
       <div style={{ maxWidth: 500, width: '100%' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
           alt={alt}
-          loading="lazy"
+          loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : 'auto'}
+          decoding="async"
           onClick={() => setOpen(true)}
           style={{
             width: '100%',
@@ -48,7 +44,6 @@ export function ImageViewer({ src, alt = '添付画像' }: Props) {
         />
       </div>
 
-      {/* オーバーレイ拡大 */}
       {open && (
         <div
           onClick={close}
@@ -78,6 +73,7 @@ export function ImageViewer({ src, alt = '添付画像' }: Props) {
           />
           <button
             onClick={close}
+            aria-label="閉じる"
             style={{
               position: 'absolute',
               top: 12,
@@ -91,7 +87,7 @@ export function ImageViewer({ src, alt = '添付画像' }: Props) {
               opacity: 0.8,
             }}
           >
-            ✕
+            ×
           </button>
         </div>
       )}

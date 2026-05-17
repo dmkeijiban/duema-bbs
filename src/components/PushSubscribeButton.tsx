@@ -5,13 +5,14 @@ import { saveSubscription, deleteSubscription } from '@/app/actions/push-subscri
 
 interface Props {
   threadId: number
+  hideWhenSubscribed?: boolean
 }
 
 type PermissionState = 'default' | 'granted' | 'denied' | 'unsupported'
 
 const STORAGE_KEY = (threadId: number) => `push_sub_${threadId}`
 
-export function PushSubscribeButton({ threadId }: Props) {
+export function PushSubscribeButton({ threadId, hideWhenSubscribed = false }: Props) {
   const [permission, setPermission] = useState<PermissionState>(() => {
     if (typeof window === 'undefined') return 'default'
     if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -31,6 +32,7 @@ export function PushSubscribeButton({ threadId }: Props) {
   const [message, setMessage] = useState('')
 
   if (permission === 'unsupported') return null
+  if (hideWhenSubscribed && subscribed) return null
   if (permission === 'denied') {
     return (
       <span className="text-xs text-gray-400">
