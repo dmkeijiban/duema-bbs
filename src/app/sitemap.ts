@@ -63,6 +63,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 0.6,
     },
+    {
+      url: `${BASE_URL}/random`,
+      lastModified: new Date(),
+      changeFrequency: 'hourly',
+      priority: 0.5,
+    },
   ]
 
   try {
@@ -70,8 +76,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const [threadsResult, categoriesResult, summariesResult, fixedPagesResult] = await Promise.allSettled([
       supabase
         .from('threads')
-        .select('id, last_posted_at')
+        .select('id, last_posted_at, post_count')
         .eq('is_archived', false)
+        .gte('post_count', 3)
         .order('last_posted_at', { ascending: false })
         .limit(2000),
       supabase
@@ -106,12 +113,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     }))
 
-    const threadPages: MetadataRoute.Sitemap = threads.map(thread => ({
-      url: `${BASE_URL}/thread/${thread.id}`,
-      lastModified: thread.last_posted_at ? new Date(thread.last_posted_at) : new Date(),
-      changeFrequency: 'daily' as const,
-      priority: 0.8,
-    }))
+    const threadPages: MetadataRoute.Sitemap = threads.map(thread => {
+      const count = thread.post_count ?? 0
+      const priority = count >= 50 ? 0.9 : count >= 20 ? 0.85 : count >= 10 ? 0.8 : 0.7
+      return {
+        url: `${BASE_URL}/thread/${thread.id}`,
+        lastModified: thread.last_posted_at ? new Date(thread.last_posted_at) : new Date(),
+        changeFrequency: 'daily' as const,
+        priority,
+      }
+    })
 
     const summaryPages: MetadataRoute.Sitemap = summaries.map(s => ({
       url: `${BASE_URL}/summary/${s.slug}`,
