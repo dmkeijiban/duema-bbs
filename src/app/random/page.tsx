@@ -10,11 +10,13 @@ export const metadata = {
     description: 'デュエマ（デュエルマスターズ）掲示板のスレッドをランダムに表示します。思わぬ話題のスレッドに出会えるかも。',
     url: `${SITE_URL}/random`,
     type: 'website' as const,
+    images: [{ url: `${SITE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: 'ランダム | デュエマ掲示板' }],
   },
   twitter: {
-    card: 'summary' as const,
+    card: 'summary_large_image' as const,
     title: 'ランダム | デュエマ掲示板',
     description: 'デュエマ（デュエルマスターズ）掲示板のスレッドをランダムに表示します。思わぬ話題のスレッドに出会えるかも。',
+    images: [`${SITE_URL}/default-thumbnail.jpg`],
   },
 }
 
