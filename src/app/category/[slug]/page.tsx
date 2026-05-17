@@ -33,6 +33,11 @@ interface Props {
   searchParams: Promise<{ sort?: string; page?: string }>
 }
 
+export async function generateStaticParams() {
+  const cats = await getCachedCategories()
+  return cats.map(c => ({ slug: c.slug }))
+}
+
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
   const cats = await getCachedCategories()
