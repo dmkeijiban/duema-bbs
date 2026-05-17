@@ -127,8 +127,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const summaryPages: MetadataRoute.Sitemap = summaries.map(s => ({
       url: `${BASE_URL}/summary/${s.slug}`,
       lastModified: s.created_at ? new Date(s.created_at) : new Date(),
-      changeFrequency: 'never' as const,
-      priority: 0.5,
+      changeFrequency: 'monthly' as const,
+      priority: 0.6,
     }))
 
     const fixedPageEntries: MetadataRoute.Sitemap = fixedPages
