@@ -76,14 +76,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const [threadsResult, categoriesResult, summariesResult, fixedPagesResult] = await Promise.allSettled([
       supabase
         .from('threads')
-        .select('id, last_posted_at, post_count')
+        .select('id, last_posted_at, post_count, category_id')
         .eq('is_archived', false)
         .gte('post_count', 3)
         .order('last_posted_at', { ascending: false })
         .limit(2000),
       supabase
         .from('categories')
-        .select('slug')
+        .select('id, slug')
         .order('sort_order'),
       supabase
         .from('summaries')
@@ -106,9 +106,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // 静的ページと重複するスラッグは除外（terms, privacy, contact, guide など）
     const staticSlugs = new Set(['terms', 'privacy', 'contact', 'guide'])
 
+    // カテゴリごとの最終投稿日時マップを構築（正確な lastModified のため）
+    const categoryLastPosted = new Map<number, Date>()
+    for (const t of threads) {
+      if (t.category_id == null) continue
+      const existing = categoryLastPosted.get(t.category_id)
+      const date = t.last_posted_at ? new Date(t.last_posted_at) : null
+      if (date && (!existing || date > existing)) {
+        categoryLastPosted.set(t.category_id, date)
+      }
+    }
+
     const categoryPages: MetadataRoute.Sitemap = categories.map(cat => ({
       url: `${BASE_URL}/category/${cat.slug}`,
-      lastModified: new Date(),
+      lastModified: categoryLastPosted.get(cat.id) ?? new Date(),
       changeFrequency: 'hourly' as const,
       priority: 0.9,
     }))
