@@ -2,13 +2,13 @@ import type { Metadata } from 'next'
 import Script from 'next/script'
 import './globals.css'
 import { Header } from '@/components/Header'
-import { SnsFloatingBar } from '@/components/SnsFloatingBar'
 import { getSnsUrls } from '@/lib/sns-server'
 import Link from 'next/link'
 import { SITE_URL } from '@/lib/site-config'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
-import { PostHogEventBridge } from '@/components/PostHogEventBridge'
+// TBT削減: Client Component ラッパー経由で ssr:false dynamic import を使用
+import { LazyFloatingBar, LazyPostHogBridge } from '@/components/LazyClientComponents'
 
 const GA_ID = 'G-HDGDNYNMH4'
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY
@@ -130,8 +130,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-screen flex flex-col antialiased" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
           <Header />
           <main className="flex-1">{children}</main>
-          <SnsFloatingBar snsUrls={snsUrls} />
-          <PostHogEventBridge />
+          <LazyFloatingBar snsUrls={snsUrls} />
+          <LazyPostHogBridge />
           <footer className="bg-white border-t border-gray-200 py-4 mt-6">
             <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-600 space-y-1">
               <div className="flex justify-center gap-4">

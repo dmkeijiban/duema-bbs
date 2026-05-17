@@ -6,8 +6,14 @@ import { createPost } from '@/app/actions/thread'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { SettingEditButton } from './SettingEditButton'
-import { PushSubscribeButton } from './PushSubscribeButton'
+import dynamic from 'next/dynamic'
 import { capturePostHogEvent } from '@/lib/posthog-events'
+
+// TBT削減: localStorageアクセスとServiceWorker登録JSを初期バンドルから除外
+const PushSubscribeButton = dynamic(
+  () => import('./PushSubscribeButton').then(m => m.PushSubscribeButton),
+  { ssr: false }
+)
 
 const POSTS_PER_PAGE = 50
 
