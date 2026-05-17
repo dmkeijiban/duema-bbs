@@ -88,7 +88,7 @@ export async function TypefullyQueueWidget() {
         </h2>
         <div className="flex items-center gap-2">
           <a
-            href="https://app.typefully.com/"
+            href="https://typefully.com/"
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-blue-600 hover:underline"
@@ -117,7 +117,7 @@ export async function TypefullyQueueWidget() {
           {result.drafts.slice(0, 14).map((draft) => {
             const text = draft.preview ?? '（本文なし）'
             const preview = text.replace(/\n/g, ' ').slice(0, 70) + (text.length > 70 ? '…' : '')
-            const href = draft.private_url ?? 'https://app.typefully.com/'
+            const href = draft.private_url ?? 'https://typefully.com/'
             return (
               <a
                 key={draft.id}
