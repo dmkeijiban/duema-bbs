@@ -25,8 +25,33 @@ import {
   POPULAR_PAGE_SIZE,
 } from '@/lib/cached-queries'
 import { SITE_URL } from '@/lib/site-config'
+import type { Metadata } from 'next'
 
 export const revalidate = 60
+
+// ── Step 5: カテゴリフィルター時のメタデータ動的生成
+// ?category=slug でアクセスされたとき、タイトル・descriptionを
+// カテゴリ固有の内容にして検索エンジンへの情報密度を上げる。
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>
+}): Promise<Metadata> {
+  const params = await searchParams
+  if (!params.category) return {}
+  const cats = await getCachedCategories()
+  const cat = cats.find(c => c.slug === params.category)
+  if (!cat) return {}
+  const title = `${cat.name} | デュエマ掲示板`
+  const description = `デュエマ掲示板の「${cat.name}」カテゴリ。デュエルマスターズに関するスレッドを投稿・閲覧できます。`
+  return {
+    title,
+    description,
+    alternates: { canonical: `${SITE_URL}/category/${cat.slug}` },
+    openGraph: { title, description, url: `${SITE_URL}/category/${cat.slug}` },
+    twitter: { title, description },
+  }
+}
 
 interface SearchParams {
   category?: string
