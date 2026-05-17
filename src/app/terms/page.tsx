@@ -8,6 +8,17 @@ export const metadata = {
   title: '利用規約 | デュエマ掲示板',
   description: 'デュエマ掲示板の利用規約。禁止事項・免責事項・コンテンツポリシーなど本サービスのルールを定めています。',
   alternates: { canonical: `${SITE_URL}/terms` },
+  openGraph: {
+    title: '利用規約 | デュエマ掲示板',
+    description: 'デュエマ掲示板の利用規約。禁止事項・免責事項・コンテンツポリシーなど本サービスのルールを定めています。',
+    url: `${SITE_URL}/terms`,
+    type: 'website' as const,
+  },
+  twitter: {
+    card: 'summary' as const,
+    title: '利用規約 | デュエマ掲示板',
+    description: 'デュエマ掲示板の利用規約。禁止事項・免責事項・コンテンツポリシーなど本サービスのルールを定めています。',
+  },
 }
 
 const DEFAULT_TERMS = `1. はじめに
@@ -85,6 +96,20 @@ export default async function TermsPage() {
 
   return (
     <div className="max-w-screen-xl mx-auto px-3 py-4 text-sm">
+      {/* SEO: BreadcrumbList構造化データ */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
+              { "@type": "ListItem", "position": 2, "name": "利用規約", "item": `${SITE_URL}/terms` },
+            ],
+          }),
+        }}
+      />
       <nav className="text-xs text-gray-500 mb-4 flex items-center gap-2">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
         <span>{'>'}</span>

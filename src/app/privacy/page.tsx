@@ -8,6 +8,17 @@ export const metadata = {
   title: 'プライバシーポリシー | デュエマ掲示板',
   description: 'デュエマ掲示板のプライバシーポリシー。収集情報・利用目的・Cookie・Google Analytics等の取り扱いについて説明します。',
   alternates: { canonical: `${SITE_URL}/privacy` },
+  openGraph: {
+    title: 'プライバシーポリシー | デュエマ掲示板',
+    description: 'デュエマ掲示板のプライバシーポリシー。収集情報・利用目的・Cookie・Google Analytics等の取り扱いについて説明します。',
+    url: `${SITE_URL}/privacy`,
+    type: 'website' as const,
+  },
+  twitter: {
+    card: 'summary' as const,
+    title: 'プライバシーポリシー | デュエマ掲示板',
+    description: 'デュエマ掲示板のプライバシーポリシー。収集情報・利用目的・Cookie・Google Analytics等の取り扱いについて説明します。',
+  },
 }
 
 const DEFAULT_PRIVACY = `1. 収集する情報
@@ -50,6 +61,20 @@ export default async function PrivacyPage() {
 
   return (
     <div className="max-w-screen-xl mx-auto px-3 py-4 text-sm">
+      {/* SEO: BreadcrumbList構造化データ */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
+              { "@type": "ListItem", "position": 2, "name": "プライバシーポリシー", "item": `${SITE_URL}/privacy` },
+            ],
+          }),
+        }}
+      />
       <nav className="text-xs text-gray-500 mb-4 flex items-center gap-2">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
         <span>{'>'}</span>
