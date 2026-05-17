@@ -115,6 +115,51 @@ export default async function GuidePage() {
           }),
         }}
       />
+      {/* HowTo schema — ステップガイドとしてリッチリザルト候補に */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'HowTo',
+            name: 'デュエマ掲示板の使い方',
+            description: 'デュエマ掲示板でスレッドを立てる・レスを付ける・お気に入り登録する手順を解説します。',
+            url: `${SITE_URL}/guide`,
+            step: [
+              {
+                '@type': 'HowToStep',
+                name: 'スレッドを立てる',
+                text: 'トップページ右上または一覧上部の「スレッドを立てる」ボタンをクリックし、タイトル（2〜100文字）・本文（5〜5000文字）・カテゴリ（任意）・画像（任意）を入力して投稿します。',
+                url: `${SITE_URL}/guide#create-thread`,
+              },
+              {
+                '@type': 'HowToStep',
+                name: 'レスを付ける',
+                text: 'スレッドを開いて、下部の返信フォームに本文・ハンドルネーム（任意）・画像（任意）を入力して送信します。',
+                url: `${SITE_URL}/guide#reply`,
+              },
+              {
+                '@type': 'HowToStep',
+                name: 'アンカー（引用）を使う',
+                text: 'レス番号（▶1, ▶2 ...）をクリックすると返信フォームに >>N が自動挿入されます。本文中の >>N をクリックするとそのレスにジャンプできます。',
+                url: `${SITE_URL}/guide#anchor`,
+              },
+              {
+                '@type': 'HowToStep',
+                name: '画像・動画を貼る',
+                text: '画像ファイル（JPEG/PNG/GIF/WebP、最大10MB）を直接添付できます。YouTubeやX（Twitter）のURLを単独行に貼ると自動埋め込みされます。',
+                url: `${SITE_URL}/guide#media`,
+              },
+              {
+                '@type': 'HowToStep',
+                name: 'お気に入り登録する',
+                text: 'スレッドタイトル横の☆ボタンでお気に入り登録できます。登録したスレッドは「個人設定」から一覧確認できます。',
+                url: `${SITE_URL}/guide#favorite`,
+              },
+            ],
+          }),
+        }}
+      />
       <nav className="text-xs text-gray-500 mb-4 flex items-center gap-2">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
         <span>{'>'}</span>

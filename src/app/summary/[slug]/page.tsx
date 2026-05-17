@@ -228,9 +228,11 @@ export default async function SummarySlugPage({ params }: Props) {
             headline: summary.title,
             url: `${BASE_URL}/summary/${summary.slug}`,
             datePublished: summary.created_at,
+            dateModified: summary.created_at,
             description,
             publisher: {
               '@type': 'Organization',
+              '@id': `${BASE_URL}/#organization`,
               name: 'デュエマ掲示板',
               url: BASE_URL,
             },
