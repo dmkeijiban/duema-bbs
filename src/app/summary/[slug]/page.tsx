@@ -15,7 +15,6 @@ import { SummaryCommentSection, SummaryComment } from '@/components/SummaryComme
 import { summaryTextExcerpt, sanitizeSummaryHtml } from '@/lib/summary-content'
 
 export const revalidate = 3600
-export const dynamic = 'force-dynamic'
 
 interface SummaryThread {
   id: number

@@ -7,7 +7,6 @@ import { Metadata } from 'next'
 import { SITE_URL } from '@/lib/site-config'
 
 export const revalidate = 3600
-export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'まとめ一覧 | デュエマ掲示板',
