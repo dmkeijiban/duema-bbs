@@ -45,6 +45,17 @@ interface Props {
   params: Promise<{ slug: string }>
 }
 
+export async function generateStaticParams() {
+  const supabase = createPublicClient()
+  const { data } = await supabase
+    .from('summaries')
+    .select('slug')
+    .eq('published', true)
+    .order('created_at', { ascending: false })
+    .limit(100)
+  return (data ?? []).map(s => ({ slug: s.slug }))
+}
+
 async function getSummary(slug: string): Promise<Summary | null> {
   const supabase = createPublicClient()
   const { data } = await supabase
