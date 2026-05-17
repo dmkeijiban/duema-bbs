@@ -222,6 +222,26 @@ async function BotNoticesServer() {
   return <>{bot.map(n => <NoticeBlock key={n.id} notice={n} />)}</>
 }
 
+// ── Step 2: カテゴリクイックナビ（カテゴリページへの内部リンク強化）
+async function CategoryQuickNav() {
+  const categories = await getCachedCategories()
+  if (categories.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-1.5 mb-2">
+      {categories.map((cat: { id: number; name: string; slug: string; color?: string | null }) => (
+        <Link
+          key={cat.id}
+          href={`/?category=${cat.slug}`}
+          className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold text-white hover:opacity-80 active:opacity-70 transition-opacity"
+          style={{ background: cat.color ?? '#6c757d' }}
+        >
+          {cat.name}
+        </Link>
+      ))}
+    </div>
+  )
+}
+
 // ── SortTabs（カテゴリ取得後に差し替え）
 // パンくずリストも同じカテゴリデータを使うためここに含める。
 async function SortTabsServer({ params }: { params: SearchParams }) {
@@ -338,6 +358,13 @@ export default async function Home({
           <span>📊 人気スレッドまとめ（週間・月間ランキング）</span>
           <span className="text-xs ml-2 shrink-0">一覧へ</span>
         </Link>
+
+        {/* ── Step 2: カテゴリクイックナビ ──────────────────────────────
+            カテゴリページへの内部リンクを増やし、Googleの巡回効率を上げる。
+            削除するだけで即リバート可能。 */}
+        <Suspense fallback={null}>
+          <CategoryQuickNav />
+        </Suspense>
 
       </div>
 
