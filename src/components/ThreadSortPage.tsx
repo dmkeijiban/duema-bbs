@@ -167,7 +167,7 @@ export async function ThreadSortPage({ sort, title, icon, page = 1 }: Props) {
         </nav>
 
         <div className="mb-2 px-3 py-1.5 border border-gray-300 bg-white flex items-baseline gap-2">
-          <span className="font-bold text-sm text-gray-800">{icon} {title}</span>
+          <h1 className="font-bold text-sm text-gray-800">{icon} {title}</h1>
         </div>
       </div>
 
