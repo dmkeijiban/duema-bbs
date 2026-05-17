@@ -225,6 +225,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
               "url": `${BASE_URL}/category/${slug}`,
               "inLanguage": "ja",
               "isPartOf": { "@id": `${BASE_URL}/#website` },
+              "publisher": { "@id": `${BASE_URL}/#organization` },
             },
           ])
         }}
