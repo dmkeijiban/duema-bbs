@@ -46,6 +46,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     },
     {
+      url: `${BASE_URL}/update`,
+      lastModified: new Date(),
+      changeFrequency: 'hourly',
+      priority: 0.7,
+    },
+    {
+      url: `${BASE_URL}/new`,
+      lastModified: new Date(),
+      changeFrequency: 'hourly',
+      priority: 0.7,
+    },
+    {
       url: `${BASE_URL}/summary`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
@@ -55,7 +67,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const supabase = createPublicClient()
-    const [threadsResult, categoriesResult, summariesResult] = await Promise.allSettled([
+    const [threadsResult, categoriesResult, summariesResult, fixedPagesResult] = await Promise.allSettled([
       supabase
         .from('threads')
         .select('id, last_posted_at')
@@ -72,11 +84,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .eq('published', true)
         .order('created_at', { ascending: false })
         .limit(100),
+      supabase
+        .from('fixed_pages')
+        .select('slug')
+        .eq('is_published', true)
+        .order('sort_order'),
     ])
 
     const threads = threadsResult.status === 'fulfilled' ? (threadsResult.value.data ?? []) : []
     const categories = categoriesResult.status === 'fulfilled' ? (categoriesResult.value.data ?? []) : []
     const summaries = summariesResult.status === 'fulfilled' ? (summariesResult.value.data ?? []) : []
+    const fixedPages = fixedPagesResult.status === 'fulfilled' ? (fixedPagesResult.value.data ?? []) : []
+
+    // 静的ページと重複するスラッグは除外（terms, privacy, contact, guide など）
+    const staticSlugs = new Set(['terms', 'privacy', 'contact', 'guide'])
 
     const categoryPages: MetadataRoute.Sitemap = categories.map(cat => ({
       url: `${BASE_URL}/category/${cat.slug}`,
@@ -99,7 +120,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.5,
     }))
 
-    return [...staticPages, ...categoryPages, ...threadPages, ...summaryPages]
+    const fixedPageEntries: MetadataRoute.Sitemap = fixedPages
+      .filter(p => !staticSlugs.has(p.slug))
+      .map(p => ({
+        url: `${BASE_URL}/${p.slug}`,
+        lastModified: new Date(),
+        changeFrequency: 'monthly' as const,
+        priority: 0.5,
+      }))
+
+    return [...staticPages, ...fixedPageEntries, ...categoryPages, ...threadPages, ...summaryPages]
   } catch {
     return staticPages
   }
