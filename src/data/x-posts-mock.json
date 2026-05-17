@@ -1,0 +1,292 @@
+[
+  {
+    "id": 1,
+    "date": "2026-05-18",
+    "slot": "07:00",
+    "postType": "win",
+    "text": "デュエマで\n「一番名前がかっこいい」\nカードを言えた人が優勝🏆\n\n#デュエマ\n#デュエマ好きと繋がりたい",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 2,
+    "date": "2026-05-18",
+    "slot": "12:00",
+    "postType": "roujinkai",
+    "text": "デュエマの「昔は強かったのに今は完全に忘れられた」カード選手権を開催します。\n\nDMPの人はリポスト・フォローお願いします。\n毎晩22時開催です。\n\n#デュエマ\n#デュエマ好きと繋がりたい",
+    "imageUrl": null,
+    "status": "typefully_drafted",
+    "sentToTypefully": true
+  },
+  {
+    "id": 3,
+    "date": "2026-05-18",
+    "slot": "19:00",
+    "postType": "giron",
+    "text": "デュエマって「強いデッキを使う人」と「好きなカードを使う人」どっちが正しいと思う？",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 4,
+    "date": "2026-05-18",
+    "slot": "22:00",
+    "postType": "share",
+    "text": "今日の選手権、盛り上がりすぎた🔥\nコメントで教えてくれた皆ありがとう！\n\n長い考察は掲示板でどうぞ👇\nhttps://duema-bbs.com",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 5,
+    "date": "2026-05-19",
+    "slot": "07:00",
+    "postType": "win",
+    "text": "デュエマで\n「小学生のとき絶対持ってた」\nカードを言えた人が優勝🏆\n\n#デュエマ\n#デュエマ好きと繋がりたい",
+    "imageUrl": null,
+    "status": "scheduled",
+    "sentToTypefully": true
+  },
+  {
+    "id": 6,
+    "date": "2026-05-19",
+    "slot": "12:00",
+    "postType": "kurekore",
+    "text": "デュエマの「黒歴史デッキ」選手権を開催します。\n\n「あの頃なんでこれ使ってたんだろ…」ってやつ教えてください👇\n\n#デュエマ\n#デュエマ好きと繋がりたい",
+    "imageUrl": null,
+    "status": "scheduled",
+    "sentToTypefully": true
+  },
+  {
+    "id": 7,
+    "date": "2026-05-19",
+    "slot": "19:00",
+    "postType": "iwakan",
+    "text": "デュエマって最近のカードより昔のカードのほうがイラストが好きって人多い説",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 8,
+    "date": "2026-05-20",
+    "slot": "07:00",
+    "postType": "win",
+    "text": "デュエマで\n「友達の家で初めて見てビビった」\nカードを言えた人が優勝🏆\n\n#デュエマ\n#デュエマ好きと繋がりたい",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 9,
+    "date": "2026-05-20",
+    "slot": "12:00",
+    "postType": "silhouette",
+    "text": "このカードのシルエット、分かる人いますか？👴\n\nヒント：文明は闇",
+    "imageUrl": "/logo.jpg",
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 10,
+    "date": "2026-05-20",
+    "slot": "22:00",
+    "postType": "share",
+    "text": "今日のシルエット問題、みんな正解できた？\n答えは掲示板スレに書いてます👇\nhttps://duema-bbs.com",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 11,
+    "date": "2026-05-21",
+    "slot": "07:00",
+    "postType": "win",
+    "text": "デュエマで\n「引退しようと思った瞬間」\nを言えた人が優勝🏆\n\n#デュエマ\n#デュエマ好きと繋がりたい",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 12,
+    "date": "2026-05-21",
+    "slot": "07:00",
+    "postType": "win",
+    "text": "デュエマで「めちゃくちゃ好きだったけど誰にも言えなかった」カードを言えた人が優勝🏆",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 13,
+    "date": "2026-05-21",
+    "slot": "12:00",
+    "postType": "roujinkai",
+    "text": "デュエマの「デッキに絶対入れてた地雷カード」選手権を開催します。\n\nコメントで教えてください👇\n\n#デュエマ\n#デュエマ好きと繋がりたい",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 14,
+    "date": "2026-05-21",
+    "slot": "19:00",
+    "postType": "giron",
+    "text": "デュエマってターン1制限が増えすぎてスローになった説、どう思う？",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 15,
+    "date": "2026-05-21",
+    "slot": "22:00",
+    "postType": "share",
+    "text": "今日も22時の選手権にたくさんのコメントありがとうございます🙏\n\n語りきれない考察は掲示板で↓\nhttps://duema-bbs.com",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 16,
+    "date": "2026-05-22",
+    "slot": "07:00",
+    "postType": "win",
+    "text": "デュエマで\n「絶対強いと思って買ったのに全然使えなかった」\nカードを言えた人が優勝🏆\n\n#デュエマ\n#デュエマ好きと繋がりたい",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 17,
+    "date": "2026-05-22",
+    "slot": "12:00",
+    "postType": "roujinkai",
+    "text": "デュエマの「20番目くらいに弱いカード」選手権を開催します。\n\nDMPの人はリポスト・フォローお願いします。\n毎晩22時開催です。\n\n#デュエマ\n#デュエマ好きと繋がりたい",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 18,
+    "date": "2026-05-22",
+    "slot": "19:00",
+    "postType": "iwakan",
+    "text": "デュエマって「シールド・トリガー」をめくった瞬間が一番ドキドキするよな\n\nわかる人🙋",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 19,
+    "date": "2026-05-22",
+    "slot": "22:00",
+    "postType": "share",
+    "text": "選手権の結果発表です🏆\n\n優勝カードは掲示板スレで確認できます👇\nhttps://duema-bbs.com",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 20,
+    "date": "2026-05-23",
+    "slot": "07:00",
+    "postType": "win",
+    "text": "デュエマで\n「一番思い出に残ってる対戦相手のデッキ」\nを言えた人が優勝🏆\n\n#デュエマ\n#デュエマ好きと繋がりたい",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 21,
+    "date": "2026-05-23",
+    "slot": "19:00",
+    "postType": "giron",
+    "text": "デュエマって「引退した友達と一緒に復帰」した人、結構いそうな気がする\n\nいる？",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 22,
+    "date": "2026-05-24",
+    "slot": "07:00",
+    "postType": "win",
+    "text": "デュエマで\n「今でも持ってる思い出のカード」\nを言えた人が優勝🏆\n\n#デュエマ\n#デュエマ好きと繋がりたい",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 23,
+    "date": "2026-05-24",
+    "slot": "12:00",
+    "postType": "roujinkai",
+    "text": "デュエマの「一番惜しいカード（あと少しで強かった）」選手権を開催します。\n\nコメントで教えてください👇\n\n#デュエマ\n#デュエマ好きと繋がりたい",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 24,
+    "date": "2026-05-24",
+    "slot": "19:00",
+    "postType": "kouton",
+    "text": "【高騰情報】ボルバル・ザーク（シークレット）が先週比+3,000円↑\n\nオリパ・シングル狙ってる人は注意です",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 25,
+    "date": "2026-05-24",
+    "slot": "22:00",
+    "postType": "share",
+    "text": "今週も選手権ありがとうございました🙏\n来週もよろしくお願いします！\n\n掲示板はこちら👇\nhttps://duema-bbs.com",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 26,
+    "date": "2026-06-01",
+    "slot": "07:00",
+    "postType": "win",
+    "text": "デュエマで\n「初めて自分で組んだデッキ」\nを言えた人が優勝🏆\n\n#デュエマ\n#デュエマ好きと繋がりたい",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 27,
+    "date": "2026-06-01",
+    "slot": "12:00",
+    "postType": "roujinkai",
+    "text": "デュエマの「あの頃の環境、ぶっ壊れカード」選手権を開催します。\n\nコメントで教えてください👇\n毎晩22時開催です。\n\n#デュエマ\n#デュエマ好きと繋がりたい",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 28,
+    "date": "2026-06-01",
+    "slot": "19:00",
+    "postType": "giron",
+    "text": "デュエマって「コントロールデッキを使う人」は性格が慎重な説、当たってる？",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  },
+  {
+    "id": 29,
+    "date": "2026-06-01",
+    "slot": "22:00",
+    "postType": "share",
+    "text": "今日もたくさんのコメントありがとうございます🙏\n\n語りたい人は掲示板でどうぞ👇\nhttps://duema-bbs.com",
+    "imageUrl": null,
+    "status": "draft",
+    "sentToTypefully": false
+  }
+]
