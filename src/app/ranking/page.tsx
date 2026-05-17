@@ -93,6 +93,21 @@ export default async function RankingPage({ searchParams }: Props) {
 
   return (
     <div className="w-full px-0 py-0">
+      {/* SEO: BreadcrumbList構造化データ */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
+              { "@type": "ListItem", "position": 2, "name": "人気スレッドランキング", "item": `${SITE_URL}/ranking` },
+            ],
+          }),
+        }}
+      />
+
       <div className="max-w-screen-xl mx-auto px-2 pt-2">
         {/* オススメ */}
         <Suspense fallback={null}>
@@ -108,7 +123,7 @@ export default async function RankingPage({ searchParams }: Props) {
 
         {/* ランキングヘッダー */}
         <div className="mb-2 px-3 py-2 border border-gray-300 bg-white flex items-baseline gap-2">
-          <span className="font-bold text-sm text-gray-800">📊 人気スレッド</span>
+          <h1 className="font-bold text-sm text-gray-800">📊 人気スレッドランキング</h1>
           <span className="text-xs text-gray-500">（過去3日間）</span>
         </div>
       </div>
