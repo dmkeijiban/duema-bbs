@@ -13,11 +13,13 @@ export const metadata = {
     description: 'デュエマ掲示板の利用規約。禁止事項・免責事項・コンテンツポリシーなど本サービスのルールを定めています。',
     url: `${SITE_URL}/terms`,
     type: 'website' as const,
+    images: [{ url: `${SITE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: '利用規約 | デュエマ掲示板' }],
   },
   twitter: {
-    card: 'summary' as const,
+    card: 'summary_large_image' as const,
     title: '利用規約 | デュエマ掲示板',
     description: 'デュエマ掲示板の利用規約。禁止事項・免責事項・コンテンツポリシーなど本サービスのルールを定めています。',
+    images: [`${SITE_URL}/default-thumbnail.jpg`],
   },
 }
 
