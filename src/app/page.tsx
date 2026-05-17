@@ -155,8 +155,30 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
 
   if (threads.length === 0) return <ThreadEmpty searchQ={undefined} />
 
+  const pageSize = sort === 'popular' ? POPULAR_PAGE_SIZE : THREAD_PAGE_SIZE
+  const listName = sort === 'popular' ? '人気スレッド' : sort === 'new' ? '新着スレッド' : '最新スレッド一覧'
+
   return (
     <>
+      {/* SEO: ItemList構造化データ — スレッド一覧をGoogleに伝える */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'ItemList',
+            name: listName,
+            url: SITE_URL,
+            numberOfItems: threads.length,
+            itemListElement: threads.map((thread, i) => ({
+              '@type': 'ListItem',
+              position: (page - 1) * pageSize + i + 1,
+              name: thread.title,
+              url: `${SITE_URL}/thread/${thread.id}`,
+            })),
+          }),
+        }}
+      />
       {sort === 'popular' && (
         <div className="mb-2 px-3 py-1.5 border border-gray-300 bg-white flex items-baseline gap-2">
           <span className="font-bold text-sm text-gray-800">📊 人気スレッド</span>
