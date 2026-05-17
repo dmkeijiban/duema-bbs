@@ -130,6 +130,20 @@ async function SummaryList() {
 export default async function SummaryIndexPage() {
   return (
     <div className="w-full px-0 py-0">
+      {/* SEO: BreadcrumbList構造化データ */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
+              { "@type": "ListItem", "position": 2, "name": "まとめ一覧", "item": `${SITE_URL}/summary` },
+            ],
+          }),
+        }}
+      />
       <div className="max-w-screen-xl mx-auto px-2 pt-2">
         <Suspense fallback={null}>
           <RecommendSection />
