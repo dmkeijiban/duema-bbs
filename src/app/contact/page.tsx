@@ -1,6 +1,13 @@
 import Link from 'next/link'
 import { ContactForm } from './ContactForm'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
+import { SITE_URL } from '@/lib/site-config'
+
+export const metadata = {
+  title: 'お問い合わせ | デュエマ掲示板',
+  description: 'デュエマ掲示板へのお問い合わせ・削除依頼・不具合報告はこちらから。',
+  alternates: { canonical: `${SITE_URL}/contact` },
+}
 
 export default function ContactPage() {
   return (
