@@ -3,6 +3,7 @@ import Script from 'next/script'
 import './globals.css'
 import { Header } from '@/components/Header'
 import { SnsFloatingBar } from '@/components/SnsFloatingBar'
+import { getSnsUrls } from '@/lib/sns-server'
 import Link from 'next/link'
 import { SITE_URL } from '@/lib/site-config'
 import { Analytics } from '@vercel/analytics/react'
@@ -46,7 +47,8 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const snsUrls = await getSnsUrls()
   return (
     <html lang="ja" suppressHydrationWarning>
       <head>
@@ -128,7 +130,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen flex flex-col antialiased" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
           <Header />
           <main className="flex-1">{children}</main>
-          <SnsFloatingBar />
+          <SnsFloatingBar snsUrls={snsUrls} />
           <PostHogEventBridge />
           <footer className="bg-white border-t border-gray-200 py-4 mt-6">
             <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-600 space-y-1">

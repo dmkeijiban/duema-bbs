@@ -3,34 +3,35 @@
 /**
  * SNSフォロー導線 — 右下固定フローティングバー（全ページ表示）
  * 平常時は半透明、スクロール中〜停止後1.5秒はくっきり表示
+ * URLs は layout.tsx（サーバーコンポーネント）から props 経由で受け取る。
  */
 
 import { useEffect, useRef, useState } from 'react'
 import { XLogo, YouTubeLogo, DiscordLogo } from '@/components/Icons'
-import { SNS } from '@/lib/sns'
+import type { SnsUrls } from '@/lib/sns'
 
-const BUTTONS = [
-  {
-    href: SNS.x,
-    label: 'X (Twitter)',
-    icon: <XLogo size={18} />,
-    bg: 'bg-black',
-  },
-  {
-    href: SNS.youtube,
-    label: 'YouTube',
-    icon: <YouTubeLogo size={18} />,
-    bg: 'bg-[#ff0000]',
-  },
-  {
-    href: SNS.discord,
-    label: 'Discord',
-    icon: <DiscordLogo size={18} />,
-    bg: 'bg-[#5865F2]',
-  },
-] as const
+export function SnsFloatingBar({ snsUrls }: { snsUrls: SnsUrls }) {
+  const buttons = [
+    {
+      href: snsUrls.x,
+      label: 'X (Twitter)',
+      icon: <XLogo size={18} />,
+      bg: 'bg-black',
+    },
+    {
+      href: snsUrls.youtube,
+      label: 'YouTube',
+      icon: <YouTubeLogo size={18} />,
+      bg: 'bg-[#ff0000]',
+    },
+    {
+      href: snsUrls.discord,
+      label: 'Discord',
+      icon: <DiscordLogo size={18} />,
+      bg: 'bg-[#5865F2]',
+    },
+  ]
 
-export function SnsFloatingBar() {
   const [scrolling, setScrolling] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -54,7 +55,7 @@ export function SnsFloatingBar() {
       }`}
       aria-label="SNSフォローリンク"
     >
-      {BUTTONS.map(({ href, label, icon, bg }) => (
+      {buttons.map(({ href, label, icon, bg }) => (
         <a
           key={href}
           href={href}

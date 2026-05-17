@@ -1,12 +1,15 @@
 /**
  * SNSフォロー導線 — スレッド末尾CTAカード
  * 読み終えた満足感のある瞬間に見せるので、コンバージョン率が最も高い配置
+ * URLs は Supabase site_settings から取得（管理画面で変更可能）。
  */
 
 import { XLogo, YouTubeLogo, DiscordLogo } from '@/components/Icons'
-import { SNS } from '@/lib/sns'
+import { getSnsUrls } from '@/lib/sns-server'
 
-export function SnsCtaCard() {
+export async function SnsCtaCard() {
+  const sns = await getSnsUrls()
+
   return (
     <div className="my-4 border border-gray-200 rounded-xl overflow-hidden">
       {/* ヘッダー */}
@@ -24,7 +27,7 @@ export function SnsCtaCard() {
 
         {/* X */}
         <a
-          href={SNS.x}
+          href={sns.x}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-white text-sm font-bold transition-all duration-150 hover:opacity-85 active:scale-95 shadow-sm"
@@ -36,7 +39,7 @@ export function SnsCtaCard() {
 
         {/* YouTube */}
         <a
-          href={SNS.youtube}
+          href={sns.youtube}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-white text-sm font-bold transition-all duration-150 hover:opacity-85 active:scale-95 shadow-sm"
@@ -48,7 +51,7 @@ export function SnsCtaCard() {
 
         {/* Discord */}
         <a
-          href={SNS.discord}
+          href={sns.discord}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-white text-sm font-bold transition-all duration-150 hover:opacity-85 active:scale-95 shadow-sm"

@@ -119,6 +119,9 @@ export default async function AdminPage({
     thread_rules: 'スレッド内ルール',
     new_thread_rules: '新規スレッド作成ルール',
     home_banner: 'ホーム緑バナー',
+    sns_x: 'X（Twitter）URL',
+    sns_youtube: 'YouTube URL',
+    sns_discord: 'Discord URL',
   }
   const editSetting = sp.editSetting ?? null
 
