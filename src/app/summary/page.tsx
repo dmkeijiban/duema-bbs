@@ -154,18 +154,30 @@ async function SummaryList() {
 export default async function SummaryIndexPage() {
   return (
     <div className="w-full px-0 py-0">
-      {/* SEO: BreadcrumbList構造化データ */}
+      {/* SEO: BreadcrumbList + WebPage 構造化データ */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            "itemListElement": [
-              { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
-              { "@type": "ListItem", "position": 2, "name": "まとめ一覧", "item": `${SITE_URL}/summary` },
-            ],
-          }),
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
+                { "@type": "ListItem", "position": 2, "name": "まとめ一覧", "item": `${SITE_URL}/summary` },
+              ],
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebPage",
+              "@id": `${SITE_URL}/summary#webpage`,
+              "url": `${SITE_URL}/summary`,
+              "name": "まとめ一覧 | デュエマ掲示板",
+              "isPartOf": { "@id": `${SITE_URL}/#website` },
+              "publisher": { "@id": `${SITE_URL}/#organization` },
+              "inLanguage": "ja",
+            },
+          ]),
         }}
       />
       <div className="max-w-screen-xl mx-auto px-2 pt-2">

@@ -26,18 +26,30 @@ export const metadata = {
 export default function RandomPage() {
   return (
     <>
-      {/* SEO: BreadcrumbList構造化データ */}
+      {/* SEO: BreadcrumbList + WebPage 構造化データ */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            "itemListElement": [
-              { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
-              { "@type": "ListItem", "position": 2, "name": "ランダム", "item": `${SITE_URL}/random` },
-            ],
-          }),
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
+                { "@type": "ListItem", "position": 2, "name": "ランダム", "item": `${SITE_URL}/random` },
+              ],
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebPage",
+              "@id": `${SITE_URL}/random#webpage`,
+              "url": `${SITE_URL}/random`,
+              "name": "ランダム | デュエマ掲示板",
+              "isPartOf": { "@id": `${SITE_URL}/#website` },
+              "publisher": { "@id": `${SITE_URL}/#organization` },
+              "inLanguage": "ja",
+            },
+          ]),
         }}
       />
       <ThreadSortPage sort="random" title="ランダム一覧" icon="🎲" />
