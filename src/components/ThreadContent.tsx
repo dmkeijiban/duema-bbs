@@ -144,7 +144,7 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
       )}
 
       {!isArchived && (
-        <InlinePushSubscribeButton threadId={threadId} hideWhenSubscribed cta />
+        <InlinePushSubscribeButton threadId={threadId} cta />
       )}
 
       {recommendSlot && (
