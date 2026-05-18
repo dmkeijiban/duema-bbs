@@ -3,9 +3,18 @@ import { NextRequest, NextResponse } from 'next/server'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-async function callGenerate(req: NextRequest, type: 'weekly' | 'monthly', cronSecret: string) {
+async function callGenerate(
+  req: NextRequest,
+  type: 'weekly' | 'monthly',
+  cronSecret: string,
+  params: Record<string, string> = {},
+) {
   const url = new URL('/api/summary/generate', req.nextUrl.origin)
   url.searchParams.set('type', type)
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value)
+  }
+
   const res = await fetch(url.toString(), {
     headers: { authorization: `Bearer ${cronSecret}` },
     cache: 'no-store',
@@ -28,8 +37,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const [weekly, monthly] = await Promise.all([
-    callGenerate(req, 'weekly', cronSecret),
+  const weekly = []
+  for (let weeksAgo = 1; weeksAgo <= 4; weeksAgo += 1) {
+    weekly.push(await callGenerate(req, 'weekly', cronSecret, { weeksAgo: String(weeksAgo) }))
+  }
+
+  const [monthly] = await Promise.all([
     callGenerate(req, 'monthly', cronSecret),
   ])
 
