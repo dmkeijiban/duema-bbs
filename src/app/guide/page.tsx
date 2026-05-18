@@ -4,6 +4,9 @@ import { renderBlock } from '@/components/FixedPageBlocks'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
 
+// 固定ページはほぼ変わらないため1時間キャッシュ
+export const revalidate = 3600
+
 export const metadata = {
   title: '使い方 | デュエマ掲示板',
   description: 'デュエマ掲示板の使い方ガイド。スレッドの立て方・レスの付け方・画像投稿・お気に入り登録など基本操作を解説します。',
