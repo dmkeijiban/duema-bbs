@@ -6,7 +6,8 @@ import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
 import { createPublicClient } from '@/lib/supabase-public'
 
-export const revalidate = 300
+// 固定ページはほぼ変わらないため1時間キャッシュ（guide/privacy/terms と統一）
+export const revalidate = 3600
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -60,18 +61,30 @@ export default async function FixedPageRoute({ params }: Props) {
 
   return (
     <div className="max-w-screen-xl mx-auto px-3 py-4 text-sm">
-      {/* SEO: BreadcrumbList構造化データ */}
+      {/* SEO: BreadcrumbList + WebPage 構造化データ */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            "itemListElement": [
-              { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
-              { "@type": "ListItem", "position": 2, "name": page.title, "item": `${SITE_URL}/${slug}` },
-            ],
-          }),
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
+                { "@type": "ListItem", "position": 2, "name": page.title, "item": `${SITE_URL}/${slug}` },
+              ],
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebPage",
+              "@id": `${SITE_URL}/${slug}#webpage`,
+              "url": `${SITE_URL}/${slug}`,
+              "name": `${page.title} | デュエマ掲示板`,
+              "isPartOf": { "@id": `${SITE_URL}/#website` },
+              "publisher": { "@id": `${SITE_URL}/#organization` },
+              "inLanguage": "ja",
+            },
+          ]),
         }}
       />
       <nav className="text-xs text-gray-500 mb-4 flex items-center gap-2">
