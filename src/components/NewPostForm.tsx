@@ -31,8 +31,33 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const [scrollTarget, setScrollTarget] = useState<number | null>(null)
+  const [showPushButton, setShowPushButton] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+
+  // プッシュ通知ボタン：スクロール30% OR 10秒滞在で表示
+  useEffect(() => {
+    let shown = false
+    const show = () => {
+      if (shown) return
+      shown = true
+      setShowPushButton(true)
+    }
+
+    const timer = setTimeout(show, 10_000)
+
+    const onScroll = () => {
+      const el = document.documentElement
+      const scrolled = el.scrollTop / (el.scrollHeight - el.clientHeight)
+      if (scrolled >= 0.3) show()
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('scroll', onScroll)
+    }
+  }, [])
 
   useEffect(() => {
     if (scrollTarget === null) return
@@ -195,7 +220,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
                 返信通知
               </td>
               <td className="py-2 px-3">
-                <PushSubscribeButton threadId={threadId} />
+                {showPushButton && <PushSubscribeButton threadId={threadId} />}
               </td>
             </tr>
           </tbody>
