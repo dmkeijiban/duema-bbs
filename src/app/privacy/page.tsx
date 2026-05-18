@@ -70,14 +70,26 @@ export default async function PrivacyPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            "itemListElement": [
-              { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
-              { "@type": "ListItem", "position": 2, "name": "プライバシーポリシー", "item": `${SITE_URL}/privacy` },
-            ],
-          }),
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
+                { "@type": "ListItem", "position": 2, "name": "プライバシーポリシー", "item": `${SITE_URL}/privacy` },
+              ],
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebPage",
+              "@id": `${SITE_URL}/privacy#webpage`,
+              "url": `${SITE_URL}/privacy`,
+              "name": "プライバシーポリシー | デュエマ掲示板",
+              "isPartOf": { "@id": `${SITE_URL}/#website` },
+              "publisher": { "@id": `${SITE_URL}/#organization` },
+              "inLanguage": "ja",
+            },
+          ]),
         }}
       />
       <nav className="text-xs text-gray-500 mb-4 flex items-center gap-2">

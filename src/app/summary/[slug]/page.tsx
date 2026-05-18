@@ -240,6 +240,7 @@ export default async function SummarySlugPage({ params }: Props) {
             url: `${BASE_URL}/summary/${summary.slug}`,
             datePublished: summary.created_at,
             dateModified: summary.created_at,
+            image: [`${BASE_URL}/default-thumbnail.jpg`],
             isPartOf: { '@id': `${BASE_URL}/#website` },
             description,
             publisher: {

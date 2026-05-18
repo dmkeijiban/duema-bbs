@@ -105,14 +105,26 @@ export default async function TermsPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            "itemListElement": [
-              { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
-              { "@type": "ListItem", "position": 2, "name": "利用規約", "item": `${SITE_URL}/terms` },
-            ],
-          }),
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
+                { "@type": "ListItem", "position": 2, "name": "利用規約", "item": `${SITE_URL}/terms` },
+              ],
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebPage",
+              "@id": `${SITE_URL}/terms#webpage`,
+              "url": `${SITE_URL}/terms`,
+              "name": "利用規約 | デュエマ掲示板",
+              "isPartOf": { "@id": `${SITE_URL}/#website` },
+              "publisher": { "@id": `${SITE_URL}/#organization` },
+              "inLanguage": "ja",
+            },
+          ]),
         }}
       />
       <nav className="text-xs text-gray-500 mb-4 flex items-center gap-2">
