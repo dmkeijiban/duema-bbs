@@ -30,8 +30,16 @@ const DEFAULT_PRIVACY = `1. 収集する情報
 4. Cookieについて
 当サイトはCookieを使用します。Cookieはお使いのブラウザ設定から無効にできますが、一部機能が正常に動作しなくなる場合があります。
 
-5. アクセス解析ツールについて
-Google Analytics・Microsoft Clarityを利用しており、トラフィックデータを収集しています。これらのデータは匿名で収集され、個人を特定するものではありません。
+5. 広告・アクセス解析ツールについて
+当サイトでは、Google AdSense等の第三者広告サービスを利用する場合があります。これらの広告配信事業者は、ユーザーの過去の当サイトや他サイトへのアクセス情報に基づいて広告を表示するためにCookieやウェブビーコン等を使用することがあります。
+
+Googleが広告Cookieを使用することにより、ユーザーがそのサービスや他のサービスにアクセスした際の情報に基づいて、Google およびそのパートナーが適切な広告をユーザーに表示できます。
+
+・DoubleClick Cookie（Google の広告サービスで使用される Cookie）を含みます
+・Google の広告 Cookie の使用方法： https://policies.google.com/technologies/ads
+・広告のパーソナライズを無効にする場合： https://www.google.com/settings/ads
+
+また、Google Analytics・Microsoft Clarityを利用しており、トラフィックデータを収集しています。これらのデータは匿名で収集され、個人を特定するものではありません。Google Analytics のデータ収集を無効にするには Google Analytics オプトアウト アドオン（https://tools.google.com/dlpage/gaoptout）をご利用ください。
 
 6. 投稿データについて
 投稿した文章・画像・ハンドルネームは、当サイトのデータベースに保存されます。削除依頼はお問い合わせフォームよりご連絡ください。

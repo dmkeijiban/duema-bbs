@@ -135,6 +135,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <footer className="bg-white border-t border-gray-200 py-4 mt-6">
             <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-600 space-y-1">
               <div className="flex justify-center gap-4">
+                <Link href="/about" className="hover:underline">運営者情報</Link>
                 <Link href="/terms" className="hover:underline">利用規約</Link>
                 <Link href="/privacy" className="hover:underline">プライバシーポリシー</Link>
                 <Link href="/contact" className="hover:underline">お問い合わせ</Link>
