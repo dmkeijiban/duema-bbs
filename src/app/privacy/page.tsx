@@ -4,6 +4,9 @@ import { renderBlock } from '@/components/FixedPageBlocks'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
 
+// 固定ページはほぼ変わらないため1時間キャッシュ
+export const revalidate = 3600
+
 export const metadata = {
   title: 'プライバシーポリシー | デュエマ掲示板',
   description: 'デュエマ掲示板のプライバシーポリシー。収集情報・利用目的・Cookie・Google Analytics等の取り扱いについて説明します。',
