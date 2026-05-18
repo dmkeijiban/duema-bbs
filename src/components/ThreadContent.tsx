@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { Post, Thread, Category } from '@/types'
 import { PostItem, renderBody } from './PostItem'
@@ -10,6 +11,11 @@ import { ReportButton } from './ReportButton'
 import { formatDateTimeJP, resolveImageUrl } from '@/lib/utils'
 import { ImageViewer } from './ImageViewer'
 import { getThreadViewerState } from '@/lib/thread-viewer-client'
+
+const InlinePushSubscribeButton = dynamic(
+  () => import('./PushSubscribeButton').then(mod => mod.PushSubscribeButton),
+  { ssr: false },
+)
 
 interface Props {
   posts: Post[]
@@ -135,6 +141,10 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
             </Link>
           )}
         </div>
+      )}
+
+      {!isArchived && (
+        <InlinePushSubscribeButton threadId={threadId} cta />
       )}
 
       {recommendSlot && (

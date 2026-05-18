@@ -5,13 +5,16 @@ import { saveSubscription, deleteSubscription } from '@/app/actions/push-subscri
 
 interface Props {
   threadId: number
+  hideWhenSubscribed?: boolean
+  /** true にすると「このスレの新着レスを通知で受け取る」ラベル付きのブロックとして自己完結レンダリング */
+  cta?: boolean
 }
 
 type PermissionState = 'default' | 'granted' | 'denied' | 'unsupported'
 
 const STORAGE_KEY = (threadId: number) => `push_sub_${threadId}`
 
-export function PushSubscribeButton({ threadId }: Props) {
+export function PushSubscribeButton({ threadId, hideWhenSubscribed = false, cta = false }: Props) {
   const [permission, setPermission] = useState<PermissionState>(() => {
     if (typeof window === 'undefined') return 'default'
     if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -31,6 +34,7 @@ export function PushSubscribeButton({ threadId }: Props) {
   const [message, setMessage] = useState('')
 
   if (permission === 'unsupported') return null
+  if (hideWhenSubscribed && subscribed) return null
   if (permission === 'denied') {
     return (
       <span className="text-xs text-gray-400">
@@ -105,7 +109,7 @@ export function PushSubscribeButton({ threadId }: Props) {
     })
   }
 
-  return (
+  const inner = (
     <div className="flex items-center gap-2">
       {!subscribed ? (
         <button
@@ -131,6 +135,17 @@ export function PushSubscribeButton({ threadId }: Props) {
       )}
     </div>
   )
+
+  if (cta) {
+    return (
+      <div className="mt-3 border border-gray-300 bg-white px-3 py-2 text-xs text-gray-700 flex flex-wrap items-center gap-2">
+        <span>このスレの新着レスを通知で受け取る</span>
+        {inner}
+      </div>
+    )
+  }
+
+  return inner
 }
 
 /** Base64URL → Uint8Array（VAPID公開鍵変換用） */
