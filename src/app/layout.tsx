@@ -5,7 +5,7 @@ import { Header } from '@/components/Header'
 import { getSnsUrls } from '@/lib/sns-server'
 import { getCachedCategories } from '@/lib/cached-queries'
 import Link from 'next/link'
-import { SITE_URL } from '@/lib/site-config'
+import { SITE_URL, SITE_NAME } from '@/lib/site-config'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 // TBT削減: Client Component ラッパー経由で ssr:false dynamic import を使用
@@ -129,7 +129,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
 
         {/* RSS フィード — Googlebot の巡回頻度向上・フィードリーダー対応 */}
-        <link rel="alternate" type="application/rss+xml" title={`${SITE_URL.replace('https://', '')} RSS`} href={`${SITE_URL}/feed.xml`} />
+        <link rel="alternate" type="application/rss+xml" title={`${SITE_NAME} RSS フィード`} href={`${SITE_URL}/feed.xml`} />
 
         {/* Supabase ストレージへの早期接続でLCPの画像取得を高速化 */}
         <link rel="preconnect" href="https://nodgfukqvuwvgfnlzvnh.supabase.co" />
