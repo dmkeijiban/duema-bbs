@@ -191,7 +191,7 @@ export async function GET(req: NextRequest) {
   const periodEnd = end.toISOString().slice(0, 10)
 
   if (existing) {
-    const shouldRepairTop10 = type === 'weekly' && periodStart >= TOP10_REPAIR_START
+    const shouldRepairTop10 = type === 'weekly' && periodEnd >= TOP10_REPAIR_START
     if (!shouldRepairTop10) {
       return NextResponse.json({ ok: true, skipped: true, slug })
     }
