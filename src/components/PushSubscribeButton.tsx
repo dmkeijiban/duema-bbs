@@ -88,26 +88,48 @@ export function PushSubscribeButton({ threadId, hideWhenSubscribed = false, cta 
     startTransition(async () => {
       setMessage('')
       try {
-        // Service Worker 登録
-        const reg = await navigator.serviceWorker.register('/sw.js')
-        await navigator.serviceWorker.ready
+        // Service Worker 登録 → active になるまで待つ
+        await navigator.serviceWorker.register('/sw.js')
+        const readyReg = await navigator.serviceWorker.ready
 
         // 通知許可リクエスト
         const perm = await Notification.requestPermission()
         if (perm !== 'granted') {
           setPermission('denied')
-          setMessage('通知が許可されませんでした')
+          setMessage('ブラウザで通知をブロックしています。ブラウザ設定から許可してください。')
           return
         }
         setPermission('granted')
 
-        // Push 購読
-        const sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(
-            process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-          ) as unknown as ArrayBuffer,
-        })
+        // 既存の購読を確認 — 別VAPIDキーで登録済みだと subscribe() が例外を投げるため
+        let sub = await readyReg.pushManager.getSubscription()
+        if (!sub) {
+          // 新規購読
+          const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+          if (!vapidKey) {
+            setMessage('設定エラー: VAPIDキーが見つかりません')
+            return
+          }
+          try {
+            sub = await readyReg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(vapidKey) as unknown as ArrayBuffer,
+            })
+          } catch (subErr) {
+            console.error('pushManager.subscribe error:', subErr)
+            // 既存購読が別キーで残っている場合は一度解除して再試行
+            const stale = await readyReg.pushManager.getSubscription()
+            if (stale) {
+              await stale.unsubscribe()
+              sub = await readyReg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(vapidKey) as unknown as ArrayBuffer,
+              })
+            } else {
+              throw subErr
+            }
+          }
+        }
 
         const subJson = sub.toJSON() as {
           endpoint: string
@@ -116,7 +138,7 @@ export function PushSubscribeButton({ threadId, hideWhenSubscribed = false, cta 
 
         const result = await saveSubscription(threadId, subJson)
         if (result.error) {
-          setMessage(result.error)
+          setMessage(`登録エラー: ${result.error}`)
           return
         }
 
@@ -127,7 +149,8 @@ export function PushSubscribeButton({ threadId, hideWhenSubscribed = false, cta 
         setTimeout(() => setMessage(''), 3000)
       } catch (err) {
         console.error('Subscribe error:', err)
-        setMessage('通知の設定に失敗しました')
+        const msg = err instanceof Error ? err.message : String(err)
+        setMessage(`通知の設定に失敗しました: ${msg}`)
       }
     })
   }
@@ -172,7 +195,7 @@ export function PushSubscribeButton({ threadId, hideWhenSubscribed = false, cta 
         </button>
       )}
       {message && (
-        <span className="text-xs text-gray-500">{message}</span>
+        <span className={`text-xs ${message.includes('失敗') || message.includes('エラー') || message.includes('ブロック') ? 'text-red-600' : 'text-gray-500'}`}>{message}</span>
       )}
     </div>
   )
