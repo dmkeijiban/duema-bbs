@@ -12,6 +12,7 @@ import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
 import { createPublicClient } from '@/lib/supabase-public'
+import { NextReadNav } from '@/components/NextReadNav'
 
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
@@ -311,36 +312,8 @@ export async function renderThreadPage(threadId: number, page: number) {
       {/* ── 1C: 次に読む ナビゲーション ──────────────────────────────
           スレ読了後に「次の行動」を迷わせないための底面固定ナビ。
           モバイルタップ最適化（min-h-[44px]）。全ページに表示。
-          削除するだけで即リバート可能な静的 JSX のみ。 */}
-      <nav className="mt-3 mb-4" aria-label="次に読む">
-        <p className="text-[11px] text-gray-400 mb-1.5 px-0.5">次に読む</p>
-        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-          <Link
-            href="/"
-            className="flex items-center justify-center gap-1.5 min-h-[44px] px-2 border border-gray-300 bg-white rounded text-xs text-gray-700 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors"
-          >
-            <span>🏠</span><span>トップへ戻る</span>
-          </Link>
-          <Link
-            href="/new"
-            className="flex items-center justify-center gap-1.5 min-h-[44px] px-2 border border-blue-300 bg-blue-50 rounded text-xs text-blue-700 font-medium hover:bg-blue-100 active:bg-blue-200 transition-colors"
-          >
-            <span>⏱</span><span>新着スレ一覧</span>
-          </Link>
-          <Link
-            href="/ranking"
-            className="flex items-center justify-center gap-1.5 min-h-[44px] px-2 border border-gray-300 bg-white rounded text-xs text-gray-700 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors"
-          >
-            <span>📊</span><span>人気スレ一覧</span>
-          </Link>
-          <Link
-            href="/random"
-            className="flex items-center justify-center gap-1.5 min-h-[44px] px-2 border border-gray-300 bg-white rounded text-xs text-gray-700 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors"
-          >
-            <span>🎲</span><span>ランダムで読む</span>
-          </Link>
-        </div>
-      </nav>
+          GA4 next_read_click イベント計測 + prefetch={true} 付き。 */}
+      <NextReadNav threadId={threadId} />
     </div>
   )
 }
