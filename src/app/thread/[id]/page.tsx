@@ -221,24 +221,36 @@ export async function renderThreadPage(threadId: number, page: number) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            "itemListElement": [
-              { "@type": "ListItem", "position": 1, "name": "TOP", "item": baseUrl },
-              ...(typedThread.categories ? [
-                {
-                  "@type": "ListItem",
-                  "position": 2,
-                  "name": `カテゴリ『${typedThread.categories.name}』`,
-                  "item": `${baseUrl}/category/${typedThread.categories.slug}`,
-                },
-                { "@type": "ListItem", "position": 3, "name": typedThread.title },
-              ] : [
-                { "@type": "ListItem", "position": 2, "name": typedThread.title },
-              ]),
-            ],
-          })
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "TOP", "item": baseUrl },
+                ...(typedThread.categories ? [
+                  {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": `カテゴリ『${typedThread.categories.name}』`,
+                    "item": `${baseUrl}/category/${typedThread.categories.slug}`,
+                  },
+                  { "@type": "ListItem", "position": 3, "name": typedThread.title },
+                ] : [
+                  { "@type": "ListItem", "position": 2, "name": typedThread.title },
+                ]),
+              ],
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebPage",
+              "@id": `${canonicalUrl}#webpage`,
+              "url": canonicalUrl,
+              "name": `${typedThread.title} | デュエマ掲示板`,
+              "isPartOf": { "@id": `${baseUrl}/#website` },
+              "publisher": { "@id": `${baseUrl}/#organization` },
+              "inLanguage": "ja",
+            },
+          ])
         }}
       />
 
