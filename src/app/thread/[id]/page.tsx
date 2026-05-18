@@ -310,19 +310,19 @@ export async function renderThreadPage(threadId: number, page: number) {
             <span>🏠</span><span>トップへ戻る</span>
           </Link>
           <Link
-            href="/?sort=new"
+            href="/new"
             className="flex items-center justify-center gap-1.5 min-h-[44px] px-2 border border-blue-300 bg-blue-50 rounded text-xs text-blue-700 font-medium hover:bg-blue-100 active:bg-blue-200 transition-colors"
           >
             <span>⏱</span><span>新着スレ一覧</span>
           </Link>
           <Link
-            href="/?sort=popular"
+            href="/ranking"
             className="flex items-center justify-center gap-1.5 min-h-[44px] px-2 border border-gray-300 bg-white rounded text-xs text-gray-700 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors"
           >
             <span>📊</span><span>人気スレ一覧</span>
           </Link>
           <Link
-            href="/?sort=random"
+            href="/random"
             className="flex items-center justify-center gap-1.5 min-h-[44px] px-2 border border-gray-300 bg-white rounded text-xs text-gray-700 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors"
           >
             <span>🎲</span><span>ランダムで読む</span>
