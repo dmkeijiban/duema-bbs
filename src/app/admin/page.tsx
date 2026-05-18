@@ -169,6 +169,33 @@ export default async function AdminPage({
         </div>
       </div>
 
+      {/* 管理メニュー */}
+      <div className="mb-4 border border-gray-200 bg-white p-3">
+        <h2 className="font-bold text-gray-700 mb-2 text-xs uppercase tracking-wide text-gray-500">管理メニュー</h2>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] text-gray-400 w-14 shrink-0">コンテンツ</span>
+            <Link href="/admin/categories" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">🗂 カテゴリ管理</Link>
+            <Link href="/admin/pages" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">📄 固定ページ管理</Link>
+            <Link href="/admin/notices" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">📢 お知らせ管理</Link>
+            <Link href="/admin/summary" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">📊 まとめ生成</Link>
+            <Link href="/admin/article-drafts" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">記事下書き取り込み</Link>
+            <Link href="/admin/comment-import" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">コメント一括取り込み</Link>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] text-gray-400 w-14 shrink-0">X / SNS</span>
+            <Link href="/admin/x-posts" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">🐦 X投稿管理</Link>
+            <Link href="/admin/x-schedule" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">📅 スケジュール</Link>
+            <Link href="/admin/x-replies" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">Xリプライ取得</Link>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] text-gray-400 w-14 shrink-0">ユーティリティ</span>
+            <Link href="/admin/cleanup" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">🧹 データ整理</Link>
+            <Link href="/admin/deleted-posts" className="px-2.5 py-1 text-xs border border-orange-300 text-orange-600 hover:bg-orange-50">🗑️ 削除済みレス</Link>
+          </div>
+        </div>
+      </div>
+
       {/* スレッド編集モーダル */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <section className="border border-gray-300 bg-white p-3">
@@ -291,42 +318,10 @@ export default async function AdminPage({
       {/* ② お知らせ管理 */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
-          <h2 className="font-bold text-gray-700">📢 お知らせ管理</h2>
-          <div className="flex gap-2 flex-wrap">
-            <Link href="/admin/cleanup" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
-              🧹 データ整理
-            </Link>
-            <Link href="/admin/categories" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
-              🗂 カテゴリ管理
-            </Link>
-            <Link href="/admin/article-drafts" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
-              記事下書き取り込み
-            </Link>
-            <Link href="/admin/summary" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
-              📊 まとめ生成
-            </Link>
-            <Link href="/admin/comment-import" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
-              コメント一括取り込み
-            </Link>
-            <Link href="/admin/x-replies" className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50">
-              Xリプライ取得
-            </Link>
-            <Link href="/admin/deleted-posts" className="px-3 py-1 text-xs border border-orange-400 text-orange-600 hover:bg-orange-50">
-              🗑️ 削除済みレス
-            </Link>
-            <Link href="/admin/x-posts" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#1da1f2' }}>
-              🐦 X投稿管理
-            </Link>
-            <Link href="/admin/x-schedule" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#0f766e' }}>
-              📅 スケジュール
-            </Link>
-            <Link href="/admin/pages" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#198754' }}>
-              📄 固定ページ管理
-            </Link>
-            <Link href="/admin/notices" className="px-3 py-1 text-xs text-white font-medium" style={{ background: '#2563eb' }}>
-              お知らせ管理画面へ
-            </Link>
-          </div>
+          <h2 className="font-bold text-gray-700">📢 お知らせ（現在の表示内容）</h2>
+          <Link href="/admin/notices" className="px-2.5 py-1 text-xs border border-blue-400 text-blue-600 hover:bg-blue-50">
+            編集する →
+          </Link>
         </div>
         {notices && notices.length > 0 ? (
           <div className="space-y-1">
