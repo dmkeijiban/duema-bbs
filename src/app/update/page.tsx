@@ -32,18 +32,30 @@ export default async function UpdatePage({ searchParams }: Props) {
   const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
   return (
     <>
-      {/* SEO: BreadcrumbList構造化データ */}
+      {/* SEO: BreadcrumbList + WebPage 構造化データ */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            "itemListElement": [
-              { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
-              { "@type": "ListItem", "position": 2, "name": "更新順一覧", "item": `${SITE_URL}/update` },
-            ],
-          }),
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
+                { "@type": "ListItem", "position": 2, "name": "更新順一覧", "item": `${SITE_URL}/update` },
+              ],
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebPage",
+              "@id": `${SITE_URL}/update#webpage`,
+              "url": `${SITE_URL}/update`,
+              "name": "更新順一覧 | デュエマ掲示板",
+              "isPartOf": { "@id": `${SITE_URL}/#website` },
+              "publisher": { "@id": `${SITE_URL}/#organization` },
+              "inLanguage": "ja",
+            },
+          ]),
         }}
       />
       <ThreadSortPage sort="recent" title="更新順一覧" icon="↺" page={page} />
