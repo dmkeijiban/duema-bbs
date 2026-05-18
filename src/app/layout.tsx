@@ -198,6 +198,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </div>
               )}
               <div className="flex justify-center gap-4">
+                <Link href="/about" className="hover:underline">運営者情報</Link>
                 <Link href="/terms" className="hover:underline">利用規約</Link>
                 <Link href="/privacy" className="hover:underline">プライバシーポリシー</Link>
                 <Link href="/contact" className="hover:underline">お問い合わせ</Link>
