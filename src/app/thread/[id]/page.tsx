@@ -290,7 +290,7 @@ export async function renderThreadPage(threadId: number, page: number) {
 
       {/* AdSense 記事内広告（スレッドタイトル直下・1ページ目のみ） */}
       {page === 1 && (
-        <AdBanner slot="7587904140" format="fluid" layout="in-article" style={{ margin: '8px 0' }} minHeight={200} />
+        <AdBanner slot="7587904140" format="fluid" layout="in-article" style={{ margin: '8px 0' }} minHeight={0} />
       )}
 
       <ThreadContent
