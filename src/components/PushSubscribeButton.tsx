@@ -70,8 +70,17 @@ export function PushSubscribeButton({ threadId, hideWhenSubscribed = false, cta 
 
   if (!hydrated) return null
   if (permission === 'unsupported') {
-    if (cta) return null
-    return <span className="push-subscribe-empty hidden" aria-hidden="true" />
+    const unsupportedMessage = '🔔 返信通知はPC・Androidブラウザからご利用いただけます'
+
+    if (cta) {
+      return (
+        <div className="mt-3 border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-400 flex items-center gap-2">
+          <span>{unsupportedMessage}</span>
+        </div>
+      )
+    }
+
+    return <span className="text-xs text-gray-400">{unsupportedMessage}</span>
   }
   if (hideWhenSubscribed && subscribed) return null
   if (permission === 'denied') {

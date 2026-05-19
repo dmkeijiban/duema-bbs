@@ -31,8 +31,13 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
   const [isPending, startTransition] = useTransition()
   const [scrollTarget, setScrollTarget] = useState<number | null>(null)
   const [showPushButton, setShowPushButton] = useState(false)
+  const [pushUnsupported, setPushUnsupported] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    setPushUnsupported(!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window))
+  }, [])
 
   // プッシュ通知ボタン：スクロール30% OR 10秒滞在で表示
   useEffect(() => {
@@ -219,7 +224,13 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
                 返信通知
               </td>
               <td className="py-2 px-3">
-                {showPushButton && <PushSubscribeButton threadId={threadId} />}
+                {pushUnsupported ? (
+                  <span className="text-xs text-gray-400">
+                    🔔 返信通知はPC・Androidブラウザからご利用いただけます
+                  </span>
+                ) : (
+                  showPushButton && <PushSubscribeButton threadId={threadId} />
+                )}
               </td>
             </tr>
           </tbody>
