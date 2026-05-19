@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/seed",
-      "schedule": "0 */6 * * *"
+      "schedule": "30 15 * * *"
     },
     {
       "path": "/api/summary/cron",
