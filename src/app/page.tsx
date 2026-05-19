@@ -280,25 +280,6 @@ async function BotNoticesServer() {
   return <>{bot.map(n => <NoticeBlock key={n.id} notice={n} />)}</>
 }
 
-// ── Step 2: カテゴリクイックナビ（カテゴリページへの内部リンク強化）
-async function CategoryQuickNav() {
-  const categories = await getCachedCategories()
-  if (categories.length === 0) return null
-  return (
-    <div className="flex flex-wrap gap-1.5 mb-2">
-      {categories.map((cat: { id: number; name: string; slug: string; color?: string | null }) => (
-        <Link
-          key={cat.id}
-          href={`/category/${cat.slug}`}
-          className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold text-white hover:opacity-80 active:opacity-70 transition-opacity"
-          style={{ background: cat.color ?? '#6c757d' }}
-        >
-          {cat.name}
-        </Link>
-      ))}
-    </div>
-  )
-}
 
 // ── SortTabs（カテゴリ取得後に差し替え）
 // パンくずリストも同じカテゴリデータを使うためここに含める。
@@ -427,12 +408,6 @@ export default async function Home({
           <span className="text-xs ml-2 shrink-0">一覧へ</span>
         </Link>
 
-        {/* ── Step 2: カテゴリクイックナビ ──────────────────────────────
-            カテゴリページへの内部リンクを増やし、Googleの巡回効率を上げる。
-            削除するだけで即リバート可能。 */}
-        <Suspense fallback={<CategoryQuickNavSkeleton />}>
-          <CategoryQuickNav />
-        </Suspense>
 
       </div>
 
@@ -581,20 +556,5 @@ function TopNoticesSkeleton() {
   )
 }
 
-// CategoryQuickNav のスケルトン：fallback={null} だと後続要素が CLS を起こすため
-// 実際のバッジと同じ高さ・gap・mb を持つプレースホルダーで高さを確保する。
-function CategoryQuickNavSkeleton() {
-  return (
-    <div className="flex flex-wrap gap-1.5 mb-2">
-      {[...Array(7)].map((_, i) => (
-        <div
-          key={i}
-          className="h-6 rounded bg-gray-200 animate-pulse"
-          style={{ width: [52, 64, 56, 48, 72, 60, 52][i] }}
-        />
-      ))}
-    </div>
-  )
-}
 
 // RecommendSectionSkeleton は @/components/RecommendSection からエクスポート済み
