@@ -43,8 +43,9 @@ export function PushSubscribeButton({ threadId, hideWhenSubscribed = false, cta 
         if (cancelled) return
 
         const nextEndpoint = subscription?.endpoint ?? null
-        if (nextEndpoint) {
-          localStorage.setItem(STORAGE_KEY(threadId), nextEndpoint)
+        const storedEndpoint = localStorage.getItem(STORAGE_KEY(threadId))
+
+        if (nextEndpoint && storedEndpoint && nextEndpoint === storedEndpoint) {
           setEndpoint(nextEndpoint)
           setSubscribed(true)
         } else {
