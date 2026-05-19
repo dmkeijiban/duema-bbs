@@ -6,7 +6,7 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 // ==========================================
-// あにまん掲示板から参考スレを取得するロジック
+// あにまん掲示板から参考スレ・コメントを取得するロジック
 // ==========================================
 
 const ANIMANCH_BASE = 'https://bbs.animanch.com'
@@ -28,24 +28,30 @@ function isDuemaRelated(title: string): boolean {
 /** タイトルの変換（コピーではなく参考に） */
 function transformTitle(original: string): string {
   let t = original
-  // スレ番号・Part番号を除去 (その45, Part127, 第3弾スレ, 〜スレ目 など)
   t = t.replace(/\s*(その|Part|PART|part|第)\s*\d+\s*(スレ?目?|弾)?/g, '')
   t = t.replace(/\s*【?\d+スレ?目?】?/g, '')
-  // 末尾の「スレ」「板」を除去してより自然に
   t = t.replace(/スレ$/, '')
-  // 「草」→「笑」
   t = t.replace(/草/g, '笑')
-  // 「感想スレ」「語るスレ」などを自然な問いかけに
   t = t.replace(/感想(スレ?|板)?/, 'どうだった？')
   t = t.replace(/語る(スレ?|板)?$/, '語ろう')
   t = t.replace(/雑談(スレ?|板)?$/, '雑談しよう')
-  // 末尾の記号を整える
   t = t.replace(/[！!]{2,}/g, '！')
   t = t.replace(/[？?]{2,}/g, '？')
-  // 余白を整える
   t = t.trim()
-  // 短すぎる場合はそのまま使う
   return t || original
+}
+
+/** コメントを自然なものに軽く変換 */
+function transformComment(text: string): string {
+  let t = text
+  t = t.replace(/草/g, '笑')
+  // >>引用アンカーを除去
+  t = t.replace(/>>?\d+/g, '')
+  // 他サイト言及を中和
+  t = t.replace(/あにまん|animanch/gi, 'ここ')
+  // 連続改行を整理
+  t = t.replace(/\n{3,}/g, '\n')
+  return t.trim()
 }
 
 /** タイトル・本文からカテゴリIDを推定 */
@@ -60,24 +66,19 @@ function detectCategoryId(title: string, body: string): number {
   if (/デッキ相談|デッキレシピ|コンボ|構築|速攻|コントロール/.test(text)) return 14
   if (/新弾|新カード|新商品|収録|パック|ツインパクト/.test(text)) return 13
   if (/デュエチューバー|YouTube|実況|動画/.test(text)) return 22
-  return 21 // デフォルト：雑談
+  return 21
 }
 
 /** 本文を自然な掲示板投稿に整形 */
 function buildThreadBody(title: string, rawBody: string): string {
-  // HTML タグを除去
   let body = rawBody.replace(/<[^>]*>/g, '').trim()
-  // 連続する空白行を1行に
   body = body.replace(/\n{3,}/g, '\n\n')
-  // 200文字以上あればそのまま使う（末尾に問いかけを追加）
   if (body.length >= 100) {
-    // 末尾が?/？で終わっていれば追加しない
     if (!/[?？]$/.test(body.trim())) {
       body = `${body}\n\nみなさんはどう思いますか？`
     }
     return body
   }
-  // 短い場合はタイトルから展開
   return `${title}について話しましょう！\n\n${body ? body + '\n\n' : ''}気になる方はぜひ意見を聞かせてください。`
 }
 
@@ -91,24 +92,29 @@ interface AnimanchThreadDetail {
   imageUrl: string | null
 }
 
-/** あにまん category25 からスレ一覧を取得 */
+/**
+ * あにまん category25 からスレ一覧を取得
+ * ※ あにまんのHTMLはシングルクォート属性
+ */
 async function fetchAnimanchDuemaThreads(): Promise<AnimanchThread[]> {
   const res = await fetch(ANIMANCH_CATEGORY, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; DuemaBBS/1.0)',
-    },
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DuemaBBS/1.0)' },
     next: { revalidate: 0 },
   })
   if (!res.ok) throw new Error(`animanch category fetch failed: ${res.status}`)
   const html = await res.text()
 
-  // <a href="/board/{id}/">{title}{レス数}</a> を抽出
-  const threadPattern = /href="\/board\/(\d+)\/"\s*>([^<]+?)\d+<\/a>/g
+  // HTMLはシングルクォート: <a href='https://bbs.animanch.com/board/ID/' class='card'>
+  const threadPattern = /href='https:\/\/bbs\.animanch\.com\/board\/(\d+)\/'[^>]*class='card'[\s\S]*?<div class='card-body'>([\s\S]*?)<p class='threadCount'/g
   const threads: AnimanchThread[] = []
+  const seenIds = new Set<number>()
   let m: RegExpExecArray | null
+
   while ((m = threadPattern.exec(html)) !== null) {
     const boardId = parseInt(m[1], 10)
-    const rawTitle = m[2].trim()
+    if (seenIds.has(boardId)) continue
+    seenIds.add(boardId)
+    const rawTitle = m[2].replace(/<[^>]*>/g, '').trim()
     if (isDuemaRelated(rawTitle)) {
       threads.push({ boardId, title: rawTitle })
     }
@@ -116,33 +122,65 @@ async function fetchAnimanchDuemaThreads(): Promise<AnimanchThread[]> {
   return threads
 }
 
-/** あにまん個別スレから本文・画像URLを取得 */
+/**
+ * あにまん個別スレから本文・画像URLを取得
+ * ※ あにまんのHTMLはシングルクォート属性
+ */
 async function fetchAnimanchFirstPost(boardId: number): Promise<AnimanchThreadDetail> {
   const url = `${ANIMANCH_BASE}/board/${boardId}/`
   const res = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; DuemaBBS/1.0)',
-    },
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DuemaBBS/1.0)' },
     next: { revalidate: 0 },
   })
   if (!res.ok) return { body: '', imageUrl: null }
   const html = await res.text()
 
-  // 本文取得: <p class="resbody nomal">...</p>
+  // 本文: <div class='resbody ...'><p>本文</p>
   let body = ''
-  const bodyMatch = html.match(/<p[^>]*class="resbody[^"]*"[^>]*>([\s\S]*?)<\/p>/)
+  const bodyMatch = html.match(/<div class='resbody[^']*'>\s*<p>([\s\S]*?)<\/p>/)
   if (bodyMatch) {
     body = bodyMatch[1].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim()
   }
 
-  // 画像URL取得: href="/img/{id}/1"
+  // 画像URL: href='https://bbs.animanch.com/img/BOARDID/1'
   let imageUrl: string | null = null
-  const imgMatch = html.match(/href="(\/img\/\d+\/1)"/)
+  const imgMatch = html.match(/href='(https:\/\/bbs\.animanch\.com\/img\/\d+\/1)'/)
   if (imgMatch) {
-    imageUrl = `${ANIMANCH_BASE}${imgMatch[1]}`
+    imageUrl = imgMatch[1]
   }
 
   return { body, imageUrl }
+}
+
+/**
+ * あにまん個別スレからリプライコメントを取得（1件目のスレ本文はスキップ）
+ * 10〜300文字のコメントを最大15件返す
+ */
+async function fetchAnimanchComments(boardId: number): Promise<string[]> {
+  const url = `${ANIMANCH_BASE}/board/${boardId}/`
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DuemaBBS/1.0)' },
+    next: { revalidate: 0 },
+  })
+  if (!res.ok) return []
+  const html = await res.text()
+
+  const commentPattern = /<div class='resbody[^']*'>\s*<p>([\s\S]*?)<\/p>/g
+  const comments: string[] = []
+  let count = 0
+  let m: RegExpExecArray | null
+
+  while ((m = commentPattern.exec(html)) !== null) {
+    count++
+    if (count === 1) continue // 1件目はスレ本文なのでスキップ
+    const raw = m[1].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim()
+    if (raw.length >= 10 && raw.length <= 300) {
+      comments.push(raw)
+    }
+    if (comments.length >= 15) break
+  }
+
+  return comments
 }
 
 // ==========================================
@@ -198,10 +236,13 @@ export async function GET(req: NextRequest) {
 
   // === 1. あにまんからスレを取得して新スレを1件作成 ===
   let newThread: { id: number; title: string } | null = null
+  // section 2 のコメント取得でも使うためスコープを外に出す
+  let animanchThreadsForComments: AnimanchThread[] = []
 
   try {
     // あにまん掲示板からデュエマ関連スレを取得
     const animanchThreads = await fetchAnimanchDuemaThreads()
+    animanchThreadsForComments = animanchThreads
     console.log(`Seed: fetched ${animanchThreads.length} duema threads from animanch`)
 
     if (animanchThreads.length === 0) {
@@ -304,16 +345,40 @@ export async function GET(req: NextRequest) {
 
       const nextPostNumber = (maxPost?.post_number ?? 0) + 1
 
-      // コメントテンプレートを日付+スレッドインデックスでローテーション
-      const commentTemplate = SEED_COMMENTS[(dayIndex + i * 7) % SEED_COMMENTS.length]
+      // あにまんの実際のコメントを取得してそのまま投稿
+      // スレごとに別のあにまんスレからコメントを拾う（i + 1 でずらしてスレ本文とは別のスレを参照）
+      let commentBody: string | null = null
+      if (animanchThreadsForComments.length > 0) {
+        const srcIdx = (dayIndex + i + 1) % animanchThreadsForComments.length
+        const srcBoardId = animanchThreadsForComments[srcIdx].boardId
+        try {
+          const rawComments = await fetchAnimanchComments(srcBoardId)
+          const validComments = rawComments.map(transformComment).filter(c => c.length >= 10)
+          if (validComments.length > 0) {
+            commentBody = validComments[(dayIndex + i * 3) % validComments.length]
+            console.log(`Seed: got ${validComments.length} comments from animanch board ${srcBoardId}`)
+          }
+        } catch (e) {
+          console.warn(`Seed: fetchAnimanchComments failed for board ${srcBoardId}:`, e)
+        }
+      }
+
+      // あにまんから取得できなかった場合のみ SEED_COMMENTS にフォールバック
+      if (!commentBody) {
+        const fallback = SEED_COMMENTS[(dayIndex + i * 7) % SEED_COMMENTS.length]
+        commentBody = fallback.body
+        console.log(`Seed: using fallback comment for thread ${thread.id}`)
+      }
+
+      const authorName = THREAD_AUTHOR_NAMES[(dayIndex + i * 5) % THREAD_AUTHOR_NAMES.length]
 
       const { error: postError } = await supabase
         .from('posts')
         .insert({
           thread_id: thread.id,
           post_number: nextPostNumber,
-          body: commentTemplate.body,
-          author_name: commentTemplate.author_name,
+          body: commentBody,
+          author_name: authorName,
         })
 
       if (postError) {
