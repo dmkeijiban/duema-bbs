@@ -79,7 +79,7 @@ export function LinkCard({ url }: { url: string }) {
         overflow: 'hidden',
       }}
     >
-      <div style={{ display: 'flex', minHeight: 112 }}>
+      <div style={{ display: 'flex', height: 112, overflow: 'hidden' }}>
         {proxiedImage && (
           <div
             style={{
