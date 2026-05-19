@@ -10,6 +10,7 @@ interface Props {
 
 export function ImageViewer({ src, alt = '添付画像', priority = false }: Props) {
   const [open, setOpen] = useState(false)
+  const [error, setError] = useState(false)
 
   const close = useCallback(() => setOpen(false), [])
 
@@ -19,6 +20,8 @@ export function ImageViewer({ src, alt = '添付画像', priority = false }: Pro
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open, close])
+
+  if (error) return null
 
   return (
     <>
@@ -30,6 +33,7 @@ export function ImageViewer({ src, alt = '添付画像', priority = false }: Pro
           loading={priority ? 'eager' : 'lazy'}
           fetchPriority={priority ? 'high' : 'auto'}
           decoding="async"
+          onError={() => setError(true)}
           onClick={() => setOpen(true)}
           style={{
             width: '100%',
