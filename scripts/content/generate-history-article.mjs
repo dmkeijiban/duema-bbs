@@ -592,6 +592,47 @@ function runQualityChecks(markdown, imageMap) {
   }
 }
 
+function autoFix(markdown, imageMap) {
+  const fixed = []
+  let text = markdown
+
+  // Fix 1: 禁止表現を含む文を除去
+  for (const term of BANNED_TERMS) {
+    if (!text.includes(term)) continue
+    const before = text
+    text = text
+      .split('\n')
+      .map(line => {
+        if (!line.includes(term)) return line
+        return line
+          .split(/(?<=。|！|？|…)/)
+          .filter(sentence => !sentence.includes(term))
+          .join('')
+      })
+      .filter(line => line.trim() !== '' || !before.split('\n').find(l => l === line && l === ''))
+      .join('\n')
+    if (text !== before) fixed.push(`禁止表現を除去: 「${term}」`)
+  }
+
+  // Fix 2: 「Wikiによると」を削除（帰属表現を残さない）
+  if (text.includes('Wikiによると')) {
+    text = text.replace(/Wikiによると[、,]?\s*/g, '')
+    fixed.push('「Wikiによると」を削除')
+  }
+
+  // Fix 3: 画像が未挿入のカードを再挿入
+  const missingImages = [...imageMap.entries()].filter(
+    ([name, image]) => image.status === 'found' && image.imageUrl && !text.includes(`![${bareCardName(name)}](`),
+  )
+  if (missingImages.length > 0) {
+    text = insertImages(text, imageMap)
+    fixed.push(`画像を再挿入: ${missingImages.map(([name]) => name).join(', ')}`)
+  }
+
+  const quality = runQualityChecks(text, imageMap)
+  return { markdown: text, fixed, quality }
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2))
   if (args.help || !args.url) {
@@ -642,21 +683,40 @@ async function main() {
     markdown = insertImages(markdown, imageMap)
   }
 
-  const quality = runQualityChecks(markdown, imageMap)
+  let quality = runQualityChecks(markdown, imageMap)
+
+  // 自動修正: 禁止表現・画像挿入漏れ・Wikiによると を自動で直す
+  if (!quality.ok) {
+    const fixResult = autoFix(markdown, imageMap)
+    if (fixResult.fixed.length > 0) {
+      markdown = fixResult.markdown
+      quality = fixResult.quality
+      console.log(`[article] auto-fixed: ${fixResult.fixed.join(' / ')}`)
+    }
+  }
+
   const basename = `${new Date().toISOString().slice(0, 10)}-${slugify(product.title)}`
   const articlePath = path.join(args.outDir, `${basename}.md`)
   const sourcePath = path.join(args.outDir, `${basename}.source.json`)
   const qualityPath = path.join(args.outDir, `${basename}.quality.json`)
 
-  const frontmatter = [
+  // status: draft（問題なし）or needs-review（修正しきれない問題あり）
+  const status = quality.ok ? 'draft' : 'needs-review'
+  const frontmatterLines = [
     '---',
     `source_url: ${product.sourceUrl}`,
     `product: ${JSON.stringify(product.title)}`,
     `generated_at: ${new Date().toISOString()}`,
-    'status: draft',
-    '---',
-    '',
-  ].join('\n')
+    `status: ${status}`,
+  ]
+  if (!quality.ok) {
+    frontmatterLines.push('quality_issues:')
+    for (const issue of quality.issues) {
+      frontmatterLines.push(`  - "${issue.replace(/"/g, '\\"')}"`)
+    }
+  }
+  frontmatterLines.push('---', '')
+  const frontmatter = frontmatterLines.join('\n')
 
   await fs.writeFile(articlePath, `${frontmatter}${markdown}\n`, 'utf8')
   await fs.writeFile(sourcePath, JSON.stringify({ product, cards, images: imageLog }, null, 2), 'utf8')
@@ -664,9 +724,9 @@ async function main() {
 
   console.log(`[article] saved: ${path.relative(ROOT_DIR, articlePath)}`)
   console.log(`[article] source: ${path.relative(ROOT_DIR, sourcePath)}`)
-  console.log(`[article] quality: ${quality.ok ? 'ok' : 'needs review'} (${path.relative(ROOT_DIR, qualityPath)})`)
+  console.log(`[article] quality: ${quality.ok ? 'ok ✓' : `needs-review (${quality.issues.length}件)`} → ${path.relative(ROOT_DIR, qualityPath)}`)
   if (quality.issues.length) {
-    for (const issue of quality.issues) console.log(`  - ${issue}`)
+    for (const issue of quality.issues) console.log(`  ⚠ ${issue}`)
   }
 }
 
