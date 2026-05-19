@@ -7,7 +7,7 @@ import { RecommendSection, RecommendSectionSkeleton } from '@/components/Recomme
 import { Thread, Post, Category } from '@/types'
 import { ThreadViewPing } from '@/components/ThreadViewPing'
 import Link from 'next/link'
-import { getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
+import { getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, getCachedRelatedThreads, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
@@ -149,6 +149,9 @@ export async function renderThreadPage(threadId: number, page: number) {
   const totalPages = Math.max(1, Math.ceil((typedThread.post_count ?? 0) / POSTS_PER_PAGE))
 
   const baseUrl = SITE_URL
+
+  // JSON-LD relatedLink 用（RecommendSection と同じキャッシュキーなので追加DBクエリなし）
+  const relatedForLD = await getCachedRelatedThreads(threadId, typedThread.title, typedThread.category_id)
   const canonicalUrl = `${baseUrl}/thread/${threadId}`
   const currentPageUrl = page <= 1 ? canonicalUrl : `${canonicalUrl}/p/${page}`
   const structuredText = cleanStructuredText(typedThread.body, typedThread.title)
@@ -179,6 +182,7 @@ export async function renderThreadPage(threadId: number, page: number) {
     },
     "text": structuredText,
     "description": structuredText.slice(0, 160),
+    "relatedLink": relatedForLD.slice(0, 5).map(t => `${baseUrl}/thread/${t.id}`),
     "image": structuredImage ? [structuredImage] : undefined,
     "interactionStatistic": [
       {
