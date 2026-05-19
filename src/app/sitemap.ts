@@ -88,7 +88,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const [threadsResult, categoriesResult, summariesResult, fixedPagesResult] = await Promise.allSettled([
       supabase
         .from('threads')
-        .select('id, last_posted_at, post_count, category_id')
+        .select('id, last_posted_at, post_count, view_count, category_id')
         .eq('is_archived', false)
         .order('last_posted_at', { ascending: false })
         .limit(5000),
@@ -136,14 +136,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }))
 
     const POSTS_PER_PAGE = 50
+    const now = Date.now()
     const threadPages: MetadataRoute.Sitemap = threads.map(thread => {
       const count = thread.post_count ?? 0
-      const priority = count >= 50 ? 0.9 : count >= 20 ? 0.85 : count >= 10 ? 0.8 : count >= 3 ? 0.7 : 0.5
+      const views = thread.view_count ?? 0
+      let priority = count >= 50 ? 0.9 : count >= 20 ? 0.85 : count >= 10 ? 0.8 : count >= 3 ? 0.7 : 0.5
+      // view_count bonus
+      if (views >= 500) priority = Math.min(0.95, priority + 0.05)
+      else if (views >= 100) priority = Math.min(0.95, priority + 0.03)
+      // recency bonus: active within 3 days
+      const lastPosted = thread.last_posted_at ? new Date(thread.last_posted_at).getTime() : 0
+      if (now - lastPosted < 3 * 86400 * 1000) priority = Math.min(0.95, priority + 0.02)
       return {
         url: `${BASE_URL}/thread/${thread.id}`,
         lastModified: thread.last_posted_at ? new Date(thread.last_posted_at) : new Date(),
         changeFrequency: 'daily' as const,
-        priority,
+        priority: Math.round(priority * 100) / 100,
       }
     })
 

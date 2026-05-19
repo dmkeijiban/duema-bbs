@@ -181,6 +181,7 @@ export default async function AdminPage({
             <Link href="/admin/summary" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">📊 まとめ生成</Link>
             <Link href="/admin/article-drafts" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">記事下書き取り込み</Link>
             <Link href="/admin/comment-import" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">コメント一括取り込み</Link>
+            <Link href="/admin/seo" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">🔍 SEO管理</Link>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] text-gray-400 w-14 shrink-0">X / SNS</span>
