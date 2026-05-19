@@ -1,0 +1,17 @@
+name: Seed Cron
+
+on:
+  schedule:
+    - cron: '0 22 * * *'   # 7:00 JST (prev day 22:00 UTC)
+    - cron: '0 3 * * *'    # 12:00 JST
+    - cron: '0 10 * * *'   # 19:00 JST
+    - cron: '0 13 * * *'   # 22:00 JST
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call seed API
+        run: |
+          curl -f -X GET https://www.duema-bbs.com/api/seed \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
