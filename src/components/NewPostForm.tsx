@@ -2,12 +2,17 @@
 
 import { useRef, useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { createPost } from '@/app/actions/thread'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { SettingEditButton } from './SettingEditButton'
-import { PushSubscribeButton } from './PushSubscribeButton'
 import { capturePostHogEvent } from '@/lib/posthog-events'
+
+const PushSubscribeButton = dynamic(
+  () => import('./PushSubscribeButton').then(mod => mod.PushSubscribeButton),
+  { ssr: false },
+)
 
 const POSTS_PER_PAGE = 50
 

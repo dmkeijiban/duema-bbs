@@ -31,7 +31,13 @@ export function PushSubscribeButton({ threadId, hideWhenSubscribed = false }: Pr
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState('')
 
-  if (permission === 'unsupported') return null
+  if (permission === 'unsupported') {
+    return (
+      <span className="text-xs text-gray-400">
+        PC・AndroidブラウザまたはiOS 16.4以降（ホーム画面に追加）でご利用いただけます
+      </span>
+    )
+  }
   if (hideWhenSubscribed && subscribed) return null
   if (permission === 'denied') {
     return (
