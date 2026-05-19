@@ -127,9 +127,10 @@ async function fetchAnimanchFirstPost(boardId: number): Promise<AnimanchThreadDe
     body = bodyMatch[1].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim()
   }
 
-  // 画像URL: href='https://bbs.animanch.com/img/BOARDID/1'
+  // 直接画像URL: <img src='https://bbs.animanch.com/img/BOARDID/N.ext'>
+  // href='/img/BOARDID/1' はビューアページ（HTML）なので src= を使う
   let imageUrl: string | null = null
-  const imgMatch = html.match(/href='(https:\/\/bbs\.animanch\.com\/img\/\d+\/1)'/)
+  const imgMatch = html.match(/src='(https:\/\/bbs\.animanch\.com\/img\/\d+\/\d+\.(?:jpg|jpeg|png|gif|webp))'/)
   if (imgMatch) {
     imageUrl = imgMatch[1]
   }
@@ -163,6 +164,10 @@ async function downloadAndUploadImage(imageUrl: string, supabase: SupabaseClient
       return null
     }
     const contentType = res.headers.get('content-type') ?? 'image/jpeg'
+    if (!contentType.startsWith('image/')) {
+      console.warn(`downloadAndUploadImage: non-image content-type "${contentType}" for ${imageUrl}`)
+      return null
+    }
     const buffer = await res.arrayBuffer()
     const ext = contentType.includes('png') ? 'png' : contentType.includes('gif') ? 'gif' : contentType.includes('webp') ? 'webp' : 'jpg'
     const filename = `seeds/${Date.now()}.${ext}`
