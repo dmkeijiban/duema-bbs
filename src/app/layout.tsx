@@ -126,6 +126,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             `}
           </Script>
         )}
+
+        {/* Google AdSense — lazyOnload でパフォーマンスへの影響を最小化 */}
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1546271448425321"
+          crossOrigin="anonymous"
+          strategy="lazyOnload"
+        />
       </head>
       <body className="min-h-screen flex flex-col antialiased" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
           <Header />
