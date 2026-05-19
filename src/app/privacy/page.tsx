@@ -2,9 +2,28 @@ import Link from 'next/link'
 import { getCachedFixedPage } from '@/lib/cached-queries'
 import { renderBlock } from '@/components/FixedPageBlocks'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
+import { SITE_URL } from '@/lib/site-config'
+
+// 固定ページはほぼ変わらないため1時間キャッシュ
+export const revalidate = 3600
 
 export const metadata = {
   title: 'プライバシーポリシー | デュエマ掲示板',
+  description: 'デュエマ掲示板のプライバシーポリシー。収集情報・利用目的・Cookie・Google Analytics等の取り扱いについて説明します。',
+  alternates: { canonical: `${SITE_URL}/privacy` },
+  openGraph: {
+    title: 'プライバシーポリシー | デュエマ掲示板',
+    description: 'デュエマ掲示板のプライバシーポリシー。収集情報・利用目的・Cookie・Google Analytics等の取り扱いについて説明します。',
+    url: `${SITE_URL}/privacy`,
+    type: 'website' as const,
+    images: [{ url: `${SITE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: 'プライバシーポリシー | デュエマ掲示板' }],
+  },
+  twitter: {
+    card: 'summary_large_image' as const,
+    title: 'プライバシーポリシー | デュエマ掲示板',
+    description: 'デュエマ掲示板のプライバシーポリシー。収集情報・利用目的・Cookie・Google Analytics等の取り扱いについて説明します。',
+    images: [`${SITE_URL}/default-thumbnail.jpg`],
+  },
 }
 
 const DEFAULT_PRIVACY = `1. 収集する情報
@@ -55,6 +74,32 @@ export default async function PrivacyPage() {
 
   return (
     <div className="max-w-screen-xl mx-auto px-3 py-4 text-sm">
+      {/* SEO: BreadcrumbList構造化データ */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
+                { "@type": "ListItem", "position": 2, "name": "プライバシーポリシー", "item": `${SITE_URL}/privacy` },
+              ],
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebPage",
+              "@id": `${SITE_URL}/privacy#webpage`,
+              "url": `${SITE_URL}/privacy`,
+              "name": "プライバシーポリシー | デュエマ掲示板",
+              "isPartOf": { "@id": `${SITE_URL}/#website` },
+              "publisher": { "@id": `${SITE_URL}/#organization` },
+              "inLanguage": "ja",
+            },
+          ]),
+        }}
+      />
       <nav className="text-xs text-gray-500 mb-4 flex items-center gap-2">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
         <span>{'>'}</span>

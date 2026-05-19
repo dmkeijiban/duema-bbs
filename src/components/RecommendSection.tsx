@@ -74,10 +74,15 @@ export async function RecommendSection({ threadId, title, categoryId = null }: P
                   priority={idx === 0}
                 />
               </div>
-              <div className="px-1 py-0.5 flex-1 min-w-0">
-                <p className="text-[10px] md:text-[13px] leading-snug text-gray-800 line-clamp-3 break-all">
+              <div className="px-1 py-0.5 flex-1 min-w-0 flex flex-col justify-center">
+                <p className="text-[10px] md:text-[13px] leading-snug text-gray-800 line-clamp-2 break-all">
                   {thread.title}
                 </p>
+                {(thread.post_count ?? 0) > 0 && (
+                  <span className="text-[9px] md:text-[11px] text-gray-400 mt-0.5 leading-none">
+                    {thread.post_count}件
+                  </span>
+                )}
               </div>
             </Link>
           )

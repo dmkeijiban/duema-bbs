@@ -11,10 +11,23 @@ import { getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThr
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
+import { createPublicClient } from '@/lib/supabase-public'
+import { NextReadNav } from '@/components/NextReadNav'
 
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
 export const revalidate = 30
+
+export async function generateStaticParams() {
+  const supabase = createPublicClient()
+  const { data } = await supabase
+    .from('threads')
+    .select('id')
+    .eq('is_archived', false)
+    .order('post_count', { ascending: false })
+    .limit(100)
+  return (data ?? []).map(t => ({ id: String(t.id) }))
+}
 
 const DEFAULT_AUTHOR_NAME = '名無しのデュエリスト'
 
@@ -96,6 +109,8 @@ export async function generateMetadata({ params }: Props) {
       description: metadataDescription,
       url: `${baseUrl}/thread/${id}`,
       type: 'article',
+      publishedTime: thread.created_at,
+      modifiedTime: thread.last_posted_at ?? thread.created_at,
       images: [{ url: ogImageUrl, width: 1200, height: 630, alt: thread.title }],
     },
     twitter: {
@@ -137,6 +152,10 @@ export async function renderThreadPage(threadId: number, page: number) {
   const currentPageUrl = page <= 1 ? canonicalUrl : `${canonicalUrl}/p/${page}`
   const structuredText = cleanStructuredText(typedThread.body, typedThread.title)
   const structuredImage = typedThread.image_url ? `${baseUrl}/og/thread/${threadId}.jpg` : undefined
+  const categoryForumId = typedThread.categories
+    ? `${baseUrl}/category/${typedThread.categories.slug}#forum`
+    : `${baseUrl}/#forum`
+
   const discussionStructuredData = removeEmptyStructuredData({
     "@context": "https://schema.org",
     "@type": "DiscussionForumPosting",
@@ -146,6 +165,12 @@ export async function renderThreadPage(threadId: number, page: number) {
     "mainEntityOfPage": canonicalUrl,
     "datePublished": typedThread.created_at,
     "dateModified": typedThread.last_posted_at ?? typedThread.created_at,
+    "isPartOf": { "@id": categoryForumId },
+    "publisher": {
+      "@type": "Organization",
+      "@id": `${baseUrl}/#organization`,
+      "name": "デュエマ掲示板",
+    },
     "author": {
       "@type": "Person",
       "name": cleanAuthorName(typedThread.author_name),
@@ -154,6 +179,18 @@ export async function renderThreadPage(threadId: number, page: number) {
     "text": structuredText,
     "description": structuredText.slice(0, 160),
     "image": structuredImage ? [structuredImage] : undefined,
+    "interactionStatistic": [
+      {
+        "@type": "InteractionCounter",
+        "interactionType": { "@type": "CommentAction" },
+        "userInteractionCount": typedThread.post_count ?? 0,
+      },
+      ...(typedThread.view_count != null ? [{
+        "@type": "InteractionCounter",
+        "interactionType": { "@type": "ViewAction" },
+        "userInteractionCount": typedThread.view_count,
+      }] : []),
+    ],
     "comment": (posts ?? []).map(post => {
       const displayNumber = post.post_number + 1
       const postUrl = currentPageUrl + '#post-' + displayNumber
@@ -185,24 +222,36 @@ export async function renderThreadPage(threadId: number, page: number) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            "itemListElement": [
-              { "@type": "ListItem", "position": 1, "name": "TOP", "item": baseUrl },
-              ...(typedThread.categories ? [
-                {
-                  "@type": "ListItem",
-                  "position": 2,
-                  "name": `カテゴリ『${typedThread.categories.name}』`,
-                  "item": `${baseUrl}/category/${typedThread.categories.slug}`,
-                },
-                { "@type": "ListItem", "position": 3, "name": typedThread.title },
-              ] : [
-                { "@type": "ListItem", "position": 2, "name": typedThread.title },
-              ]),
-            ],
-          })
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "TOP", "item": baseUrl },
+                ...(typedThread.categories ? [
+                  {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": `カテゴリ『${typedThread.categories.name}』`,
+                    "item": `${baseUrl}/category/${typedThread.categories.slug}`,
+                  },
+                  { "@type": "ListItem", "position": 3, "name": typedThread.title },
+                ] : [
+                  { "@type": "ListItem", "position": 2, "name": typedThread.title },
+                ]),
+              ],
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebPage",
+              "@id": `${canonicalUrl}#webpage`,
+              "url": canonicalUrl,
+              "name": `${typedThread.title} | デュエマ掲示板`,
+              "isPartOf": { "@id": `${baseUrl}/#website` },
+              "publisher": { "@id": `${baseUrl}/#organization` },
+              "inLanguage": "ja",
+            },
+          ])
         }}
       />
 
@@ -259,6 +308,12 @@ export async function renderThreadPage(threadId: number, page: number) {
 
       {/* SNS フォロー導線 — 最終ページのみ表示（読み終えた直後が最もコンバージョン高い） */}
       {page >= totalPages && <SnsCtaCard />}
+
+      {/* ── 1C: 次に読む ナビゲーション ──────────────────────────────
+          スレ読了後に「次の行動」を迷わせないための底面固定ナビ。
+          モバイルタップ最適化（min-h-[44px]）。全ページに表示。
+          GA4 next_read_click イベント計測 + prefetch={true} 付き。 */}
+      <NextReadNav threadId={threadId} />
     </div>
   )
 }

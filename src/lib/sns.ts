@@ -5,7 +5,7 @@
  */
 export const SNS = {
   x: 'https://x.com/dmkeijiban',
-  youtube: 'https://www.youtube.com/@darekanizatugaku/videos',
+  youtube: 'https://www.youtube.com/channel/UCRsyn5WXG3jkqBu9XGIyW1w',
   discord: 'https://discord.gg/HEmmmDZe',
 } as const
 

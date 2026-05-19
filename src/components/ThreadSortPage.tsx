@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { createClient } from '@/lib/supabase-server'
+import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadRow } from '@/components/ThreadRow'
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { Pagination } from '@/components/Pagination'
@@ -7,6 +7,7 @@ import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { seededShuffle } from '@/lib/stable-shuffle'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
+import { SITE_URL } from '@/lib/site-config'
 
 const PAGE_SIZE = 50
 
@@ -25,7 +26,7 @@ interface Props {
 }
 
 async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
-  const supabase = await createClient()
+  const supabase = createPublicClient()
   const isArchived = sort === 'archived'
   const basePath = sort === 'recent' ? '/update' : sort === 'new' ? '/new' : sort === 'random' ? '/random' : '/archived'
 
@@ -46,11 +47,32 @@ async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
       )
     }
     return (
-      <div className="border border-gray-300 bg-white">
-        {threads.map((thread) => (
-          <ThreadRow key={thread.id} thread={thread} />
-        ))}
-      </div>
+      <>
+        {/* SEO: ItemList構造化データ — ランダムスレッド一覧をGoogleに伝える */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'ItemList',
+              name: 'ランダムスレッド',
+              url: `${SITE_URL}/random`,
+              numberOfItems: threads.length,
+              itemListElement: threads.map((thread, i) => ({
+                '@type': 'ListItem',
+                position: i + 1,
+                name: thread.title,
+                url: `${SITE_URL}/thread/${thread.id}`,
+              })),
+            }),
+          }}
+        />
+        <div className="border border-gray-300 bg-white">
+          {threads.map((thread) => (
+            <ThreadRow key={thread.id} thread={thread} />
+          ))}
+        </div>
+      </>
     )
   }
 
@@ -100,10 +122,32 @@ async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
     )
   }
 
+  const listName = sort === 'new' ? '新着スレッド一覧' : '更新順スレッド一覧'
+  const typedThreads = threads as (Thread & { categories: Category | null })[]
+
   return (
     <>
+      {/* SEO: ItemList構造化データ — スレッド一覧をGoogleに伝える */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'ItemList',
+            name: listName,
+            url: `${SITE_URL}${basePath}`,
+            numberOfItems: typedThreads.length,
+            itemListElement: typedThreads.map((thread, i) => ({
+              '@type': 'ListItem',
+              position: offset + i + 1,
+              name: thread.title,
+              url: `${SITE_URL}/thread/${thread.id}`,
+            })),
+          }),
+        }}
+      />
       <div className="border border-gray-300 bg-white">
-        {(threads as (Thread & { categories: Category | null })[]).map((thread) => (
+        {typedThreads.map((thread) => (
           <ThreadRow key={thread.id} thread={thread} />
         ))}
       </div>
@@ -167,7 +211,7 @@ export async function ThreadSortPage({ sort, title, icon, page = 1 }: Props) {
         </nav>
 
         <div className="mb-2 px-3 py-1.5 border border-gray-300 bg-white flex items-baseline gap-2">
-          <span className="font-bold text-sm text-gray-800">{icon} {title}</span>
+          <h1 className="font-bold text-sm text-gray-800">{icon} {title}</h1>
         </div>
       </div>
 

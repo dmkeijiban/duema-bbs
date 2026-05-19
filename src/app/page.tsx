@@ -25,8 +25,44 @@ import {
   POPULAR_PAGE_SIZE,
 } from '@/lib/cached-queries'
 import { SITE_URL } from '@/lib/site-config'
+import type { Metadata } from 'next'
 
 export const revalidate = 60
+
+// ── Step 5: カテゴリフィルター時のメタデータ動的生成
+// ?category=slug でアクセスされたとき、タイトル・descriptionを
+// カテゴリ固有の内容にして検索エンジンへの情報密度を上げる。
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>
+}): Promise<Metadata> {
+  const params = await searchParams
+  if (!params.category) return {}
+  const cats = await getCachedCategories()
+  const cat = cats.find(c => c.slug === params.category)
+  if (!cat) return {}
+  const title = `${cat.name} | デュエマ掲示板`
+  const description = `デュエマ掲示板の「${cat.name}」カテゴリ。デュエルマスターズに関するスレッドを投稿・閲覧できます。`
+  return {
+    title,
+    description,
+    alternates: { canonical: `${SITE_URL}/category/${cat.slug}` },
+    openGraph: {
+      title,
+      description,
+      url: `${SITE_URL}/category/${cat.slug}`,
+      type: 'website' as const,
+      images: [{ url: `${SITE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: title }],
+    },
+    twitter: {
+      card: 'summary_large_image' as const,
+      title,
+      description,
+      images: [`${SITE_URL}/default-thumbnail.jpg`],
+    },
+  }
+}
 
 interface SearchParams {
   category?: string
@@ -119,8 +155,30 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
 
   if (threads.length === 0) return <ThreadEmpty searchQ={undefined} />
 
+  const pageSize = sort === 'popular' ? POPULAR_PAGE_SIZE : THREAD_PAGE_SIZE
+  const listName = sort === 'popular' ? '人気スレッド' : sort === 'new' ? '新着スレッド' : '最新スレッド一覧'
+
   return (
     <>
+      {/* SEO: ItemList構造化データ — スレッド一覧をGoogleに伝える */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'ItemList',
+            name: listName,
+            url: SITE_URL,
+            numberOfItems: threads.length,
+            itemListElement: threads.map((thread, i) => ({
+              '@type': 'ListItem',
+              position: (page - 1) * pageSize + i + 1,
+              name: thread.title,
+              url: `${SITE_URL}/thread/${thread.id}`,
+            })),
+          }),
+        }}
+      />
       {sort === 'popular' && (
         <div className="mb-2 px-3 py-1.5 border border-gray-300 bg-white flex items-baseline gap-2">
           <span className="font-bold text-sm text-gray-800">📊 人気スレッド</span>
@@ -222,6 +280,26 @@ async function BotNoticesServer() {
   return <>{bot.map(n => <NoticeBlock key={n.id} notice={n} />)}</>
 }
 
+// ── Step 2: カテゴリクイックナビ（カテゴリページへの内部リンク強化）
+async function CategoryQuickNav() {
+  const categories = await getCachedCategories()
+  if (categories.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-1.5 mb-2">
+      {categories.map((cat: { id: number; name: string; slug: string; color?: string | null }) => (
+        <Link
+          key={cat.id}
+          href={`/category/${cat.slug}`}
+          className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold text-white hover:opacity-80 active:opacity-70 transition-opacity"
+          style={{ background: cat.color ?? '#6c757d' }}
+        >
+          {cat.name}
+        </Link>
+      ))}
+    </div>
+  )
+}
+
 // ── SortTabs（カテゴリ取得後に差し替え）
 // パンくずリストも同じカテゴリデータを使うためここに含める。
 async function SortTabsServer({ params }: { params: SearchParams }) {
@@ -284,31 +362,41 @@ export default async function Home({
 
   return (
     <div className="w-full px-0 py-0">
-      {/* SEO: スクリーンリーダー・Googleのみ向けH1 */}
-      <h1 className="sr-only">デュエマ掲示板 - デュエルマスターズ専門掲示板</h1>
-
-      {/* SEO: WebSite構造化データ（JSON-LD） */}
+      {/* SEO: DiscussionForum + WebPage 構造化データ — Googleにフォームサイトと認識させ知識グラフに接続 */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "WebSite",
-            "name": "デュエマ掲示板",
-            "alternateName": "デュエルマスターズ専門掲示板",
-            "url": `${SITE_URL}`,
-            "description": "デュエルマスターズ専門の掲示板。デッキ相談・カード評価・大会情報など。",
-            "potentialAction": {
-              "@type": "SearchAction",
-              "target": {
-                "@type": "EntryPoint",
-                "urlTemplate": `${SITE_URL}/?q={search_term_string}`
+          __html: JSON.stringify([
+            {
+              '@context': 'https://schema.org',
+              '@type': 'DiscussionForum',
+              '@id': `${SITE_URL}/#forum`,
+              name: 'デュエマ掲示板',
+              description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報・環境考察など何でも語ろう。',
+              url: SITE_URL,
+              inLanguage: 'ja',
+              isPartOf: { '@id': `${SITE_URL}/#website` },
+              publisher: {
+                '@type': 'Organization',
+                '@id': `${SITE_URL}/#organization`,
+                name: 'デュエマ掲示板',
               },
-              "query-input": "required name=search_term_string"
-            }
-          })
+            },
+            {
+              '@context': 'https://schema.org',
+              '@type': 'WebPage',
+              '@id': `${SITE_URL}/#webpage`,
+              url: SITE_URL,
+              name: 'デュエマ掲示板 - デュエルマスターズ専門掲示板',
+              isPartOf: { '@id': `${SITE_URL}/#website` },
+              publisher: { '@id': `${SITE_URL}/#organization` },
+              inLanguage: 'ja',
+            },
+          ]),
         }}
       />
+      {/* SEO: スクリーンリーダー・Googleのみ向けH1 */}
+      <h1 className="sr-only">デュエマ掲示板 - デュエルマスターズ専門掲示板</h1>
 
       <div className="max-w-screen-xl mx-auto px-2 pt-2">
         <Suspense fallback={<RecommendSectionSkeleton />}>
@@ -338,6 +426,14 @@ export default async function Home({
           <span>📊 人気スレッドまとめ（週間・月間ランキング）</span>
           <span className="text-xs ml-2 shrink-0">一覧へ</span>
         </Link>
+
+        {/* ── Step 2: カテゴリクイックナビ ──────────────────────────────
+            カテゴリページへの内部リンクを増やし、Googleの巡回効率を上げる。
+            削除するだけで即リバート可能。 */}
+        <Suspense fallback={<CategoryQuickNavSkeleton />}>
+          <CategoryQuickNav />
+        </Suspense>
+
       </div>
 
       {/* SortTabs: カテゴリ一覧が必要。スケルトンで正確な高さを維持し CLS 防止 */}
@@ -481,6 +577,22 @@ function TopNoticesSkeleton() {
           <div key={i} style={{ flex: 1, height: 80 }} className="bg-gray-100" />
         ))}
       </div>
+    </div>
+  )
+}
+
+// CategoryQuickNav のスケルトン：fallback={null} だと後続要素が CLS を起こすため
+// 実際のバッジと同じ高さ・gap・mb を持つプレースホルダーで高さを確保する。
+function CategoryQuickNavSkeleton() {
+  return (
+    <div className="flex flex-wrap gap-1.5 mb-2">
+      {[...Array(7)].map((_, i) => (
+        <div
+          key={i}
+          className="h-6 rounded bg-gray-200 animate-pulse"
+          style={{ width: [52, 64, 56, 48, 72, 60, 52][i] }}
+        />
+      ))}
     </div>
   )
 }

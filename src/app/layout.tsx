@@ -2,13 +2,14 @@ import type { Metadata } from 'next'
 import Script from 'next/script'
 import './globals.css'
 import { Header } from '@/components/Header'
-import { SnsFloatingBar } from '@/components/SnsFloatingBar'
 import { getSnsUrls } from '@/lib/sns-server'
+import { getCachedCategories } from '@/lib/cached-queries'
 import Link from 'next/link'
-import { SITE_URL } from '@/lib/site-config'
+import { SITE_URL, SITE_NAME } from '@/lib/site-config'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
-import { PostHogEventBridge } from '@/components/PostHogEventBridge'
+// TBT削減: Client Component ラッパー経由で ssr:false dynamic import を使用
+import { LazyFloatingBar, LazyPostHogBridge } from '@/components/LazyClientComponents'
 
 const GA_ID = 'G-HDGDNYNMH4'
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY
@@ -48,7 +49,7 @@ export const metadata: Metadata = {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const snsUrls = await getSnsUrls()
+  const [snsUrls, categories] = await Promise.all([getSnsUrls(), getCachedCategories()])
   return (
     <html lang="ja" suppressHydrationWarning>
       <head>
@@ -59,6 +60,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'WebSite',
+              '@id': `${SITE_URL}/#website`,
               name: 'デュエマ掲示板',
               alternateName: 'デュエルマスターズ専門掲示板',
               url: SITE_URL,
@@ -66,16 +68,68 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               inLanguage: 'ja',
               publisher: {
                 '@type': 'Organization',
+                '@id': `${SITE_URL}/#organization`,
                 name: 'デュエマ掲示板',
                 url: SITE_URL,
                 logo: {
                   '@type': 'ImageObject',
                   url: `${SITE_URL}/logo.jpg`,
                 },
+                sameAs: [
+                  snsUrls.x,
+                  snsUrls.youtube,
+                  snsUrls.discord,
+                ].filter(Boolean),
+              },
+              potentialAction: {
+                '@type': 'SearchAction',
+                target: {
+                  '@type': 'EntryPoint',
+                  urlTemplate: `${SITE_URL}/?q={search_term_string}`,
+                },
+                'query-input': 'required name=search_term_string',
               },
             }),
           }}
         />
+
+        {/* 構造化データ：Organization 独立エンティティ（WebSite の publisher @id と同一ノード）
+            Google がサイト運営者エンティティをナレッジグラフに登録しやすくなる */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              '@id': `${SITE_URL}/#organization`,
+              name: 'デュエマ掲示板',
+              alternateName: 'デュエルマスターズ掲示板',
+              url: SITE_URL,
+              description: 'デュエルマスターズ（デュエマ）専門の掲示板コミュニティ。デッキ相談・カード評価・大会情報・環境考察など何でも語ろう。',
+              logo: {
+                '@type': 'ImageObject',
+                '@id': `${SITE_URL}/#logo`,
+                url: `${SITE_URL}/logo.jpg`,
+                contentUrl: `${SITE_URL}/logo.jpg`,
+                caption: 'デュエマ掲示板ロゴ',
+              },
+              contactPoint: {
+                '@type': 'ContactPoint',
+                url: `${SITE_URL}/contact`,
+                contactType: 'customer support',
+                availableLanguage: 'Japanese',
+              },
+              sameAs: [
+                snsUrls.x,
+                snsUrls.youtube,
+                snsUrls.discord,
+              ].filter(Boolean),
+            }),
+          }}
+        />
+
+        {/* RSS フィード — Googlebot の巡回頻度向上・フィードリーダー対応 */}
+        <link rel="alternate" type="application/rss+xml" title={`${SITE_NAME} RSS フィード`} href={`${SITE_URL}/feed.xml`} />
 
         {/* Supabase ストレージへの早期接続でLCPの画像取得を高速化 */}
         <link rel="preconnect" href="https://nodgfukqvuwvgfnlzvnh.supabase.co" />
@@ -138,10 +192,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-screen flex flex-col antialiased" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
           <Header />
           <main className="flex-1">{children}</main>
-          <SnsFloatingBar snsUrls={snsUrls} />
-          <PostHogEventBridge />
+          <LazyFloatingBar snsUrls={snsUrls} />
+          <LazyPostHogBridge />
           <footer className="bg-white border-t border-gray-200 py-4 mt-6">
-            <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-600 space-y-1">
+            <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-600 space-y-2">
+              {categories.length > 0 && (
+                <div className="flex justify-center flex-wrap gap-x-3 gap-y-1">
+                  {categories.map((cat: { id: number; slug: string; name: string }) => (
+                    <Link key={cat.id} href={`/category/${cat.slug}`} className="hover:underline">
+                      {cat.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
               <div className="flex justify-center gap-4">
                 <Link href="/about" className="hover:underline">運営者情報</Link>
                 <Link href="/terms" className="hover:underline">利用規約</Link>

@@ -4,9 +4,22 @@ import { getCachedFixedPage } from '@/lib/cached-queries'
 import { renderBlock } from '@/components/FixedPageBlocks'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
+import { createPublicClient } from '@/lib/supabase-public'
+
+// 固定ページはほぼ変わらないため1時間キャッシュ（guide/privacy/terms と統一）
+export const revalidate = 3600
 
 interface Props {
   params: Promise<{ slug: string }>
+}
+
+export async function generateStaticParams() {
+  const supabase = createPublicClient()
+  const { data } = await supabase
+    .from('fixed_pages')
+    .select('slug')
+    .eq('is_published', true)
+  return (data ?? []).map(p => ({ slug: p.slug }))
 }
 
 export async function generateMetadata({ params }: Props) {
@@ -30,11 +43,13 @@ export async function generateMetadata({ params }: Props) {
       description,
       url,
       type: 'website' as const,
+      images: [{ url: `${SITE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: `${page.title} | デュエマ掲示板` }],
     },
     twitter: {
-      card: 'summary' as const,
+      card: 'summary_large_image' as const,
       title: `${page.title} | デュエマ掲示板`,
       description,
+      images: [`${SITE_URL}/default-thumbnail.jpg`],
     },
   }
 }
@@ -46,6 +61,32 @@ export default async function FixedPageRoute({ params }: Props) {
 
   return (
     <div className="max-w-screen-xl mx-auto px-3 py-4 text-sm">
+      {/* SEO: BreadcrumbList + WebPage 構造化データ */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
+                { "@type": "ListItem", "position": 2, "name": page.title, "item": `${SITE_URL}/${slug}` },
+              ],
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebPage",
+              "@id": `${SITE_URL}/${slug}#webpage`,
+              "url": `${SITE_URL}/${slug}`,
+              "name": `${page.title} | デュエマ掲示板`,
+              "isPartOf": { "@id": `${SITE_URL}/#website` },
+              "publisher": { "@id": `${SITE_URL}/#organization` },
+              "inLanguage": "ja",
+            },
+          ]),
+        }}
+      />
       <nav className="text-xs text-gray-500 mb-4 flex items-center gap-2">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
         <span>{'>'}</span>

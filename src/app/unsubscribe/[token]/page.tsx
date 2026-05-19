@@ -5,7 +5,10 @@ interface Props {
   params: Promise<{ token: string }>
 }
 
-export const metadata = { title: '配信停止 | デュエマ掲示板' }
+export const metadata = {
+  title: '配信停止 | デュエマ掲示板',
+  robots: { index: false, follow: false },
+}
 
 export default async function UnsubscribePage({ params }: Props) {
   const { token } = await params

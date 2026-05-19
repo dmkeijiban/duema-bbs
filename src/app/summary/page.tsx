@@ -7,7 +7,6 @@ import { Metadata } from 'next'
 import { SITE_URL } from '@/lib/site-config'
 
 export const revalidate = 3600
-export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'まとめ一覧 | デュエマ掲示板',
@@ -97,6 +96,31 @@ async function SummaryList() {
 
   return (
     <>
+      {/* SEO: CollectionPage + ItemList 構造化データ — まとめ一覧をGoogleに伝える */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'CollectionPage',
+            name: 'まとめ一覧',
+            url: `${SITE_URL}/summary`,
+            description: 'デュエマ（デュエルマスターズ）掲示板の人気記事まとめ・週間ランキング・月間ランキングの一覧。',
+            inLanguage: 'ja',
+            publisher: { '@id': `${SITE_URL}/#organization` },
+            mainEntity: {
+              '@type': 'ItemList',
+              numberOfItems: summaries.length,
+              itemListElement: summaries.map((s, i) => ({
+                '@type': 'ListItem',
+                position: i + 1,
+                name: s.title,
+                url: `${SITE_URL}/summary/${s.slug}`,
+              })),
+            },
+          }),
+        }}
+      />
       {manualSummaries.length > 0 && (
         <section className="mb-4">
           <h2 className="text-sm font-bold text-gray-700 px-2 py-1.5 border border-gray-300 bg-orange-50 mb-2">
@@ -130,6 +154,32 @@ async function SummaryList() {
 export default async function SummaryIndexPage() {
   return (
     <div className="w-full px-0 py-0">
+      {/* SEO: BreadcrumbList + WebPage 構造化データ */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
+                { "@type": "ListItem", "position": 2, "name": "まとめ一覧", "item": `${SITE_URL}/summary` },
+              ],
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebPage",
+              "@id": `${SITE_URL}/summary#webpage`,
+              "url": `${SITE_URL}/summary`,
+              "name": "まとめ一覧 | デュエマ掲示板",
+              "isPartOf": { "@id": `${SITE_URL}/#website` },
+              "publisher": { "@id": `${SITE_URL}/#organization` },
+              "inLanguage": "ja",
+            },
+          ]),
+        }}
+      />
       <div className="max-w-screen-xl mx-auto px-2 pt-2">
         <Suspense fallback={null}>
           <RecommendSection />

@@ -2,9 +2,28 @@ import Link from 'next/link'
 import { getCachedFixedPage } from '@/lib/cached-queries'
 import { renderBlock } from '@/components/FixedPageBlocks'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
+import { SITE_URL } from '@/lib/site-config'
+
+// 固定ページはほぼ変わらないため1時間キャッシュ
+export const revalidate = 3600
 
 export const metadata = {
   title: '利用規約 | デュエマ掲示板',
+  description: 'デュエマ掲示板の利用規約。禁止事項・免責事項・コンテンツポリシーなど本サービスのルールを定めています。',
+  alternates: { canonical: `${SITE_URL}/terms` },
+  openGraph: {
+    title: '利用規約 | デュエマ掲示板',
+    description: 'デュエマ掲示板の利用規約。禁止事項・免責事項・コンテンツポリシーなど本サービスのルールを定めています。',
+    url: `${SITE_URL}/terms`,
+    type: 'website' as const,
+    images: [{ url: `${SITE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: '利用規約 | デュエマ掲示板' }],
+  },
+  twitter: {
+    card: 'summary_large_image' as const,
+    title: '利用規約 | デュエマ掲示板',
+    description: 'デュエマ掲示板の利用規約。禁止事項・免責事項・コンテンツポリシーなど本サービスのルールを定めています。',
+    images: [`${SITE_URL}/default-thumbnail.jpg`],
+  },
 }
 
 const DEFAULT_TERMS = `1. はじめに
@@ -82,6 +101,32 @@ export default async function TermsPage() {
 
   return (
     <div className="max-w-screen-xl mx-auto px-3 py-4 text-sm">
+      {/* SEO: BreadcrumbList構造化データ */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
+                { "@type": "ListItem", "position": 2, "name": "利用規約", "item": `${SITE_URL}/terms` },
+              ],
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebPage",
+              "@id": `${SITE_URL}/terms#webpage`,
+              "url": `${SITE_URL}/terms`,
+              "name": "利用規約 | デュエマ掲示板",
+              "isPartOf": { "@id": `${SITE_URL}/#website` },
+              "publisher": { "@id": `${SITE_URL}/#organization` },
+              "inLanguage": "ja",
+            },
+          ]),
+        }}
+      />
       <nav className="text-xs text-gray-500 mb-4 flex items-center gap-2">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
         <span>{'>'}</span>

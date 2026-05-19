@@ -15,7 +15,6 @@ import { SummaryCommentSection, SummaryComment } from '@/components/SummaryComme
 import { summaryTextExcerpt, sanitizeSummaryHtml } from '@/lib/summary-content'
 
 export const revalidate = 3600
-export const dynamic = 'force-dynamic'
 
 interface SummaryThread {
   id: number
@@ -44,6 +43,17 @@ interface Summary {
 
 interface Props {
   params: Promise<{ slug: string }>
+}
+
+export async function generateStaticParams() {
+  const supabase = createPublicClient()
+  const { data } = await supabase
+    .from('summaries')
+    .select('slug')
+    .eq('published', true)
+    .order('created_at', { ascending: false })
+    .limit(100)
+  return (data ?? []).map(s => ({ slug: s.slug }))
 }
 
 async function getSummary(slug: string): Promise<Summary | null> {
@@ -203,6 +213,21 @@ export default async function SummarySlugPage({ params }: Props) {
 
   return (
     <div className="w-full px-0 py-0">
+      {/* SEO: BreadcrumbList構造化データ */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "TOP", "item": BASE_URL },
+              { "@type": "ListItem", "position": 2, "name": "まとめ一覧", "item": `${BASE_URL}/summary` },
+              { "@type": "ListItem", "position": 3, "name": summary.title, "item": `${BASE_URL}/summary/${summary.slug}` },
+            ],
+          }),
+        }}
+      />
       {/* SEO: Article + ItemList 構造化データ */}
       <script
         type="application/ld+json"
@@ -210,12 +235,17 @@ export default async function SummarySlugPage({ params }: Props) {
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'Article',
+            '@id': `${BASE_URL}/summary/${summary.slug}#article`,
             headline: summary.title,
             url: `${BASE_URL}/summary/${summary.slug}`,
             datePublished: summary.created_at,
+            dateModified: summary.created_at,
+            image: [`${BASE_URL}/default-thumbnail.jpg`],
+            isPartOf: { '@id': `${BASE_URL}/#website` },
             description,
             publisher: {
               '@type': 'Organization',
+              '@id': `${BASE_URL}/#organization`,
               name: 'デュエマ掲示板',
               url: BASE_URL,
             },

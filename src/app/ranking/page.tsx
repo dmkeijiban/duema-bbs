@@ -1,9 +1,11 @@
 import { Suspense } from 'react'
-import { createClient } from '@/lib/supabase-server'
+import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadCard } from '@/components/ThreadCard'
 import { RecommendSection } from '@/components/RecommendSection'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { SITE_URL } from '@/lib/site-config'
+
+export const revalidate = 3600
 
 export const metadata = {
   title: '人気スレッドランキング | デュエマ掲示板',
@@ -30,7 +32,7 @@ import Link from 'next/link'
 const PAGE_SIZE = 100
 
 async function RankingList({ page }: { page: number }) {
-  const supabase = await createClient()
+  const supabase = createPublicClient()
   const recentSince = new Date()
   recentSince.setDate(recentSince.getDate() - 3)
   const since = recentSince.toISOString()
@@ -72,10 +74,32 @@ async function RankingList({ page }: { page: number }) {
     )
   }
 
+  const typedThreads = withImages as (Thread & { categories: Category | null })[]
+
   return (
     <>
+      {/* SEO: ItemList構造化データ — ランキング順リストをGoogleに伝える */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "name": "人気スレッドランキング（過去3日間）",
+            "description": "デュエマ掲示板の過去3日間でレス数が多い人気スレッドランキング",
+            "url": `${SITE_URL}/ranking`,
+            "numberOfItems": typedThreads.length,
+            "itemListElement": typedThreads.map((thread, i) => ({
+              "@type": "ListItem",
+              "position": offset + i + 1,
+              "name": thread.title,
+              "url": `${SITE_URL}/thread/${thread.id}`,
+            })),
+          }),
+        }}
+      />
       <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
-        {(withImages as (Thread & { categories: Category | null })[]).map((thread, i) => (
+        {typedThreads.map((thread, i) => (
           <ThreadCard key={thread.id} thread={thread} rank={offset + i + 1} />
         ))}
       </div>
@@ -93,6 +117,33 @@ export default async function RankingPage({ searchParams }: Props) {
 
   return (
     <div className="w-full px-0 py-0">
+      {/* SEO: BreadcrumbList + WebPage 構造化データ */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
+                { "@type": "ListItem", "position": 2, "name": "人気スレッドランキング", "item": `${SITE_URL}/ranking` },
+              ],
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebPage",
+              "@id": `${SITE_URL}/ranking#webpage`,
+              "url": `${SITE_URL}/ranking`,
+              "name": "人気スレッドランキング | デュエマ掲示板",
+              "isPartOf": { "@id": `${SITE_URL}/#website` },
+              "publisher": { "@id": `${SITE_URL}/#organization` },
+              "inLanguage": "ja",
+            },
+          ]),
+        }}
+      />
+
       <div className="max-w-screen-xl mx-auto px-2 pt-2">
         {/* オススメ */}
         <Suspense fallback={null}>
@@ -108,7 +159,7 @@ export default async function RankingPage({ searchParams }: Props) {
 
         {/* ランキングヘッダー */}
         <div className="mb-2 px-3 py-2 border border-gray-300 bg-white flex items-baseline gap-2">
-          <span className="font-bold text-sm text-gray-800">📊 人気スレッド</span>
+          <h1 className="font-bold text-sm text-gray-800">📊 人気スレッドランキング</h1>
           <span className="text-xs text-gray-500">（過去3日間）</span>
         </div>
       </div>

@@ -9,9 +9,10 @@ import Link from 'next/link'
 import { SettingEditButton } from './SettingEditButton'
 import { capturePostHogEvent } from '@/lib/posthog-events'
 
+// TBT削減: localStorageアクセスとServiceWorker登録JSを初期バンドルから除外
 const PushSubscribeButton = dynamic(
-  () => import('./PushSubscribeButton').then(mod => mod.PushSubscribeButton),
-  { ssr: false },
+  () => import('./PushSubscribeButton').then(m => m.PushSubscribeButton),
+  { ssr: false }
 )
 
 const POSTS_PER_PAGE = 50
@@ -30,8 +31,33 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const [scrollTarget, setScrollTarget] = useState<number | null>(null)
+  const [showPushButton, setShowPushButton] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+
+  // プッシュ通知ボタン：スクロール30% OR 10秒滞在で表示
+  useEffect(() => {
+    let shown = false
+    const show = () => {
+      if (shown) return
+      shown = true
+      setShowPushButton(true)
+    }
+
+    const timer = setTimeout(show, 10_000)
+
+    const onScroll = () => {
+      const el = document.documentElement
+      const scrolled = el.scrollTop / (el.scrollHeight - el.clientHeight)
+      if (scrolled >= 0.3) show()
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('scroll', onScroll)
+    }
+  }, [])
 
   useEffect(() => {
     if (scrollTarget === null) return
@@ -171,6 +197,9 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
                   className="w-full px-2 py-1.5 text-sm resize-y focus:outline-none"
                   style={{ border: '1px solid #80bdff' }}
                 />
+                <div className={`text-right text-[11px] mt-0.5 ${bodyValue.length >= 2800 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                  {bodyValue.length} / 3000
+                </div>
               </td>
             </tr>
             <tr className="border-b border-gray-200">
@@ -191,7 +220,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
                 返信通知
               </td>
               <td className="py-2 px-3">
-                <PushSubscribeButton threadId={threadId} />
+                {showPushButton && <PushSubscribeButton threadId={threadId} />}
               </td>
             </tr>
           </tbody>

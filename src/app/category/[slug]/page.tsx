@@ -33,6 +33,11 @@ interface Props {
   searchParams: Promise<{ sort?: string; page?: string }>
 }
 
+export async function generateStaticParams() {
+  const cats = await getCachedCategories()
+  return cats.map(c => ({ slug: c.slug }))
+}
+
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
   const cats = await getCachedCategories()
@@ -104,8 +109,29 @@ async function CategoryThreadList({
 
   if (threads.length === 0) return <CategoryThreadEmpty />
 
+  const listName = sort === 'popular' ? `人気スレッド（${category.name}）` : `${category.name} スレッド一覧`
+
   return (
     <>
+      {/* SEO: ItemList構造化データ — カテゴリ内スレッド一覧をGoogleに伝える */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'ItemList',
+            name: listName,
+            url: `${BASE_URL}/category/${category.slug}`,
+            numberOfItems: threads.length,
+            itemListElement: threads.map((thread, i) => ({
+              '@type': 'ListItem',
+              position: (page - 1) * THREAD_PAGE_SIZE + i + 1,
+              name: thread.title,
+              url: `${BASE_URL}/thread/${thread.id}`,
+            })),
+          }),
+        }}
+      />
       {sort === 'popular' && (
         <div className="mb-2 px-3 py-1.5 border border-gray-300 bg-white flex items-baseline gap-2">
           <span className="font-bold text-sm text-gray-800">📊 人気スレッド</span>
@@ -196,18 +222,33 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   return (
     <div className="w-full px-0 py-0">
-      {/* SEO: BreadcrumbList構造化データ（JSON-LD） */}
+      {/* SEO: BreadcrumbList + DiscussionForum構造化データ */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            "itemListElement": [
-              { "@type": "ListItem", "position": 1, "name": "TOP", "item": BASE_URL },
-              { "@type": "ListItem", "position": 2, "name": `カテゴリ『${category.name}』`, "item": `${BASE_URL}/category/${slug}` },
-            ],
-          })
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "TOP", "item": BASE_URL },
+                { "@type": "ListItem", "position": 2, "name": `カテゴリ『${category.name}』`, "item": `${BASE_URL}/category/${slug}` },
+              ],
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "DiscussionForum",
+              "@id": `${BASE_URL}/category/${slug}#forum`,
+              "name": `${category.name} | デュエマ掲示板`,
+              "description": category.description
+                ? `${category.description} — デュエマ掲示板`
+                : `デュエルマスターズ（デュエマ）掲示板の「${category.name}」カテゴリ。`,
+              "url": `${BASE_URL}/category/${slug}`,
+              "inLanguage": "ja",
+              "isPartOf": { "@id": `${BASE_URL}/#website` },
+              "publisher": { "@id": `${BASE_URL}/#organization` },
+            },
+          ])
         }}
       />
 
@@ -219,13 +260,14 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         {topNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
       </div>
 
-      {/* パンくず */}
+      {/* パンくず + H1 */}
       <div className="max-w-screen-xl mx-auto px-2 mb-1">
         <nav className="text-xs text-gray-600 flex items-center gap-x-1" aria-label="パンくずリスト">
           <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
           <span>{'>'}</span>
           <span>カテゴリ：{category.name}</span>
         </nav>
+        <h1 className="text-sm font-bold text-gray-900 mt-0.5">{category.name} のスレッド一覧</h1>
       </div>
 
       <SortTabs currentSort={sort} currentCategory={slug} categories={categories} basePath={basePath} />
