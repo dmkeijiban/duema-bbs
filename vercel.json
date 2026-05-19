@@ -5,6 +5,10 @@
       "schedule": "0 15 * * *"
     },
     {
+      "path": "/api/seed",
+      "schedule": "0 */6 * * *"
+    },
+    {
       "path": "/api/summary/cron",
       "schedule": "0 0 * * *"
     },

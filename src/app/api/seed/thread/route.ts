@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { SEED_THREADS } from '@/lib/seed-data'
+import { SEED_THREADS, SEED_COMMENTS } from '@/lib/seed-data'
 import { notifyNewThread } from '@/lib/discord'
 
 export const runtime = 'nodejs'
@@ -190,6 +190,46 @@ async function downloadAndUploadImage(imageUrl: string, supabase: SupabaseClient
   }
 }
 
+function transformComment(text: string): string {
+  let t = text
+  t = t.replace(/草/g, '笑')
+  t = t.replace(/>>?\d+/g, '')
+  t = t.replace(/あにまん|animanch/gi, 'ここ')
+  t = t.replace(/\n{3,}/g, '\n')
+  return t.trim()
+}
+
+async function fetchAnimanchComments(boardId: number): Promise<string[]> {
+  const url = `${ANIMANCH_BASE}/board/${boardId}/`
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DuemaBBS/1.0)' },
+    next: { revalidate: 0 },
+  })
+  if (!res.ok) return []
+  const html = await res.text()
+  const commentPattern = /<div class='resbody[^']*'>\s*<p>([\s\S]*?)<\/p>/g
+  const comments: string[] = []
+  let count = 0
+  let m: RegExpExecArray | null
+  while ((m = commentPattern.exec(html)) !== null) {
+    count++
+    if (count === 1) continue
+    const raw = m[1].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim()
+    if (raw.length >= 10 && raw.length <= 300) comments.push(raw)
+    if (comments.length >= 15) break
+  }
+  return comments
+}
+
+const COMMENT_AUTHOR_NAMES = [
+  '新弾チェッカー', 'レジェンドハンター', 'ツインパクト愛好家',
+  '初心者デュエリスト', '魔導具マスター', '速攻志望', 'コンボハンター',
+  '殿堂研究家', 'メタ分析好き', 'CS初参加予定', 'カウンター戦略家',
+  '相場チェッカー', '先行投資派', 'デュエプレ検討中', '紙プレ両刀',
+  'アニメ勢', 'アニメカード収集家', 'デュエパ愛好家', 'ルール探求者',
+  '懐古主義者', '歴史研究家', '仲間募集中', 'カード整理したい', 'デュエチューバーファン',
+]
+
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
@@ -266,6 +306,21 @@ export async function GET(req: NextRequest) {
       console.log(`Seed/thread: created ${created.id} "${created.title}"`)
       const { data: cat } = await supabase.from('categories').select('name').eq('id', categoryId).single()
       notifyNewThread({ threadId: created.id, title: created.title, categoryName: cat?.name ?? null }).catch(() => {})
+
+      // 同じあにまんスレのリプライから初期コメント3件追加
+      try {
+        const rawComments = await fetchAnimanchComments(chosen.boardId)
+        const validComments = rawComments.map(transformComment).filter(c => c.length >= 10)
+        const pool = validComments.length >= 3 ? validComments : SEED_COMMENTS.map(c => c.body)
+        for (let i = 0; i < 3; i++) {
+          const body = pool[(sixHourIndex + i * 7) % pool.length]
+          const authorName = COMMENT_AUTHOR_NAMES[(sixHourIndex + i * 5) % COMMENT_AUTHOR_NAMES.length]
+          await supabase.from('posts').insert({ thread_id: created.id, post_number: i + 1, body, author_name: authorName })
+        }
+        console.log(`Seed/thread: added 3 comments to ${created.id}`)
+      } catch (commentErr) {
+        console.warn('Seed/thread: initial comments failed:', commentErr)
+      }
     }
   } catch (err) {
     // フォールバック：seed-data.ts の固定テンプレートを使用
@@ -293,6 +348,14 @@ export async function GET(req: NextRequest) {
       console.log(`Seed/thread: created fallback ${created.id} "${created.title}"`)
       const { data: cat } = await supabase.from('categories').select('name').eq('id', template.category_id).single()
       notifyNewThread({ threadId: created.id, title: created.title, categoryName: cat?.name ?? null }).catch(() => {})
+
+      // SEED_COMMENTSから初期コメント3件追加
+      for (let i = 0; i < 3; i++) {
+        const seed = SEED_COMMENTS[(sixHourIndex + i * 7) % SEED_COMMENTS.length]
+        const authorName = COMMENT_AUTHOR_NAMES[(sixHourIndex + i * 5) % COMMENT_AUTHOR_NAMES.length]
+        await supabase.from('posts').insert({ thread_id: created.id, post_number: i + 1, body: seed.body, author_name: authorName })
+      }
+      console.log(`Seed/thread: added 3 comments (fallback) to ${created.id}`)
     }
   }
 
