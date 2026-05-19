@@ -12,7 +12,7 @@ interface Props {
 
 type PermissionState = 'default' | 'granted' | 'denied' | 'unsupported'
 
-const STORAGE_KEY = (threadId: number) => `push_sub_${threadId}`
+const STORAGE_KEY = (threadId: number) => `push_sub_v2_${threadId}`
 
 export function PushSubscribeButton({ threadId, hideWhenSubscribed = false, cta = false }: Props) {
   const [permission, setPermission] = useState<PermissionState>(() => {
@@ -44,6 +44,9 @@ export function PushSubscribeButton({ threadId, hideWhenSubscribed = false, cta 
 
         const nextEndpoint = subscription?.endpoint ?? null
         const storedEndpoint = localStorage.getItem(STORAGE_KEY(threadId))
+
+        // always purge stale v1 keys written by old buggy code
+        localStorage.removeItem(`push_sub_${threadId}`)
 
         if (nextEndpoint && storedEndpoint && nextEndpoint === storedEndpoint) {
           setEndpoint(nextEndpoint)
