@@ -13,6 +13,7 @@ import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
 import { createPublicClient } from '@/lib/supabase-public'
 import { NextReadNav } from '@/components/NextReadNav'
+import { AdBanner } from '@/components/AdBanner'
 
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
@@ -286,6 +287,11 @@ export async function renderThreadPage(threadId: number, page: number) {
       {(threadNotices as Notice[]).map(n => (
         <NoticeBlock key={n.id} notice={n} />
       ))}
+
+      {/* AdSense 記事内広告（スレッドタイトル直下・1ページ目のみ） */}
+      {page === 1 && (
+        <AdBanner slot="7587904140" format="fluid" layout="in-article" style={{ margin: '8px 0' }} minHeight={200} />
+      )}
 
       <ThreadContent
         posts={(posts ?? []) as Post[]}

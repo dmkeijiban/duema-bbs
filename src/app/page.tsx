@@ -26,6 +26,7 @@ import {
 } from '@/lib/cached-queries'
 import { SITE_URL } from '@/lib/site-config'
 import type { Metadata } from 'next'
+import { AdBanner } from '@/components/AdBanner'
 
 export const revalidate = 60
 
@@ -425,6 +426,9 @@ export default async function Home({
         <Suspense fallback={<ThreadListSkeleton />}>
           <ThreadList searchParams={params} />
         </Suspense>
+
+        {/* AdSense ディスプレイ広告（スレ一覧下） */}
+        <AdBanner slot="5316786416" format="auto" style={{ margin: '8px 0' }} />
 
         <Suspense fallback={null}>
           <BotNoticesServer />
