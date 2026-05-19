@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { saveSubscription, deleteSubscription } from '@/app/actions/push-subscription'
 
 interface Props {
@@ -22,58 +22,56 @@ export function PushSubscribeButton({ threadId, hideWhenSubscribed = false, cta 
     }
     return Notification.permission as PermissionState
   })
-  const [subscribed, setSubscribed] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return !!localStorage.getItem(STORAGE_KEY(threadId))
-  })
-  const [endpoint, setEndpoint] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null
-    return localStorage.getItem(STORAGE_KEY(threadId))
-  })
+  const [hydrated, setHydrated] = useState(false)
+  const [subscribed, setSubscribed] = useState(false)
+  const [endpoint, setEndpoint] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState('')
 
-  // マウント時に実際のPush購読状態とlocalStorageを同期する
-  // （localStorageがクリアされた場合やブラウザ再起動後にもオフボタンを正しく表示するため）
   useEffect(() => {
-    if (permission === 'unsupported') return
-    if (!('serviceWorker' in navigator)) return
-
-    navigator.serviceWorker.ready
-      .then((reg) =>
-        reg.pushManager.getSubscription().then((sub) => {
-          if (sub) {
-            // 実際に購読が存在 → stateとlocalStorageを一致させる
-            setEndpoint(sub.endpoint)
-            setSubscribed(true)
-            if (!localStorage.getItem(STORAGE_KEY(threadId))) {
-              localStorage.setItem(STORAGE_KEY(threadId), sub.endpoint)
-            }
-          } else {
-            // 購読が存在しない → localStorageのゴミを除去
-            if (localStorage.getItem(STORAGE_KEY(threadId))) {
-              localStorage.removeItem(STORAGE_KEY(threadId))
-              setEndpoint(null)
-              setSubscribed(false)
-            }
-          }
-        }),
-      )
-      .catch(() => {
-        /* SW未登録など — 無視してUIはlocalStorage初期値のまま */
-      })
-  }, [threadId, permission])
-
-  if (permission === 'unsupported') {
-    // CTAモードのときだけ「PC/Androidでご利用可能」の案内を出す
-    if (cta) {
-      return (
-        <div className="mt-3 border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-400 flex items-center gap-2">
-          <span>🔔 返信通知はPC・Androidブラウザからご利用いただけます</span>
-        </div>
-      )
+    if (permission === 'unsupported' || permission === 'denied') {
+      setHydrated(true)
+      return
     }
-    return null
+
+    let cancelled = false
+
+    navigator.serviceWorker
+      .getRegistration()
+      .then(registration => registration?.pushManager.getSubscription() ?? null)
+      .then(subscription => {
+        if (cancelled) return
+
+        const nextEndpoint = subscription?.endpoint ?? null
+        if (nextEndpoint) {
+          localStorage.setItem(STORAGE_KEY(threadId), nextEndpoint)
+          setEndpoint(nextEndpoint)
+          setSubscribed(true)
+        } else {
+          localStorage.removeItem(STORAGE_KEY(threadId))
+          setEndpoint(null)
+          setSubscribed(false)
+        }
+      })
+      .catch(() => {
+        if (cancelled) return
+        localStorage.removeItem(STORAGE_KEY(threadId))
+        setEndpoint(null)
+        setSubscribed(false)
+      })
+      .finally(() => {
+        if (!cancelled) setHydrated(true)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [permission, threadId])
+
+  if (!hydrated) return null
+  if (permission === 'unsupported') {
+    if (cta) return null
+    return <span className="push-subscribe-empty hidden" aria-hidden="true" />
   }
   if (hideWhenSubscribed && subscribed) return null
   if (permission === 'denied') {
