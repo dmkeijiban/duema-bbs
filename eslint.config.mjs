@@ -8,7 +8,6 @@ const eslintConfig = defineConfig([
   {
     rules: {
       "@next/next/no-html-link-for-pages": "warn",
-      "react-hooks/purity": "warn",
       "react-hooks/set-state-in-effect": "warn",
       "@typescript-eslint/no-explicit-any": "warn",
       "prefer-const": "warn",
@@ -21,6 +20,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated / tool directories:
+    ".vercel/**",
+    ".claude/**",
   ]),
 ]);
 

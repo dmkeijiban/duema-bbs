@@ -69,6 +69,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'hourly',
       priority: 0.5,
     },
+    {
+      url: `${BASE_URL}/about`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.4,
+    },
+    {
+      url: `${BASE_URL}/thread/new`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
   ]
 
   try {
@@ -78,9 +90,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .from('threads')
         .select('id, last_posted_at, post_count, category_id')
         .eq('is_archived', false)
-        .gte('post_count', 3)
         .order('last_posted_at', { ascending: false })
-        .limit(2000),
+        .limit(5000),
       supabase
         .from('categories')
         .select('id, slug')
@@ -127,7 +138,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const POSTS_PER_PAGE = 50
     const threadPages: MetadataRoute.Sitemap = threads.map(thread => {
       const count = thread.post_count ?? 0
-      const priority = count >= 50 ? 0.9 : count >= 20 ? 0.85 : count >= 10 ? 0.8 : 0.7
+      const priority = count >= 50 ? 0.9 : count >= 20 ? 0.85 : count >= 10 ? 0.8 : count >= 3 ? 0.7 : 0.5
       return {
         url: `${BASE_URL}/thread/${thread.id}`,
         lastModified: thread.last_posted_at ? new Date(thread.last_posted_at) : new Date(),
@@ -145,7 +156,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (count <= POSTS_PER_PAGE) continue
       const totalPages = Math.ceil(count / POSTS_PER_PAGE)
       const basePriority = count >= 50 ? 0.8 : 0.7
-      for (let p = 2; p <= Math.min(totalPages, 3); p++) {
+      for (let p = 2; p <= Math.min(totalPages, 10); p++) {
         paginatedThreadPages.push({
           url: `${BASE_URL}/thread/${thread.id}/p/${p}`,
           lastModified: thread.last_posted_at ? new Date(thread.last_posted_at) : new Date(),
