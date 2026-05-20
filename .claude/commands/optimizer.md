@@ -1,0 +1,87 @@
+---
+description: スレ閲覧数・コメント率の投稿後パフォーマンス分析
+allowedTools: [Read, Bash]
+---
+
+# 📊 optimizer — 投稿後パフォーマンス分析エージェント
+
+**このエージェントはデータ読み取りと分析のみ行う。DBの書き込み・ファイル編集は一切しない。**
+
+## 引数
+
+- `--thread-id <ID>` : 分析対象スレID（省略時: 直近7日で投稿があった全スレ）
+- `--days <N>` : 分析対象期間（デフォルト: 7日）
+
+## 実行手順
+
+### 1. 環境確認
+
+`.env.local` または `.env.local.example` を Read して、Supabase の接続情報キー名を確認する。
+（値は読まない。変数名だけ確認する）
+
+### 2. スレ統計をクエリする
+
+Bash で以下を実行してスレデータを取得する：
+
+```bash
+# Supabase CLI 経由でクエリ（プロジェクト内のスクリプトがあれば優先）
+# なければ curl で REST API を叩く
+curl -s \
+  -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+  -H "Authorization: Bearer $NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+  "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/threads?select=id,title,view_count,created_at&order=view_count.desc&limit=20"
+```
+
+コメント数も取得する：
+```bash
+curl -s \
+  -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+  -H "Authorization: Bearer $NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+  "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/comments?select=thread_id,created_at&order=created_at.desc"
+```
+
+※ 環境変数が未設定の場合は「環境変数が設定されていないためDB取得をスキップ」と報告し、
+  既存のログファイルや admin ページのスクリーンショットがあればそちらで代替する。
+
+### 3. 指標を計算する
+
+各スレについて計算する：
+- **コメント率** = コメント数 / 閲覧数 × 100（%）
+- **1日あたり閲覧数** = view_count / 経過日数
+- **1日あたりコメント数** = comment_count / 経過日数
+- **エンゲージメントスコア** = コメント率 × log(view_count + 1)
+
+### 4. レポートを出力する
+
+```
+## 📊 パフォーマンスレポート — YYYY-MM-DD（過去N日）
+
+### トップスレ（閲覧数順）
+
+| ランク | スレID | タイトル | 閲覧数 | コメ数 | コメ率 | エンゲ |
+|--------|--------|---------|--------|--------|--------|--------|
+| 1 | 277 | ... | 1,234 | 56 | 4.5% | 38.5 |
+...（上位10件）
+
+### 🔍 分析インサイト
+
+**勝ちパターン（エンゲージメント高）**
+- テーマ傾向: 〇〇系テーマがコメント率高い
+- 投稿タイミング: 〇曜日に伸びる傾向
+
+**負けパターン（閲覧あるがコメント少ない）**
+- 傾向: 〇〇系テーマは閲覧のみで会話が起きない
+
+**推奨アクション**
+1. 〇〇テーマは引き続きシードを追加（コメント率 X%→Y% 目標）
+2. 〇〇テーマは次回から種類を変える
+
+次のステップ: /pdca-proposer --report [このレポートの内容をコピーして貼り付け]
+```
+
+## ルール
+
+- DB書き込みは絶対に行わない（SELECT/GET のみ）
+- curl コマンドは読み取り専用エンドポイントのみ使用
+- 環境変数の値はターミナルに表示しない（`echo $KEY` 禁止）
+- データが取得できない場合は推測でなく「取得不可」と明記する
