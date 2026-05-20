@@ -1,16 +1,21 @@
-name: Seed Cron
+name: Seed Cron (disabled)
+
+# 自動コメント生成を停止
+# on:
+#   workflow_dispatch:
+#   schedule:
+#     - cron: '0 22 * * *'
+#     - cron: '0 3 * * *'
+#     - cron: '0 10 * * *'
+#     - cron: '0 13 * * *'
 
 on:
-  workflow_dispatch:  # 手動実行用
-  schedule:
-    - cron: '0 22 * * *'   # 7:00 JST (prev day 22:00 UTC)
-    - cron: '0 3 * * *'    # 12:00 JST
-    - cron: '0 10 * * *'   # 19:00 JST
-    - cron: '0 13 * * *'   # 22:00 JST
+  workflow_dispatch:  # 手動実行のみ残す（テスト用）
 
 jobs:
   seed:
     runs-on: ubuntu-latest
+    if: false  # 常にスキップ
     steps:
       - name: Call seed API
         run: |
