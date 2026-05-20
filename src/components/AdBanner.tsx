@@ -11,7 +11,7 @@ interface AdBannerProps {
   minHeight?: number
 }
 
-export function AdBanner({ slot, format = 'auto', layout, layoutKey, style, minHeight = 250 }: AdBannerProps) {
+export function AdBanner({ slot, format = 'auto', layout, layoutKey, style, minHeight = 0 }: AdBannerProps) {
   useEffect(() => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

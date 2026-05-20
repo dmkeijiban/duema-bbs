@@ -428,7 +428,7 @@ export default async function Home({
         </Suspense>
 
         {/* AdSense ディスプレイ広告（スレ一覧下） */}
-        <AdBanner slot="5316786416" format="auto" style={{ margin: '8px 0' }} />
+        <AdBanner slot="5316786416" format="auto" style={{ margin: '8px 0' }} minHeight={0} />
 
         <Suspense fallback={null}>
           <BotNoticesServer />
