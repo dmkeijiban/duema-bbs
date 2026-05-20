@@ -187,7 +187,8 @@ export default async function AdminPage({
             <span className="text-[10px] text-gray-400 w-14 shrink-0">X / SNS</span>
             <Link href="/admin/x-posts" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">🐦 X投稿管理</Link>
             <Link href="/admin/x-schedule" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">📅 スケジュール</Link>
-            <Link href="/admin/x-replies" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">Xリプライ取得</Link>
+            {/* Xリプライ取得: X API高額・凍結リスクのため非表示 */}
+            {/* <Link href="/admin/x-replies" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">Xリプライ取得</Link> */}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] text-gray-400 w-14 shrink-0">ユーティリティ</span>
