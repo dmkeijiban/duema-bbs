@@ -42,6 +42,11 @@ tr:has(.push-subscribe-empty) {
   display: none;
 }
 
+/* AdSense 未配信時の空白を除去（AdSenseがdata-ad-status="unfilled"をセットした際に高さを潰す） */
+ins.adsbygoogle[data-ad-status="unfilled"] {
+  display: none !important;
+}
+
 /* iOS Safari の入力欄ズームイン防止（16px未満でズームする） */
 @media (max-width: 768px) {
   input[type="text"],
