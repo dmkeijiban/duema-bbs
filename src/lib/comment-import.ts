@@ -1,5 +1,19 @@
 export const COMMENT_IMPORT_LIMIT = 30
 
+export function extractAnimanchBoardId(input: string): number | null {
+  const value = input.trim()
+  if (!value) return null
+  try {
+    const url = new URL(value)
+    if (!url.hostname.includes('animanch.com')) return null
+    const match = url.pathname.match(/\/board\/(\d+)/)
+    return match ? parseInt(match[1], 10) : null
+  } catch {
+    const match = value.match(/\/board\/(\d+)/)
+    return match ? parseInt(match[1], 10) : null
+  }
+}
+
 export function extractYouTubeVideoId(input: string): string | null {
   const value = input.trim()
   if (!value) return null

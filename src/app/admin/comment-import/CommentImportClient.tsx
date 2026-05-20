@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { bulkImportThreadComments, BulkImportResult } from './actions'
-import { COMMENT_IMPORT_LIMIT, parsePastedComments } from '@/lib/comment-import'
+import { COMMENT_IMPORT_LIMIT } from '@/lib/comment-import'
 
 type PreviewComment = {
   id: string
@@ -21,11 +21,12 @@ function makePreview(comments: string[], prefix: string): PreviewComment[] {
 export function CommentImportClient() {
   const [threadId, setThreadId] = useState('')
   const [youtubeUrl, setYoutubeUrl] = useState('')
-  const [pasteText, setPasteText] = useState('')
+  const [animanchUrl, setAnimanchUrl] = useState('')
   const [preview, setPreview] = useState<PreviewComment[]>([])
   const [message, setMessage] = useState('')
   const [isPending, startTransition] = useTransition()
   const [isFetchingYoutube, setIsFetchingYoutube] = useState(false)
+  const [isFetchingAnimanch, setIsFetchingAnimanch] = useState(false)
 
   const selectedComments = useMemo(
     () => preview.filter(comment => comment.selected && comment.body.trim()),
@@ -51,10 +52,23 @@ export function CommentImportClient() {
     }
   }
 
-  const loadPastedComments = () => {
-    const comments = parsePastedComments(pasteText)
-    setPreview(makePreview(comments, 'paste'))
-    setMessage(`${comments.length}件を読み込みました。`)
+  const loadAnimanchComments = async () => {
+    setMessage('')
+    setIsFetchingAnimanch(true)
+    try {
+      const res = await fetch(`/api/admin/comment-import/animanch?url=${encodeURIComponent(animanchUrl)}`)
+      const data = await res.json()
+      if (!res.ok) {
+        setMessage(data?.error ?? 'あにまんコメント取得に失敗しました。')
+        return
+      }
+      setPreview(makePreview(data.comments ?? [], 'animanch'))
+      setMessage(`${(data.comments ?? []).length}件を読み込みました。`)
+    } catch {
+      setMessage('あにまんコメント取得中にエラーが出ました。')
+    } finally {
+      setIsFetchingAnimanch(false)
+    }
   }
 
   const updatePreviewBody = (id: string, body: string) => {
@@ -115,23 +129,24 @@ export function CommentImportClient() {
       </section>
 
       <section className="border border-gray-300 bg-white p-3">
-        <h2 className="font-bold text-gray-800 mb-2">X・あにまん・手動コピー取り込み</h2>
-        <textarea
-          value={pasteText}
-          onChange={event => setPasteText(event.target.value)}
-          rows={8}
-          placeholder="1行につき1コメント。空行で区切った場合は、空行ごとに1コメントとして扱います。"
-          className="w-full border border-gray-300 px-2 py-1.5 text-sm resize-y"
-        />
-        <button
-          type="button"
-          onClick={loadPastedComments}
-          disabled={!pasteText.trim()}
-          className="mt-2 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-          style={{ background: '#0d6efd' }}
-        >
-          貼り付け内容を30件まで読み込み
-        </button>
+        <h2 className="font-bold text-gray-800 mb-2">あにまんコメント取得</h2>
+        <div className="flex gap-2 flex-wrap">
+          <input
+            value={animanchUrl}
+            onChange={event => setAnimanchUrl(event.target.value)}
+            placeholder="https://bbs.animanch.com/board/〇〇/"
+            className="flex-1 min-w-72 border border-gray-300 px-2 py-1.5 text-sm"
+          />
+          <button
+            type="button"
+            onClick={loadAnimanchComments}
+            disabled={isFetchingAnimanch || !animanchUrl.trim()}
+            className="px-3 py-1.5 text-sm text-white disabled:opacity-50"
+            style={{ background: '#0d6efd' }}
+          >
+            {isFetchingAnimanch ? '取得中...' : '30件取得'}
+          </button>
+        </div>
       </section>
 
       <section className="border border-gray-300 bg-white p-3">
