@@ -278,7 +278,7 @@ export const getCachedThread = (threadId: number) =>
       return data
     },
     [`thread-${threadId}`],
-    { revalidate: 30, tags: [`thread-${threadId}`, 'threads'] }
+    { revalidate: 300, tags: [`thread-${threadId}`, 'threads'] }
   )()
 
 export const getCachedThreadPosts = (threadId: number, page: number) =>
@@ -296,7 +296,7 @@ export const getCachedThreadPosts = (threadId: number, page: number) =>
       return { data: data ?? [] }
     },
     [`thread-posts-${threadId}-p${page}`],
-    { revalidate: 30, tags: [`thread-${threadId}`, 'threads'] }
+    { revalidate: 300, tags: [`thread-${threadId}`, 'threads'] }
   )()
 
 export { THREAD_POSTS_PER_PAGE }

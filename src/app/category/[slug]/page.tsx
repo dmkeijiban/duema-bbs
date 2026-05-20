@@ -23,7 +23,7 @@ import {
   THREAD_PAGE_SIZE,
 } from '@/lib/cached-queries'
 
-export const revalidate = 60
+export const revalidate = 300
 
 import { SITE_URL } from '@/lib/site-config'
 const BASE_URL = SITE_URL

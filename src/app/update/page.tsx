@@ -1,8 +1,8 @@
 import { ThreadSortPage } from '@/components/ThreadSortPage'
 import { SITE_URL } from '@/lib/site-config'
 
-// 1分キャッシュ（createPublicClient に切り替えたため ISR が有効）
-export const revalidate = 60
+// 5分キャッシュ（ISR Writes 削減のため 60→300 に変更）
+export const revalidate = 300
 
 export const metadata = {
   title: '更新順一覧 | デュエマ掲示板',

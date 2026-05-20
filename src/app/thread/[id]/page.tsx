@@ -17,7 +17,7 @@ import { AdBanner } from '@/components/AdBanner'
 
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
-export const revalidate = 30
+export const revalidate = 300
 
 export async function generateStaticParams() {
   const supabase = createPublicClient()
