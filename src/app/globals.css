@@ -42,8 +42,8 @@ tr:has(.push-subscribe-empty) {
   display: none;
 }
 
-/* AdSense 未配信時の空白を除去（AdSenseがdata-ad-status="unfilled"をセットした際に高さを潰す） */
-ins.adsbygoogle[data-ad-status="unfilled"] {
+/* AdSense 空白を除去：filled になるまで（ロード前・unfilled 両方）非表示にしてフラッシュも防ぐ */
+ins.adsbygoogle:not([data-ad-status="filled"]) {
   display: none !important;
 }
 
