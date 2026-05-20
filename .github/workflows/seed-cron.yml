@@ -1,6 +1,7 @@
 name: Seed Cron
 
 on:
+  workflow_dispatch:  # 手動実行用
   schedule:
     - cron: '0 22 * * *'   # 7:00 JST (prev day 22:00 UTC)
     - cron: '0 3 * * *'    # 12:00 JST
