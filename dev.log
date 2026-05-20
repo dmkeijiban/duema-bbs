@@ -1,0 +1,24 @@
+
+> duema-bbs@0.1.0 dev
+> next dev
+
+⚠ Port 3000 is in use by process 9648, using available port 3001 instead.
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://192.168.11.2:3001
+- Environments: .env.local
+✓ Ready in 2.1s
+Warning: Custom Cache-Control headers detected for the following routes:
+  - /_next/static/:path*
+  - /_next/image
+
+Setting a custom Cache-Control header can break Next.js development behavior.
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          9648
+- Dir:          C:\projects\duema-bbs
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 9648 /F to stop it.
+[?25h

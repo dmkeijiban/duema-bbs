@@ -1,0 +1,17 @@
+# Codex プロジェクト設定 — duema-bbs
+# https://github.com/openai/codex-plugin-cc
+
+model = "o4-mini"
+model_reasoning_effort = "high"
+
+[instructions]
+# Codex がこのプロジェクトで従うべきルール
+system_prompt = """
+You are reviewing a Next.js 16 + Supabase project for a Duel Masters BBS site.
+Key rules:
+- Never suggest full automation of X (Twitter) posts. Typefully draft is the maximum automation level.
+- Respect the role: humans always confirm before posting.
+- This project uses App Router, Server Actions, and Supabase admin client.
+- All DB operations go through createAdminClient() from @/lib/supabase-admin.
+- The x_posts table manages X post drafts with statuses: draft → typefully_drafted → scheduled → posted.
+"""
