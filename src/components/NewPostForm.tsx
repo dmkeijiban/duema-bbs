@@ -219,20 +219,16 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
                 />
               </td>
             </tr>
-            <tr className="border-b border-gray-200">
-              <td className="py-2 px-3 align-middle text-xs font-medium whitespace-nowrap" style={{ background: '#f5f5f5' }}>
-                返信通知
-              </td>
-              <td className="py-2 px-3">
-                {pushUnsupported ? (
-                  <span className="text-xs text-gray-400">
-                    🔔 返信通知はPC・Androidブラウザからご利用いただけます
-                  </span>
-                ) : (
-                  showPushButton && <PushSubscribeButton threadId={threadId} />
-                )}
-              </td>
-            </tr>
+            {!pushUnsupported && (
+              <tr className="border-b border-gray-200">
+                <td className="py-2 px-3 align-middle text-xs font-medium whitespace-nowrap" style={{ background: '#f5f5f5' }}>
+                  返信通知
+                </td>
+                <td className="py-2 px-3">
+                  {showPushButton && <PushSubscribeButton threadId={threadId} />}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
 
