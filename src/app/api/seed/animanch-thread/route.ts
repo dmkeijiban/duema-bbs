@@ -23,8 +23,18 @@ const MIN_ARCHIVE_SCORE_TO_POST = 22
 const BANNED_TITLE_RE = /閲覧注意|R-?18|シコ|彼氏概念|CP概念|夢|洗脳|闇堕ち|爆乳|ハーレム|SS|エロ|劣情/
 const OTHER_TCG_RE = /遊戯王|MTG|ヴァンガード|バトスピ|ラッシュ|シャドバ|シャドビヨ|デュエルリンクス|マスターデュエル|OCG|TCGアニメ/
 const DUEMA_RE = /デュエマ|デュエル・?マスターズ|デュエプレ|デュエパ|ボルシャック|ジャガイスト|アビス|ミロク|轟轟轟|アーマード|メクレイド|シールド|トリガー|殿堂|革命チェンジ|マナ|文明|ドラゴン娘|カリスマ|逆札|王道/
+const LOW_CONTEXT_TITLE_RE = /総合\d*スレ目?|雑談|なんでも|質問スレ|相談スレ|スレ立て|デッキを組みたい|デュエプレ総合/
+const GENERIC_GENERATED_RE = /実際どう思う|どう評価してる|感想が聞きたい|使った側・使われた側/
 
 const OFFICIAL_CARD_IMAGES: Record<string, { imageUrl: string; cardUrl: string }> = {
+  '轟轟轟ブランド': {
+    imageUrl: 'https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmrp06-m01.jpg',
+    cardUrl: 'https://dm.takaratomy.co.jp/card/detail?id=dmrp06-m01',
+  },
+  '“轟轟轟”ブランド': {
+    imageUrl: 'https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmrp06-m01.jpg',
+    cardUrl: 'https://dm.takaratomy.co.jp/card/detail?id=dmrp06-m01',
+  },
   '邪幽 ジャガイスト': {
     imageUrl: 'https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm23ex1-004.jpg',
     cardUrl: 'https://dm.takaratomy.co.jp/card/detail/?id=dm23ex1-004',
@@ -223,6 +233,7 @@ function parseThreadDetail(boardId: number, source: { kind: 'markdown' | 'html';
 
 function isLikelyDuema(candidate: AnimanchCandidate, detail?: { body?: string; comments?: string[] }) {
   const text = `${candidate.title}\n${detail?.body ?? ''}\n${detail?.comments?.slice(0, 3).join('\n') ?? ''}`
+  if (LOW_CONTEXT_TITLE_RE.test(candidate.title)) return false
   if (BANNED_TITLE_RE.test(text)) return false
   if (OTHER_TCG_RE.test(text) && !DUEMA_RE.test(text)) return false
   return DUEMA_RE.test(text)
@@ -235,6 +246,7 @@ function sourceScore(candidate: AnimanchCandidate, detail: { body: string; comme
   if (DUEMA_RE.test(text)) { score += 5; reasons.push('duema-context') }
   if (/ジャガイスト|ボルシャック|ミロク|轟轟轟|アビス|カリスマ|トランキー/.test(text)) { score += 5; reasons.push('specific-card') }
   if (/強い|弱い|高騰|殿堂|環境|刺さる|微妙|返して|買って|予約|集中|狙い/.test(text)) { score += 4; reasons.push('reply-hook') }
+  if (/総合|雑談|なんでも|デッキを組みたい/.test(candidate.title)) { score -= 30; reasons.push('low-context') }
   if (candidate.count >= 10) { score += 3; reasons.push('has-replies') }
   if (detail.comments.length >= 5) { score += 3; reasons.push('enough-comments') }
   if (BANNED_TITLE_RE.test(text)) { score -= 99; reasons.push('banned') }
@@ -320,25 +332,7 @@ function templateGenerate(source: SourceThread): GeneratedThread {
     }
   }
 
-  const hook = source.body || source.comments[0] || source.title
-  const title = `${source.title.replace(/^【[^】]+】/, '').replace(/スレ$/, '').trim()}、実際どう思う？`
-  const archiveLead = source.sourceKind === 'archive'
-    ? '過去ログで見かけた話題だけど、今見るとまた評価変わってそう\n\n'
-    : ''
-  const commentPool = source.comments.length >= 5 ? source.comments : [
-    'これ、使う側と使われる側で評価かなり変わりそう',
-    '一見地味だけど実戦だとかなり嫌なやつだと思う',
-    '環境次第で急に評価上がるタイプに見える',
-    '強い弱いより対面した時のめんどくささが気になる',
-    'こういう話、実際に使ってる人の感想聞きたい',
-  ]
-  return {
-    title,
-    body: `${archiveLead}${hook}\n\nこれ、今のデュエマ目線だとどう評価してる？\n使った側・使われた側の感想が聞きたい`,
-    comments: commentPool.slice(0, 5).map(styleComment),
-    categorySlug: /デュエパ/.test(text) ? 'special-rules' : 'new-cards',
-    cardName: card?.name,
-  }
+  throw new Error(`No hand-written template for source: ${source.title}`)
 }
 
 async function generateWithOpenAI(source: SourceThread): Promise<GeneratedThread | null> {
@@ -406,6 +400,8 @@ function scoreGenerated(generated: GeneratedThread, source: SourceThread): Quali
   if (new Set(generated.comments.map(c => /。$/.test(c))).size > 1) { total += 3; reasons.push('mixed-periods') }
   if (!BANNED_TITLE_RE.test(all)) { total += 3; reasons.push('safe') }
   if (!generated.body.includes(source.body.slice(0, 40))) { total += 2; reasons.push('not-copy') }
+  if (GENERIC_GENERATED_RE.test(all)) { total -= 12; reasons.push('generic-generated') }
+  if (LOW_CONTEXT_TITLE_RE.test(source.title) || LOW_CONTEXT_TITLE_RE.test(generated.title)) { total -= 30; reasons.push('low-context') }
   if (BANNED_TITLE_RE.test(all)) total -= 99
   return { total, reasons }
 }
@@ -501,6 +497,16 @@ export async function GET(req: NextRequest) {
 
     const official = detectOfficialCard(`${generated.cardName ?? ''}\n${generated.title}\n${generated.body}\n${picked.source.title}\n${picked.source.body}`)
     const quality = scoreGenerated(generated, picked.source)
+    if (!official?.imageUrl) {
+      return NextResponse.json({
+        ok: true,
+        skipped: true,
+        reason: 'official_image_not_found',
+        source: { title: picked.source.title, href: picked.source.href, score: picked.sourceScore },
+        quality,
+        generated,
+      })
+    }
 
     const minScore = picked.source.sourceKind === 'archive' ? MIN_ARCHIVE_SCORE_TO_POST : MIN_SCORE_TO_POST
     if (quality.total < minScore) {
