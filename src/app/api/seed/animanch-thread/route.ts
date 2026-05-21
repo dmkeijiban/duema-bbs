@@ -369,6 +369,30 @@ function templateGenerate(source: SourceThread): GeneratedThread {
     }
   }
 
+  if (/サムライ強化|サムライ/.test(text)) {
+    return {
+      title: '逆札でサムライ強化が来るなら、どの辺まで強くしてほしい？',
+      body: [
+        '勝舞推しの逆札でサムライ強化が来るなら、どのくらい踏み込んでほしいか気になる',
+        '',
+        'サムライってクロスギア込みで昔の雰囲気が強いテーマだけど、今のカードパワーに合わせるならかなり思い切った補助が必要そう',
+        '',
+        'ただ、武者ドラゴン系の名前が絡むと一気に懐かしさも出るし、商品としてはかなり映えると思う',
+        '',
+        'クロスギアをちゃんと使わせる方向がいいのか、サムライ持ちのクリーチャー展開を強くする方向がいいのか',
+        'どっちの強化なら使ってみたくなる？',
+      ].join('\n'),
+      comments: [
+        'クロスギアを使うなら、装備テンポだけは今基準にしてほしい。そこ遅いとさすがに触りにくい',
+        '武者ドラゴン周りを強くするなら懐古勢はかなり喜びそう。',
+        'サムライは名前だけで一定の需要あるけど、強化が半端だとファンデッキ止まりになりそうなんよな',
+        'クロスギア踏み倒しより、装備した時に追加効果が出る方向の方が今っぽい気がする',
+        '逆札で昔テーマ拾う流れなら、サムライはかなり相性いいと思う',
+      ],
+      categorySlug: 'new-cards',
+    }
+  }
+
   throw new Error(`No hand-written template for source: ${source.title}`)
 }
 
@@ -469,8 +493,8 @@ async function collectScoredSources(url: string, sourceKind: SourceThread['sourc
   return { scored, candidateCount: categoryCandidates.length }
 }
 
-async function pickSourceThread(): Promise<{ source: SourceThread; sourceScore: ReturnType<typeof sourceScore> }> {
-  const slotIndex = Math.floor(Date.now() / 21600000)
+async function pickSourceThread(offset = 0): Promise<{ source: SourceThread; sourceScore: ReturnType<typeof sourceScore> }> {
+  const slotIndex = Math.floor(Date.now() / 21600000) + offset
   const current = await collectScoredSources(ANIMANCH_CATEGORY, 'current')
   current.scored.sort((a, b) => b.sourceScore.score - a.sourceScore.score)
   const currentGood = current.scored.filter(item => item.sourceScore.score >= 10)
@@ -524,9 +548,10 @@ export async function GET(req: NextRequest) {
 
   const supabase = createSupabase()
   const dryRun = req.nextUrl.searchParams.get('dryRun') === '1'
+  const offset = Number(req.nextUrl.searchParams.get('offset') ?? '0') || 0
 
   try {
-    const picked = await pickSourceThread()
+    const picked = await pickSourceThread(offset)
     const generated = await generateWithOpenAI(picked.source).catch(error => {
       console.warn('OpenAI generation failed, using template:', error)
       return null
@@ -534,16 +559,6 @@ export async function GET(req: NextRequest) {
 
     const official = detectOfficialCard(`${generated.cardName ?? ''}\n${generated.title}\n${generated.body}\n${picked.source.title}\n${picked.source.body}`)
     const quality = scoreGenerated(generated, picked.source)
-    if (!official?.imageUrl) {
-      return NextResponse.json({
-        ok: true,
-        skipped: true,
-        reason: 'official_image_not_found',
-        source: { title: picked.source.title, href: picked.source.href, score: picked.sourceScore },
-        quality,
-        generated,
-      })
-    }
 
     const minScore = picked.source.sourceKind === 'archive' ? MIN_ARCHIVE_SCORE_TO_POST : MIN_SCORE_TO_POST
     if (quality.total < minScore) {
