@@ -54,7 +54,7 @@ async function getThreadImage(threadId: number): Promise<string | undefined> {
 }
 
 async function renderOgImage(imageUrl: string): Promise<Buffer> {
-  const res = await fetch(imageUrl, { next: { revalidate: 86400 } })
+  const res = await fetch(imageUrl, { next: { revalidate: 604800 } })
   if (!res.ok) throw new Error('Failed to fetch image')
 
   const buffer = Buffer.from(await res.arrayBuffer())
@@ -86,7 +86,7 @@ export async function GET(_req: NextRequest, { params }: Props) {
     return new NextResponse(new Uint8Array(processed), {
       headers: {
         'Content-Type': 'image/jpeg',
-        'Cache-Control': 'public, max-age=86400, stale-while-revalidate=3600',
+        'Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400',
       },
     })
   } catch {
