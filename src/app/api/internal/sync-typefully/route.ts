@@ -170,7 +170,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       .from('threads')
       .insert({
         title,
-        body: text,
+        body: title,
         category_id: categoryId,
         author_name: '名無しのデュエリスト',
         ...(imageUrl ? { image_url: imageUrl } : {}),
