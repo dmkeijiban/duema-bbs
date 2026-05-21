@@ -69,7 +69,7 @@ export async function RecommendSection({ threadId, title, categoryId = null }: P
                   alt=""
                   fill
                   className="object-cover"
-                  sizes="256px"
+                  sizes="(max-width: 768px) 44px, 64px"
                   quality={85}
                   priority={idx === 0}
                 />
