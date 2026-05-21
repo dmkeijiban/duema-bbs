@@ -1,0 +1,152 @@
+/**
+ * GET /api/internal/sync-typefully
+ * Typefully の公開済み投稿を掲示板スレッドに自動同期する
+ * Vercel Cron から呼ばれる（7:20 / 12:20 / 19:20 / 22:20 JST）
+ * 手動実行: Authorization: Bearer ${INTERNAL_POST_SECRET}
+ */
+
+import { NextRequest, NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase-admin'
+import { notifyNewThread } from '@/lib/discord'
+import {
+  generateTitleFromXPost,
+  detectCategorySlugFromXPost,
+  hashText,
+} from '@/lib/x-post-to-thread'
+
+export const runtime = 'nodejs'
+export const maxDuration = 60
+
+const TYPEFULLY_API = 'https://api.typefully.com/v2'
+
+interface TypefullyDraft {
+  id: number
+  preview: string
+  published_at: string | null
+  status: string
+  x_published_url: string | null
+}
+
+interface SyncResult {
+  draftId: number
+  status: 'created' | 'duplicate' | 'skipped' | 'error'
+  threadId?: number
+  threadUrl?: string
+  error?: string
+}
+
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  // 手動実行時の認証（Vercel Cron からはヘッダーなしで呼ばれる）
+  const authHeader = req.headers.get('authorization')
+  const secret = process.env.INTERNAL_POST_SECRET
+  if (authHeader && secret && authHeader !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const apiKey = process.env.TYPEFULLY_API_KEY
+  const socialSetId = process.env.TYPEFULLY_SOCIAL_SET_ID
+
+  if (!apiKey || !socialSetId) {
+    console.error('[sync-typefully] TYPEFULLY_API_KEY または TYPEFULLY_SOCIAL_SET_ID が未設定')
+    return NextResponse.json({ error: 'Missing Typefully config' }, { status: 500 })
+  }
+
+  // ── Typefully から公開済み投稿を取得 ────────────────────────────────────────
+  const url = `${TYPEFULLY_API}/social-sets/${socialSetId}/drafts?status=published&order_by=-published_at&limit=20`
+  let drafts: TypefullyDraft[] = []
+
+  try {
+    const res = await fetch(url, {
+      headers: { 'X-API-KEY': `Bearer ${apiKey}` },
+      next: { revalidate: 0 },
+    })
+    if (!res.ok) {
+      const body = await res.text()
+      console.error('[sync-typefully] Typefully API error:', res.status, body)
+      return NextResponse.json({ error: 'Typefully API error', status: res.status }, { status: 502 })
+    }
+    const json = await res.json()
+    drafts = json.results ?? []
+  } catch (err) {
+    console.error('[sync-typefully] fetch error:', err)
+    return NextResponse.json({ error: 'Fetch failed' }, { status: 500 })
+  }
+
+  const supabase = createAdminClient()
+  const results: SyncResult[] = []
+
+  for (const draft of drafts) {
+    const text = draft.preview?.trim()
+    if (!text) {
+      results.push({ draftId: draft.id, status: 'skipped' })
+      continue
+    }
+
+    const textHash = hashText(text)
+
+    // ── 重複チェック ──────────────────────────────────────────────────────────
+    const { data: existing } = await supabase
+      .from('threads')
+      .select('id')
+      .eq('source_text_hash', textHash)
+      .maybeSingle()
+
+    if (existing) {
+      results.push({ draftId: draft.id, status: 'duplicate', threadId: existing.id })
+      continue
+    }
+
+    // ── タイトル・カテゴリ生成 ─────────────────────────────────────────────────
+    const title = generateTitleFromXPost(text)
+    const categorySlug = detectCategorySlugFromXPost(text)
+    const { data: categoryRow } = await supabase
+      .from('categories')
+      .select('id, name')
+      .eq('slug', categorySlug)
+      .maybeSingle()
+
+    const categoryId: number | null = categoryRow?.id ?? null
+    const categoryName: string | null = categoryRow?.name ?? null
+
+    // ── スレッド作成 ──────────────────────────────────────────────────────────
+    const { data: thread, error: insertError } = await supabase
+      .from('threads')
+      .insert({
+        title,
+        body: text,
+        category_id: categoryId,
+        author_name: 'X自動投稿',
+        source: 'typefully',
+        source_id: String(draft.id),
+        source_text_hash: textHash,
+      })
+      .select('id')
+      .single()
+
+    if (insertError) {
+      if (insertError.code === '23505') {
+        results.push({ draftId: draft.id, status: 'duplicate' })
+      } else {
+        console.error('[sync-typefully] insert error:', insertError)
+        results.push({ draftId: draft.id, status: 'error', error: insertError.message })
+      }
+      continue
+    }
+
+    const threadId = thread.id
+    const threadUrl = `https://www.duema-bbs.com/thread/${threadId}`
+
+    await notifyNewThread({ threadId, title, categoryName })
+
+    results.push({ draftId: draft.id, status: 'created', threadId, threadUrl })
+    console.log(`[sync-typefully] ✅ created: threadId=${threadId} title="${title}"`)
+  }
+
+  const created = results.filter(r => r.status === 'created').length
+  const duplicate = results.filter(r => r.status === 'duplicate').length
+  const errors = results.filter(r => r.status === 'error').length
+
+  console.log(`[sync-typefully] 完了: 作成${created}件 / 重複スキップ${duplicate}件 / エラー${errors}件`)
+
+  return NextResponse.json({ created, duplicate, errors, results })
+}
