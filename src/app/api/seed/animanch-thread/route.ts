@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { revalidatePath, revalidateTag } from 'next/cache'
 import { notifyNewThread } from '@/lib/discord'
 
 export const runtime = 'nodejs'
@@ -584,46 +583,10 @@ async function isDuplicateTitle(supabase: ReturnType<typeof createSupabase>, tit
   return Boolean(data?.length)
 }
 
-async function repairGeneratedPostCounts() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceRoleKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing')
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey)
-  const threadIds = [415, 416, 420, 421, 422, 430]
-  const repaired: Array<{ threadId: number; postCount: number }> = []
-
-  for (const threadId of threadIds) {
-    const { count, error: countError } = await supabase
-      .from('posts')
-      .select('id', { count: 'exact', head: true })
-      .eq('thread_id', threadId)
-      .or('is_deleted.is.null,is_deleted.eq.false')
-    if (countError) throw countError
-
-    const postCount = (count ?? 0) + 1
-    const { error: updateError } = await supabase
-      .from('threads')
-      .update({ post_count: postCount })
-      .eq('id', threadId)
-    if (updateError) throw updateError
-
-    revalidateTag(`thread-${threadId}`, { expire: 0 })
-    revalidatePath(`/thread/${threadId}`)
-    repaired.push({ threadId, postCount })
-  }
-
-  revalidateTag('threads', { expire: 0 })
-  revalidatePath('/')
-  return repaired
-}
-
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret || req.headers.get('authorization') !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  if (req.nextUrl.searchParams.get('repairGeneratedPostCounts') === '1') {
-    return NextResponse.json({ ok: true, repaired: await repairGeneratedPostCounts() })
   }
 
   // ?debug=1 : Firecrawl生markdownと parseCategory 結果を返してデバッグ用
