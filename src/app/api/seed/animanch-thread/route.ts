@@ -508,6 +508,24 @@ async function pickSourceThread(offset = 0): Promise<{ source: SourceThread; sou
   throw new Error(`No good animanch source found. currentCandidates=${current.candidateCount}, archiveCandidates=${archive.candidateCount}`)
 }
 
+async function pickSourceThreadByBoardId(boardId: number): Promise<{ source: SourceThread; sourceScore: ReturnType<typeof sourceScore> }> {
+  const href = `${ANIMANCH_BASE}/board/${boardId}/`
+  const detailSource = await fetchSource(href)
+  const detail = parseThreadDetail(boardId, detailSource)
+  const category = await fetchSource(ANIMANCH_CATEGORY)
+  const candidate = parseCategory(category).find(item => item.boardId === boardId) ?? {
+    boardId,
+    title: `board ${boardId}`,
+    count: detail.comments.length,
+    href,
+  }
+  if (!isLikelyDuema(candidate, detail)) {
+    throw new Error(`Board ${boardId} is not a usable duema source`)
+  }
+  const source: SourceThread = { ...candidate, body: detail.body, comments: detail.comments, sourceKind: 'current' }
+  return { source, sourceScore: sourceScore(candidate, detail) }
+}
+
 async function findCategoryId(supabase: ReturnType<typeof createSupabase>, slug: string) {
   const preferred = slug || 'new-cards'
   const { data: bySlug } = await supabase.from('categories').select('id,name,slug').eq('slug', preferred).maybeSingle()
@@ -549,9 +567,10 @@ export async function GET(req: NextRequest) {
   const supabase = createSupabase()
   const dryRun = req.nextUrl.searchParams.get('dryRun') === '1'
   const offset = Number(req.nextUrl.searchParams.get('offset') ?? '0') || 0
+  const boardId = Number(req.nextUrl.searchParams.get('boardId') ?? '0') || 0
 
   try {
-    const picked = await pickSourceThread(offset)
+    const picked = boardId > 0 ? await pickSourceThreadByBoardId(boardId) : await pickSourceThread(offset)
     const generated = await generateWithOpenAI(picked.source).catch(error => {
       console.warn('OpenAI generation failed, using template:', error)
       return null
