@@ -427,6 +427,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // ?debug=1 : Firecrawl生markdownと parseCategory 結果を返してデバッグ用
+  const debug = req.nextUrl.searchParams.get('debug') === '1'
+  if (debug) {
+    const src = await fetchSource(ANIMANCH_CATEGORY)
+    const candidates = parseCategory(src)
+    return NextResponse.json({
+      kind: src.kind,
+      markdownLength: src.text.length,
+      markdownHead: src.text.slice(0, 3000),
+      candidatesRaw: candidates.slice(0, 20),
+    })
+  }
+
   const supabase = createSupabase()
 
   try {
