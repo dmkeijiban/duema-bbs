@@ -35,11 +35,18 @@ interface SyncResult {
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  // 手動実行時の認証（Vercel Cron からはヘッダーなしで呼ばれる）
+  // 認証チェック
+  // Vercel Cron は Authorization: Bearer {CRON_SECRET} を自動付与
+  // 手動実行は Authorization: Bearer {INTERNAL_POST_SECRET} を使用
   const authHeader = req.headers.get('authorization')
-  const secret = process.env.INTERNAL_POST_SECRET
-  if (authHeader && secret && authHeader !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (authHeader) {
+    const cronSecret = process.env.CRON_SECRET
+    const internalSecret = process.env.INTERNAL_POST_SECRET
+    const isValidCron = cronSecret && authHeader === `Bearer ${cronSecret}`
+    const isValidManual = internalSecret && authHeader === `Bearer ${internalSecret}`
+    if (!isValidCron && !isValidManual) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
   }
 
   const apiKey = process.env.TYPEFULLY_API_KEY
