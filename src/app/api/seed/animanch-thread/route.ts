@@ -469,52 +469,10 @@ async function isDuplicateTitle(supabase: ReturnType<typeof createSupabase>, tit
   return Boolean(data?.length)
 }
 
-async function repairThread420() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceRoleKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing')
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey)
-  const comments = [
-    '轟轟轟って名前だけで速度の圧がすごいけど、今だと受け札も厚いから昔ほど雑には通らなそう',
-    '赤単寄せにすると気持ちいいけど、手札消費きつくて止められた後が怖い。',
-    '4枚使える前提なら上振れの爆発力はまだかなりあると思うんよな',
-    '環境で見るなら速度よりメタをどう踏むかの方が大事そう',
-    '使われる側だと、序盤から盾詰められるだけで普通に嫌。',
-  ]
-  const { error: threadError } = await supabase
-    .from('threads')
-    .update({
-      title: '轟轟轟ブランドって今のデュエマだとどれくらい通用する？',
-      body: [
-        '轟轟轟ブランドのデッキを今から組むなら、まだ速度で押し切れるのか気になる',
-        '',
-        '昔の赤単みたいに一気に盾を詰める動きは今見ても怖いけど、受け札もメタも増えてるから、昔ほど雑には通らなさそう',
-        '',
-        '使ってる人・使われた人の感想聞きたい',
-      ].join('\n'),
-      post_count: comments.length,
-      last_posted_at: new Date().toISOString(),
-    })
-    .eq('id', 420)
-  if (threadError) throw threadError
-  for (let i = 0; i < comments.length; i++) {
-    const { error } = await supabase
-      .from('posts')
-      .update({ body: comments[i] })
-      .eq('thread_id', 420)
-      .eq('post_number', i + 1)
-    if (error) throw error
-  }
-  return { threadId: 420, comments: comments.length }
-}
-
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret || req.headers.get('authorization') !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  if (req.nextUrl.searchParams.get('repairThread420') === '1') {
-    return NextResponse.json({ ok: true, repaired: await repairThread420() })
   }
 
   // ?debug=1 : Firecrawl生markdownと parseCategory 結果を返してデバッグ用
