@@ -143,8 +143,30 @@ function parseCategory(source: { kind: 'markdown' | 'html'; text: string }): Ani
 
   const candidates: AnimanchCandidate[] = []
   const seen = new Set<number>()
-  const mdLinkPattern = /\[([^\]]+)\]\(https:\/\/bbs\.animanch\.com\/board\/(\d+)\/\)/g
+
+  // Firecrawl は「画像リンク」形式で出力する: [![](thumb_url)\n\nTitle\n\nCount](board_url)
+  // [\s\S]*? で改行を跨いでキャプチャし、末尾の数字をカウントとして取り出す
+  const imageBlockPattern = /\[!\[\]\([^)]+\)([\s\S]*?)\]\(https:\/\/bbs\.animanch\.com\/board\/(\d+)\/?\)/g
   let match: RegExpExecArray | null
+  while ((match = imageBlockPattern.exec(source.text)) !== null) {
+    const inner = match[1]
+    const boardId = Number(match[2])
+    if (!boardId || seen.has(boardId)) continue
+
+    // "\\\n\\\nTitle\\\n\\\nCount" → 改行と末尾バックスラッシュを除去してパース
+    const lines = inner.split(/\n/).map(l => l.replace(/\\$/, '').trim()).filter(Boolean)
+    const lastLine = lines[lines.length - 1]
+    const countNum = lastLine && /^\d+$/.test(lastLine) ? Number(lastLine) : 0
+    const titleLines = countNum > 0 ? lines.slice(0, -1) : lines
+    const title = titleLines.join('').trim()
+    if (!title) continue
+
+    seen.add(boardId)
+    candidates.push({ boardId, title, count: countNum, href: `${ANIMANCH_BASE}/board/${boardId}/` })
+  }
+
+  // フォールバック: プレーンテキストリンク形式 [Title](board_url)
+  const mdLinkPattern = /\[([^\]]+)\]\(https:\/\/bbs\.animanch\.com\/board\/(\d+)\/?\)/g
   while ((match = mdLinkPattern.exec(source.text)) !== null) {
     const title = match[1].replace(/\s+\d+$/, '').trim()
     const boardId = Number(match[2])
@@ -152,6 +174,7 @@ function parseCategory(source: { kind: 'markdown' | 'html'; text: string }): Ani
     seen.add(boardId)
     candidates.push({ boardId, title, count: 0, href: `${ANIMANCH_BASE}/board/${boardId}/` })
   }
+
   return candidates
 }
 
