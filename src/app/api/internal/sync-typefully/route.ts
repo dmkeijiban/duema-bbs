@@ -10,7 +10,6 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { notifyNewThread } from '@/lib/discord'
 import {
   generateTitleFromXPost,
-  detectCategorySlugFromXPost,
   hashText,
 } from '@/lib/x-post-to-thread'
 
@@ -98,11 +97,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     // ── タイトル・カテゴリ生成 ─────────────────────────────────────────────────
     const title = generateTitleFromXPost(text)
-    const categorySlug = detectCategorySlugFromXPost(text)
+    // X自動投稿はすべて「雑談」カテゴリに固定
     const { data: categoryRow } = await supabase
       .from('categories')
       .select('id, name')
-      .eq('slug', categorySlug)
+      .eq('slug', 'casual')
       .maybeSingle()
 
     const categoryId: number | null = categoryRow?.id ?? null
