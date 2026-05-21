@@ -22,7 +22,7 @@ const MIN_ARCHIVE_SCORE_TO_POST = 22
 
 const BANNED_TITLE_RE = /閲覧注意|R-?18|シコ|彼氏概念|CP概念|夢|洗脳|闇堕ち|爆乳|ハーレム|SS|エロ|劣情/
 const OTHER_TCG_RE = /遊戯王|MTG|ヴァンガード|バトスピ|ラッシュ|シャドバ|シャドビヨ|デュエルリンクス|マスターデュエル|OCG|TCGアニメ/
-const DUEMA_RE = /デュエマ|デュエル・?マスターズ|デュエプレ|デュエパ|ボルシャック|ジャガイスト|アビス|ミロク|轟轟轟|バジュラズ|ドスファング|ランデス|アーマード|メクレイド|シールド|トリガー|殿堂|革命チェンジ|マナ|文明|ドラゴン娘|カリスマ|逆札|王道/
+const DUEMA_RE = /デュエマ|デュエル・?マスターズ|デュエプレ|デュエパ|ボルシャック|ジャガイスト|アビス|ミロク|轟轟轟|バジュラズ|ドスファング|ランデス|青魔導具|魔導具|新世壊|ガリュミーズ|アーマード|メクレイド|シールド|トリガー|殿堂|革命チェンジ|マナ|文明|ドラゴン娘|カリスマ|逆札|王道/
 const LOW_CONTEXT_TITLE_RE = /総合\d*スレ目?|雑談|なんでも|質問スレ|相談スレ|スレ立て|デッキを組みたい|デュエプレ総合/
 const GENERIC_GENERATED_RE = /実際どう思う|どう評価してる|感想が聞きたい|使った側・使われた側/
 
@@ -260,7 +260,7 @@ function sourceScore(candidate: AnimanchCandidate, detail: { body: string; comme
   let score = 0
   const reasons: string[] = []
   if (DUEMA_RE.test(text)) { score += 5; reasons.push('duema-context') }
-  if (/ジャガイスト|ボルシャック|ミロク|轟轟轟|バジュラズ|ドスファング|アビス|カリスマ|トランキー/.test(text)) { score += 5; reasons.push('specific-card') }
+  if (/ジャガイスト|ボルシャック|ミロク|轟轟轟|バジュラズ|ドスファング|青魔導具|魔導具|新世壊|ガリュミーズ|アビス|カリスマ|トランキー/.test(text)) { score += 5; reasons.push('specific-card') }
   if (/強い|弱い|高騰|殿堂|環境|刺さる|微妙|返して|買って|予約|集中|狙い/.test(text)) { score += 4; reasons.push('reply-hook') }
   if (/総合|雑談|なんでも|デッキを組みたい/.test(candidate.title)) { score -= 30; reasons.push('low-context') }
   if (candidate.count >= 10) { score += 3; reasons.push('has-replies') }
@@ -395,6 +395,31 @@ function templateGenerate(source: SourceThread): GeneratedThread {
       ],
       categorySlug: 'classic',
       cardName: 'バジュラズ・ソウル',
+    }
+  }
+
+  if (/青魔導具|新世壊|ガリュミーズ|ギリン|ガードグリップ/.test(text)) {
+    return {
+      title: 'デュエプレ、ついに青魔導具も来そう？',
+      body: [
+        'デュエプレで青魔導具がそろそろ来そうな雰囲気あるけど、本格参戦はもう少し先なのかな',
+        '',
+        '新世壊はまだ無さそうだし、ガリュミーズまで来ないなら完成形というより下準備寄りに見える',
+        '',
+        'ギリンがVRになったのは少し意外',
+        'SRで来ると思ってた人もいそう',
+        '',
+        'ガードグリップに大量ポイントを使わなくてよくなるなら、それだけでもありがたいけど',
+        '青魔導具使い的には今回の追加って生成するほどの内容？',
+      ].join('\n'),
+      comments: [
+        '新世壊がないなら、青魔導具としてはまだ本番前って感じはする',
+        'ガリュミーズ無しなら黒魔導具の安定感を上げるパーツ寄りに見える。',
+        'ガードグリップにポイント払いたくなかったから、そこが楽になるのは普通にありがたい',
+        '次あたりで新世壊とガリュミーズ来たら一気に青魔導具っぽくなりそう',
+        '水闇無月っぽいデッキを組みたい人にはかなり楽しみな流れだと思う',
+      ],
+      categorySlug: 'duel-pro',
     }
   }
 
