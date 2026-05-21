@@ -6,6 +6,8 @@ export const YOUTUBE_RSS_URL = `https://www.youtube.com/feeds/videos.xml?channel
 const CHANNEL_PAGE_URL = `https://www.youtube.com/channel/${YOUTUBE_CHANNEL_ID}/videos`
 const NOTIFIED_IDS_KEY = 'notified_video_ids'
 const LAST_VIDEO_ID_KEY = 'last_video_id'
+const NOTIFICATION_STARTED_AT_KEY = 'notification_started_at'
+const MAX_NOTIFIED_IDS = 500
 
 export interface YouTubeVideoEntry {
   videoId: string
@@ -149,20 +151,81 @@ export async function getNotifiedVideoIds(): Promise<string[]> {
   }
 }
 
-export async function markVideoNotified(videoId: string, existingIds?: string[]): Promise<void> {
+async function getStateValue(key: string): Promise<string | null> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('youtube_state')
+    .select('value')
+    .eq('key', key)
+    .maybeSingle()
+
+  return (data as { value: string } | null)?.value ?? null
+}
+
+async function setStateValue(key: string, value: string): Promise<void> {
+  const supabase = createAdminClient()
+  await supabase
+    .from('youtube_state')
+    .upsert({ key, value, updated_at: new Date().toISOString() })
+}
+
+export async function getNotificationStartedAt(): Promise<string | null> {
+  const value = await getStateValue(NOTIFICATION_STARTED_AT_KEY)
+  if (!value) return null
+  return Number.isFinite(Date.parse(value)) ? value : null
+}
+
+export async function ensureNotificationStartedAt(): Promise<string> {
+  const existing = await getNotificationStartedAt()
+  if (existing) return existing
+
+  const now = new Date().toISOString()
+  await setStateValue(NOTIFICATION_STARTED_AT_KEY, now)
+  return now
+}
+
+export function isPublishedAfterStart(video: YouTubeVideoEntry, startedAt: string): boolean {
+  const publishedTime = Date.parse(video.publishedAt)
+  const startedTime = Date.parse(startedAt)
+  return Number.isFinite(publishedTime) && Number.isFinite(startedTime) && publishedTime > startedTime
+}
+
+export async function markVideosNotified(videoIds: string[], existingIds?: string[]): Promise<string[]> {
   const supabase = createAdminClient()
   const ids = existingIds ?? await getNotifiedVideoIds()
-  const updated = [videoId, ...ids.filter(id => id !== videoId)].slice(0, 100)
+  const uniqueNewIds = [...new Set(videoIds.filter(Boolean))]
+  const updated = [...uniqueNewIds, ...ids.filter(id => !uniqueNewIds.includes(id))].slice(0, MAX_NOTIFIED_IDS)
   const now = new Date().toISOString()
+  const latestVideoId = uniqueNewIds[0] ?? ids[0]
 
-  await Promise.all([
+  const updates = [
     supabase
       .from('youtube_state')
       .upsert({ key: NOTIFIED_IDS_KEY, value: JSON.stringify(updated), updated_at: now }),
-    supabase
-      .from('youtube_state')
-      .upsert({ key: LAST_VIDEO_ID_KEY, value: videoId, updated_at: now }),
-  ])
+  ]
+
+  if (latestVideoId) {
+    updates.push(
+      supabase
+        .from('youtube_state')
+        .upsert({ key: LAST_VIDEO_ID_KEY, value: latestVideoId, updated_at: now }),
+    )
+  }
+
+  await Promise.all(updates)
+  return updated
+}
+
+export async function markVideoNotified(videoId: string, existingIds?: string[]): Promise<void> {
+  await markVideosNotified([videoId], existingIds)
+}
+
+export async function initializeYouTubeNotificationBaseline(videos: YouTubeVideoEntry[]) {
+  const startedAt = new Date().toISOString()
+  await setStateValue(NOTIFICATION_STARTED_AT_KEY, startedAt)
+  const ids = videos.map(video => video.videoId)
+  const notifiedIds = await markVideosNotified(ids)
+  return { startedAt, notifiedIds, markedCount: ids.length, latestVideoId: ids[0] ?? null }
 }
 
 export async function postYouTubeVideoToDiscord(video: YouTubeVideoEntry): Promise<void> {
@@ -194,9 +257,14 @@ export async function postYouTubeVideoToDiscord(video: YouTubeVideoEntry): Promi
 }
 
 export async function notifyYouTubeVideoIfNeeded(video: YouTubeVideoEntry) {
+  const startedAt = await ensureNotificationStartedAt()
   const notifiedIds = await getNotifiedVideoIds()
   if (notifiedIds.includes(video.videoId)) {
     return { notified: false, reason: 'already notified', videoId: video.videoId, title: video.title }
+  }
+  if (!isPublishedAfterStart(video, startedAt)) {
+    await markVideoNotified(video.videoId, notifiedIds)
+    return { notified: false, reason: 'published before notification baseline', videoId: video.videoId, title: video.title }
   }
 
   await postYouTubeVideoToDiscord(video)

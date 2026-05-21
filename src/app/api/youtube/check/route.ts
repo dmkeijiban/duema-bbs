@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
+  ensureNotificationStartedAt,
   fetchLatestFromChannelPage,
   fetchYouTubeRssEntries,
   getNotifiedVideoIds,
-  notifyYouTubeVideoIfNeeded,
+  initializeYouTubeNotificationBaseline,
+  isPublishedAfterStart,
+  markVideosNotified,
   postYouTubeVideoToDiscord,
   markVideoNotified,
   YouTubeVideoEntry,
@@ -22,19 +25,28 @@ function assertCronAuth(req: NextRequest): NextResponse | null {
 }
 
 async function notifyVideos(videos: YouTubeVideoEntry[]) {
+  const startedAt = await ensureNotificationStartedAt()
   const notifiedIds = await getNotifiedVideoIds()
-  const pending = videos
+  const uniqueVideos = [...new Map(videos.map(video => [video.videoId, video])).values()]
+  const visibleIds = uniqueVideos.map(video => video.videoId)
+  const pending = uniqueVideos
     .filter(video => !notifiedIds.includes(video.videoId))
-    .sort((a, b) => Date.parse(a.publishedAt) - Date.parse(b.publishedAt))
+    .filter(video => isPublishedAfterStart(video, startedAt))
+    .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt))
 
   const notified: { videoId: string; title: string }[] = []
-  let currentIds = notifiedIds
+  const [latest, ...olderPending] = pending
+  const seenWithoutLatest = visibleIds.filter(videoId => videoId !== latest?.videoId)
+  let currentIds = await markVideosNotified(seenWithoutLatest, notifiedIds)
 
-  for (const video of pending) {
-    await postYouTubeVideoToDiscord(video)
-    await markVideoNotified(video.videoId, currentIds)
-    currentIds = [video.videoId, ...currentIds.filter(id => id !== video.videoId)].slice(0, 100)
-    notified.push({ videoId: video.videoId, title: video.title })
+  if (olderPending.length > 0) {
+    currentIds = await markVideosNotified(olderPending.map(video => video.videoId), currentIds)
+  }
+
+  if (latest) {
+    await postYouTubeVideoToDiscord(latest)
+    await markVideoNotified(latest.videoId, currentIds)
+    notified.push({ videoId: latest.videoId, title: latest.title })
   }
 
   return notified
@@ -46,6 +58,11 @@ export async function GET(req: NextRequest) {
 
   try {
     let entries = await fetchYouTubeRssEntries()
+    if (req.nextUrl.searchParams.get('baseline') === '1') {
+      const baseline = await initializeYouTubeNotificationBaseline(entries)
+      return NextResponse.json({ ok: true, source: 'rss-baseline', ...baseline })
+    }
+
     if (entries.length === 0) {
       const fallback = await fetchLatestFromChannelPage()
       entries = fallback ? [fallback] : []
@@ -75,8 +92,15 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-      const result = await notifyYouTubeVideoIfNeeded(fallback)
-      return NextResponse.json({ ok: true, source: 'channel-page-fallback', ...result })
+      await markVideoNotified(fallback.videoId)
+      return NextResponse.json({
+        ok: true,
+        skipped: true,
+        source: 'channel-page-fallback',
+        reason: 'timestamp unavailable; marked latest as seen',
+        videoId: fallback.videoId,
+        title: fallback.title,
+      })
     } catch (fallbackErr) {
       console.error('YouTube fallback notify error:', fallbackErr)
       return NextResponse.json({ error: 'YouTube fallback notify failed' }, { status: 500 })
