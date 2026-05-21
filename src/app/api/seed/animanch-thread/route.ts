@@ -393,7 +393,7 @@ function templateGenerate(source: SourceThread): GeneratedThread {
         '殴られるたびにマナ減るの、受けで本体を止めても損失が残るのが嫌すぎる',
         'ネタっぽく見えるけど、やられてる側は普通にきついやつ',
       ],
-      categorySlug: 'old-cards',
+      categorySlug: 'classic',
       cardName: 'バジュラズ・ソウル',
     }
   }
