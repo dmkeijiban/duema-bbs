@@ -18,6 +18,7 @@ export default async function SeoPage() {
   if (!(await isAdmin())) redirect('/admin')
 
   const supabase = createAdminClient()
+  const nowMs = new Date().getTime()
 
   const [priorityResult, orphanResult] = await Promise.allSettled([
     supabase
@@ -97,7 +98,7 @@ export default async function SeoPage() {
                     const count = t.post_count ?? 0
                     const views = t.view_count ?? 0
                     const lastPosted = t.last_posted_at ? new Date(t.last_posted_at) : null
-                    const isRecent = lastPosted && (Date.now() - lastPosted.getTime()) < 3 * 86400 * 1000
+                    const isRecent = lastPosted && (nowMs - lastPosted.getTime()) < 3 * 86400 * 1000
                     let priority = count >= 50 ? 0.9 : count >= 20 ? 0.85 : count >= 10 ? 0.8 : 0.7
                     if (views >= 500) priority = Math.min(0.95, priority + 0.05)
                     else if (views >= 100) priority = Math.min(0.95, priority + 0.03)

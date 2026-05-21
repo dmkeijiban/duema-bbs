@@ -328,8 +328,12 @@ async function generateWithOpenAI(source: SourceThread): Promise<GeneratedThread
     sourceTitle: source.title,
     sourceBody: source.body,
     sourceComments: source.comments.slice(0, 10),
+    sourceKind: source.sourceKind,
     rules: [
       'duema-bbs向けに元スレを別角度でアレンジする',
+      source.sourceKind === 'archive'
+        ? '過去ログ由来なので「今見ると」「今の環境なら」の角度に変換する'
+        : '現在カテゴリ由来なので今話しやすい角度に変換する',
       '文面コピーは禁止',
       'コメント5件を作る',
       '文末の句点「。」を全コメントに付けない。句点あり/なしを混ぜる',
@@ -464,6 +468,7 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createSupabase()
+  const dryRun = req.nextUrl.searchParams.get('dryRun') === '1'
 
   try {
     const picked = await pickSourceThread()
@@ -499,6 +504,20 @@ export async function GET(req: NextRequest) {
     }
 
     const category = await findCategoryId(supabase, generated.categorySlug)
+    if (dryRun) {
+      return NextResponse.json({
+        ok: true,
+        dryRun: true,
+        wouldPost: true,
+        category,
+        imageUrl: official?.imageUrl ?? null,
+        officialCardUrl: official?.cardUrl ?? null,
+        source: { title: picked.source.title, href: picked.source.href, kind: picked.source.sourceKind, score: picked.sourceScore },
+        quality,
+        generated,
+      })
+    }
+
     const { data: thread, error: threadError } = await supabase
       .from('threads')
       .insert({
