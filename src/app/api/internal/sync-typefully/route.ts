@@ -108,7 +108,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const { data: categoryRow } = await supabase
       .from('categories')
       .select('id, name')
-      .eq('slug', 'casual')
+      .eq('slug', 'chat')
       .maybeSingle()
 
     const categoryId: number | null = categoryRow?.id ?? null
