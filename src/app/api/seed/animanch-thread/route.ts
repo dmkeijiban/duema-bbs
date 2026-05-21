@@ -85,12 +85,24 @@ function stripHtml(value: string) {
     .trim()
 }
 
+function repairMojibake(value: string) {
+  if (!/[ÃãÂâåçèéæäöï¼]/.test(value)) return value
+  try {
+    const repaired = Buffer.from(value, 'latin1').toString('utf8')
+    const beforeHits = (value.match(/[ÃãÂâåçèéæäöï¼]/g) ?? []).length
+    const afterHits = (repaired.match(/[ÃãÂâåçèéæäöï¼]/g) ?? []).length
+    return afterHits < beforeHits ? repaired : value
+  } catch {
+    return value
+  }
+}
+
 function normalizeText(value: string) {
   return value.replace(/\r/g, '').replace(/\n{3,}/g, '\n\n').trim()
 }
 
 function cleanSourceText(value: string) {
-  return normalizeText(stripHtml(value))
+  return normalizeText(repairMojibake(stripHtml(value)))
     .replace(/\\+/g, '')
     .replace(/!\[[^\]]*\]\([^)]+\)/g, '')
     .replace(/\[[^\]]*\]\(https:\/\/bbs\.animanch\.com\/img\/[^)]+\)/g, '')
