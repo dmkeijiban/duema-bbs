@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { revalidatePath, revalidateTag } from 'next/cache'
 import { notifyNewThread } from '@/lib/discord'
 
 export const runtime = 'nodejs'
@@ -467,60 +466,10 @@ async function isDuplicateTitle(supabase: ReturnType<typeof createSupabase>, tit
   return Boolean(data?.length)
 }
 
-async function repairThread420() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceRoleKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing')
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey)
-  const imageUrl = 'https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmrp06-m01.jpg'
-  const comments = [
-    '4枚使えるなら上振れは今でも普通に怖い。先攻で走られたら受け要求かなり高いと思う',
-    '赤単一直線だと止められた後がきついから、今なら赤青で手札切れをごまかしたくなる。',
-    '轟轟轟そのものより、我我我とか罰怒ブランドまで絡んだ時の打点計算が嫌なんよな',
-    '受けが強いデッキ相手には昔より通りにくいけど、遅いデッキには今でも圧かけられそう',
-    'メタクリを踏む前提なら赤白もあり。ただ速度落ちるなら本末転倒感もある',
-  ]
-  const { error: threadError } = await supabase
-    .from('threads')
-    .update({
-      title: '轟轟轟ブランド4枚時代の赤単、今見るとどこまで通用する？',
-      body: [
-        '轟轟轟ブランドが4枚使えた頃の赤単、今のカードプールで見たらどれくらい怖いんだろう',
-        '',
-        '先攻で手札を吐き切って轟轟轟まで投げる動きは、今でも受け札を要求する速度はありそう',
-        '',
-        'ただ今はメタクリも受けも昔より強いし、止められた後の息切れもかなり重そうなんだよな',
-        '',
-        '赤単我我我寄せ、赤青で手札を整える型、赤白でメタを置く型',
-        '同じ轟轟轟でも、どの形なら今の環境に一番近づけると思う？',
-      ].join('\n'),
-      image_url: imageUrl,
-    })
-    .eq('id', 420)
-  if (threadError) throw threadError
-
-  for (let i = 0; i < comments.length; i += 1) {
-    const { error } = await supabase
-      .from('posts')
-      .update({ body: comments[i] })
-      .eq('thread_id', 420)
-      .eq('post_number', i + 1)
-    if (error) throw error
-  }
-  revalidateTag('thread-420', { expire: 0 })
-  revalidateTag('threads', { expire: 0 })
-  revalidatePath('/thread/420')
-  revalidatePath('/')
-  return { threadId: 420, imageUrl, updatedPosts: comments.length }
-}
-
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret || req.headers.get('authorization') !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  if (req.nextUrl.searchParams.get('repairThread420') === '1') {
-    return NextResponse.json({ ok: true, repaired: await repairThread420() })
   }
 
   // ?debug=1 : Firecrawl生markdownと parseCategory 結果を返してデバッグ用
