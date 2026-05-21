@@ -89,7 +89,8 @@ async function scrapeMarkdown(url: string) {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ url, formats: ['markdown'], onlyMainContent: true }),
+    // onlyMainContent を外してスレッド一覧全体を取得する
+    body: JSON.stringify({ url, formats: ['markdown'] }),
   })
   if (!res.ok) throw new Error(`Firecrawl failed ${res.status}: ${(await res.text()).slice(0, 300)}`)
   const json = await res.json()
