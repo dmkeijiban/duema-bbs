@@ -49,8 +49,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  const apiKey = process.env.TYPEFULLY_API_KEY
-  const socialSetId = process.env.TYPEFULLY_SOCIAL_SET_ID
+  // BOM（﻿）が混入した場合に備えて除去
+  const apiKey = process.env.TYPEFULLY_API_KEY?.replace(/^﻿/, '')
+  const socialSetId = process.env.TYPEFULLY_SOCIAL_SET_ID?.replace(/^﻿/, '')
 
   if (!apiKey || !socialSetId) {
     console.error('[sync-typefully] TYPEFULLY_API_KEY または TYPEFULLY_SOCIAL_SET_ID が未設定')
