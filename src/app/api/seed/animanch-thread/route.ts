@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { revalidatePath, revalidateTag } from 'next/cache'
 import { notifyNewThread } from '@/lib/discord'
 
 export const runtime = 'nodejs'
@@ -474,14 +473,6 @@ export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret || req.headers.get('authorization') !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  if (req.nextUrl.searchParams.get('revalidateThread420') === '1') {
-    revalidateTag('thread-420', { expire: 0 })
-    revalidateTag('threads', { expire: 0 })
-    revalidatePath('/thread/420')
-    revalidatePath('/')
-    return NextResponse.json({ ok: true, revalidated: 420 })
   }
 
   // ?debug=1 : Firecrawl生markdownと parseCategory 結果を返してデバッグ用
