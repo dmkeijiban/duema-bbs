@@ -493,17 +493,23 @@ async function collectScoredSources(url: string, sourceKind: SourceThread['sourc
   return { scored, candidateCount: categoryCandidates.length }
 }
 
-async function pickSourceThread(offset = 0): Promise<{ source: SourceThread; sourceScore: ReturnType<typeof sourceScore> }> {
+function rotateItems<T>(items: T[], offset: number) {
+  if (items.length === 0) return items
+  const start = ((offset % items.length) + items.length) % items.length
+  return [...items.slice(start), ...items.slice(0, start)]
+}
+
+async function pickSourceThreads(offset = 0): Promise<Array<{ source: SourceThread; sourceScore: ReturnType<typeof sourceScore> }>> {
   const slotIndex = Math.floor(Date.now() / 21600000) + offset
   const current = await collectScoredSources(ANIMANCH_CATEGORY, 'current')
   current.scored.sort((a, b) => b.sourceScore.score - a.sourceScore.score)
   const currentGood = current.scored.filter(item => item.sourceScore.score >= 10)
-  if (currentGood.length > 0) return currentGood[slotIndex % currentGood.length]
 
   const archive = await collectScoredSources(ANIMANCH_ARCHIVE, 'archive')
   archive.scored.sort((a, b) => b.sourceScore.score - a.sourceScore.score)
   const archiveGood = archive.scored.filter(item => item.sourceScore.score >= 14)
-  if (archiveGood.length > 0) return archiveGood[slotIndex % archiveGood.length]
+  const picked = [...rotateItems(currentGood, slotIndex), ...rotateItems(archiveGood, slotIndex)]
+  if (picked.length > 0) return picked
 
   throw new Error(`No good animanch source found. currentCandidates=${current.candidateCount}, archiveCandidates=${archive.candidateCount}`)
 }
@@ -570,87 +576,107 @@ export async function GET(req: NextRequest) {
   const boardId = Number(req.nextUrl.searchParams.get('boardId') ?? '0') || 0
 
   try {
-    const picked = boardId > 0 ? await pickSourceThreadByBoardId(boardId) : await pickSourceThread(offset)
-    const generated = await generateWithOpenAI(picked.source).catch(error => {
-      console.warn('OpenAI generation failed, using template:', error)
-      return null
-    }) ?? templateGenerate(picked.source)
+    const candidates = boardId > 0 ? [await pickSourceThreadByBoardId(boardId)] : await pickSourceThreads(offset)
+    const attempts: Array<Record<string, unknown>> = []
 
-    const official = detectOfficialCard(`${generated.cardName ?? ''}\n${generated.title}\n${generated.body}\n${picked.source.title}\n${picked.source.body}`)
-    const quality = scoreGenerated(generated, picked.source)
+    for (const picked of candidates) {
+      let generated: GeneratedThread
+      try {
+        generated = await generateWithOpenAI(picked.source).catch(error => {
+          console.warn('OpenAI generation failed, using template:', error)
+          return null
+        }) ?? templateGenerate(picked.source)
+      } catch (error) {
+        attempts.push({
+          reason: 'generation_error',
+          error: error instanceof Error ? error.message : String(error),
+          source: { title: picked.source.title, href: picked.source.href, score: picked.sourceScore },
+        })
+        continue
+      }
 
-    const minScore = picked.source.sourceKind === 'archive' ? MIN_ARCHIVE_SCORE_TO_POST : MIN_SCORE_TO_POST
-    if (quality.total < minScore) {
+      const official = detectOfficialCard(`${generated.cardName ?? ''}\n${generated.title}\n${generated.body}\n${picked.source.title}\n${picked.source.body}`)
+      const quality = scoreGenerated(generated, picked.source)
+      const minScore = picked.source.sourceKind === 'archive' ? MIN_ARCHIVE_SCORE_TO_POST : MIN_SCORE_TO_POST
+      if (quality.total < minScore) {
+        attempts.push({
+          reason: 'quality_score_too_low',
+          minScore,
+          quality,
+          source: { title: picked.source.title, href: picked.source.href, score: picked.sourceScore },
+          generatedTitle: generated.title,
+        })
+        continue
+      }
+
+      if (await isDuplicateTitle(supabase, generated.title)) {
+        attempts.push({
+          reason: 'duplicate_title',
+          title: generated.title,
+          source: { title: picked.source.title, href: picked.source.href, score: picked.sourceScore },
+        })
+        continue
+      }
+
+      const category = await findCategoryId(supabase, generated.categorySlug)
+      if (dryRun) {
+        return NextResponse.json({
+          ok: true,
+          dryRun: true,
+          wouldPost: true,
+          category,
+          imageUrl: official?.imageUrl ?? null,
+          officialCardUrl: official?.cardUrl ?? null,
+          source: { title: picked.source.title, href: picked.source.href, kind: picked.source.sourceKind, score: picked.sourceScore },
+          quality,
+          generated,
+          attempts,
+        })
+      }
+
+      const { data: thread, error: threadError } = await supabase
+        .from('threads')
+        .insert({
+          title: generated.title,
+          body: generated.body,
+          author_name: AUTHOR_NAME,
+          category_id: category?.id ?? null,
+          image_url: official?.imageUrl ?? null,
+        })
+        .select('id,title')
+        .single()
+      if (threadError || !thread) throw threadError ?? new Error('thread insert failed')
+
+      const rows = generated.comments.map((body, index) => ({
+        thread_id: thread.id,
+        post_number: index + 1,
+        body,
+        author_name: COMMENT_AUTHOR_POOL[index % COMMENT_AUTHOR_POOL.length],
+        image_url: null,
+      }))
+      const { error: postsError } = await supabase.from('posts').insert(rows)
+      if (postsError) throw postsError
+
+      await notifyNewThread({ threadId: thread.id, title: thread.title, categoryName: category?.name ?? null })
+
       return NextResponse.json({
         ok: true,
-        skipped: true,
-        reason: 'quality_score_too_low',
-        quality,
-        minScore,
-        source: { title: picked.source.title, href: picked.source.href, score: picked.sourceScore },
-        generated,
-      })
-    }
-
-    if (await isDuplicateTitle(supabase, generated.title)) {
-      return NextResponse.json({
-        ok: true,
-        skipped: true,
-        reason: 'duplicate_title',
-        title: generated.title,
-        source: picked.source.href,
-      })
-    }
-
-    const category = await findCategoryId(supabase, generated.categorySlug)
-    if (dryRun) {
-      return NextResponse.json({
-        ok: true,
-        dryRun: true,
-        wouldPost: true,
+        threadId: thread.id,
+        url: `https://www.duema-bbs.com/thread/${thread.id}`,
         category,
         imageUrl: official?.imageUrl ?? null,
         officialCardUrl: official?.cardUrl ?? null,
-        source: { title: picked.source.title, href: picked.source.href, kind: picked.source.sourceKind, score: picked.sourceScore },
+        source: { title: picked.source.title, href: picked.source.href, score: picked.sourceScore },
         quality,
-        generated,
+        attempts,
       })
     }
 
-    const { data: thread, error: threadError } = await supabase
-      .from('threads')
-      .insert({
-        title: generated.title,
-        body: generated.body,
-        author_name: AUTHOR_NAME,
-        category_id: category?.id ?? null,
-        image_url: official?.imageUrl ?? null,
-      })
-      .select('id,title')
-      .single()
-    if (threadError || !thread) throw threadError ?? new Error('thread insert failed')
-
-    const rows = generated.comments.map((body, index) => ({
-      thread_id: thread.id,
-      post_number: index + 1,
-      body,
-      author_name: COMMENT_AUTHOR_POOL[index % COMMENT_AUTHOR_POOL.length],
-      image_url: null,
-    }))
-    const { error: postsError } = await supabase.from('posts').insert(rows)
-    if (postsError) throw postsError
-
-    await notifyNewThread({ threadId: thread.id, title: thread.title, categoryName: category?.name ?? null })
-
     return NextResponse.json({
       ok: true,
-      threadId: thread.id,
-      url: `https://www.duema-bbs.com/thread/${thread.id}`,
-      category,
-      imageUrl: official?.imageUrl ?? null,
-      officialCardUrl: official?.cardUrl ?? null,
-      source: { title: picked.source.title, href: picked.source.href, score: picked.sourceScore },
-      quality,
+      skipped: true,
+      reason: 'no_publishable_source',
+      attempts,
     })
   } catch (error) {
     console.error('animanch seed failed:', error)
