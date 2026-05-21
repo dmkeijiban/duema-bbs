@@ -26,12 +26,59 @@ interface TypefullyDraft {
   x_published_url: string | null
 }
 
+interface TypefullyDraftDetail {
+  platforms?: {
+    x?: {
+      posts?: Array<{ media_ids?: string[] }>
+    }
+  }
+}
+
+interface TypefullyMediaStatus {
+  media_urls?: {
+    medium?: string
+    large?: string
+    original?: string
+  }
+}
+
 interface SyncResult {
   draftId: number
   status: 'created' | 'duplicate' | 'skipped' | 'error'
   threadId?: number
   threadUrl?: string
   error?: string
+}
+
+/**
+ * Typefully の下書き詳細から1枚目の画像 URL を取得する
+ * 画像がない・取得失敗の場合は null を返す
+ */
+async function fetchFirstImageUrl(
+  apiKey: string,
+  socialSetId: string,
+  draftId: number,
+): Promise<string | null> {
+  try {
+    const detailRes = await fetch(
+      `${TYPEFULLY_API}/social-sets/${socialSetId}/drafts/${draftId}`,
+      { headers: { 'X-API-KEY': `Bearer ${apiKey}` }, next: { revalidate: 0 } },
+    )
+    if (!detailRes.ok) return null
+    const detail: TypefullyDraftDetail = await detailRes.json()
+    const mediaId = detail.platforms?.x?.posts?.[0]?.media_ids?.[0]
+    if (!mediaId) return null
+
+    const mediaRes = await fetch(
+      `${TYPEFULLY_API}/social-sets/${socialSetId}/media/${mediaId}`,
+      { headers: { 'X-API-KEY': `Bearer ${apiKey}` }, next: { revalidate: 0 } },
+    )
+    if (!mediaRes.ok) return null
+    const media: TypefullyMediaStatus = await mediaRes.json()
+    return media.media_urls?.medium ?? media.media_urls?.original ?? null
+  } catch {
+    return null
+  }
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -49,7 +96,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // BOM（﻿）が混入した場合に備えて除去
+  // BOM (U+FEFF) が混入した場合に備えて除去
   const apiKey = process.env.TYPEFULLY_API_KEY?.replace(/^﻿/, '')
   const socialSetId = process.env.TYPEFULLY_SOCIAL_SET_ID?.replace(/^﻿/, '')
 
@@ -103,7 +150,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       continue
     }
 
-    // ── タイトル・カテゴリ生成 ─────────────────────────────────────────────────
+    // ── タイトル・カテゴリ・画像取得 ──────────────────────────────────────────
     const title = generateTitleFromXPost(text)
     // X自動投稿はすべて「雑談」カテゴリに固定
     const { data: categoryRow } = await supabase
@@ -115,6 +162,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const categoryId: number | null = categoryRow?.id ?? null
     const categoryName: string | null = categoryRow?.name ?? null
 
+    // 画像が設定されていれば1枚目を取得（なければ null のまま）
+    const imageUrl = await fetchFirstImageUrl(apiKey, socialSetId, draft.id)
+
     // ── スレッド作成 ──────────────────────────────────────────────────────────
     const { data: thread, error: insertError } = await supabase
       .from('threads')
@@ -122,7 +172,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         title,
         body: text,
         category_id: categoryId,
-        author_name: 'X自動投稿',
+        author_name: '名無しのデュエリスト',
+        ...(imageUrl ? { image_url: imageUrl } : {}),
         source: 'typefully',
         source_id: String(draft.id),
         source_text_hash: textHash,
