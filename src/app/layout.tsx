@@ -135,6 +135,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="preconnect" href="https://nodgfukqvuwvgfnlzvnh.supabase.co" />
         <link rel="dns-prefetch" href="https://nodgfukqvuwvgfnlzvnh.supabase.co" />
 
+        {/* AdSense広告サーバーへの早期接続で広告読み込みを高速化 */}
+        <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
+        <link rel="preconnect" href="https://googleads.g.doubleclick.net" />
+        <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
+        <link rel="dns-prefetch" href="https://googleads.g.doubleclick.net" />
+
         {/* Google Analytics (GA4) — lazyOnload でTBTへの影響を排除 */}
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
@@ -181,12 +187,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </Script>
         )}
 
-        {/* Google AdSense — lazyOnload でパフォーマンスへの影響を最小化 */}
+        {/* Google AdSense — afterInteractive で広告を早期読み込みし、LCP改善と審査品質向上を両立 */}
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1546271448425321"
           crossOrigin="anonymous"
-          strategy="lazyOnload"
+          strategy="afterInteractive"
         />
       </head>
       <body className="min-h-screen flex flex-col antialiased" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
