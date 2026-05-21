@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { revalidatePath, revalidateTag } from 'next/cache'
 import { notifyNewThread } from '@/lib/discord'
 
 export const runtime = 'nodejs'
@@ -555,52 +554,10 @@ async function isDuplicateTitle(supabase: ReturnType<typeof createSupabase>, tit
   return Boolean(data?.length)
 }
 
-async function repairThread422() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceRoleKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing')
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey)
-  const generated = templateGenerate({
-    boardId: 6789916,
-    title: '勝舞推しの逆札一弾でサムライ強化が来たってことは',
-    count: 8,
-    href: 'https://bbs.animanch.com/board/6789916/',
-    sourceKind: 'current',
-    body: '勝太推しの逆札二弾ではハンターの、夏のドラ娘100%パックではドラ娘の、ジョー推しの三弾ではジョーカーズ、ウィン推しの四弾では黒緑アビスの強化パーツが来るってこと?',
-    comments: [],
-  })
-  const { error: threadError } = await supabase
-    .from('threads')
-    .update({
-      title: generated.title,
-      body: generated.body,
-      image_url: null,
-    })
-    .eq('id', 422)
-  if (threadError) throw threadError
-
-  for (let i = 0; i < generated.comments.length; i += 1) {
-    const { error } = await supabase
-      .from('posts')
-      .update({ body: generated.comments[i] })
-      .eq('thread_id', 422)
-      .eq('post_number', i + 1)
-    if (error) throw error
-  }
-  revalidateTag('thread-422', { expire: 0 })
-  revalidateTag('threads', { expire: 0 })
-  revalidatePath('/thread/422')
-  revalidatePath('/')
-  return { threadId: 422, updatedPosts: generated.comments.length }
-}
-
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret || req.headers.get('authorization') !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  if (req.nextUrl.searchParams.get('repairThread422') === '1') {
-    return NextResponse.json({ ok: true, repaired: await repairThread422() })
   }
 
   // ?debug=1 : Firecrawl生markdownと parseCategory 結果を返してデバッグ用
