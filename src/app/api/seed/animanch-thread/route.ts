@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { notifyNewThread } from '@/lib/discord'
 
 export const runtime = 'nodejs'
@@ -371,23 +372,26 @@ function templateGenerate(source: SourceThread): GeneratedThread {
 
   if (/サムライ強化|サムライ/.test(text)) {
     return {
-      title: '逆札でサムライ強化が来るなら、どの辺まで強くしてほしい？',
+      title: '逆札一弾でサムライ強化が来たなら、二弾以降も関連テーマ強化ある？',
       body: [
-        '勝舞推しの逆札でサムライ強化が来るなら、どのくらい踏み込んでほしいか気になる',
+        '勝舞推しの逆札一弾でサムライ強化が来たってことは、二弾以降も主人公まわりのテーマ強化を期待していいのかな',
         '',
-        'サムライってクロスギア込みで昔の雰囲気が強いテーマだけど、今のカードパワーに合わせるならかなり思い切った補助が必要そう',
+        '勝太推しの逆札二弾ならハンター',
+        '夏のドラ娘100%パックならドラ娘',
+        'ジョー推しっぽい三弾ならジョーカーズやチーム切札',
+        'ウィン推しなら黒緑アビス',
         '',
-        'ただ、武者ドラゴン系の名前が絡むと一気に懐かしさも出るし、商品としてはかなり映えると思う',
+        'この辺の強化パーツが来る流れならかなり嬉しい',
         '',
-        'クロスギアをちゃんと使わせる方向がいいのか、サムライ持ちのクリーチャー展開を強くする方向がいいのか',
-        'どっちの強化なら使ってみたくなる？',
+        'ただ、ガイギンガやカツキングがハムカツ団・革命軍寄りに見えるなら、ハンター強化としては少し怪しい気もする',
+        '二弾以降、どのテーマが拾われると思う？',
       ].join('\n'),
       comments: [
-        'クロスギアを使うなら、装備テンポだけは今基準にしてほしい。そこ遅いとさすがに触りにくい',
-        '武者ドラゴン周りを強くするなら懐古勢はかなり喜びそう。',
-        'サムライは名前だけで一定の需要あるけど、強化が半端だとファンデッキ止まりになりそうなんよな',
-        'クロスギア踏み倒しより、装備した時に追加効果が出る方向の方が今っぽい気がする',
-        '逆札で昔テーマ拾う流れなら、サムライはかなり相性いいと思う',
+        'ガイギンガとカツキングがハムカツ団革命軍寄りなら、ハンター枠としてはちょっと読みにくい',
+        'でもシデンズ・ソウルみたいに急に関連パーツくれることもあるし、完全に無いとは言えなさそう。',
+        '勝太枠なら結局ドギラゴン周りをまた擦りそうな気もする',
+        'ハンターならハチ公とかギャラクシーファルコンあたり来たらかなり嬉しい',
+        '通常弾でもこういう昔テーマのツインパクトを気軽に出してほしい',
       ],
       categorySlug: 'new-cards',
     }
@@ -551,10 +555,52 @@ async function isDuplicateTitle(supabase: ReturnType<typeof createSupabase>, tit
   return Boolean(data?.length)
 }
 
+async function repairThread422() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!serviceRoleKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing')
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey)
+  const generated = templateGenerate({
+    boardId: 6789916,
+    title: '勝舞推しの逆札一弾でサムライ強化が来たってことは',
+    count: 8,
+    href: 'https://bbs.animanch.com/board/6789916/',
+    sourceKind: 'current',
+    body: '勝太推しの逆札二弾ではハンターの、夏のドラ娘100%パックではドラ娘の、ジョー推しの三弾ではジョーカーズ、ウィン推しの四弾では黒緑アビスの強化パーツが来るってこと?',
+    comments: [],
+  })
+  const { error: threadError } = await supabase
+    .from('threads')
+    .update({
+      title: generated.title,
+      body: generated.body,
+      image_url: null,
+    })
+    .eq('id', 422)
+  if (threadError) throw threadError
+
+  for (let i = 0; i < generated.comments.length; i += 1) {
+    const { error } = await supabase
+      .from('posts')
+      .update({ body: generated.comments[i] })
+      .eq('thread_id', 422)
+      .eq('post_number', i + 1)
+    if (error) throw error
+  }
+  revalidateTag('thread-422', { expire: 0 })
+  revalidateTag('threads', { expire: 0 })
+  revalidatePath('/thread/422')
+  revalidatePath('/')
+  return { threadId: 422, updatedPosts: generated.comments.length }
+}
+
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret || req.headers.get('authorization') !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  if (req.nextUrl.searchParams.get('repairThread422') === '1') {
+    return NextResponse.json({ ok: true, repaired: await repairThread422() })
   }
 
   // ?debug=1 : Firecrawl生markdownと parseCategory 結果を返してデバッグ用
