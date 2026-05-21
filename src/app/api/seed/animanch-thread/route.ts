@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { notifyNewThread } from '@/lib/discord'
 
 export const runtime = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 300
 
 const ANIMANCH_CATEGORY = 'https://bbs.animanch.com/category25/'
 const ANIMANCH_ARCHIVE = 'https://bbs.animanch.com/kakolog25/'
