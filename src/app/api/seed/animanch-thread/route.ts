@@ -79,6 +79,25 @@ function normalizeText(value: string) {
   return value.replace(/\r/g, '').replace(/\n{3,}/g, '\n\n').trim()
 }
 
+function cleanSourceText(value: string) {
+  return normalizeText(stripHtml(value))
+    .replace(/\\+/g, '')
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, '')
+    .replace(/\[[^\]]*\]\(https:\/\/bbs\.animanch\.com\/img\/[^)]+\)/g, '')
+    .replace(/^\s*[-・]?\s*\d+\s*二次元好きの匿名さん.*?報告。?$/gm, '')
+    .replace(/^\s*\d+\s*$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+function isUsableSourceText(value: string) {
+  if (value.length < 8 || value.length > 320) return false
+  if (/!\[|\]\(|https:\/\/bbs\.animanch\.com\/(?:img|thumb)/.test(value)) return false
+  if (/二次元好きの匿名さん|報告。?$/.test(value)) return false
+  if (/^[-・]?\s*\d+\s*$/.test(value)) return false
+  return true
+}
+
 async function scrapeMarkdown(url: string) {
   const apiKey = process.env.FIRECRAWL_API_KEY
   if (!apiKey) return null
@@ -133,7 +152,7 @@ function parseCategory(source: { kind: 'markdown' | 'html'; text: string }): Ani
       seen.add(boardId)
       candidates.push({
         boardId,
-        title: stripHtml(match[2]),
+        title: cleanSourceText(match[2]),
         count: Number(match[3]) || 0,
         href: `${ANIMANCH_BASE}/board/${boardId}/`,
       })
@@ -158,7 +177,7 @@ function parseCategory(source: { kind: 'markdown' | 'html'; text: string }): Ani
     const lastLine = lines[lines.length - 1]
     const countNum = lastLine && /^\d+$/.test(lastLine) ? Number(lastLine) : 0
     const titleLines = countNum > 0 ? lines.slice(0, -1) : lines
-    const title = titleLines.join('').trim()
+    const title = cleanSourceText(titleLines.join(''))
     if (!title) continue
 
     seen.add(boardId)
@@ -168,7 +187,7 @@ function parseCategory(source: { kind: 'markdown' | 'html'; text: string }): Ani
   // フォールバック: プレーンテキストリンク形式 [Title](board_url)
   const mdLinkPattern = /\[([^\]]+)\]\(https:\/\/bbs\.animanch\.com\/board\/(\d+)\/?\)/g
   while ((match = mdLinkPattern.exec(source.text)) !== null) {
-    const title = match[1].replace(/\s+\d+$/, '').trim()
+    const title = cleanSourceText(match[1].replace(/\s+\d+$/, ''))
     const boardId = Number(match[2])
     if (!title || !boardId || seen.has(boardId)) continue
     seen.add(boardId)
@@ -181,8 +200,8 @@ function parseCategory(source: { kind: 'markdown' | 'html'; text: string }): Ani
 function parseThreadDetail(boardId: number, source: { kind: 'markdown' | 'html'; text: string }) {
   if (source.kind === 'html') {
     const bodies = [...source.text.matchAll(/<div class=['"]resbody[^'"]*['"]>\s*<p>([\s\S]*?)<\/p>/g)]
-      .map(match => normalizeText(stripHtml(match[1])))
-      .filter(Boolean)
+      .map(match => cleanSourceText(match[1]))
+      .filter(isUsableSourceText)
     return {
       body: bodies[0] ?? '',
       comments: bodies.slice(1).filter(text => text.length >= 8 && text.length <= 320).slice(0, 20),
@@ -194,6 +213,8 @@ function parseThreadDetail(boardId: number, source: { kind: 'markdown' | 'html';
   const useful = lines
     .slice(bodyStart >= 0 ? bodyStart + 1 : 0)
     .filter(line => !/^TOP|^レス投稿|^オススメ|^スレッドは/.test(line))
+    .map(cleanSourceText)
+    .filter(isUsableSourceText)
   return {
     body: useful[0] ?? '',
     comments: useful.slice(1).filter(text => text.length >= 8 && text.length <= 320).slice(0, 20),
