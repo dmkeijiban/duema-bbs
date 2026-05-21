@@ -437,15 +437,16 @@ async function collectScoredSources(url: string, sourceKind: SourceThread['sourc
 }
 
 async function pickSourceThread(): Promise<{ source: SourceThread; sourceScore: ReturnType<typeof sourceScore> }> {
+  const slotIndex = Math.floor(Date.now() / 21600000)
   const current = await collectScoredSources(ANIMANCH_CATEGORY, 'current')
   current.scored.sort((a, b) => b.sourceScore.score - a.sourceScore.score)
-  const currentBest = current.scored[0]
-  if (currentBest && currentBest.sourceScore.score >= 10) return currentBest
+  const currentGood = current.scored.filter(item => item.sourceScore.score >= 10)
+  if (currentGood.length > 0) return currentGood[slotIndex % currentGood.length]
 
   const archive = await collectScoredSources(ANIMANCH_ARCHIVE, 'archive')
   archive.scored.sort((a, b) => b.sourceScore.score - a.sourceScore.score)
-  const archiveBest = archive.scored[0]
-  if (archiveBest && archiveBest.sourceScore.score >= 14) return archiveBest
+  const archiveGood = archive.scored.filter(item => item.sourceScore.score >= 14)
+  if (archiveGood.length > 0) return archiveGood[slotIndex % archiveGood.length]
 
   throw new Error(`No good animanch source found. currentCandidates=${current.candidateCount}, archiveCandidates=${archive.candidateCount}`)
 }
