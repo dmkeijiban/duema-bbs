@@ -93,14 +93,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // Vercel Cron は Authorization: Bearer {CRON_SECRET} を自動付与
   // 手動実行は Authorization: Bearer {INTERNAL_POST_SECRET} を使用
   const authHeader = req.headers.get('authorization')
-  if (authHeader) {
-    const cronSecret = process.env.CRON_SECRET
-    const internalSecret = process.env.INTERNAL_POST_SECRET
-    const isValidCron = cronSecret && authHeader === `Bearer ${cronSecret}`
-    const isValidManual = internalSecret && authHeader === `Bearer ${internalSecret}`
-    if (!isValidCron && !isValidManual) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const cronSecret = process.env.CRON_SECRET
+  const internalSecret = process.env.INTERNAL_POST_SECRET
+  const isValidCron = cronSecret && authHeader === `Bearer ${cronSecret}`
+  const isValidManual = internalSecret && authHeader === `Bearer ${internalSecret}`
+  if (!isValidCron && !isValidManual) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   // BOM (U+FEFF) が混入した場合に備えて除去
@@ -147,6 +145,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       console.error('[sync-typefully] Typefully API レスポンスにエラーフィールドを検出:', errStr.slice(0, 200))
       if (/token|unauthorized|invalid|forbidden/i.test(errStr)) {
         console.error('[sync-typefully] 認証エラーと判断します。TYPEFULLY_API_KEY を確認してください。')
+        await notifySyncSummary({
+          created: 0, duplicate: 0, errors: 1,
+          totalDrafts: 0, dryRun, executedAt,
+        })
         return NextResponse.json({ error: 'Typefully auth error', detail: errStr.slice(0, 200) }, { status: 502 })
       }
     }
