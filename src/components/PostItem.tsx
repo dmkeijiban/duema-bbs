@@ -1,8 +1,6 @@
 'use client'
 
-import { Component, useState, useTransition, Suspense } from 'react'
-import type { ReactNode, ErrorInfo } from 'react'
-import dynamic from 'next/dynamic'
+import { useState, useTransition, useEffect, useRef } from 'react'
 import { Post } from '@/types'
 import { formatDateTimeJP } from '@/lib/utils'
 import { deleteOwnPost } from '@/app/actions/delete'
@@ -11,98 +9,10 @@ import { ReportButton } from './ReportButton'
 import { ImageViewer } from './ImageViewer'
 import { LinkCard } from './LinkCard'
 
-// react-tweetは重いので必要なときだけ遅延ロード
-const Tweet = dynamic(() => import('react-tweet').then(m => ({ default: m.Tweet })), {
-  ssr: false,
-  loading: () => <div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>,
-})
-
-/** react-tweet がクラッシュしたときに通常リンクへフォールバックする ErrorBoundary */
-interface TweetBoundaryProps {
-  tweetId: string
-  tweetUrl: string
-  children: ReactNode
-}
-interface TweetBoundaryState {
-  hasError: boolean
-}
-class TweetErrorBoundary extends Component<TweetBoundaryProps, TweetBoundaryState> {
-  constructor(props: TweetBoundaryProps) {
-    super(props)
-    this.state = { hasError: false }
-  }
-  static getDerivedStateFromError(): TweetBoundaryState {
-    return { hasError: true }
-  }
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    // Sentry には最小限の情報だけ送る（tweet IDは送らない）
-    console.error('[TweetErrorBoundary] react-tweet render error:', error?.message, info?.componentStack?.slice(0, 200))
-  }
-  render() {
-    if (this.state.hasError) {
-      const { tweetUrl, tweetId } = this.props
-      return (
-        <div className="my-2" style={{ maxWidth: 480 }}>
-          <a
-            href={tweetUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ textDecoration: 'none', color: 'inherit' }}
-          >
-            <div
-              style={{
-                border: '1px solid #e2e8f0',
-                borderRadius: 12,
-                padding: '10px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                background: '#fff',
-                cursor: 'pointer',
-                transition: 'background 0.15s',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = '#f8fafc' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = '#fff' }}
-            >
-              {/* X ロゴ */}
-              <div
-                style={{
-                  flexShrink: 0,
-                  width: 36,
-                  height: 36,
-                  borderRadius: '50%',
-                  background: '#000',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontSize: 16,
-                  fontWeight: 700,
-                  fontFamily: 'serif',
-                }}
-              >
-                𝕏
-              </div>
-              {/* テキスト */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', lineHeight: 1.4 }}>
-                  X (Twitter) の投稿
-                </div>
-                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {tweetUrl}
-                </div>
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
-                  ID: {tweetId}
-                </div>
-              </div>
-              {/* 矢印 */}
-              <div style={{ flexShrink: 0, fontSize: 18, color: '#94a3b8' }}>→</div>
-            </div>
-          </a>
-        </div>
-      )
-    }
-    return this.props.children
+// Twitter widget type
+declare global {
+  interface Window {
+    twttr?: { widgets: { load: (el?: HTMLElement | null) => void } }
   }
 }
 
@@ -173,43 +83,56 @@ function extractYouTubeId(url: string): string | null {
   return null
 }
 
-// Twitter/X ツイートID抽出
+// Twitter/X ツイートURL抽出
 // - /status/ID 形式
 // - twterm%5EID（URL encoded ^）付きトラッキングURLにも対応
-// 戻り値: 純数字1〜19桁の文字列、または null
-function extractTweetId(url: string): string | null {
-  let candidate: string | null = null
+function extractTwitterStatusUrl(url: string): string | null {
+  // 通常の status URL
+  const statusMatch = url.match(/^https?:\/\/(?:twitter\.com|x\.com)\/(\w+)\/status\/(\d+)/i)
+  if (statusMatch) return url
 
-  // /status/ID 形式
-  const statusMatch = url.match(/\/status\/(\d+)/i)
-  if (statusMatch) candidate = statusMatch[1]
-
-  // 埋め込みトラッキングURL（twterm%5E=TWEETID）
-  if (!candidate) {
-    const twtermMatch = url.match(/[?&]twterm(?:%5E|\^)(\d+)/i)
-    if (twtermMatch) candidate = twtermMatch[1]
+  // 埋め込みトラッキングURL（例: x.com/user?twterm%5E=TWEETID）
+  const twtermMatch = url.match(/[?&]twterm(?:%5E|\^)(\d+)/i)
+  const usernameMatch = url.match(/^https?:\/\/(?:twitter\.com|x\.com)\/(\w+)/i)
+  if (twtermMatch && usernameMatch) {
+    return `https://x.com/${usernameMatch[1]}/status/${twtermMatch[1]}`
   }
-
-  if (!candidate) return null
-
-  // バリデーション: 純数字 1〜19桁のみ有効
-  // （Twitter Snowflake ID は 64bit 整数 = 最大19桁）
-  if (!/^\d{1,19}$/.test(candidate)) return null
-
-  return candidate
+  return null
 }
 
-// Twitter/X 埋め込み（react-tweet 使用）
-function TwitterEmbed({ tweetId, tweetUrl }: { tweetId: string; tweetUrl: string }) {
-  return (
-    <TweetErrorBoundary tweetId={tweetId} tweetUrl={tweetUrl}>
-      <div className="my-2 w-full overflow-x-hidden" style={{ maxWidth: 480 }}>
-        <Suspense fallback={<div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>}>
-          <Tweet id={tweetId} />
-        </Suspense>
-      </div>
-    </TweetErrorBoundary>
-  )
+// Twitter/X 埋め込み（Twitter公式 widgets.js 使用）
+function TwitterEmbed({ url }: { url: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!ref.current) return
+    ref.current.innerHTML = `<blockquote class="twitter-tweet" data-lang="ja"><a href="${url}"></a></blockquote>`
+
+    const load = () => { window.twttr?.widgets.load(ref.current!) }
+
+    if (window.twttr?.widgets) {
+      load()
+    } else if (!document.getElementById('twitter-widgets-js')) {
+      const s = document.createElement('script')
+      s.id = 'twitter-widgets-js'
+      s.src = 'https://platform.twitter.com/widgets.js'
+      s.async = true
+      s.charset = 'utf-8'
+      s.onload = load
+      document.head.appendChild(s)
+    } else {
+      // スクリプトは挿入済みだがまだロード中
+      const interval = setInterval(() => {
+        if (window.twttr?.widgets) {
+          clearInterval(interval)
+          load()
+        }
+      }, 200)
+      return () => clearInterval(interval)
+    }
+  }, [url])
+
+  return <div ref={ref} className="my-2" />
 }
 
 // YouTube 埋め込み（最大幅480px）
@@ -287,10 +210,10 @@ export function renderBody(body: string, allPosts: Post[]): React.ReactNode[] {
       }
       // Twitter/X（status URL・twterm付きトラッキングURL両対応）
       if (/(?:twitter\.com|x\.com)/i.test(url)) {
-        const tweetId = extractTweetId(url)
-        if (tweetId) {
+        const tweetUrl = extractTwitterStatusUrl(url)
+        if (tweetUrl) {
           flushText()
-          elements.push(<TwitterEmbed key={key++} tweetId={tweetId} tweetUrl={url} />)
+          elements.push(<TwitterEmbed key={key++} url={tweetUrl} />)
           continue
         }
       }
