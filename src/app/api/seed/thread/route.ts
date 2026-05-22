@@ -10,17 +10,38 @@ const ANIMANCH_BASE = 'https://bbs.animanch.com'
 const ANIMANCH_CATEGORY = `${ANIMANCH_BASE}/category25/`
 const AUTHOR_NAME = '名無しのデュエリスト'
 
-/** デュエマ関連キーワード判定 */
+/** HTMLエンティティをデコード（&amp; &gt; &#数字; etc.） */
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(parseInt(code, 16)))
+}
+
+/** デュエマ関連キーワード判定（デュエマ固有ワードのみ。汎用語は除外） */
 function isDuemaRelated(title: string): boolean {
   const keywords = [
     'デュエマ', 'デュエルマスターズ', 'デュエプレ',
-    'クリーチャー', 'シールド', '殿堂', 'CS',
+    'デュエパ', '踏み倒し', 'マナゾーン', 'ツインパクト',
     'ボルバル', 'ガイアール', 'ジャスティス', 'ゼニス',
-    'ドラグナー', 'マスターズ', 'デュエパ', '踏み倒し',
-    '文明', 'タップ', 'マナゾーン', 'ツインパクト',
-    'Dマスターズ', 'DM', 'アビス',
+    'ドラグナー', 'アビス', 'Dマスターズ',
   ]
   return keywords.some(kw => title.includes(kw))
+}
+
+/** 除外すべきタイトル判定（あにまん固有・掲示板サイト名など） */
+function isExcludedTitle(title: string): boolean {
+  const excludeWords = [
+    'あにまん', 'animanch', 'アニマン',
+    '掲示板', '2ch', '5ch', 'まとめ', 'まとめサイト',
+  ]
+  const lower = title.toLowerCase()
+  return excludeWords.some(w => lower.includes(w.toLowerCase()))
 }
 
 /** タイトルの変換（コピーではなく参考に） */
@@ -56,7 +77,7 @@ function detectCategoryId(title: string, body: string): number {
 
 /** 本文を掲示板投稿用に整形 */
 function buildThreadBody(title: string, rawBody: string): string {
-  let body = rawBody.replace(/<[^>]*>/g, '').trim()
+  let body = decodeHtmlEntities(rawBody.replace(/<[^>]*>/g, '').trim())
   body = body.replace(/\n{3,}/g, '\n\n')
   if (body.length > 0) {
     return body
@@ -99,7 +120,7 @@ async function fetchAnimanchDuemaThreads(): Promise<AnimanchThread[]> {
     if (seenIds.has(boardId)) continue
     seenIds.add(boardId)
     const rawTitle = m[2].trim()
-    if (isDuemaRelated(rawTitle)) {
+    if (isDuemaRelated(rawTitle) && !isExcludedTitle(rawTitle)) {
       threads.push({ boardId, title: rawTitle })
     }
   }
@@ -124,7 +145,17 @@ async function fetchAnimanchFirstPost(boardId: number): Promise<AnimanchThreadDe
   let body = ''
   const bodyMatch = html.match(/<div class='resbody[^']*'>\s*<p>([\s\S]*?)<\/p>/)
   if (bodyMatch) {
-    body = bodyMatch[1].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim()
+    body = bodyMatch[1]
+      .replace(/<br\s*\/?>/gi, '\n')
+      // 外部リンク（あにまん以外）はURLとして保持、内部リンク（返信・画像ビューア）は除去
+      .replace(/<a\s[^>]*href=['"]([^'"]+)['"][^>]*>[\s\S]*?<\/a>/gi, (_m, href) => {
+        if (href.includes('bbs.animanch.com')) return ''
+        return `\n${href}\n`
+      })
+      .replace(/<[^>]*>/g, '')
+      .trim()
+    body = decodeHtmlEntities(body)
+    body = body.replace(/\n{3,}/g, '\n\n').trim()
   }
 
   // 直接画像URL: <img src='https://bbs.animanch.com/img/BOARDID/N.ext'>
@@ -142,6 +173,14 @@ function createAnonClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  )
+}
+
+/** Storage操作にはservice role keyが必要（anonキーはRLSで弾かれる） */
+function createServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 }
 
@@ -214,7 +253,7 @@ async function fetchAnimanchComments(boardId: number): Promise<string[]> {
   while ((m = commentPattern.exec(html)) !== null) {
     count++
     if (count === 1) continue
-    const raw = m[1].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim()
+    const raw = decodeHtmlEntities(m[1].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim())
     if (raw.length >= 10 && raw.length <= 300) comments.push(raw)
     if (comments.length >= 15) break
   }
@@ -238,6 +277,7 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createAnonClient()
+  const serviceSupabase = createServiceClient()
 
   // 6時間単位のインデックス（1日4回で毎回違うスレを選ぶ）
   const sixHourIndex = Math.floor(Date.now() / 21600000)
@@ -280,9 +320,9 @@ export async function GET(req: NextRequest) {
     const body = buildThreadBody(title, detail.body)
     const categoryId = detectCategoryId(title, detail.body)
 
-    // 画像はSupabase Storageにダウンロード保存（ホットリンク禁止回避）
+    // 画像はSupabase Storageにダウンロード保存（service role keyでRLS回避）
     const imageUrl = detail.imageUrl
-      ? await downloadAndUploadImage(detail.imageUrl, supabase)
+      ? await downloadAndUploadImage(detail.imageUrl, serviceSupabase)
       : null
 
     const { data: created, error: threadError } = await supabase
