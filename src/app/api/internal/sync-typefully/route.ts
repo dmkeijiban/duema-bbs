@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { notifyNewThread, notifySyncSummary } from '@/lib/discord'
+import { notifyNewThread, notifySyncSummary, notifyDraftsEmpty } from '@/lib/discord'
 import {
   generateTitleFromXPost,
   hashText,
@@ -116,6 +116,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const maxNewRaw = req.nextUrl.searchParams.get('max_new')
   const maxNewPerRun = maxNewRaw ? parseInt(maxNewRaw, 10) : DEFAULT_MAX_NEW_PER_RUN
 
+  // dry_run=1 のとき DB への insert をスキップして何が作られるかだけ確認する
+  const dryRun = req.nextUrl.searchParams.get('dry_run') === '1'
+
+  // Discord 通知に添付する実行時刻（JST）
+  const executedAt = new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })
+
   // ── Typefully から公開済み投稿を取得 ────────────────────────────────────────
   // limit=50 で過去2週間程度の投稿を拾い、長期失敗後のバックフィルに対応する
   const url = `${TYPEFULLY_API}/social-sets/${socialSetId}/drafts?status=published&order_by=-published_at&limit=50`
@@ -132,11 +138,30 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Typefully API error', status: res.status }, { status: 502 })
     }
     const json = await res.json()
+
+    // ── サイレント認証エラーの検知 ───────────────────────────────────────────
+    // Typefully は HTTP 200 でも {"detail":"Token is not valid"} を返すことがある
+    const errField = json.detail ?? json.error ?? json.errors ?? json.message
+    if (errField) {
+      const errStr = String(errField)
+      console.error('[sync-typefully] Typefully API レスポンスにエラーフィールドを検出:', errStr.slice(0, 200))
+      if (/token|unauthorized|invalid|forbidden/i.test(errStr)) {
+        console.error('[sync-typefully] 認証エラーと判断します。TYPEFULLY_API_KEY を確認してください。')
+        return NextResponse.json({ error: 'Typefully auth error', detail: errStr.slice(0, 200) }, { status: 502 })
+      }
+    }
+
     if (!Array.isArray(json.results)) {
       console.error('[sync-typefully] Typefully API unexpected response:', JSON.stringify(json).slice(0, 200))
       return NextResponse.json({ error: 'Typefully API unexpected response', body: json }, { status: 502 })
     }
     drafts = json.results
+
+    // 0件のとき詳細通知（認証ミス・未公開の可能性）
+    if (drafts.length === 0) {
+      console.warn('[sync-typefully] ⚠️ 公開済み投稿が0件。Typefully の状態を確認してください。')
+      await notifyDraftsEmpty({ endpoint: url, limit: 50, executedAt })
+    }
   } catch (err) {
     console.error('[sync-typefully] fetch error:', err)
     return NextResponse.json({ error: 'Fetch failed' }, { status: 500 })
@@ -144,12 +169,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const supabase = createAdminClient()
   const results: SyncResult[] = []
+  let skippedByLimit = 0
 
   for (const draft of drafts) {
     // 1回のCronで新規作成できるスレッド数の上限チェック
     const newSoFar = results.filter(r => r.status === 'created').length
     if (newSoFar >= maxNewPerRun) {
-      console.log(`[sync-typefully] 新規上限(${maxNewPerRun}件)に達したため残りをスキップ`)
+      skippedByLimit = drafts.length - results.length
+      console.log(`[sync-typefully] 新規上限(${maxNewPerRun}件)に達したため残り${skippedByLimit}件をスキップ`)
       break
     }
 
@@ -159,17 +186,29 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       continue
     }
 
-    const textHash = hashText(text)
+    // ── 重複チェック（source_id 優先、次に source_text_hash） ─────────────────
+    const { data: existingById } = await supabase
+      .from('threads')
+      .select('id')
+      .eq('source_id', String(draft.id))
+      .maybeSingle()
 
-    // ── 重複チェック ──────────────────────────────────────────────────────────
-    const { data: existing } = await supabase
+    if (existingById) {
+      console.log(`[sync-typefully] duplicate(source_id): draftId=${draft.id} → threadId=${existingById.id}`)
+      results.push({ draftId: draft.id, status: 'duplicate', threadId: existingById.id })
+      continue
+    }
+
+    const textHash = hashText(text)
+    const { data: existingByHash } = await supabase
       .from('threads')
       .select('id')
       .eq('source_text_hash', textHash)
       .maybeSingle()
 
-    if (existing) {
-      results.push({ draftId: draft.id, status: 'duplicate', threadId: existing.id })
+    if (existingByHash) {
+      console.log(`[sync-typefully] duplicate(hash): draftId=${draft.id} → threadId=${existingByHash.id}`)
+      results.push({ draftId: draft.id, status: 'duplicate', threadId: existingByHash.id })
       continue
     }
 
@@ -187,6 +226,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     // 画像が設定されていれば1枚目を取得（なければ null のまま）
     const imageUrl = await fetchFirstImageUrl(apiKey, socialSetId, draft.id)
+    console.log(`[sync-typefully] 画像取得: draftId=${draft.id} → ${imageUrl ? imageUrl.slice(0, 80) + '...' : 'なし（画像なし or 取得失敗）'}`)
+
+    // ── dry_run モード：insert をスキップして内容だけ確認 ────────────────────
+    if (dryRun) {
+      console.log(`[sync-typefully] [DRY RUN] 作成をスキップ: draftId=${draft.id} title="${title}" image=${imageUrl ? 'あり' : 'なし'}`)
+      results.push({ draftId: draft.id, status: 'created', threadId: -1, threadUrl: '(dry-run)' })
+      continue
+    }
 
     // ── スレッド作成 ──────────────────────────────────────────────────────────
     const { data: thread, error: insertError } = await supabase
@@ -206,6 +253,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     if (insertError) {
       if (insertError.code === '23505') {
+        console.log(`[sync-typefully] duplicate(DB unique): draftId=${draft.id}`)
         results.push({ draftId: draft.id, status: 'duplicate' })
       } else {
         console.error('[sync-typefully] insert error:', insertError)
@@ -217,6 +265,22 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const threadId = thread.id
     const threadUrl = `https://www.duema-bbs.com/thread/${threadId}`
 
+    // ── 挿入後のDB検証 ───────────────────────────────────────────────────────
+    const { data: verifyThread } = await supabase
+      .from('threads')
+      .select('id, title, source_id, image_url')
+      .eq('id', threadId)
+      .maybeSingle()
+    if (!verifyThread) {
+      console.error(`[sync-typefully] ⚠️ DB検証失敗: threadId=${threadId} が取得できません`)
+    } else {
+      console.log(
+        `[sync-typefully] ✅ DB検証OK: threadId=${verifyThread.id}` +
+        ` source_id=${verifyThread.source_id}` +
+        ` image_url=${verifyThread.image_url ? 'あり' : 'なし'}`,
+      )
+    }
+
     await notifyNewThread({ threadId, title, categoryName })
 
     results.push({ draftId: draft.id, status: 'created', threadId, threadUrl })
@@ -226,13 +290,35 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const created = results.filter(r => r.status === 'created').length
   const duplicate = results.filter(r => r.status === 'duplicate').length
   const errors = results.filter(r => r.status === 'error').length
+  const skipped = results.filter(r => r.status === 'skipped').length
 
-  console.log(`[sync-typefully] 完了: 作成${created}件 / 重複スキップ${duplicate}件 / エラー${errors}件 / 取得${drafts.length}件`)
+  console.log(
+    `[sync-typefully] 完了: 作成${created}件 / 重複スキップ${duplicate}件 / エラー${errors}件` +
+    ` / テキスト無し${skipped}件 / 上限超過${skippedByLimit}件 / 取得${drafts.length}件` +
+    (dryRun ? ' [DRY RUN]' : ''),
+  )
 
   // ── Discord サマリー通知 ──────────────────────────────────────────────────
   // 毎回送ることで「Cronが動いたか」を Discord で確認できる。
   // 公開済みがあるのに0件作成ならアラート付きで通知。
-  await notifySyncSummary({ created, duplicate, errors, totalDrafts: drafts.length })
+  await notifySyncSummary({
+    created,
+    duplicate,
+    errors,
+    totalDrafts: drafts.length,
+    skippedByLimit,
+    dryRun,
+    executedAt,
+  })
 
-  return NextResponse.json({ created, duplicate, errors, totalDrafts: drafts.length, results })
+  return NextResponse.json({
+    created,
+    duplicate,
+    errors,
+    skipped,
+    skippedByLimit,
+    totalDrafts: drafts.length,
+    dryRun,
+    results,
+  })
 }
