@@ -99,8 +99,19 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // ── 3. DB未反映件数の計算 ────────────────────────────────────────────────
   const supabase = createAdminClient()
 
-  // Typefullyの公開済みdraft IDリスト
-  const draftIds = typefullyDrafts.map(d => String(d.id))
+  // X_THREAD_SYNC_START_AT: カットオフ日時。これより前に公開されたdraftは対象外にする。
+  // sync-typefully と同じロジックで、health check でも過去スキップ分を除外する。
+  const syncStartAt = process.env.X_THREAD_SYNC_START_AT
+    ? new Date(process.env.X_THREAD_SYNC_START_AT)
+    : null
+
+  // カットオフ以降の公開済みdraftだけをチェック対象にする
+  const candidateDrafts = syncStartAt
+    ? typefullyDrafts.filter(d => !d.published_at || new Date(d.published_at) >= syncStartAt)
+    : typefullyDrafts
+
+  // Typefullyの公開済みdraft IDリスト（カットオフ以降のみ）
+  const draftIds = candidateDrafts.map(d => String(d.id))
 
   // DBに登録済みのsource_idを一括取得
   let unmatchedDrafts: typeof typefullyDrafts = []
@@ -116,7 +127,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       dbCheckError = dbError.message
     } else {
       const existingSourceIds = new Set((existingThreads ?? []).map(t => t.source_id))
-      unmatchedDrafts = typefullyDrafts.filter(d => !existingSourceIds.has(String(d.id)))
+      unmatchedDrafts = candidateDrafts.filter(d => !existingSourceIds.has(String(d.id)))
     }
   }
 
@@ -159,6 +170,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     healthy: isHealthy,
     typefullyConnection: typefullyStatus,
     unmatchedDrafts: unmatchedDrafts.length,
+    syncStartAt: syncStartAt ? syncStartAt.toISOString() : null,
+    skippedOldCount: typefullyDrafts.length - candidateDrafts.length,
     backfillCommand: unmatchedDrafts.length > 0
       ? 'GET /api/internal/sync-typefully?max_new=50 (Authorization: Bearer INTERNAL_POST_SECRET)'
       : null,

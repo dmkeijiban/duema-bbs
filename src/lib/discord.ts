@@ -15,6 +15,8 @@ interface NotifySyncSummaryOptions {
   totalDrafts: number
   /** MAX_NEW_PER_RUN の上限に達してスキップされた件数 */
   skippedByLimit?: number
+  /** X_THREAD_SYNC_START_AT より前の投稿でスキップされた件数 */
+  skippedOld?: number
   /** dry-run モードで実行した場合 true */
   dryRun?: boolean
   /** 実行時刻（JST） */
@@ -27,6 +29,7 @@ export async function notifySyncSummary({
   errors,
   totalDrafts,
   skippedByLimit = 0,
+  skippedOld = 0,
   dryRun = false,
   executedAt,
 }: NotifySyncSummaryOptions): Promise<void> {
@@ -41,6 +44,7 @@ export async function notifySyncSummary({
     : ''
   const dryRunNote = dryRun ? ' [DRY RUN]' : ''
   const limitNote = skippedByLimit > 0 ? `\n- 上限超過スキップ: ${skippedByLimit}件（次回Cronで処理）` : ''
+  const oldNote = skippedOld > 0 ? `\n- 古い投稿スキップ: ${skippedOld}件（カットオフ前）` : ''
   const timeNote = executedAt ? `\n- 実行時刻: ${executedAt}` : ''
 
   const content =
@@ -48,6 +52,7 @@ export async function notifySyncSummary({
     `- 公開済み取得: ${totalDrafts}件\n` +
     `- 新規スレ作成: ${created}件 / 重複スキップ: ${duplicate}件 / エラー: ${errors}件` +
     limitNote +
+    oldNote +
     timeNote +
     alert
 

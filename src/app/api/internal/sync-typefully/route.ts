@@ -51,7 +51,7 @@ interface TypefullyMediaStatus {
 
 interface SyncResult {
   draftId: number
-  status: 'created' | 'duplicate' | 'skipped' | 'error'
+  status: 'created' | 'duplicate' | 'skipped' | 'skipped_old' | 'error'
   threadId?: number
   threadUrl?: string
   error?: string
@@ -117,6 +117,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // dry_run=1 のとき DB への insert をスキップして何が作られるかだけ確認する
   const dryRun = req.nextUrl.searchParams.get('dry_run') === '1'
 
+  // X_THREAD_SYNC_START_AT: この日時より前に公開された Typefully 投稿はスレ化しない。
+  // 過去分を遡らず、今後の新規投稿だけを対象にするためのカットオフ。
+  // 未設定の場合はすべての投稿が対象になる。
+  const syncStartAt = process.env.X_THREAD_SYNC_START_AT
+    ? new Date(process.env.X_THREAD_SYNC_START_AT)
+    : null
+
   // Discord 通知に添付する実行時刻（JST）
   const executedAt = new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })
 
@@ -180,6 +187,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       skippedByLimit = drafts.length - results.length
       console.log(`[sync-typefully] 新規上限(${maxNewPerRun}件)に達したため残り${skippedByLimit}件をスキップ`)
       break
+    }
+
+    // ── カットオフ日時チェック ────────────────────────────────────────────────
+    // syncStartAt より前に公開された投稿はスレ化しない（過去分の遡及を防ぐ）
+    if (syncStartAt && draft.published_at && new Date(draft.published_at) < syncStartAt) {
+      console.log(`[sync-typefully] skipped_old: draftId=${draft.id} published_at=${draft.published_at}`)
+      results.push({ draftId: draft.id, status: 'skipped_old' })
+      continue
     }
 
     const text = draft.preview?.trim()
@@ -293,10 +308,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const duplicate = results.filter(r => r.status === 'duplicate').length
   const errors = results.filter(r => r.status === 'error').length
   const skipped = results.filter(r => r.status === 'skipped').length
+  const skippedOld = results.filter(r => r.status === 'skipped_old').length
 
   console.log(
     `[sync-typefully] 完了: 作成${created}件 / 重複スキップ${duplicate}件 / エラー${errors}件` +
-    ` / テキスト無し${skipped}件 / 上限超過${skippedByLimit}件 / 取得${drafts.length}件` +
+    ` / テキスト無し${skipped}件 / カットオフスキップ${skippedOld}件 / 上限超過${skippedByLimit}件 / 取得${drafts.length}件` +
     (dryRun ? ' [DRY RUN]' : ''),
   )
 
@@ -309,6 +325,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     errors,
     totalDrafts: drafts.length,
     skippedByLimit,
+    skippedOld,
     dryRun,
     executedAt,
   })
@@ -318,6 +335,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     duplicate,
     errors,
     skipped,
+    skippedOld,
     skippedByLimit,
     totalDrafts: drafts.length,
     dryRun,
