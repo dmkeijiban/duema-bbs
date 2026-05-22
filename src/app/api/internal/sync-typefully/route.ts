@@ -1,7 +1,7 @@
 /**
  * GET /api/internal/sync-typefully
  * Typefully の公開済み投稿を掲示板スレッドに自動同期する
- * Vercel Cron から呼ばれる（7:20 / 12:20 / 19:20 / 22:20 JST）
+ * Vercel Cron から呼ばれる（7:20 / 10:20 / 12:20 / 22:20 JST）
  * 手動実行: Authorization: Bearer ${INTERNAL_POST_SECRET}
  */
 
