@@ -88,6 +88,8 @@ function buildThreadBody(title: string, rawBody: string): string {
 interface AnimanchThread {
   boardId: number
   title: string
+  /** カテゴリ一覧のカードにサムネイル画像（bbs.animanch.com/img/）が存在するか */
+  hasImage: boolean
 }
 
 interface AnimanchBoardData {
@@ -98,6 +100,7 @@ interface AnimanchBoardData {
 
 /**
  * あにまん category25 からスレ一覧を取得
+ * カードに animanch 画像サムネイルがあるかどうかも同時に判定する
  * ※ あにまんのHTMLはシングルクォート属性で書かれている
  */
 async function fetchAnimanchDuemaThreads(): Promise<AnimanchThread[]> {
@@ -108,9 +111,11 @@ async function fetchAnimanchDuemaThreads(): Promise<AnimanchThread[]> {
   if (!res.ok) throw new Error(`animanch category fetch failed: ${res.status}`)
   const html = await res.text()
 
+  // カード全体を取得: href〜threadCount まで（その中にサムネイル img と タイトルが含まれる）
   // HTMLはシングルクォート: <a href='https://bbs.animanch.com/board/ID/' class='card'>
-  //   <div class='d-flex'><img ...><div class='card-body'>タイトル<p class='threadCount'>N</p>
-  const threadPattern = /href='https:\/\/bbs\.animanch\.com\/board\/(\d+)\/'[^>]*class='card'[\s\S]*?<div class='card-body'>([\s\S]*?)<p class='threadCount'/g
+  //   <div class='d-flex'><img src='https://bbs.animanch.com/img/ID/1.jpg' ...>
+  //   <div class='card-body'>タイトル<p class='threadCount'>N</p>
+  const threadPattern = /href='https:\/\/bbs\.animanch\.com\/board\/(\d+)\/'[^>]*class='card'([\s\S]*?)<p class='threadCount'/g
 
   const threads: AnimanchThread[] = []
   const seenIds = new Set<number>()
@@ -120,9 +125,18 @@ async function fetchAnimanchDuemaThreads(): Promise<AnimanchThread[]> {
     const boardId = parseInt(m[1], 10)
     if (seenIds.has(boardId)) continue
     seenIds.add(boardId)
-    const rawTitle = m[2].trim()
+
+    const cardHtml = m[2]
+
+    // タイトルを card-body から抽出
+    const titleMatch = cardHtml.match(/<div class='card-body'>([\s\S]*?)$/)
+    const rawTitle = titleMatch ? titleMatch[1].trim() : ''
+
+    // カード内に animanch 画像URLがあればスレ画あり
+    const hasImage = /https:\/\/bbs\.animanch\.com\/img\/\d+\/\d+\./i.test(cardHtml)
+
     if (isDuemaRelated(rawTitle) && !isExcludedTitle(rawTitle)) {
-      threads.push({ boardId, title: rawTitle })
+      threads.push({ boardId, title: rawTitle, hasImage })
     }
   }
 
@@ -296,11 +310,22 @@ export async function GET(req: NextRequest) {
       return !recentTitles.has(transformed)
     })
 
-    console.log(`Seed/thread: ${candidates.length} candidates after dedup filter`)
+    // スレ画（カードサムネイル画像）があるものを優先
+    const candidatesWithImage = candidates.filter(t => t.hasImage)
+    const pool =
+      candidatesWithImage.length > 0 ? candidatesWithImage
+      : candidates.length > 0 ? candidates
+      : animanchThreads.filter(t => t.hasImage).length > 0 ? animanchThreads.filter(t => t.hasImage)
+      : animanchThreads
 
-    const pool = candidates.length > 0 ? candidates : animanchThreads
+    console.log(
+      `Seed/thread: ${candidates.length} candidates after dedup filter` +
+      ` (with image: ${candidatesWithImage.length})` +
+      ` → pool: ${pool.length} (imageRequired: ${pool === candidatesWithImage || pool === animanchThreads.filter(t => t.hasImage)})`,
+    )
+
     const chosen = pool[sixHourIndex % pool.length]
-    console.log(`Seed/thread: chosen animanch board ${chosen.boardId} "${chosen.title}"`)
+    console.log(`Seed/thread: chosen animanch board ${chosen.boardId} "${chosen.title}" hasImage=${chosen.hasImage}`)
 
     // 1回のフェッチで本文・画像・コメントをまとめて取得
     const detail = await fetchAnimanchBoard(chosen.boardId)

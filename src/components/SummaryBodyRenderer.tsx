@@ -1,6 +1,7 @@
 'use client'
 
-import { Suspense, useMemo, useState, useEffect, useCallback } from 'react'
+import { Component, Suspense, useMemo, useState, useEffect, useCallback } from 'react'
+import type { ReactNode, ErrorInfo } from 'react'
 import dynamic from 'next/dynamic'
 import { LinkCard } from './LinkCard'
 import { sanitizeSummaryHtml } from '@/lib/summary-content'
@@ -10,6 +11,46 @@ const Tweet = dynamic(() => import('react-tweet').then(m => ({ default: m.Tweet 
   ssr: false,
   loading: () => <div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>,
 })
+
+/** react-tweet がクラッシュしたときに通常リンクへフォールバックする ErrorBoundary */
+interface TweetBoundaryProps {
+  tweetId: string
+  children: ReactNode
+}
+interface TweetBoundaryState {
+  hasError: boolean
+}
+class TweetErrorBoundary extends Component<TweetBoundaryProps, TweetBoundaryState> {
+  constructor(props: TweetBoundaryProps) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError(): TweetBoundaryState {
+    return { hasError: true }
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[TweetErrorBoundary] react-tweet render error:', error?.message, info?.componentStack?.slice(0, 200))
+  }
+  render() {
+    if (this.state.hasError) {
+      const tweetUrl = `https://x.com/i/web/status/${this.props.tweetId}`
+      return (
+        <div className="my-3 text-sm">
+          <span className="text-gray-500">X投稿を表示できませんでした。</span>{' '}
+          <a
+            href={tweetUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline"
+          >
+            元投稿を開く
+          </a>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 // ── YouTube埋め込み（PostItemと同じスタイル） ───────────────────────
 function YouTubeEmbed({ videoId }: { videoId: string }) {
@@ -32,11 +73,13 @@ function YouTubeEmbed({ videoId }: { videoId: string }) {
 // ── Twitter/X埋め込み（PostItemと同じスタイル） ──────────────────────
 function TwitterEmbed({ tweetId }: { tweetId: string }) {
   return (
-    <div className="my-3 w-full overflow-x-hidden" style={{ maxWidth: 480 }}>
-      <Suspense fallback={<div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>}>
-        <Tweet id={tweetId} />
-      </Suspense>
-    </div>
+    <TweetErrorBoundary tweetId={tweetId}>
+      <div className="my-3 w-full overflow-x-hidden" style={{ maxWidth: 480 }}>
+        <Suspense fallback={<div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>}>
+          <Tweet id={tweetId} />
+        </Suspense>
+      </div>
+    </TweetErrorBoundary>
   )
 }
 

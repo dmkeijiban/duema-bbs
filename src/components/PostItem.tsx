@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useTransition, Suspense } from 'react'
+import { Component, useState, useTransition, Suspense } from 'react'
+import type { ReactNode, ErrorInfo } from 'react'
 import dynamic from 'next/dynamic'
 import { Post } from '@/types'
 import { formatDateTimeJP } from '@/lib/utils'
@@ -15,6 +16,47 @@ const Tweet = dynamic(() => import('react-tweet').then(m => ({ default: m.Tweet 
   ssr: false,
   loading: () => <div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>,
 })
+
+/** react-tweet がクラッシュしたときに通常リンクへフォールバックする ErrorBoundary */
+interface TweetBoundaryProps {
+  tweetId: string
+  tweetUrl: string
+  children: ReactNode
+}
+interface TweetBoundaryState {
+  hasError: boolean
+}
+class TweetErrorBoundary extends Component<TweetBoundaryProps, TweetBoundaryState> {
+  constructor(props: TweetBoundaryProps) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError(): TweetBoundaryState {
+    return { hasError: true }
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    // Sentry には最小限の情報だけ送る（tweet IDは送らない）
+    console.error('[TweetErrorBoundary] react-tweet render error:', error?.message, info?.componentStack?.slice(0, 200))
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="my-2 text-sm">
+          <span className="text-gray-500">X投稿を表示できませんでした。</span>{' '}
+          <a
+            href={this.props.tweetUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline"
+          >
+            元投稿を開く
+          </a>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 interface Props {
   post: Post
@@ -86,26 +128,39 @@ function extractYouTubeId(url: string): string | null {
 // Twitter/X ツイートID抽出
 // - /status/ID 形式
 // - twterm%5EID（URL encoded ^）付きトラッキングURLにも対応
+// 戻り値: 純数字1〜19桁の文字列、または null
 function extractTweetId(url: string): string | null {
+  let candidate: string | null = null
+
   // /status/ID 形式
   const statusMatch = url.match(/\/status\/(\d+)/i)
-  if (statusMatch) return statusMatch[1]
+  if (statusMatch) candidate = statusMatch[1]
 
   // 埋め込みトラッキングURL（twterm%5E=TWEETID）
-  const twtermMatch = url.match(/[?&]twterm(?:%5E|\^)(\d+)/i)
-  if (twtermMatch) return twtermMatch[1]
+  if (!candidate) {
+    const twtermMatch = url.match(/[?&]twterm(?:%5E|\^)(\d+)/i)
+    if (twtermMatch) candidate = twtermMatch[1]
+  }
 
-  return null
+  if (!candidate) return null
+
+  // バリデーション: 純数字 1〜19桁のみ有効
+  // （Twitter Snowflake ID は 64bit 整数 = 最大19桁）
+  if (!/^\d{1,19}$/.test(candidate)) return null
+
+  return candidate
 }
 
 // Twitter/X 埋め込み（react-tweet 使用）
-function TwitterEmbed({ tweetId }: { tweetId: string }) {
+function TwitterEmbed({ tweetId, tweetUrl }: { tweetId: string; tweetUrl: string }) {
   return (
-    <div className="my-2 w-full overflow-x-hidden" style={{ maxWidth: 480 }}>
-      <Suspense fallback={<div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>}>
-        <Tweet id={tweetId} />
-      </Suspense>
-    </div>
+    <TweetErrorBoundary tweetId={tweetId} tweetUrl={tweetUrl}>
+      <div className="my-2 w-full overflow-x-hidden" style={{ maxWidth: 480 }}>
+        <Suspense fallback={<div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>}>
+          <Tweet id={tweetId} />
+        </Suspense>
+      </div>
+    </TweetErrorBoundary>
   )
 }
 
@@ -187,7 +242,7 @@ export function renderBody(body: string, allPosts: Post[]): React.ReactNode[] {
         const tweetId = extractTweetId(url)
         if (tweetId) {
           flushText()
-          elements.push(<TwitterEmbed key={key++} tweetId={tweetId} />)
+          elements.push(<TwitterEmbed key={key++} tweetId={tweetId} tweetUrl={url} />)
           continue
         }
       }
