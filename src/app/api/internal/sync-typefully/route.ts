@@ -62,7 +62,7 @@ async function fetchFirstImageUrl(
   try {
     const detailRes = await fetch(
       `${TYPEFULLY_API}/social-sets/${socialSetId}/drafts/${draftId}`,
-      { headers: { 'X-API-KEY': `Bearer ${apiKey}` }, next: { revalidate: 0 } },
+      { headers: { 'Authorization': `Bearer ${apiKey}` }, next: { revalidate: 0 } },
     )
     if (!detailRes.ok) return null
     const detail: TypefullyDraftDetail = await detailRes.json()
@@ -71,7 +71,7 @@ async function fetchFirstImageUrl(
 
     const mediaRes = await fetch(
       `${TYPEFULLY_API}/social-sets/${socialSetId}/media/${mediaId}`,
-      { headers: { 'X-API-KEY': `Bearer ${apiKey}` }, next: { revalidate: 0 } },
+      { headers: { 'Authorization': `Bearer ${apiKey}` }, next: { revalidate: 0 } },
     )
     if (!mediaRes.ok) return null
     const media: TypefullyMediaStatus = await mediaRes.json()
@@ -111,7 +111,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   try {
     const res = await fetch(url, {
-      headers: { 'X-API-KEY': `Bearer ${apiKey}` },
+      headers: { 'Authorization': `Bearer ${apiKey}` },
       next: { revalidate: 0 },
     })
     if (!res.ok) {
@@ -120,7 +120,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Typefully API error', status: res.status }, { status: 502 })
     }
     const json = await res.json()
-    drafts = json.results ?? []
+    if (!Array.isArray(json.results)) {
+      console.error('[sync-typefully] Typefully API unexpected response:', JSON.stringify(json).slice(0, 200))
+      return NextResponse.json({ error: 'Typefully API unexpected response', body: json }, { status: 502 })
+    }
+    drafts = json.results
   } catch (err) {
     console.error('[sync-typefully] fetch error:', err)
     return NextResponse.json({ error: 'Fetch failed' }, { status: 500 })
