@@ -90,9 +90,10 @@ interface AnimanchThread {
   title: string
 }
 
-interface AnimanchThreadDetail {
+interface AnimanchBoardData {
   body: string
   imageUrl: string | null
+  comments: string[]
 }
 
 /**
@@ -129,19 +130,20 @@ async function fetchAnimanchDuemaThreads(): Promise<AnimanchThread[]> {
 }
 
 /**
- * あにまん個別スレから本文・画像URLを取得
+ * あにまん個別スレから本文・画像URL・コメントを1回のフェッチで取得
+ * （fetchAnimanchFirstPost と fetchAnimanchComments を統合してリクエストを1回に削減）
  * ※ あにまんのHTMLはシングルクォート属性で書かれている
  */
-async function fetchAnimanchFirstPost(boardId: number): Promise<AnimanchThreadDetail> {
+async function fetchAnimanchBoard(boardId: number): Promise<AnimanchBoardData> {
   const url = `${ANIMANCH_BASE}/board/${boardId}/`
   const res = await fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DuemaBBS/1.0)' },
     next: { revalidate: 0 },
   })
-  if (!res.ok) return { body: '', imageUrl: null }
+  if (!res.ok) return { body: '', imageUrl: null, comments: [] }
   const html = await res.text()
 
-  // 本文: <div class='resbody ...'><p>本文</p>
+  // --- 本文 ---
   let body = ''
   const bodyMatch = html.match(/<div class='resbody[^']*'>\s*<p>([\s\S]*?)<\/p>/)
   if (bodyMatch) {
@@ -158,6 +160,7 @@ async function fetchAnimanchFirstPost(boardId: number): Promise<AnimanchThreadDe
     body = body.replace(/\n{3,}/g, '\n\n').trim()
   }
 
+  // --- 画像URL ---
   // 直接画像URL: <img src='https://bbs.animanch.com/img/BOARDID/N.ext'>
   // href='/img/BOARDID/1' はビューアページ（HTML）なので src= を使う
   // シングル・ダブルクォート両対応、data-src（遅延ロード）にも対応
@@ -167,7 +170,21 @@ async function fetchAnimanchFirstPost(boardId: number): Promise<AnimanchThreadDe
     imageUrl = imgMatch[1]
   }
 
-  return { body, imageUrl }
+  // --- コメント（リプライ）: 1件目（本文）をスキップ ---
+  const commentPattern = /<div class='resbody[^']*'>\s*<p>([\s\S]*?)<\/p>/g
+  const comments: string[] = []
+  let count = 0
+  let m: RegExpExecArray | null
+  while ((m = commentPattern.exec(html)) !== null) {
+    count++
+    if (count === 1) continue // 1件目はスレ本文なのでスキップ
+    const raw = decodeHtmlEntities(m[1].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim())
+    const stripped = raw.replace(/>>?\d+/g, '').trim()
+    if (raw.length >= 10 && raw.length <= 300 && stripped.length >= 5) comments.push(raw)
+    if (comments.length >= 15) break
+  }
+
+  return { body, imageUrl, comments }
 }
 
 function createAnonClient() {
@@ -239,30 +256,6 @@ function transformComment(text: string): string {
   return t.trim()
 }
 
-async function fetchAnimanchComments(boardId: number): Promise<string[]> {
-  const url = `${ANIMANCH_BASE}/board/${boardId}/`
-  const res = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DuemaBBS/1.0)' },
-    next: { revalidate: 0 },
-  })
-  if (!res.ok) return []
-  const html = await res.text()
-  const commentPattern = /<div class='resbody[^']*'>\s*<p>([\s\S]*?)<\/p>/g
-  const comments: string[] = []
-  let count = 0
-  let m: RegExpExecArray | null
-  while ((m = commentPattern.exec(html)) !== null) {
-    count++
-    if (count === 1) continue
-    const raw = decodeHtmlEntities(m[1].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim())
-    // アンカー参照（>>15 等）だけのコメントは保存しない
-    const stripped = raw.replace(/>>?\d+/g, '').trim()
-    if (raw.length >= 10 && raw.length <= 300 && stripped.length >= 5) comments.push(raw)
-    if (comments.length >= 15) break
-  }
-  return comments
-}
-
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
@@ -309,7 +302,8 @@ export async function GET(req: NextRequest) {
     const chosen = pool[sixHourIndex % pool.length]
     console.log(`Seed/thread: chosen animanch board ${chosen.boardId} "${chosen.title}"`)
 
-    const detail = await fetchAnimanchFirstPost(chosen.boardId)
+    // 1回のフェッチで本文・画像・コメントをまとめて取得
+    const detail = await fetchAnimanchBoard(chosen.boardId)
 
     const title = transformTitle(chosen.title)
     const body = buildThreadBody(title, detail.body)
@@ -342,14 +336,19 @@ export async function GET(req: NextRequest) {
       const { data: cat } = await supabase.from('categories').select('name').eq('id', categoryId).single()
       notifyNewThread({ threadId: created.id, title: created.title, categoryName: cat?.name ?? null }).catch(() => {})
 
-      // 同じあにまんスレのリプライから初期コメント3件追加
+      // あにまんスレのリプライから初期コメント5件追加（service roleでRLS回避）
       try {
-        const rawComments = await fetchAnimanchComments(chosen.boardId)
-        const validComments = rawComments.map(transformComment).filter(c => c.length >= 10)
-        const pool = validComments.length >= 5 ? validComments : SEED_COMMENTS.map(c => c.body)
+        const validComments = detail.comments.map(transformComment).filter(c => c.length >= 10)
+        const commentPool = validComments.length >= 5 ? validComments : SEED_COMMENTS.map(c => c.body)
         for (let i = 0; i < 5; i++) {
-          const body = pool[(sixHourIndex + i * 7) % pool.length]
-          await supabase.from('posts').insert({ thread_id: created.id, post_number: i + 1, body, author_name: null })
+          const commentBody = commentPool[(sixHourIndex + i * 7) % commentPool.length]
+          const { error: postError } = await serviceSupabase
+            .from('posts')
+            .insert({ thread_id: created.id, post_number: i + 1, body: commentBody, author_name: null })
+          if (postError) {
+            console.error(`Seed/thread: post[${i + 1}] insert failed:`, postError.message)
+            result.errors.push(`post[${i + 1}]: ${postError.message}`)
+          }
         }
         console.log(`Seed/thread: added 5 comments to ${created.id}`)
       } catch (commentErr) {
@@ -383,10 +382,16 @@ export async function GET(req: NextRequest) {
       const { data: cat } = await supabase.from('categories').select('name').eq('id', template.category_id).single()
       notifyNewThread({ threadId: created.id, title: created.title, categoryName: cat?.name ?? null }).catch(() => {})
 
-      // SEED_COMMENTSから初期コメント5件追加
+      // SEED_COMMENTSから初期コメント5件追加（service roleでRLS回避）
       for (let i = 0; i < 5; i++) {
         const seed = SEED_COMMENTS[(sixHourIndex + i * 7) % SEED_COMMENTS.length]
-        await supabase.from('posts').insert({ thread_id: created.id, post_number: i + 1, body: seed.body, author_name: null })
+        const { error: postError } = await serviceSupabase
+          .from('posts')
+          .insert({ thread_id: created.id, post_number: i + 1, body: seed.body, author_name: null })
+        if (postError) {
+          console.error(`Seed/thread: fallback post[${i + 1}] insert failed:`, postError.message)
+          result.errors.push(`fallback post[${i + 1}]: ${postError.message}`)
+        }
       }
       console.log(`Seed/thread: added 5 comments (fallback) to ${created.id}`)
     }
