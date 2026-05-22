@@ -1,8 +1,8 @@
 import { getCachedRelatedThreads, getCachedTopThreads } from '@/lib/cached-queries'
 import Link from 'next/link'
-import Image from 'next/image'
 import { seededShuffle } from '@/lib/stable-shuffle'
 import { DEFAULT_THREAD_THUMBNAIL } from '@/lib/thumbnail'
+import { SafeThumbnail } from '@/components/SafeThumbnail'
 
 /** CLS防止用スケルトン — fallback={null}の代わりに使う */
 export function RecommendSectionSkeleton() {
@@ -64,15 +64,7 @@ export async function RecommendSection({ threadId, title, categoryId = null }: P
               className="flex bg-white hover:bg-gray-50 border-b border-r border-gray-300 overflow-hidden"
             >
               <div className="relative shrink-0 bg-gray-100 overflow-hidden w-11 h-11 md:w-16 md:h-16">
-                <Image
-                  src={imgSrc}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 44px, 64px"
-                  quality={85}
-                  priority={idx === 0}
-                />
+                <SafeThumbnail src={imgSrc} alt="" priority={idx === 0} />
               </div>
               <div className="px-1 py-0.5 flex-1 min-w-0 flex flex-col justify-center">
                 <p className="text-[10px] md:text-[13px] leading-snug text-gray-800 line-clamp-2 break-all">
