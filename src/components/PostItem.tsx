@@ -40,16 +40,64 @@ class TweetErrorBoundary extends Component<TweetBoundaryProps, TweetBoundaryStat
   }
   render() {
     if (this.state.hasError) {
+      const { tweetUrl, tweetId } = this.props
       return (
-        <div className="my-2 text-sm">
-          <span className="text-gray-500">X投稿を表示できませんでした。</span>{' '}
+        <div className="my-2" style={{ maxWidth: 480 }}>
           <a
-            href={this.props.tweetUrl}
+            href={tweetUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 underline"
+            style={{ textDecoration: 'none', color: 'inherit' }}
           >
-            元投稿を開く
+            <div
+              style={{
+                border: '1px solid #e2e8f0',
+                borderRadius: 12,
+                padding: '10px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                background: '#fff',
+                cursor: 'pointer',
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = '#f8fafc' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = '#fff' }}
+            >
+              {/* X ロゴ */}
+              <div
+                style={{
+                  flexShrink: 0,
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  background: '#000',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  fontSize: 16,
+                  fontWeight: 700,
+                  fontFamily: 'serif',
+                }}
+              >
+                𝕏
+              </div>
+              {/* テキスト */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', lineHeight: 1.4 }}>
+                  X (Twitter) の投稿
+                </div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {tweetUrl}
+                </div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
+                  ID: {tweetId}
+                </div>
+              </div>
+              {/* 矢印 */}
+              <div style={{ flexShrink: 0, fontSize: 18, color: '#94a3b8' }}>→</div>
+            </div>
           </a>
         </div>
       )
