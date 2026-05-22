@@ -120,9 +120,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // X_THREAD_SYNC_START_AT: この日時より前に公開された Typefully 投稿はスレ化しない。
   // 過去分を遡らず、今後の新規投稿だけを対象にするためのカットオフ。
   // 未設定の場合はすべての投稿が対象になる。
-  const syncStartAt = process.env.X_THREAD_SYNC_START_AT
-    ? new Date(process.env.X_THREAD_SYNC_START_AT)
-    : null
+  // UTC 形式（例: 2026-05-22T05:00:00Z）を推奨。+09:00 など + を含む形式はVercel CLIで文字化けする可能性がある。
+  const _syncStartAtRaw = process.env.X_THREAD_SYNC_START_AT
+  const _syncStartAtDate = _syncStartAtRaw ? new Date(_syncStartAtRaw) : null
+  const syncStartAt = (_syncStartAtDate && !isNaN(_syncStartAtDate.getTime())) ? _syncStartAtDate : null
+
+  if (_syncStartAtRaw && !syncStartAt) {
+    console.error('[sync-typefully] X_THREAD_SYNC_START_AT が不正な日時です（Invalid Date）:', _syncStartAtRaw)
+  }
 
   // Discord 通知に添付する実行時刻（JST）
   const executedAt = new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })

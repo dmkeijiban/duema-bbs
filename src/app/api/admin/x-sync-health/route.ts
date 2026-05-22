@@ -101,9 +101,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   // X_THREAD_SYNC_START_AT: カットオフ日時。これより前に公開されたdraftは対象外にする。
   // sync-typefully と同じロジックで、health check でも過去スキップ分を除外する。
-  const syncStartAt = process.env.X_THREAD_SYNC_START_AT
-    ? new Date(process.env.X_THREAD_SYNC_START_AT)
-    : null
+  // UTC 形式（例: 2026-05-22T05:00:00Z）を推奨。+09:00 など + を含む形式はVercel CLIで文字化けする可能性がある。
+  const _syncStartAtRaw = process.env.X_THREAD_SYNC_START_AT
+  const _syncStartAtDate = _syncStartAtRaw ? new Date(_syncStartAtRaw) : null
+  const syncStartAt = (_syncStartAtDate && !isNaN(_syncStartAtDate.getTime())) ? _syncStartAtDate : null
+
+  if (_syncStartAtRaw && !syncStartAt) {
+    console.error('[x-sync-health] X_THREAD_SYNC_START_AT が不正な日時です（Invalid Date）:', _syncStartAtRaw)
+  }
 
   // カットオフ以降の公開済みdraftだけをチェック対象にする
   const candidateDrafts = syncStartAt
