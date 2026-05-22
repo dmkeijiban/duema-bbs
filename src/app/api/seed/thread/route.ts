@@ -254,20 +254,14 @@ async function fetchAnimanchComments(boardId: number): Promise<string[]> {
     count++
     if (count === 1) continue
     const raw = decodeHtmlEntities(m[1].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim())
-    if (raw.length >= 10 && raw.length <= 300) comments.push(raw)
+    // アンカー参照（>>15 等）だけのコメントは保存しない
+    const stripped = raw.replace(/>>?\d+/g, '').trim()
+    if (raw.length >= 10 && raw.length <= 300 && stripped.length >= 5) comments.push(raw)
     if (comments.length >= 15) break
   }
   return comments
 }
 
-const COMMENT_AUTHOR_NAMES = [
-  '新弾チェッカー', 'レジェンドハンター', 'ツインパクト愛好家',
-  '初心者デュエリスト', '魔導具マスター', '速攻志望', 'コンボハンター',
-  '殿堂研究家', 'メタ分析好き', 'CS初参加予定', 'カウンター戦略家',
-  '相場チェッカー', '先行投資派', 'デュエプレ検討中', '紙プレ両刀',
-  'アニメ勢', 'アニメカード収集家', 'デュエパ愛好家', 'ルール探求者',
-  '懐古主義者', '歴史研究家', '仲間募集中', 'カード整理したい', 'デュエチューバーファン',
-]
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
@@ -354,8 +348,7 @@ export async function GET(req: NextRequest) {
         const pool = validComments.length >= 3 ? validComments : SEED_COMMENTS.map(c => c.body)
         for (let i = 0; i < 3; i++) {
           const body = pool[(sixHourIndex + i * 7) % pool.length]
-          const authorName = COMMENT_AUTHOR_NAMES[(sixHourIndex + i * 5) % COMMENT_AUTHOR_NAMES.length]
-          await supabase.from('posts').insert({ thread_id: created.id, post_number: i + 1, body, author_name: authorName })
+          await supabase.from('posts').insert({ thread_id: created.id, post_number: i + 1, body, author_name: null })
         }
         console.log(`Seed/thread: added 3 comments to ${created.id}`)
       } catch (commentErr) {
@@ -392,8 +385,7 @@ export async function GET(req: NextRequest) {
       // SEED_COMMENTSから初期コメント3件追加
       for (let i = 0; i < 3; i++) {
         const seed = SEED_COMMENTS[(sixHourIndex + i * 7) % SEED_COMMENTS.length]
-        const authorName = COMMENT_AUTHOR_NAMES[(sixHourIndex + i * 5) % COMMENT_AUTHOR_NAMES.length]
-        await supabase.from('posts').insert({ thread_id: created.id, post_number: i + 1, body: seed.body, author_name: authorName })
+        await supabase.from('posts').insert({ thread_id: created.id, post_number: i + 1, body: seed.body, author_name: null })
       }
       console.log(`Seed/thread: added 3 comments (fallback) to ${created.id}`)
     }
