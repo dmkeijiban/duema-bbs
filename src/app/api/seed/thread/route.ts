@@ -160,8 +160,9 @@ async function fetchAnimanchFirstPost(boardId: number): Promise<AnimanchThreadDe
 
   // 直接画像URL: <img src='https://bbs.animanch.com/img/BOARDID/N.ext'>
   // href='/img/BOARDID/1' はビューアページ（HTML）なので src= を使う
+  // シングル・ダブルクォート両対応、data-src（遅延ロード）にも対応
   let imageUrl: string | null = null
-  const imgMatch = html.match(/src='(https:\/\/bbs\.animanch\.com\/img\/\d+\/\d+\.(?:jpg|jpeg|png|gif|webp))'/)
+  const imgMatch = html.match(/(?:src|data-src)=['"]?(https:\/\/bbs\.animanch\.com\/img\/\d+\/\d+\.(?:jpg|jpeg|png|gif|webp))['"]?/)
   if (imgMatch) {
     imageUrl = imgMatch[1]
   }
@@ -345,12 +346,12 @@ export async function GET(req: NextRequest) {
       try {
         const rawComments = await fetchAnimanchComments(chosen.boardId)
         const validComments = rawComments.map(transformComment).filter(c => c.length >= 10)
-        const pool = validComments.length >= 3 ? validComments : SEED_COMMENTS.map(c => c.body)
-        for (let i = 0; i < 3; i++) {
+        const pool = validComments.length >= 5 ? validComments : SEED_COMMENTS.map(c => c.body)
+        for (let i = 0; i < 5; i++) {
           const body = pool[(sixHourIndex + i * 7) % pool.length]
           await supabase.from('posts').insert({ thread_id: created.id, post_number: i + 1, body, author_name: null })
         }
-        console.log(`Seed/thread: added 3 comments to ${created.id}`)
+        console.log(`Seed/thread: added 5 comments to ${created.id}`)
       } catch (commentErr) {
         console.warn('Seed/thread: initial comments failed:', commentErr)
       }
@@ -382,12 +383,12 @@ export async function GET(req: NextRequest) {
       const { data: cat } = await supabase.from('categories').select('name').eq('id', template.category_id).single()
       notifyNewThread({ threadId: created.id, title: created.title, categoryName: cat?.name ?? null }).catch(() => {})
 
-      // SEED_COMMENTSから初期コメント3件追加
-      for (let i = 0; i < 3; i++) {
+      // SEED_COMMENTSから初期コメント5件追加
+      for (let i = 0; i < 5; i++) {
         const seed = SEED_COMMENTS[(sixHourIndex + i * 7) % SEED_COMMENTS.length]
         await supabase.from('posts').insert({ thread_id: created.id, post_number: i + 1, body: seed.body, author_name: null })
       }
-      console.log(`Seed/thread: added 3 comments (fallback) to ${created.id}`)
+      console.log(`Seed/thread: added 5 comments (fallback) to ${created.id}`)
     }
   }
 
