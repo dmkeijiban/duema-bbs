@@ -5,7 +5,7 @@
       "schedule": "0 0 * * *"
     },
     {
-      "path": "/api/seed/animanch-thread",
+      "path": "/api/seed/thread",
       "schedule": "0 3,10,13,22 * * *"
     },
     {
