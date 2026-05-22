@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { notifyNewThread } from '@/lib/discord'
+import { notifyNewThread, notifySyncSummary } from '@/lib/discord'
 import {
   generateTitleFromXPost,
   hashText,
@@ -15,6 +15,13 @@ import {
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
+
+/**
+ * 1回のCron実行で新規作成できるスレッド数の上限。
+ * 長期間失敗していた場合にバックフィルで大量作成→掲示板が溢れるのを防ぐ。
+ * 手動実行（INTERNAL_POST_SECRET）ではこの制限を外せる（limit クエリパラメータで上書き可能）。
+ */
+const DEFAULT_MAX_NEW_PER_RUN = 5
 
 const TYPEFULLY_API = 'https://api.typefully.com/v2'
 
@@ -105,8 +112,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Missing Typefully config' }, { status: 500 })
   }
 
+  // 手動実行時は max_new クエリパラメータで上限を変更可能（例: ?max_new=50 で一括バックフィル）
+  const maxNewRaw = req.nextUrl.searchParams.get('max_new')
+  const maxNewPerRun = maxNewRaw ? parseInt(maxNewRaw, 10) : DEFAULT_MAX_NEW_PER_RUN
+
   // ── Typefully から公開済み投稿を取得 ────────────────────────────────────────
-  const url = `${TYPEFULLY_API}/social-sets/${socialSetId}/drafts?status=published&order_by=-published_at&limit=20`
+  // limit=50 で過去2週間程度の投稿を拾い、長期失敗後のバックフィルに対応する
+  const url = `${TYPEFULLY_API}/social-sets/${socialSetId}/drafts?status=published&order_by=-published_at&limit=50`
   let drafts: TypefullyDraft[] = []
 
   try {
@@ -134,6 +146,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const results: SyncResult[] = []
 
   for (const draft of drafts) {
+    // 1回のCronで新規作成できるスレッド数の上限チェック
+    const newSoFar = results.filter(r => r.status === 'created').length
+    if (newSoFar >= maxNewPerRun) {
+      console.log(`[sync-typefully] 新規上限(${maxNewPerRun}件)に達したため残りをスキップ`)
+      break
+    }
+
     const text = draft.preview?.trim()
     if (!text) {
       results.push({ draftId: draft.id, status: 'skipped' })
@@ -208,7 +227,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const duplicate = results.filter(r => r.status === 'duplicate').length
   const errors = results.filter(r => r.status === 'error').length
 
-  console.log(`[sync-typefully] 完了: 作成${created}件 / 重複スキップ${duplicate}件 / エラー${errors}件`)
+  console.log(`[sync-typefully] 完了: 作成${created}件 / 重複スキップ${duplicate}件 / エラー${errors}件 / 取得${drafts.length}件`)
 
-  return NextResponse.json({ created, duplicate, errors, results })
+  // ── Discord サマリー通知 ──────────────────────────────────────────────────
+  // 毎回送ることで「Cronが動いたか」を Discord で確認できる。
+  // 公開済みがあるのに0件作成ならアラート付きで通知。
+  await notifySyncSummary({ created, duplicate, errors, totalDrafts: drafts.length })
+
+  return NextResponse.json({ created, duplicate, errors, totalDrafts: drafts.length, results })
 }
