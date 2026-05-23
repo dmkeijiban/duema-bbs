@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect, useRef, Component, Suspense } from 'react'
+import type { ReactNode, ErrorInfo } from 'react'
+import dynamic from 'next/dynamic'
 import { Post } from '@/types'
 import { formatDateTimeJP } from '@/lib/utils'
 import { deleteOwnPost } from '@/app/actions/delete'
@@ -8,6 +10,12 @@ import { PostLikeButton } from './PostLikeButton'
 import { ReportButton } from './ReportButton'
 import { ImageViewer } from './ImageViewer'
 import { LinkCard } from './LinkCard'
+
+// react-tweet は重いので遅延ロード（外部スクリプト不要・video.pause バグなし）
+const Tweet = dynamic(() => import('react-tweet').then(m => ({ default: m.Tweet })), {
+  ssr: false,
+  loading: () => <div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>,
+})
 
 interface Props {
   post: Post
@@ -93,21 +101,73 @@ function extractTwitterStatusUrl(url: string): string | null {
   return null
 }
 
-// Twitter/X: 外部埋め込みが失敗しても本文が崩れないように、ローカルのリンク表示にする
-function TwitterEmbed({ tweetId, url }: { tweetId: string; url: string }) {
-  const href = url || `https://x.com/i/status/${tweetId}`
+/** ツイート取得失敗・タイムアウト時の共通フォールバック UI */
+function TweetFallback({ tweetId }: { tweetId: string }) {
+  const tweetUrl = `https://x.com/i/web/status/${tweetId}`
+  return (
+    <div className="my-2 text-sm">
+      <span className="text-gray-500">ツイートを表示できませんでした。</span>{' '}
+      <a href={tweetUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+        Xで開く
+      </a>
+    </div>
+  )
+}
+
+/** react-tweet がクラッシュしたときに TweetFallback へフォールバックする ErrorBoundary */
+interface TweetBoundaryProps {
+  tweetId: string
+  children: ReactNode
+}
+interface TweetBoundaryState {
+  hasError: boolean
+}
+class TweetErrorBoundary extends Component<TweetBoundaryProps, TweetBoundaryState> {
+  constructor(props: TweetBoundaryProps) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError(): TweetBoundaryState {
+    return { hasError: true }
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[TweetErrorBoundary] react-tweet render error:', error?.message, info?.componentStack?.slice(0, 200))
+  }
+  render() {
+    if (this.state.hasError) {
+      return <TweetFallback tweetId={this.props.tweetId} />
+    }
+    return this.props.children
+  }
+}
+
+// Twitter/X 埋め込み（react-tweet 使用 — widgets.js 非依存でバグなし）
+// 10秒後に article 未レンダリングなら TweetFallback へ自動切り替え
+function TwitterEmbed({ tweetId }: { tweetId: string }) {
+  const [timedOut, setTimedOut] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const hasTweet = !!containerRef.current?.querySelector('article')
+      if (!hasTweet) setTimedOut(true)
+    }, 10000)
+    return () => clearTimeout(timer)
+  }, [])
+
+  if (timedOut) {
+    return <TweetFallback tweetId={tweetId} />
+  }
 
   return (
-    <div className="my-2 w-full" style={{ maxWidth: 480 }}>
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer nofollow"
-        className="block border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50"
-      >
-        <span className="block text-xs font-medium text-gray-500">Xのポスト</span>
-        <span className="block break-all text-blue-600 underline">{href}</span>
-      </a>
+    <div ref={containerRef}>
+      <TweetErrorBoundary tweetId={tweetId}>
+        <div className="my-2 w-full overflow-x-hidden" style={{ maxWidth: 480 }}>
+          <Suspense fallback={<div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>}>
+            <Tweet id={tweetId} />
+          </Suspense>
+        </div>
+      </TweetErrorBoundary>
     </div>
   )
 }
@@ -192,7 +252,7 @@ export function renderBody(body: string, allPosts: Post[]): React.ReactNode[] {
           const idMatch = tweetUrl.match(/\/status\/(\d+)/)
           if (idMatch) {
             flushText()
-            elements.push(<TwitterEmbed key={key++} tweetId={idMatch[1]} url={tweetUrl} />)
+            elements.push(<TwitterEmbed key={key++} tweetId={idMatch[1]} />)
             continue
           }
         }
