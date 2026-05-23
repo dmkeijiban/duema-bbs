@@ -30,22 +30,6 @@ function hasGarbageStrings(text: string): boolean {
   return GARBAGE_PATTERNS.some(p => p.test(text))
 }
 
-/** Discord Webhook に seed 結果を送る（成功・スキップ・エラー共通） */
-async function notifySeedResult(content: string): Promise<void> {
-  const webhookUrl = process.env.DISCORD_WEBHOOK_URL
-  if (!webhookUrl) return
-  try {
-    const res = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
-    })
-    if (!res.ok) console.error('Discord webhook error:', res.status, await res.text())
-  } catch (err) {
-    console.error('Discord webhook fetch failed:', err)
-  }
-}
-
 /** HTMLエンティティをデコード（&amp; &gt; &#数字; etc.） */
 function decodeHtmlEntities(text: string): string {
   return text
@@ -519,11 +503,7 @@ export async function GET(req: NextRequest) {
     console.log(`Seed/thread: fetched ${animanchThreads.length} duema threads from animanch`)
 
     if (animanchThreads.length === 0) {
-      await notifySeedResult(
-        '🚨 エラー\n' +
-        '- 理由: スレが1件も取得できず\n' +
-        '- 本日はスキップします',
-      )
+      console.error('Seed/thread: no duema threads fetched from animanch')
       return NextResponse.json({ ok: true, skipped: true, reason: 'no_duema_threads' })
     }
 
@@ -634,7 +614,6 @@ export async function GET(req: NextRequest) {
         '- 理由: 画像ありの未掲載スレが存在しない\n' +
         `- 全候補: ${animanchThreads.length}件 / 重複除外後: ${candidates.length}件 / 画像あり: 0件`
       console.log('Seed/thread: skip —', msg)
-      await notifySeedResult(msg)
       return NextResponse.json({ ok: true, skipped: true, reason: 'no_image_candidates' })
     }
 
@@ -659,7 +638,6 @@ export async function GET(req: NextRequest) {
         `- 理由: コメント${REQUIRED_COMMENT_COUNT}件取れず（有効: ${validComments.length}件）\n` +
         `- スレ: 「${chosen.title}」`
       console.log('Seed/thread: skip —', msg)
-      await notifySeedResult(msg)
       return NextResponse.json({
         ok: true,
         skipped: true,
@@ -679,7 +657,6 @@ export async function GET(req: NextRequest) {
         `- 理由: 本文にゴミ文字列を検出\n` +
         `- スレ: 「${chosen.title}」`
       console.log('Seed/thread: skip —', msg)
-      await notifySeedResult(msg)
       return NextResponse.json({ ok: true, skipped: true, reason: 'garbage_in_body' })
     }
 
@@ -691,7 +668,6 @@ export async function GET(req: NextRequest) {
         `- 理由: 画像URLが一覧・詳細ページいずれからも取得できず\n` +
         `- スレ: 「${chosen.title}」`
       console.log('Seed/thread: skip —', msg)
-      await notifySeedResult(msg)
       return NextResponse.json({ ok: true, skipped: true, reason: 'no_image_url_in_detail' })
     }
 
@@ -704,7 +680,6 @@ export async function GET(req: NextRequest) {
         `- 元URL: ${resolvedImageUrl}\n` +
         `- スレ: 「${chosen.title}」`
       console.log('Seed/thread: skip —', msg)
-      await notifySeedResult(msg)
       return NextResponse.json({ ok: true, skipped: true, reason: 'image_upload_failed' })
     }
 
@@ -716,7 +691,6 @@ export async function GET(req: NextRequest) {
         ` / image: ${imageUrl ? 'OK' : 'NG'} / comments: ${validComments.length}件\n` +
         `- スレ: 「${chosen.title}」`
       console.error('Seed/thread: pre-insert validation failed —', msg)
-      await notifySeedResult(msg)
       return NextResponse.json({ ok: false, error: 'pre_insert_validation_failed' })
     }
 
@@ -742,7 +716,6 @@ export async function GET(req: NextRequest) {
         `- 詳細: ${threadError?.message ?? 'unknown'}\n` +
         `- スレ: 「${title}」`
       console.error('Seed/thread insert error:', threadError)
-      await notifySeedResult(msg)
       return NextResponse.json({ ok: false, error: threadError?.message ?? 'thread insert failed' })
     }
 
@@ -782,7 +755,6 @@ export async function GET(req: NextRequest) {
         `- ゴミ文字: ${garbageInPosts ? 'あり ⚠️' : 'なし'}\n` +
         `- URL: ${threadUrl}`
       console.error('Seed/thread: post-verification failed —', msg)
-      await notifySeedResult(msg)
       return NextResponse.json({
         ok: false,
         threadCreated: { id: created.id, title: created.title },
@@ -812,7 +784,6 @@ export async function GET(req: NextRequest) {
       `🚨 予期せぬエラー\n` +
       `- 詳細: ${err instanceof Error ? err.message : String(err)}`
     console.error('Seed/thread: unexpected error:', err)
-    await notifySeedResult(msg)
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) })
   }
 }
