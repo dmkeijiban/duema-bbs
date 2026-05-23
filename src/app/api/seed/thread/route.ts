@@ -634,7 +634,15 @@ export async function GET(req: NextRequest) {
     // 12. スレ作成
     const { data: created, error: threadError } = await supabase
       .from('threads')
-      .insert({ title, body, author_name: AUTHOR_NAME, category_id: categoryId, image_url: imageUrl })
+      .insert({
+        title,
+        body,
+        author_name: AUTHOR_NAME,
+        category_id: categoryId,
+        image_url: imageUrl,
+        source: 'animanch',
+        source_id: String(chosen.boardId),
+      })
       .select('id, title')
       .single()
 
@@ -657,7 +665,7 @@ export async function GET(req: NextRequest) {
       const commentBody = validComments[(sixHourIndex + i * 7) % validComments.length]
       const { error: postError } = await serviceSupabase
         .from('posts')
-        .insert({ thread_id: created.id, post_number: i + 1, body: commentBody, author_name: null })
+        .insert({ thread_id: created.id, post_number: i + 1, body: commentBody, author_name: AUTHOR_NAME })
       if (postError) {
         console.error(`Seed/thread: post[${i + 1}] insert failed:`, postError.message)
         commentErrors.push(`post[${i + 1}]: ${postError.message}`)
