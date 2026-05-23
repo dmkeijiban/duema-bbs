@@ -48,7 +48,7 @@ export async function notifySyncSummary({
   const timeNote = executedAt ? `\n- 実行時刻: ${executedAt}` : ''
 
   const content =
-    `${emoji} [Xスレ化${dryRunNote}] 同期完了\n` +
+    `${emoji}${dryRunNote}\n` +
     `- 公開済み取得: ${totalDrafts}件\n` +
     `- 新規スレ作成: ${created}件 / 重複スキップ: ${duplicate}件 / エラー: ${errors}件` +
     limitNote +
@@ -87,7 +87,7 @@ export async function notifyDraftsEmpty({
   const safeEndpoint = endpoint.replace(/key=[^&]+/gi, 'key=***').slice(0, 120)
 
   const content =
-    `🚨 [Xスレ化] Typefully 公開済み投稿が0件\n` +
+    `🚨 Typefully 公開済み投稿が0件\n` +
     `- 実行時刻: ${executedAt}\n` +
     `- エンドポイント: ${safeEndpoint}\n` +
     `- limit: ${limit}\n` +
