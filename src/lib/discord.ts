@@ -36,25 +36,12 @@ export async function notifySyncSummary({
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL
   if (!webhookUrl) return
 
-  // 正常（created > 0）でも毎回送る — 無音は失敗と区別できないため
-  const isSilentFail = created === 0 && duplicate === 0 && totalDrafts > 0
-  const emoji = dryRun ? '🧪' : isSilentFail ? '🚨' : created > 0 ? '✅' : '🔵'
-  const alert = isSilentFail
-    ? '\n⚠️ 公開済み投稿があるのにスレが1件も作られませんでした。要確認。'
-    : ''
-  const dryRunNote = dryRun ? ' [DRY RUN]' : ''
-  const limitNote = skippedByLimit > 0 ? `\n- 上限超過スキップ: ${skippedByLimit}件（次回Cronで処理）` : ''
-  const oldNote = skippedOld > 0 ? `\n- 古い投稿スキップ: ${skippedOld}件（カットオフ前）` : ''
-  const timeNote = executedAt ? `\n- 実行時刻: ${executedAt}` : ''
+  // スレが作成されたときだけ通知する
+  if (created === 0 && !dryRun) return
 
-  const content =
-    `${emoji}${dryRunNote}\n` +
-    `- 公開済み取得: ${totalDrafts}件\n` +
-    `- 新規スレ作成: ${created}件 / 重複スキップ: ${duplicate}件 / エラー: ${errors}件` +
-    limitNote +
-    oldNote +
-    timeNote +
-    alert
+  const content = dryRun
+    ? `🧪 [DRY RUN] ${created}件作成予定`
+    : `スレが公開されました！`
 
   try {
     const res = await fetch(webhookUrl, {
