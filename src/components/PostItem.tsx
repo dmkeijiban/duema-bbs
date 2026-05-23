@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect, Component, Suspense } from 'react'
+import { useState, useTransition, useEffect, useRef, Component, Suspense } from 'react'
 import type { ReactNode, ErrorInfo } from 'react'
 import dynamic from 'next/dynamic'
 import { Post } from '@/types'
@@ -101,7 +101,20 @@ function extractTwitterStatusUrl(url: string): string | null {
   return null
 }
 
-/** react-tweet がクラッシュしたときに通常リンクへフォールバックする ErrorBoundary */
+/** ツイート取得失敗・タイムアウト時の共通フォールバック UI */
+function TweetFallback({ tweetId }: { tweetId: string }) {
+  const tweetUrl = `https://x.com/i/web/status/${tweetId}`
+  return (
+    <div className="my-2 text-sm">
+      <span className="text-gray-500">ツイートを表示できませんでした。</span>{' '}
+      <a href={tweetUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+        Xで開く
+      </a>
+    </div>
+  )
+}
+
+/** react-tweet がクラッシュしたときに TweetFallback へフォールバックする ErrorBoundary */
 interface TweetBoundaryProps {
   tweetId: string
   children: ReactNode
@@ -122,30 +135,40 @@ class TweetErrorBoundary extends Component<TweetBoundaryProps, TweetBoundaryStat
   }
   render() {
     if (this.state.hasError) {
-      const tweetUrl = `https://x.com/i/web/status/${this.props.tweetId}`
-      return (
-        <div className="my-2 text-sm">
-          <span className="text-gray-500">X投稿を表示できませんでした。</span>{' '}
-          <a href={tweetUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-            元投稿を開く
-          </a>
-        </div>
-      )
+      return <TweetFallback tweetId={this.props.tweetId} />
     }
     return this.props.children
   }
 }
 
 // Twitter/X 埋め込み（react-tweet 使用 — widgets.js 非依存でバグなし）
+// 10秒後に article 未レンダリングなら TweetFallback へ自動切り替え
 function TwitterEmbed({ tweetId }: { tweetId: string }) {
+  const [timedOut, setTimedOut] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const hasTweet = !!containerRef.current?.querySelector('article')
+      if (!hasTweet) setTimedOut(true)
+    }, 10000)
+    return () => clearTimeout(timer)
+  }, [])
+
+  if (timedOut) {
+    return <TweetFallback tweetId={tweetId} />
+  }
+
   return (
-    <TweetErrorBoundary tweetId={tweetId}>
-      <div className="my-2 w-full overflow-x-hidden" style={{ maxWidth: 480 }}>
-        <Suspense fallback={<div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>}>
-          <Tweet id={tweetId} />
-        </Suspense>
-      </div>
-    </TweetErrorBoundary>
+    <div ref={containerRef}>
+      <TweetErrorBoundary tweetId={tweetId}>
+        <div className="my-2 w-full overflow-x-hidden" style={{ maxWidth: 480 }}>
+          <Suspense fallback={<div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>}>
+            <Tweet id={tweetId} />
+          </Suspense>
+        </div>
+      </TweetErrorBoundary>
+    </div>
   )
 }
 
