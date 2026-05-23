@@ -1,56 +1,8 @@
 'use client'
 
-import { Component, Suspense, useMemo, useState, useEffect, useRef, useCallback } from 'react'
-import type { ReactNode, ErrorInfo } from 'react'
-import dynamic from 'next/dynamic'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { LinkCard } from './LinkCard'
 import { sanitizeSummaryHtml } from '@/lib/summary-content'
-
-// react-tweet は重いので遅延ロード
-const Tweet = dynamic(() => import('react-tweet').then(m => ({ default: m.Tweet })), {
-  ssr: false,
-  loading: () => <div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>,
-})
-
-/** ツイート取得失敗・タイムアウト時の共通フォールバック UI */
-function TweetFallback({ tweetId }: { tweetId: string }) {
-  const tweetUrl = `https://x.com/i/web/status/${tweetId}`
-  return (
-    <div className="my-3 text-sm">
-      <span className="text-gray-500">ツイートを表示できませんでした。</span>{' '}
-      <a href={tweetUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-        Xで開く
-      </a>
-    </div>
-  )
-}
-
-/** react-tweet がクラッシュしたときに TweetFallback へフォールバックする ErrorBoundary */
-interface TweetBoundaryProps {
-  tweetId: string
-  children: ReactNode
-}
-interface TweetBoundaryState {
-  hasError: boolean
-}
-class TweetErrorBoundary extends Component<TweetBoundaryProps, TweetBoundaryState> {
-  constructor(props: TweetBoundaryProps) {
-    super(props)
-    this.state = { hasError: false }
-  }
-  static getDerivedStateFromError(): TweetBoundaryState {
-    return { hasError: true }
-  }
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[TweetErrorBoundary] react-tweet render error:', error?.message, info?.componentStack?.slice(0, 200))
-  }
-  render() {
-    if (this.state.hasError) {
-      return <TweetFallback tweetId={this.props.tweetId} />
-    }
-    return this.props.children
-  }
-}
 
 // ── YouTube埋め込み（PostItemと同じスタイル） ───────────────────────
 function YouTubeEmbed({ videoId }: { videoId: string }) {
@@ -70,33 +22,21 @@ function YouTubeEmbed({ videoId }: { videoId: string }) {
   )
 }
 
-// ── Twitter/X埋め込み（PostItemと同じスタイル） ──────────────────────
-// 10秒後に article 未レンダリングなら TweetFallback へ自動切り替え
+// ── Twitter/Xリンク表示（PostItemと同じスタイル） ─────────────────────
 function TwitterEmbed({ tweetId }: { tweetId: string }) {
-  const [timedOut, setTimedOut] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const hasTweet = !!containerRef.current?.querySelector('article')
-      if (!hasTweet) setTimedOut(true)
-    }, 10000)
-    return () => clearTimeout(timer)
-  }, [])
-
-  if (timedOut) {
-    return <TweetFallback tweetId={tweetId} />
-  }
+  const href = `https://x.com/i/status/${tweetId}`
 
   return (
-    <div ref={containerRef}>
-      <TweetErrorBoundary tweetId={tweetId}>
-        <div className="my-3 w-full overflow-x-hidden" style={{ maxWidth: 480 }}>
-          <Suspense fallback={<div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>}>
-            <Tweet id={tweetId} />
-          </Suspense>
-        </div>
-      </TweetErrorBoundary>
+    <div className="my-3 w-full" style={{ maxWidth: 480 }}>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer nofollow"
+        className="block border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50"
+      >
+        <span className="block text-xs font-medium text-gray-500">Xのポスト</span>
+        <span className="block break-all text-blue-600 underline">{href}</span>
+      </a>
     </div>
   )
 }
