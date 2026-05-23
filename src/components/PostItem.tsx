@@ -1,8 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect, useRef, Component, Suspense } from 'react'
-import type { ReactNode, ErrorInfo } from 'react'
-import dynamic from 'next/dynamic'
+import { useState, useTransition, useEffect, useRef } from 'react'
 import { Post } from '@/types'
 import { formatDateTimeJP } from '@/lib/utils'
 import { deleteOwnPost } from '@/app/actions/delete'
@@ -11,11 +9,19 @@ import { ReportButton } from './ReportButton'
 import { ImageViewer } from './ImageViewer'
 import { LinkCard } from './LinkCard'
 
-// react-tweet は重いので遅延ロード（外部スクリプト不要・video.pause バグなし）
-const Tweet = dynamic(() => import('react-tweet').then(m => ({ default: m.Tweet })), {
-  ssr: false,
-  loading: () => <div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>,
-})
+declare global {
+  interface Window {
+    twttr?: { widgets: { load: (el?: HTMLElement | null) => void } }
+  }
+}
+
+function isTwitterWidgetVideoPauseError(message: string): boolean {
+  return /pause/i.test(message) && /video|querySelector|undefined|null/i.test(message)
+}
+
+function escapeHtmlAttr(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
 
 interface Props {
   post: Post
@@ -101,75 +107,83 @@ function extractTwitterStatusUrl(url: string): string | null {
   return null
 }
 
-/** ツイート取得失敗・タイムアウト時の共通フォールバック UI */
-function TweetFallback({ tweetId }: { tweetId: string }) {
-  const tweetUrl = `https://x.com/i/web/status/${tweetId}`
-  return (
-    <div className="my-2 text-sm">
-      <span className="text-gray-500">ツイートを表示できませんでした。</span>{' '}
-      <a href={tweetUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-        Xで開く
-      </a>
-    </div>
-  )
-}
-
-/** react-tweet がクラッシュしたときに TweetFallback へフォールバックする ErrorBoundary */
-interface TweetBoundaryProps {
-  tweetId: string
-  children: ReactNode
-}
-interface TweetBoundaryState {
-  hasError: boolean
-}
-class TweetErrorBoundary extends Component<TweetBoundaryProps, TweetBoundaryState> {
-  constructor(props: TweetBoundaryProps) {
-    super(props)
-    this.state = { hasError: false }
-  }
-  static getDerivedStateFromError(): TweetBoundaryState {
-    return { hasError: true }
-  }
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[TweetErrorBoundary] react-tweet render error:', error?.message, info?.componentStack?.slice(0, 200))
-  }
-  render() {
-    if (this.state.hasError) {
-      return <TweetFallback tweetId={this.props.tweetId} />
-    }
-    return this.props.children
-  }
-}
-
-// Twitter/X 埋め込み（react-tweet 使用 — widgets.js 非依存でバグなし）
-// 10秒後に article 未レンダリングなら TweetFallback へ自動切り替え
-function TwitterEmbed({ tweetId }: { tweetId: string }) {
-  const [timedOut, setTimedOut] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
+function TwitterEmbed({ url }: { url: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const hasTweet = !!containerRef.current?.querySelector('article')
-      if (!hasTweet) setTimedOut(true)
-    }, 10000)
-    return () => clearTimeout(timer)
-  }, [])
+    if (!ref.current) return
+    setFailed(false)
+    ref.current.innerHTML = `<blockquote class="twitter-tweet" data-lang="ja"><a href="${escapeHtmlAttr(url)}"></a></blockquote>`
 
-  if (timedOut) {
-    return <TweetFallback tweetId={tweetId} />
+    const onWidgetError = (event: ErrorEvent) => {
+      const message = `${event.message || ''} ${event.error?.message || ''}`
+      if (isTwitterWidgetVideoPauseError(message)) {
+        event.preventDefault()
+        event.stopImmediatePropagation()
+      }
+    }
+    window.addEventListener('error', onWidgetError, true)
+
+    const load = () => {
+      try {
+        window.twttr?.widgets.load(ref.current!)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        if (!isTwitterWidgetVideoPauseError(message)) setFailed(true)
+      }
+    }
+
+    if (window.twttr?.widgets) {
+      load()
+    } else if (!document.getElementById('twitter-widgets-js')) {
+      const script = document.createElement('script')
+      script.id = 'twitter-widgets-js'
+      script.src = 'https://platform.twitter.com/widgets.js'
+      script.async = true
+      script.charset = 'utf-8'
+      script.onload = load
+      document.head.appendChild(script)
+    } else {
+      const interval = window.setInterval(() => {
+        if (window.twttr?.widgets) {
+          window.clearInterval(interval)
+          load()
+        }
+      }, 200)
+      const timeout = window.setTimeout(() => {
+        const rendered = !!ref.current?.querySelector('iframe.twitter-tweet, iframe[id^="twitter-widget-"]')
+        if (!rendered) setFailed(true)
+      }, 15000)
+      return () => {
+        window.clearInterval(interval)
+        window.clearTimeout(timeout)
+        window.removeEventListener('error', onWidgetError, true)
+      }
+    }
+
+    const timeout = window.setTimeout(() => {
+      const rendered = !!ref.current?.querySelector('iframe.twitter-tweet, iframe[id^="twitter-widget-"]')
+      if (!rendered) setFailed(true)
+    }, 15000)
+    return () => {
+      window.clearTimeout(timeout)
+      window.removeEventListener('error', onWidgetError, true)
+    }
+  }, [url])
+
+  if (failed) {
+    return (
+      <div className="my-2 text-sm">
+        <span className="text-gray-500">Xポストを表示できませんでした。</span>{' '}
+        <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+          Xで開く
+        </a>
+      </div>
+    )
   }
 
-  return (
-    <div ref={containerRef}>
-      <TweetErrorBoundary tweetId={tweetId}>
-        <div className="my-2 w-full overflow-x-hidden" style={{ maxWidth: 480 }}>
-          <Suspense fallback={<div className="text-xs text-gray-400 py-2">ツイートを読み込み中...</div>}>
-            <Tweet id={tweetId} />
-          </Suspense>
-        </div>
-      </TweetErrorBoundary>
-    </div>
-  )
+  return <div ref={ref} className="my-2" />
 }
 
 // YouTube 埋め込み（最大幅480px）
@@ -249,12 +263,9 @@ export function renderBody(body: string, allPosts: Post[]): React.ReactNode[] {
       if (/(?:twitter\.com|x\.com)/i.test(url)) {
         const tweetUrl = extractTwitterStatusUrl(url)
         if (tweetUrl) {
-          const idMatch = tweetUrl.match(/\/status\/(\d+)/)
-          if (idMatch) {
-            flushText()
-            elements.push(<TwitterEmbed key={key++} tweetId={idMatch[1]} />)
-            continue
-          }
+          flushText()
+          elements.push(<TwitterEmbed key={key++} url={tweetUrl} />)
+          continue
         }
       }
 
