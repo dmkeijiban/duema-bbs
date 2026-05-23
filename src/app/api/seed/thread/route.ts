@@ -11,6 +11,18 @@ const ANIMANCH_CATEGORY = `${ANIMANCH_BASE}/category25/`
 const AUTHOR_NAME = '名無しのデュエリスト'
 const REQUIRED_COMMENT_COUNT = 5
 
+/** 削除済みレスパターン（あにまん側の削除表示文言） */
+const DELETED_COMMENT_TEXTS = [
+  'このレスは削除されています',
+  '削除されています',
+  'レスは削除されています',
+]
+
+/** コメントが削除済みレスか判定 */
+function isDeletedComment(text: string): boolean {
+  return DELETED_COMMENT_TEXTS.some(t => text.includes(t))
+}
+
 /**
  * ゴミ文字列パターン（スクレイピング由来のHTML残骸・内部リンクアンカー等）
  * transformComment で除去した後も残っていたら弾く
@@ -336,6 +348,7 @@ async function fetchAnimanchBoard(boardId: number): Promise<AnimanchBoardData> {
       .replace(/<[^>]*>/g, '')
       .trim()
     const raw = decodeHtmlEntities(cleaned)
+    if (isDeletedComment(raw)) continue // 削除済みレスはスキップ
     const stripped = raw.replace(/>>?\d+/g, '').replace(/#res\d+/gi, '').replace(/#\d+/g, '').trim()
     if (raw.length >= 10 && raw.length <= 300 && stripped.length >= 5) comments.push(raw)
     if (comments.length >= 15) break
