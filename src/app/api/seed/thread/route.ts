@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { SEED_THREADS, SEED_COMMENTS } from '@/lib/seed-data'
 import { notifyNewThread } from '@/lib/discord'
+import { SITE_URL } from '@/lib/site-config'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -9,6 +9,42 @@ export const maxDuration = 60
 const ANIMANCH_BASE = 'https://bbs.animanch.com'
 const ANIMANCH_CATEGORY = `${ANIMANCH_BASE}/category25/`
 const AUTHOR_NAME = '名無しのデュエリスト'
+const REQUIRED_COMMENT_COUNT = 5
+
+/**
+ * ゴミ文字列パターン（スクレイピング由来のHTML残骸・内部リンクアンカー等）
+ * transformComment で除去した後も残っていたら弾く
+ */
+const GARBAGE_PATTERNS = [
+  /#res\d+/i,         // #res190 系
+  /#\d+/,             // #190 系（行中どこでも）
+  /<[a-zA-Z]/,        // HTML タグ残骸
+  /href=/i,           // href 属性残骸
+  /class=/i,          // class 属性残骸
+  /onclick=/i,        // onclick 残骸
+  /data-[a-z]/i,      // data-xxx 属性残骸
+]
+
+/** テキストにゴミ文字列が含まれているか判定 */
+function hasGarbageStrings(text: string): boolean {
+  return GARBAGE_PATTERNS.some(p => p.test(text))
+}
+
+/** Discord Webhook に seed 結果を送る（成功・スキップ・エラー共通） */
+async function notifySeedResult(content: string): Promise<void> {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL
+  if (!webhookUrl) return
+  try {
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
+    })
+    if (!res.ok) console.error('Discord webhook error:', res.status, await res.text())
+  } catch (err) {
+    console.error('Discord webhook fetch failed:', err)
+  }
+}
 
 /** HTMLエンティティをデコード（&amp; &gt; &#数字; etc.） */
 function decodeHtmlEntities(text: string): string {
@@ -111,10 +147,6 @@ async function fetchAnimanchDuemaThreads(): Promise<AnimanchThread[]> {
   if (!res.ok) throw new Error(`animanch category fetch failed: ${res.status}`)
   const html = await res.text()
 
-  // カード全体を取得: href〜threadCount まで（その中にサムネイル img と タイトルが含まれる）
-  // HTMLはシングルクォート: <a href='https://bbs.animanch.com/board/ID/' class='card'>
-  //   <div class='d-flex'><img src='https://bbs.animanch.com/img/ID/1.jpg' ...>
-  //   <div class='card-body'>タイトル<p class='threadCount'>N</p>
   const threadPattern = /href='https:\/\/bbs\.animanch\.com\/board\/(\d+)\/'[^>]*class='card'([\s\S]*?)<p class='threadCount'/g
 
   const threads: AnimanchThread[] = []
@@ -128,11 +160,9 @@ async function fetchAnimanchDuemaThreads(): Promise<AnimanchThread[]> {
 
     const cardHtml = m[2]
 
-    // タイトルを card-body から抽出
     const titleMatch = cardHtml.match(/<div class='card-body'>([\s\S]*?)$/)
     const rawTitle = titleMatch ? titleMatch[1].trim() : ''
 
-    // カード内に animanch 画像URLがあればスレ画あり
     const hasImage = /https:\/\/bbs\.animanch\.com\/img\/\d+\/\d+\./i.test(cardHtml)
 
     if (isDuemaRelated(rawTitle) && !isExcludedTitle(rawTitle)) {
@@ -145,7 +175,6 @@ async function fetchAnimanchDuemaThreads(): Promise<AnimanchThread[]> {
 
 /**
  * あにまん個別スレから本文・画像URL・コメントを1回のフェッチで取得
- * （fetchAnimanchFirstPost と fetchAnimanchComments を統合してリクエストを1回に削減）
  * ※ あにまんのHTMLはシングルクォート属性で書かれている
  */
 async function fetchAnimanchBoard(boardId: number): Promise<AnimanchBoardData> {
@@ -163,7 +192,6 @@ async function fetchAnimanchBoard(boardId: number): Promise<AnimanchBoardData> {
   if (bodyMatch) {
     body = bodyMatch[1]
       .replace(/<br\s*\/?>/gi, '\n')
-      // 外部リンク（あにまん以外）はURLとして保持、内部リンク（返信・画像ビューア）は除去
       .replace(/<a\s[^>]*href=['"]([^'"]+)['"][^>]*>[\s\S]*?<\/a>/gi, (_m, href) => {
         if (href.includes('bbs.animanch.com')) return ''
         return `\n${href}\n`
@@ -175,9 +203,6 @@ async function fetchAnimanchBoard(boardId: number): Promise<AnimanchBoardData> {
   }
 
   // --- 画像URL ---
-  // 直接画像URL: <img src='https://bbs.animanch.com/img/BOARDID/N.ext'>
-  // href='/img/BOARDID/1' はビューアページ（HTML）なので src= を使う
-  // シングル・ダブルクォート両対応、data-src（遅延ロード）にも対応
   let imageUrl: string | null = null
   const imgMatch = html.match(/(?:src|data-src)=['"]?(https:\/\/bbs\.animanch\.com\/img\/\d+\/\d+\.(?:jpg|jpeg|png|gif|webp))['"]?/)
   if (imgMatch) {
@@ -188,12 +213,18 @@ async function fetchAnimanchBoard(boardId: number): Promise<AnimanchBoardData> {
   const commentPattern = /<div class='resbody[^']*'>\s*<p>([\s\S]*?)<\/p>/g
   const comments: string[] = []
   let count = 0
-  let m: RegExpExecArray | null
-  while ((m = commentPattern.exec(html)) !== null) {
+  let cm: RegExpExecArray | null
+  while ((cm = commentPattern.exec(html)) !== null) {
     count++
     if (count === 1) continue // 1件目はスレ本文なのでスキップ
-    const raw = decodeHtmlEntities(m[1].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim())
-    const stripped = raw.replace(/>>?\d+/g, '').trim()
+    // 内部アンカー（#res190 等）を内容ごと除去してからタグ除去
+    const cleaned = cm[1]
+      .replace(/<a\s[^>]*href=['"]#[^'"]*['"][^>]*>[\s\S]*?<\/a>/gi, '') // #res190 アンカー除去
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]*>/g, '')
+      .trim()
+    const raw = decodeHtmlEntities(cleaned)
+    const stripped = raw.replace(/>>?\d+/g, '').replace(/#res\d+/gi, '').replace(/#\d+/g, '').trim()
     if (raw.length >= 10 && raw.length <= 300 && stripped.length >= 5) comments.push(raw)
     if (comments.length >= 15) break
   }
@@ -261,10 +292,16 @@ async function downloadAndUploadImage(imageUrl: string, supabase: SupabaseClient
   }
 }
 
+/**
+ * コメントテキストを投稿用に整形
+ * ゴミ文字列（レス番号・アンカー残骸）も除去する
+ */
 function transformComment(text: string): string {
   let t = text
   t = t.replace(/草/g, '笑')
-  t = t.replace(/>>?\d+/g, '')
+  t = t.replace(/>>?\d+/g, '')       // >>190 形式
+  t = t.replace(/#res\d+/gi, '')     // #res190 形式
+  t = t.replace(/#\d+/g, '')         // #190 形式
   t = t.replace(/あにまん|animanch/gi, 'ここ')
   t = t.replace(/\n{3,}/g, '\n')
   return t.trim()
@@ -278,25 +315,28 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const isDryRun = req.nextUrl.searchParams.get('dry_run') === '1'
   const supabase = createAnonClient()
   const serviceSupabase = createServiceClient()
 
   // 6時間単位のインデックス（1日4回で毎回違うスレを選ぶ）
   const sixHourIndex = Math.floor(Date.now() / 21600000)
 
-  const result: {
-    threadCreated?: { id: number; title: string }
-    source?: string
-    errors: string[]
-  } = { errors: [] }
-
   try {
+    // 1. あにまん category25 からデュエマスレ一覧を取得
     const animanchThreads = await fetchAnimanchDuemaThreads()
     console.log(`Seed/thread: fetched ${animanchThreads.length} duema threads from animanch`)
 
-    if (animanchThreads.length === 0) throw new Error('No duema threads found on animanch')
+    if (animanchThreads.length === 0) {
+      await notifySeedResult(
+        '🚨 [あにまんアレンジ] エラー\n' +
+        '- 理由: category25 からデュエマスレが1件も取得できず\n' +
+        '- 本日はスキップします',
+      )
+      return NextResponse.json({ ok: true, skipped: true, reason: 'no_duema_threads' })
+    }
 
-    // 直近14日間に作成されたスレタイトルを取得（重複防止）
+    // 2. 直近14日の重複チェック
     const since = new Date(Date.now() - 14 * 86400000).toISOString()
     const { data: recentThreads } = await supabase
       .from('threads')
@@ -304,124 +344,217 @@ export async function GET(req: NextRequest) {
       .gte('created_at', since)
     const recentTitles = new Set((recentThreads ?? []).map(t => t.title))
 
-    // 重複しないスレをフィルタ
-    const candidates = animanchThreads.filter(t => {
-      const transformed = transformTitle(t.title)
-      return !recentTitles.has(transformed)
-    })
+    const candidates = animanchThreads.filter(t => !recentTitles.has(transformTitle(t.title)))
 
-    // スレ画（カードサムネイル画像）があるものを優先
+    // 3. 画像ありスレのみを対象（フォールバック禁止）
     const candidatesWithImage = candidates.filter(t => t.hasImage)
-    const pool =
-      candidatesWithImage.length > 0 ? candidatesWithImage
-      : candidates.length > 0 ? candidates
-      : animanchThreads.filter(t => t.hasImage).length > 0 ? animanchThreads.filter(t => t.hasImage)
-      : animanchThreads
 
+    // dry_run=1: 候補情報だけ返して終了
+    if (isDryRun) {
+      const wouldChoose = candidatesWithImage.length > 0
+        ? candidatesWithImage[sixHourIndex % candidatesWithImage.length]
+        : null
+      return NextResponse.json({
+        dry_run: true,
+        total_fetched: animanchThreads.length,
+        after_dedup: candidates.length,
+        with_image: candidatesWithImage.length,
+        candidates_preview: candidatesWithImage.slice(0, 5).map(t => ({
+          boardId: t.boardId,
+          title: t.title,
+          transformed: transformTitle(t.title),
+        })),
+        would_choose: wouldChoose
+          ? { boardId: wouldChoose.boardId, title: wouldChoose.title }
+          : null,
+      })
+    }
+
+    // 4. 画像ありの候補がなければスキップ（フォールバック禁止）
+    if (candidatesWithImage.length === 0) {
+      const msg =
+        '⏭️ [あにまんアレンジ] スキップ\n' +
+        '- 理由: 画像ありの未掲載スレが存在しない\n' +
+        `- 全候補: ${animanchThreads.length}件 / 重複除外後: ${candidates.length}件 / 画像あり: 0件`
+      console.log('Seed/thread: skip —', msg)
+      await notifySeedResult(msg)
+      return NextResponse.json({ ok: true, skipped: true, reason: 'no_image_candidates' })
+    }
+
+    // 5. スレ選択
+    const chosen = candidatesWithImage[sixHourIndex % candidatesWithImage.length]
     console.log(
-      `Seed/thread: ${candidates.length} candidates after dedup filter` +
-      ` (with image: ${candidatesWithImage.length})` +
-      ` → pool: ${pool.length} (imageRequired: ${pool === candidatesWithImage || pool === animanchThreads.filter(t => t.hasImage)})`,
+      `Seed/thread: chosen board ${chosen.boardId} "${chosen.title}"` +
+      ` (pool: ${candidatesWithImage.length} image-candidates)`,
     )
 
-    const chosen = pool[sixHourIndex % pool.length]
-    console.log(`Seed/thread: chosen animanch board ${chosen.boardId} "${chosen.title}" hasImage=${chosen.hasImage}`)
-
-    // 1回のフェッチで本文・画像・コメントをまとめて取得
+    // 6. 個別スレの詳細取得（本文・画像URL・コメント）
     const detail = await fetchAnimanchBoard(chosen.boardId)
 
+    // 7. コメントを整形・検証（5件必須、ゴミ文字なし）
+    const validComments = detail.comments
+      .map(transformComment)
+      .filter(c => c.length >= 10 && c.length <= 300 && !hasGarbageStrings(c))
+
+    if (validComments.length < REQUIRED_COMMENT_COUNT) {
+      const msg =
+        `⏭️ [あにまんアレンジ] スキップ\n` +
+        `- 理由: コメント${REQUIRED_COMMENT_COUNT}件取れず（有効: ${validComments.length}件）\n` +
+        `- スレ: 「${chosen.title}」（board ${chosen.boardId}）`
+      console.log('Seed/thread: skip —', msg)
+      await notifySeedResult(msg)
+      return NextResponse.json({
+        ok: true,
+        skipped: true,
+        reason: 'insufficient_comments',
+        validCommentCount: validComments.length,
+      })
+    }
+
+    // 8. スレ本文構築・ゴミ文字バリデーション
     const title = transformTitle(chosen.title)
     const body = buildThreadBody(title, detail.body)
     const categoryId = detectCategoryId(title, detail.body)
 
-    // 画像はSupabase Storageにダウンロード保存（service role keyでRLS回避）
-    const imageUrl = detail.imageUrl
-      ? await downloadAndUploadImage(detail.imageUrl, serviceSupabase)
-      : null
+    if (hasGarbageStrings(body)) {
+      const msg =
+        `⏭️ [あにまんアレンジ] スキップ\n` +
+        `- 理由: 本文にゴミ文字列を検出\n` +
+        `- スレ: 「${chosen.title}」（board ${chosen.boardId}）`
+      console.log('Seed/thread: skip —', msg)
+      await notifySeedResult(msg)
+      return NextResponse.json({ ok: true, skipped: true, reason: 'garbage_in_body' })
+    }
 
+    // 9. 画像URL確認（hasImage=true だったが detail に画像がない場合はスキップ）
+    if (!detail.imageUrl) {
+      const msg =
+        `⏭️ [あにまんアレンジ] スキップ\n` +
+        `- 理由: 画像URLが detail から取得できず（hasImage=true だったが不一致）\n` +
+        `- スレ: 「${chosen.title}」（board ${chosen.boardId}）`
+      console.log('Seed/thread: skip —', msg)
+      await notifySeedResult(msg)
+      return NextResponse.json({ ok: true, skipped: true, reason: 'no_image_url_in_detail' })
+    }
+
+    // 10. 画像をSupabase Storageにアップロード（失敗したらスキップ）
+    const imageUrl = await downloadAndUploadImage(detail.imageUrl, serviceSupabase)
+    if (!imageUrl) {
+      const msg =
+        `⏭️ [あにまんアレンジ] スキップ\n` +
+        `- 理由: 画像アップロード失敗\n` +
+        `- 元URL: ${detail.imageUrl}\n` +
+        `- スレ: 「${chosen.title}」（board ${chosen.boardId}）`
+      console.log('Seed/thread: skip —', msg)
+      await notifySeedResult(msg)
+      return NextResponse.json({ ok: true, skipped: true, reason: 'image_upload_failed' })
+    }
+
+    // 11. 投稿前バリデーション（最終確認）
+    if (!title || !body || !imageUrl || validComments.length < REQUIRED_COMMENT_COUNT) {
+      const msg =
+        `🚨 [あにまんアレンジ] 投稿前バリデーション失敗\n` +
+        `- title: ${title ? 'OK' : 'NG'} / body: ${body ? 'OK' : 'NG'}` +
+        ` / image: ${imageUrl ? 'OK' : 'NG'} / comments: ${validComments.length}件\n` +
+        `- スレ: 「${chosen.title}」（board ${chosen.boardId}）`
+      console.error('Seed/thread: pre-insert validation failed —', msg)
+      await notifySeedResult(msg)
+      return NextResponse.json({ ok: false, error: 'pre_insert_validation_failed' })
+    }
+
+    // 12. スレ作成
     const { data: created, error: threadError } = await supabase
       .from('threads')
-      .insert({
-        title,
-        body,
-        author_name: AUTHOR_NAME,
-        category_id: categoryId,
-        image_url: imageUrl,
-      })
+      .insert({ title, body, author_name: AUTHOR_NAME, category_id: categoryId, image_url: imageUrl })
       .select('id, title')
       .single()
 
     if (threadError || !created) {
+      const msg =
+        `🚨 [あにまんアレンジ] スレ作成エラー\n` +
+        `- 理由: DB insert 失敗\n` +
+        `- 詳細: ${threadError?.message ?? 'unknown'}\n` +
+        `- スレ: 「${title}」（board ${chosen.boardId}）`
       console.error('Seed/thread insert error:', threadError)
-      result.errors.push(`thread: ${threadError?.message ?? 'unknown'}`)
-    } else {
-      result.threadCreated = { id: created.id, title: created.title }
-      result.source = `animanch board ${chosen.boardId}`
-      console.log(`Seed/thread: created ${created.id} "${created.title}"`)
-      const { data: cat } = await supabase.from('categories').select('name').eq('id', categoryId).single()
-      notifyNewThread({ threadId: created.id, title: created.title, categoryName: cat?.name ?? null }).catch(() => {})
+      await notifySeedResult(msg)
+      return NextResponse.json({ ok: false, error: threadError?.message ?? 'thread insert failed' })
+    }
 
-      // あにまんスレのリプライから初期コメント5件追加（service roleでRLS回避）
-      try {
-        const validComments = detail.comments.map(transformComment).filter(c => c.length >= 10)
-        const commentPool = validComments.length >= 5 ? validComments : SEED_COMMENTS.map(c => c.body)
-        for (let i = 0; i < 5; i++) {
-          const commentBody = commentPool[(sixHourIndex + i * 7) % commentPool.length]
-          const { error: postError } = await serviceSupabase
-            .from('posts')
-            .insert({ thread_id: created.id, post_number: i + 1, body: commentBody, author_name: null })
-          if (postError) {
-            console.error(`Seed/thread: post[${i + 1}] insert failed:`, postError.message)
-            result.errors.push(`post[${i + 1}]: ${postError.message}`)
-          }
-        }
-        console.log(`Seed/thread: added 5 comments to ${created.id}`)
-      } catch (commentErr) {
-        console.warn('Seed/thread: initial comments failed:', commentErr)
+    console.log(`Seed/thread: created thread ${created.id} "${created.title}"`)
+
+    // 13. コメント5件追加（service role でRLS回避）
+    const commentErrors: string[] = []
+    for (let i = 0; i < REQUIRED_COMMENT_COUNT; i++) {
+      const commentBody = validComments[(sixHourIndex + i * 7) % validComments.length]
+      const { error: postError } = await serviceSupabase
+        .from('posts')
+        .insert({ thread_id: created.id, post_number: i + 1, body: commentBody, author_name: null })
+      if (postError) {
+        console.error(`Seed/thread: post[${i + 1}] insert failed:`, postError.message)
+        commentErrors.push(`post[${i + 1}]: ${postError.message}`)
       }
     }
-  } catch (err) {
-    // フォールバック：seed-data.ts の固定テンプレートを使用
-    console.error('Seed/thread: animanch fetch failed, falling back:', err)
-    result.errors.push(`animanch: ${err instanceof Error ? err.message : String(err)}`)
 
-    const template = SEED_THREADS[sixHourIndex % SEED_THREADS.length]
-    const { data: created, error: threadError } = await supabase
-      .from('threads')
-      .insert({
-        title: template.title,
-        body: template.body,
-        author_name: AUTHOR_NAME,
-        category_id: template.category_id,
+    // 14. 投稿後検証（DB から再取得してコメント数・ゴミ文字を確認）
+    const { data: verifyPosts } = await serviceSupabase
+      .from('posts')
+      .select('id, body')
+      .eq('thread_id', created.id)
+      .order('post_number')
+
+    const actualCount = verifyPosts?.length ?? 0
+    const garbageInPosts = verifyPosts?.some(p => hasGarbageStrings(p.body)) ?? false
+    const threadUrl = `${SITE_URL}/thread/${created.id}`
+
+    if (actualCount < REQUIRED_COMMENT_COUNT || garbageInPosts) {
+      const msg =
+        `🚨 [あにまんアレンジ] 投稿後検証失敗\n` +
+        `- スレID: ${created.id}\n` +
+        `- コメント数: 期待 ${REQUIRED_COMMENT_COUNT}件 / 実際 ${actualCount}件\n` +
+        `- ゴミ文字: ${garbageInPosts ? 'あり ⚠️' : 'なし'}\n` +
+        `- URL: ${threadUrl}`
+      console.error('Seed/thread: post-verification failed —', msg)
+      await notifySeedResult(msg)
+      return NextResponse.json({
+        ok: false,
+        threadCreated: { id: created.id, title: created.title },
+        verificationFailed: true,
+        actualCommentCount: actualCount,
+        garbageDetected: garbageInPosts,
+        errors: commentErrors,
       })
-      .select('id, title')
-      .single()
-
-    if (threadError || !created) {
-      console.error('Seed/thread fallback insert error:', threadError)
-      result.errors.push(`fallback: ${threadError?.message ?? 'unknown'}`)
-    } else {
-      result.threadCreated = { id: created.id, title: created.title }
-      result.source = 'fallback seed-data'
-      console.log(`Seed/thread: created fallback ${created.id} "${created.title}"`)
-      const { data: cat } = await supabase.from('categories').select('name').eq('id', template.category_id).single()
-      notifyNewThread({ threadId: created.id, title: created.title, categoryName: cat?.name ?? null }).catch(() => {})
-
-      // SEED_COMMENTSから初期コメント5件追加（service roleでRLS回避）
-      for (let i = 0; i < 5; i++) {
-        const seed = SEED_COMMENTS[(sixHourIndex + i * 7) % SEED_COMMENTS.length]
-        const { error: postError } = await serviceSupabase
-          .from('posts')
-          .insert({ thread_id: created.id, post_number: i + 1, body: seed.body, author_name: null })
-        if (postError) {
-          console.error(`Seed/thread: fallback post[${i + 1}] insert failed:`, postError.message)
-          result.errors.push(`fallback post[${i + 1}]: ${postError.message}`)
-        }
-      }
-      console.log(`Seed/thread: added 5 comments (fallback) to ${created.id}`)
     }
-  }
 
-  console.log('Seed/thread complete:', JSON.stringify(result))
-  return NextResponse.json({ ok: true, ...result })
+    // 15. 成功通知
+    const { data: cat } = await supabase.from('categories').select('name').eq('id', categoryId).single()
+    const successMsg =
+      `✅ [あにまんアレンジ] スレ作成成功\n` +
+      `- スレID: ${created.id}\n` +
+      `- タイトル: ${created.title}\n` +
+      `- カテゴリ: ${cat?.name ?? `ID ${categoryId}`}\n` +
+      `- 画像: あり\n` +
+      `- コメント: ${actualCount}件\n` +
+      `- 参照元: animanch board ${chosen.boardId}\n` +
+      `- URL: ${threadUrl}`
+
+    console.log('Seed/thread complete:', successMsg)
+    await notifySeedResult(successMsg)
+    notifyNewThread({ threadId: created.id, title: created.title, categoryName: cat?.name ?? null }).catch(() => {})
+
+    return NextResponse.json({
+      ok: true,
+      threadCreated: { id: created.id, title: created.title },
+      source: `animanch board ${chosen.boardId}`,
+      commentCount: actualCount,
+      errors: commentErrors,
+    })
+
+  } catch (err) {
+    const msg =
+      `🚨 [あにまんアレンジ] 予期せぬエラー\n` +
+      `- 詳細: ${err instanceof Error ? err.message : String(err)}`
+    console.error('Seed/thread: unexpected error:', err)
+    await notifySeedResult(msg)
+    return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) })
+  }
 }
