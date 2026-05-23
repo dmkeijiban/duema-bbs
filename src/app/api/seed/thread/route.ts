@@ -793,20 +793,11 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // 15. 成功通知
+    // 15. 成功通知（スレ通知のみ）
     const { data: cat } = await supabase.from('categories').select('name').eq('id', categoryId).single()
-    const successMsg =
-      `✅ スレ作成成功\n` +
-      `- スレID: ${created.id}\n` +
-      `- タイトル: ${created.title}\n` +
-      `- カテゴリ: ${cat?.name ?? `ID ${categoryId}`}\n` +
-      `- 画像: あり\n` +
-      `- コメント: ${actualCount}件\n` +
-      `- URL: ${threadUrl}`
 
-    console.log('Seed/thread complete:', successMsg)
-    await notifySeedResult(successMsg)
-    notifyNewThread({ threadId: created.id, title: created.title, categoryName: cat?.name ?? null }).catch(() => {})
+    console.log(`Seed/thread complete: threadId=${created.id} title="${created.title}" comments=${actualCount}`)
+    await notifyNewThread({ threadId: created.id, title: created.title, categoryName: cat?.name ?? null })
 
     return NextResponse.json({
       ok: true,
