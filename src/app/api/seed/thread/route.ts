@@ -484,8 +484,13 @@ export async function GET(req: NextRequest) {
         : null
 
       // 上位候補の詳細（詳細ページから image_url も取得）
+      // would_choose が slice(0,5) に含まれない場合に備えて先頭5件 + would_choose を合わせて fetch する
+      const previewPool = candidatesWithImage.slice(0, 5)
+      if (wouldChoose && !previewPool.find(t => t.boardId === wouldChoose.boardId)) {
+        previewPool.push(wouldChoose)
+      }
       const previewCandidates = await Promise.all(
-        candidatesWithImage.slice(0, 5).map(async t => {
+        previewPool.map(async t => {
           let imageUrl = t.listImageUrl
           if (!imageUrl) {
             // 一覧で取れない場合は詳細ページから取得を試みる
@@ -510,20 +515,23 @@ export async function GET(req: NextRequest) {
         .slice(0, 3)
         .map(t => ({ boardId: t.boardId, title: t.title, skipped_reason: 'no_image_on_list_page' }))
 
+      // would_choose の image_url は previewCandidates から引く（detail fetch 済みのため正確）
+      const wouldChoosePreview = previewCandidates.find(p => p.boardId === wouldChoose?.boardId)
+
       return NextResponse.json({
         dry_run: true,
         total_fetched: animanchThreads.length,
         after_dedup: candidates.length,
         with_image: candidatesWithImage.length,
         skipped_reason: candidatesWithImage.length === 0 ? 'no_image_candidates' : null,
-        selected_threads: previewCandidates,
+        selected_threads: previewCandidates.slice(0, 5),
         would_choose: wouldChoose
           ? {
             boardId: wouldChoose.boardId,
             url: `${ANIMANCH_BASE}/board/${wouldChoose.boardId}/`,
             title: wouldChoose.title,
             transformed: transformTitle(wouldChoose.title),
-            image_url: wouldChoose.listImageUrl,
+            image_url: wouldChoosePreview?.image_url ?? wouldChoose.listImageUrl ?? null,
           }
           : null,
         skipped_no_image_samples: skippedNoImage,
