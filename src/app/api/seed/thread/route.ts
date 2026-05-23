@@ -436,13 +436,29 @@ function transformComment(text: string): string {
 }
 
 /**
- * コメントの語尾・俗語をやわらかく言い換える（あにまんの空気は残しつつ自然に）
+ * コメントの語彙・語尾をやわらかく言い換える（あにまんの空気は残しつつ自然に）
  * transformComment() の後に適用する。
  * usedSuffixes: このバッチで既に使った語尾キー（同じ語尾の連続を防ぐ）
+ *
+ * 方針：意味は変えない・要約しない・長文化しない・掲示板感は維持
+ * 優先順位：語彙置換 → 語尾言い換え → 変換なし時の末尾揺らぎ付与
  */
 function rewriteComment(text: string, usedSuffixes: Set<string>): string {
+  const original = text
   let t = text
 
+  // ── 語彙レベルの置き換え（意味は変えない・掲示板感を残す）──────────────
+  t = t.replace(/ワロタ/g, '笑った')
+  t = t.replace(/明らかに/g, 'さすがに')
+  t = t.replace(/想像つかねぇ/g, '想像つかない')
+  t = t.replace(/使ってたなぁ/g, '使ってた記憶ある')
+  t = t.replace(/格落ち/g, '見劣り')
+  // 「だけ」→「だけは」（助詞・接続詞が後続する場合はスキップ）
+  // 例: ミリオンパーツだけ明らかに → ミリオンパーツだけは さすがに
+  // 除外: だけど / だけで / だけが / だけを / だけに etc.
+  t = t.replace(/だけ(?![はがをにでもよしかのっどけれ])/g, 'だけは')
+
+  // ── 語尾の言い換え（バッチ内での同じ語尾の連続を防ぐ）───────────────
   // だろ → だと思う / かな
   t = t.replace(/だろ(?=[。！？\n\s]|$)/g, () => {
     const a = usedSuffixes.has('だと思う') ? 'かな' : 'だと思う'
@@ -463,6 +479,21 @@ function rewriteComment(text: string, usedSuffixes: Set<string>): string {
     usedSuffixes.add(a)
     return a
   })
+
+  // ── 変換後に元文と完全一致なら末尾に自然な揺らぎを加える ─────────────
+  // 記号・感嘆符・全角カタカナ半角カタカナのみの文は対象外（変換しすぎを防ぐ）
+  if (t === original) {
+    const lastChar = t.trimEnd().slice(-1)
+    const isSymbol = /[！!♪♫～〜？?。、…]/.test(lastChar)
+    const isAllKatakana = /^[ｦ-ﾟ\s!]+$/.test(t.replace(/\n/g, ''))
+    if (!isSymbol && !isAllKatakana) {
+      const trailers = ['な気がする', 'と思う', 'かもしれない', 'ではある']
+      const available = trailers.filter(s => !usedSuffixes.has(`trail:${s}`))
+      const trailer = available.length > 0 ? available[0] : trailers[usedSuffixes.size % trailers.length]
+      usedSuffixes.add(`trail:${trailer}`)
+      t = `${t}、${trailer}`
+    }
+  }
 
   return t
 }
@@ -553,7 +584,7 @@ export async function GET(req: NextRequest) {
       // コメントのbefore/afterプレビュー（would_choose がある場合のみ）
       let sourceCommentCount = 0
       let rewrittenCommentCount = 0
-      let previewComments: Array<{ before: string; after: string }> = []
+      let previewComments: Array<{ original: string; rewritten: string }> = []
       if (wouldChoose) {
         try {
           const dryDetail = await fetchAnimanchBoard(wouldChoose.boardId)
@@ -566,9 +597,9 @@ export async function GET(req: NextRequest) {
           const drySelected = Array.from({ length: REQUIRED_COMMENT_COUNT }, (_, i) =>
             dryValid[(sixHourIndex + i * 7) % Math.max(dryValid.length, 1)],
           ).filter(Boolean)
-          previewComments = drySelected.map(before => ({
-            before,
-            after: rewriteComment(before, dryUsedSuffixes),
+          previewComments = drySelected.map(original => ({
+            original,
+            rewritten: rewriteComment(original, dryUsedSuffixes),
           }))
         } catch { /* ignore detail fetch failure in dry_run */ }
       }
