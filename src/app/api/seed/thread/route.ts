@@ -137,6 +137,41 @@ interface AnimanchBoardData {
 }
 
 /**
+ * あにまんの共通画像・ロゴ・デフォルトOGP画像かどうかを判定する
+ *
+ * 判定基準（いずれかに該当 → true = 共通画像として除外）：
+ * - ファイル名が "logo", "ogp", "ogimage", "default", "noimage", "no-image",
+ *   "placeholder", "common", "share" を含む
+ * - /common/ /assets/ /static/ /logo/ ディレクトリ配下
+ * - 拡張子なし or .svg（ロゴはSVGが多い）
+ * - ファイル名が数字のみでない（スレ固有画像は通常 /img/数字/数字.ext 形式）
+ *   ただしこれ単体では判定しない（副作用大）
+ */
+function isAnimanchDefaultOgImage(url: string): boolean {
+  try {
+    const { pathname } = new URL(url)
+    const lower = pathname.toLowerCase()
+
+    // ファイル名ベースの判定
+    const filename = lower.split('/').pop() ?? ''
+    const genericFilenames = /^(logo|ogp|ogimage|og.?image|default|noimage|no.?image|placeholder|common|share|banner|top|index)/
+    if (genericFilenames.test(filename)) return true
+
+    // ディレクトリパスの判定
+    const genericDirs = /\/(common|assets?|static|logo|logos?|icons?|brand|share)\//
+    if (genericDirs.test(lower)) return true
+
+    // .svg はロゴやベクター素材が多いため除外
+    if (lower.endsWith('.svg')) return true
+
+    return false
+  } catch {
+    // URL パース失敗は除外しない（念のため）
+    return false
+  }
+}
+
+/**
  * カードHTML内から画像URLを抽出する（複数パターンに対応）
  * - src / data-src / data-lazy-src / data-original / data-bg 属性
  * - background-image スタイル
@@ -266,16 +301,20 @@ async function fetchAnimanchBoard(boardId: number): Promise<AnimanchBoardData> {
   // --- 画像URL（優先度順に取得）---
   let imageUrl: string | null = null
 
-  // 1. og:image メタタグ（最も信頼性が高い）
+  // 1. og:image メタタグを取得し、共通画像・ロゴ・デフォルトOGPでないか確認
   const ogMatch =
     html.match(/<meta\b[^>]*\bproperty=['"]og:image['"]\s*content=['"]([^'"]+)['"]/i) ??
     html.match(/<meta\b[^>]*\bcontent=['"]([^'"]+)['"]\s*property=['"]og:image['"]/i)
   if (ogMatch) {
-    const u = ogMatch[1]
-    imageUrl = u.startsWith('/') ? `${ANIMANCH_BASE}${u}` : u
+    const u = ogMatch[1].startsWith('/') ? `${ANIMANCH_BASE}${ogMatch[1]}` : ogMatch[1]
+    if (isAnimanchDefaultOgImage(u)) {
+      console.log(`[seed/thread] fetchAnimanchBoard: og:image は共通画像と判定、スキップ: ${u.slice(0, 100)}`)
+    } else {
+      imageUrl = u
+    }
   }
 
-  // 2. img タグや data-* 属性からの拡張抽出
+  // 2. img タグや data-* 属性からの拡張抽出（og:image が共通画像だった場合も含む）
   if (!imageUrl) {
     imageUrl = extractImageUrlFromHtml(html)
   }
