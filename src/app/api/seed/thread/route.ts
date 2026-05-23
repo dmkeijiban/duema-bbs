@@ -8,7 +8,7 @@ export const maxDuration = 60
 
 const ANIMANCH_BASE = 'https://bbs.animanch.com'
 const ANIMANCH_CATEGORY = `${ANIMANCH_BASE}/category25/`
-const AUTHOR_NAME = '二次元好きの匿名さん'
+const AUTHOR_NAME = '名無しのデュエリスト'
 const REQUIRED_COMMENT_COUNT = 5
 
 /**
