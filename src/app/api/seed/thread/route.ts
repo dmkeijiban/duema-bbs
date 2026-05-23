@@ -124,8 +124,10 @@ function buildThreadBody(title: string, rawBody: string): string {
 interface AnimanchThread {
   boardId: number
   title: string
-  /** カテゴリ一覧のカードにサムネイル画像（bbs.animanch.com/img/）が存在するか */
+  /** カテゴリ一覧のカードにサムネイル画像が存在するか（拡張判定） */
   hasImage: boolean
+  /** 一覧ページで見つかった画像URL（あれば） */
+  listImageUrl: string | null
 }
 
 interface AnimanchBoardData {
@@ -135,8 +137,35 @@ interface AnimanchBoardData {
 }
 
 /**
+ * カードHTML内から画像URLを抽出する（複数パターンに対応）
+ * - src / data-src / data-lazy-src / data-original / data-bg 属性
+ * - background-image スタイル
+ * - 相対URLは https://bbs.animanch.com を補完
+ */
+function extractImageUrlFromHtml(html: string): string | null {
+  // 1. src / data-* 系の属性から画像URLを抽出（絶対URL・相対URL両対応）
+  const attrPatterns = [
+    /(?:src|data-src|data-lazy-src|data-original|data-bg)=['"]?(https?:\/\/[^'">\s]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^'">\s]*)?)['"]?/i,
+    /(?:src|data-src|data-lazy-src|data-original|data-bg)=['"]?(\/[^'">\s]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^'">\s]*)?)['"]?/i,
+  ]
+  for (const pat of attrPatterns) {
+    const m = html.match(pat)
+    if (m) {
+      const url = m[1]
+      return url.startsWith('/') ? `${ANIMANCH_BASE}${url}` : url
+    }
+  }
+
+  // 2. background-image: url(...) スタイル
+  const bgMatch = html.match(/background-image\s*:\s*url\(['"]?(https?:\/\/[^'")\s]+\.(?:jpg|jpeg|png|gif|webp)[^'")\s]*)['"]?\)/i)
+  if (bgMatch) return bgMatch[1]
+
+  return null
+}
+
+/**
  * あにまん category25 からスレ一覧を取得
- * カードに animanch 画像サムネイルがあるかどうかも同時に判定する
+ * カードに画像サムネイルがあるかどうかも同時に判定する（拡張版）
  * ※ あにまんのHTMLはシングルクォート属性で書かれている
  */
 async function fetchAnimanchDuemaThreads(): Promise<AnimanchThread[]> {
@@ -147,27 +176,59 @@ async function fetchAnimanchDuemaThreads(): Promise<AnimanchThread[]> {
   if (!res.ok) throw new Error(`animanch category fetch failed: ${res.status}`)
   const html = await res.text()
 
-  const threadPattern = /href='https:\/\/bbs\.animanch\.com\/board\/(\d+)\/'[^>]*class='card'([\s\S]*?)<p class='threadCount'/g
+  // href→class順・class→href順のどちらでも捕捉できる2パターン
+  const threadPatternHrefFirst = /href='https:\/\/bbs\.animanch\.com\/board\/(\d+)\/'[^>]*class='card'([\s\S]*?)<p class='threadCount'/g
+  const threadPatternClassFirst = /class='card'[^>]*href='https:\/\/bbs\.animanch\.com\/board\/(\d+)\/'([\s\S]*?)<p class='threadCount'/g
 
   const threads: AnimanchThread[] = []
   const seenIds = new Set<number>()
-  let m: RegExpExecArray | null
 
-  while ((m = threadPattern.exec(html)) !== null) {
-    const boardId = parseInt(m[1], 10)
-    if (seenIds.has(boardId)) continue
+  function processMatch(boardId: number, cardHtml: string) {
+    if (seenIds.has(boardId)) return
     seenIds.add(boardId)
 
-    const cardHtml = m[2]
+    // タイトル抽出
+    const titleMatch = cardHtml.match(/<div class='card-body'>([\s\S]*?)(?:<\/div>|$)/)
+      ?? cardHtml.match(/<div class='card-body'>([\s\S]*?)$/)
+    const rawTitle = titleMatch ? titleMatch[1].replace(/<[^>]*>/g, '').trim() : ''
 
-    const titleMatch = cardHtml.match(/<div class='card-body'>([\s\S]*?)$/)
-    const rawTitle = titleMatch ? titleMatch[1].trim() : ''
-
-    const hasImage = /https:\/\/bbs\.animanch\.com\/img\/\d+\/\d+\./i.test(cardHtml)
+    // 画像判定（拡張版）:
+    // - <img タグがある
+    // - data-src / data-lazy-src / data-bg 属性に URL がある
+    // - bbs.animanch.com/img/ または animanch.com 配下の画像URL
+    // - background-image スタイル
+    const listImageUrl = extractImageUrlFromHtml(cardHtml)
+    const hasImage = (
+      listImageUrl !== null ||
+      /<img\b/i.test(cardHtml) ||
+      /animanch\.com\/(?:img|upload|cdn|static|media|files?)\//i.test(cardHtml) ||
+      /data-(?:src|bg|lazy|original)=['"]?https?:\/\//i.test(cardHtml) ||
+      /background-image/i.test(cardHtml)
+    )
 
     if (isDuemaRelated(rawTitle) && !isExcludedTitle(rawTitle)) {
-      threads.push({ boardId, title: rawTitle, hasImage })
+      threads.push({ boardId, title: rawTitle, hasImage, listImageUrl })
     }
+  }
+
+  let m: RegExpExecArray | null
+  while ((m = threadPatternHrefFirst.exec(html)) !== null) {
+    processMatch(parseInt(m[1], 10), m[2])
+  }
+  while ((m = threadPatternClassFirst.exec(html)) !== null) {
+    processMatch(parseInt(m[1], 10), m[2])
+  }
+
+  // どちらのパターンも0件なら、boardId抽出だけ行うフォールバック
+  if (threads.length === 0) {
+    console.warn('[seed/thread] threadPattern matched 0 cards — trying fallback boardId extraction')
+    const boardIdPattern = /href='https:\/\/bbs\.animanch\.com\/board\/(\d+)\/'/g
+    const allIds: number[] = []
+    while ((m = boardIdPattern.exec(html)) !== null) {
+      const id = parseInt(m[1], 10)
+      if (!allIds.includes(id)) allIds.push(id)
+    }
+    console.warn(`[seed/thread] fallback found ${allIds.length} unique board IDs in HTML`)
   }
 
   return threads
@@ -202,11 +263,39 @@ async function fetchAnimanchBoard(boardId: number): Promise<AnimanchBoardData> {
     body = body.replace(/\n{3,}/g, '\n\n').trim()
   }
 
-  // --- 画像URL ---
+  // --- 画像URL（優先度順に取得）---
   let imageUrl: string | null = null
-  const imgMatch = html.match(/(?:src|data-src)=['"]?(https:\/\/bbs\.animanch\.com\/img\/\d+\/\d+\.(?:jpg|jpeg|png|gif|webp))['"]?/)
-  if (imgMatch) {
-    imageUrl = imgMatch[1]
+
+  // 1. og:image メタタグ（最も信頼性が高い）
+  const ogMatch =
+    html.match(/<meta\b[^>]*\bproperty=['"]og:image['"]\s*content=['"]([^'"]+)['"]/i) ??
+    html.match(/<meta\b[^>]*\bcontent=['"]([^'"]+)['"]\s*property=['"]og:image['"]/i)
+  if (ogMatch) {
+    const u = ogMatch[1]
+    imageUrl = u.startsWith('/') ? `${ANIMANCH_BASE}${u}` : u
+  }
+
+  // 2. img タグや data-* 属性からの拡張抽出
+  if (!imageUrl) {
+    imageUrl = extractImageUrlFromHtml(html)
+  }
+
+  // 3. animanch 固有パターン（旧形式 bbs.animanch.com/img/NUM/NUM.ext）
+  if (!imageUrl) {
+    const legacyMatch = html.match(/['"]?(https?:\/\/bbs\.animanch\.com\/img\/\d+\/\d+\.(?:jpg|jpeg|png|gif|webp))['"]?/i)
+    if (legacyMatch) imageUrl = legacyMatch[1]
+  }
+
+  // 4. 相対パス画像（/img/ または /uploads/ 等）
+  if (!imageUrl) {
+    const relMatch = html.match(/['"]?(\/(?:img|upload|cdn|static|media|files?)\/[^'">\s]+\.(?:jpg|jpeg|png|gif|webp))['"]?/i)
+    if (relMatch) imageUrl = `${ANIMANCH_BASE}${relMatch[1]}`
+  }
+
+  if (imageUrl) {
+    console.log(`[seed/thread] fetchAnimanchBoard: image found: ${imageUrl.slice(0, 100)}`)
+  } else {
+    console.warn(`[seed/thread] fetchAnimanchBoard: no image found for board ${boardId}`)
   }
 
   // --- コメント（リプライ）: 1件目（本文）をスキップ ---
@@ -354,19 +443,51 @@ export async function GET(req: NextRequest) {
       const wouldChoose = candidatesWithImage.length > 0
         ? candidatesWithImage[sixHourIndex % candidatesWithImage.length]
         : null
+
+      // 上位候補の詳細（詳細ページから image_url も取得）
+      const previewCandidates = await Promise.all(
+        candidatesWithImage.slice(0, 5).map(async t => {
+          let imageUrl = t.listImageUrl
+          if (!imageUrl) {
+            // 一覧で取れない場合は詳細ページから取得を試みる
+            try {
+              const detail = await fetchAnimanchBoard(t.boardId)
+              imageUrl = detail.imageUrl
+            } catch { /* ignore */ }
+          }
+          return {
+            boardId: t.boardId,
+            url: `${ANIMANCH_BASE}/board/${t.boardId}/`,
+            title: t.title,
+            transformed: transformTitle(t.title),
+            image_url: imageUrl ?? null,
+          }
+        }),
+      )
+
+      // 画像なしでスキップされる候補のサンプル（最大3件）
+      const skippedNoImage = candidates
+        .filter(t => !t.hasImage)
+        .slice(0, 3)
+        .map(t => ({ boardId: t.boardId, title: t.title, skipped_reason: 'no_image_on_list_page' }))
+
       return NextResponse.json({
         dry_run: true,
         total_fetched: animanchThreads.length,
         after_dedup: candidates.length,
         with_image: candidatesWithImage.length,
-        candidates_preview: candidatesWithImage.slice(0, 5).map(t => ({
-          boardId: t.boardId,
-          title: t.title,
-          transformed: transformTitle(t.title),
-        })),
+        skipped_reason: candidatesWithImage.length === 0 ? 'no_image_candidates' : null,
+        selected_threads: previewCandidates,
         would_choose: wouldChoose
-          ? { boardId: wouldChoose.boardId, title: wouldChoose.title }
+          ? {
+            boardId: wouldChoose.boardId,
+            url: `${ANIMANCH_BASE}/board/${wouldChoose.boardId}/`,
+            title: wouldChoose.title,
+            transformed: transformTitle(wouldChoose.title),
+            image_url: wouldChoose.listImageUrl,
+          }
           : null,
+        skipped_no_image_samples: skippedNoImage,
       })
     }
 
@@ -426,11 +547,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, skipped: true, reason: 'garbage_in_body' })
     }
 
-    // 9. 画像URL確認（hasImage=true だったが detail に画像がない場合はスキップ）
-    if (!detail.imageUrl) {
+    // 9. 画像URL確認（detail で取れない場合は一覧ページの画像URLで代替）
+    const resolvedImageUrl = detail.imageUrl ?? chosen.listImageUrl
+    if (!resolvedImageUrl) {
       const msg =
         `⏭️ [あにまんアレンジ] スキップ\n` +
-        `- 理由: 画像URLが detail から取得できず（hasImage=true だったが不一致）\n` +
+        `- 理由: 画像URLが一覧・詳細ページいずれからも取得できず\n` +
         `- スレ: 「${chosen.title}」（board ${chosen.boardId}）`
       console.log('Seed/thread: skip —', msg)
       await notifySeedResult(msg)
@@ -438,12 +560,12 @@ export async function GET(req: NextRequest) {
     }
 
     // 10. 画像をSupabase Storageにアップロード（失敗したらスキップ）
-    const imageUrl = await downloadAndUploadImage(detail.imageUrl, serviceSupabase)
+    const imageUrl = await downloadAndUploadImage(resolvedImageUrl, serviceSupabase)
     if (!imageUrl) {
       const msg =
         `⏭️ [あにまんアレンジ] スキップ\n` +
         `- 理由: 画像アップロード失敗\n` +
-        `- 元URL: ${detail.imageUrl}\n` +
+        `- 元URL: ${resolvedImageUrl}\n` +
         `- スレ: 「${chosen.title}」（board ${chosen.boardId}）`
       console.log('Seed/thread: skip —', msg)
       await notifySeedResult(msg)
