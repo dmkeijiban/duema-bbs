@@ -457,8 +457,8 @@ export async function GET(req: NextRequest) {
 
     if (animanchThreads.length === 0) {
       await notifySeedResult(
-        '🚨 [あにまんアレンジ] エラー\n' +
-        '- 理由: category25 からデュエマスレが1件も取得できず\n' +
+        '🚨 エラー\n' +
+        '- 理由: スレが1件も取得できず\n' +
         '- 本日はスキップします',
       )
       return NextResponse.json({ ok: true, skipped: true, reason: 'no_duema_threads' })
@@ -541,7 +541,7 @@ export async function GET(req: NextRequest) {
     // 4. 画像ありの候補がなければスキップ（フォールバック禁止）
     if (candidatesWithImage.length === 0) {
       const msg =
-        '⏭️ [あにまんアレンジ] スキップ\n' +
+        '⏭️ スキップ\n' +
         '- 理由: 画像ありの未掲載スレが存在しない\n' +
         `- 全候補: ${animanchThreads.length}件 / 重複除外後: ${candidates.length}件 / 画像あり: 0件`
       console.log('Seed/thread: skip —', msg)
@@ -566,9 +566,9 @@ export async function GET(req: NextRequest) {
 
     if (validComments.length < REQUIRED_COMMENT_COUNT) {
       const msg =
-        `⏭️ [あにまんアレンジ] スキップ\n` +
+        `⏭️ スキップ\n` +
         `- 理由: コメント${REQUIRED_COMMENT_COUNT}件取れず（有効: ${validComments.length}件）\n` +
-        `- スレ: 「${chosen.title}」（board ${chosen.boardId}）`
+        `- スレ: 「${chosen.title}」`
       console.log('Seed/thread: skip —', msg)
       await notifySeedResult(msg)
       return NextResponse.json({
@@ -586,9 +586,9 @@ export async function GET(req: NextRequest) {
 
     if (hasGarbageStrings(body)) {
       const msg =
-        `⏭️ [あにまんアレンジ] スキップ\n` +
+        `⏭️ スキップ\n` +
         `- 理由: 本文にゴミ文字列を検出\n` +
-        `- スレ: 「${chosen.title}」（board ${chosen.boardId}）`
+        `- スレ: 「${chosen.title}」`
       console.log('Seed/thread: skip —', msg)
       await notifySeedResult(msg)
       return NextResponse.json({ ok: true, skipped: true, reason: 'garbage_in_body' })
@@ -598,9 +598,9 @@ export async function GET(req: NextRequest) {
     const resolvedImageUrl = detail.imageUrl ?? chosen.listImageUrl
     if (!resolvedImageUrl) {
       const msg =
-        `⏭️ [あにまんアレンジ] スキップ\n` +
+        `⏭️ スキップ\n` +
         `- 理由: 画像URLが一覧・詳細ページいずれからも取得できず\n` +
-        `- スレ: 「${chosen.title}」（board ${chosen.boardId}）`
+        `- スレ: 「${chosen.title}」`
       console.log('Seed/thread: skip —', msg)
       await notifySeedResult(msg)
       return NextResponse.json({ ok: true, skipped: true, reason: 'no_image_url_in_detail' })
@@ -610,10 +610,10 @@ export async function GET(req: NextRequest) {
     const imageUrl = await downloadAndUploadImage(resolvedImageUrl, serviceSupabase)
     if (!imageUrl) {
       const msg =
-        `⏭️ [あにまんアレンジ] スキップ\n` +
+        `⏭️ スキップ\n` +
         `- 理由: 画像アップロード失敗\n` +
         `- 元URL: ${resolvedImageUrl}\n` +
-        `- スレ: 「${chosen.title}」（board ${chosen.boardId}）`
+        `- スレ: 「${chosen.title}」`
       console.log('Seed/thread: skip —', msg)
       await notifySeedResult(msg)
       return NextResponse.json({ ok: true, skipped: true, reason: 'image_upload_failed' })
@@ -622,10 +622,10 @@ export async function GET(req: NextRequest) {
     // 11. 投稿前バリデーション（最終確認）
     if (!title || !body || !imageUrl || validComments.length < REQUIRED_COMMENT_COUNT) {
       const msg =
-        `🚨 [あにまんアレンジ] 投稿前バリデーション失敗\n` +
+        `🚨 投稿前バリデーション失敗\n` +
         `- title: ${title ? 'OK' : 'NG'} / body: ${body ? 'OK' : 'NG'}` +
         ` / image: ${imageUrl ? 'OK' : 'NG'} / comments: ${validComments.length}件\n` +
-        `- スレ: 「${chosen.title}」（board ${chosen.boardId}）`
+        `- スレ: 「${chosen.title}」`
       console.error('Seed/thread: pre-insert validation failed —', msg)
       await notifySeedResult(msg)
       return NextResponse.json({ ok: false, error: 'pre_insert_validation_failed' })
@@ -648,10 +648,10 @@ export async function GET(req: NextRequest) {
 
     if (threadError || !created) {
       const msg =
-        `🚨 [あにまんアレンジ] スレ作成エラー\n` +
+        `🚨 スレ作成エラー\n` +
         `- 理由: DB insert 失敗\n` +
         `- 詳細: ${threadError?.message ?? 'unknown'}\n` +
-        `- スレ: 「${title}」（board ${chosen.boardId}）`
+        `- スレ: 「${title}」`
       console.error('Seed/thread insert error:', threadError)
       await notifySeedResult(msg)
       return NextResponse.json({ ok: false, error: threadError?.message ?? 'thread insert failed' })
@@ -685,7 +685,7 @@ export async function GET(req: NextRequest) {
 
     if (actualCount < REQUIRED_COMMENT_COUNT || garbageInPosts) {
       const msg =
-        `🚨 [あにまんアレンジ] 投稿後検証失敗\n` +
+        `🚨 投稿後検証失敗\n` +
         `- スレID: ${created.id}\n` +
         `- コメント数: 期待 ${REQUIRED_COMMENT_COUNT}件 / 実際 ${actualCount}件\n` +
         `- ゴミ文字: ${garbageInPosts ? 'あり ⚠️' : 'なし'}\n` +
@@ -705,13 +705,12 @@ export async function GET(req: NextRequest) {
     // 15. 成功通知
     const { data: cat } = await supabase.from('categories').select('name').eq('id', categoryId).single()
     const successMsg =
-      `✅ [あにまんアレンジ] スレ作成成功\n` +
+      `✅ スレ作成成功\n` +
       `- スレID: ${created.id}\n` +
       `- タイトル: ${created.title}\n` +
       `- カテゴリ: ${cat?.name ?? `ID ${categoryId}`}\n` +
       `- 画像: あり\n` +
       `- コメント: ${actualCount}件\n` +
-      `- 参照元: animanch board ${chosen.boardId}\n` +
       `- URL: ${threadUrl}`
 
     console.log('Seed/thread complete:', successMsg)
@@ -728,7 +727,7 @@ export async function GET(req: NextRequest) {
 
   } catch (err) {
     const msg =
-      `🚨 [あにまんアレンジ] 予期せぬエラー\n` +
+      `🚨 予期せぬエラー\n` +
       `- 詳細: ${err instanceof Error ? err.message : String(err)}`
     console.error('Seed/thread: unexpected error:', err)
     await notifySeedResult(msg)
