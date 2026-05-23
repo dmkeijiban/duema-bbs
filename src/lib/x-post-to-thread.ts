@@ -2,13 +2,17 @@ import { createHash } from 'node:crypto'
 
 /**
  * X投稿テキストからスレッドタイトルを生成する
+ * - ハッシュタグ（#xxx）を除去してからタイトル化
  * - 先頭1〜4行を使う
  * - 「優勝」「選手権」「カード選手権」を含む行でストップ
  * - 改行除去・40文字上限
  */
 export function generateTitleFromXPost(text: string): string {
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0)
-  if (lines.length === 0) return text.slice(0, 40)
+  // ハッシュタグ（#で始まる単語）を除去
+  const stripped = text.replace(/#\S+/g, '').trim()
+
+  const lines = stripped.split('\n').map(l => l.trim()).filter(l => l.length > 0)
+  if (lines.length === 0) return stripped.slice(0, 40)
 
   const stopKeywords = ['優勝', '選手権', 'カード選手権']
   const titleLines: string[] = []
