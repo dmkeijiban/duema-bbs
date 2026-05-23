@@ -8,7 +8,7 @@ export const maxDuration = 60
 
 const ANIMANCH_BASE = 'https://bbs.animanch.com'
 const ANIMANCH_CATEGORY = `${ANIMANCH_BASE}/category25/`
-const AUTHOR_NAME = '名無しのデュエリスト'
+const AUTHOR_NAME = '二次元好きの匿名さん'
 const REQUIRED_COMMENT_COUNT = 5
 
 /**
@@ -426,13 +426,45 @@ async function downloadAndUploadImage(imageUrl: string, supabase: SupabaseClient
  */
 function transformComment(text: string): string {
   let t = text
-  t = t.replace(/草/g, '笑')
+  t = t.replace(/草/g, '笑った')
   t = t.replace(/>>?\d+/g, '')       // >>190 形式
   t = t.replace(/#res\d+/gi, '')     // #res190 形式
   t = t.replace(/#\d+/g, '')         // #190 形式
   t = t.replace(/あにまん|animanch/gi, 'ここ')
   t = t.replace(/\n{3,}/g, '\n')
   return t.trim()
+}
+
+/**
+ * コメントの語尾・俗語をやわらかく言い換える（あにまんの空気は残しつつ自然に）
+ * transformComment() の後に適用する。
+ * usedSuffixes: このバッチで既に使った語尾キー（同じ語尾の連続を防ぐ）
+ */
+function rewriteComment(text: string, usedSuffixes: Set<string>): string {
+  let t = text
+
+  // だろ → だと思う / かな
+  t = t.replace(/だろ(?=[。！？\n\s]|$)/g, () => {
+    const a = usedSuffixes.has('だと思う') ? 'かな' : 'だと思う'
+    usedSuffixes.add(a)
+    return a
+  })
+
+  // じゃね → な気がする / じゃないかな
+  t = t.replace(/じゃね[？?]?/g, () => {
+    const a = usedSuffixes.has('な気がする') ? 'じゃないかな' : 'な気がする'
+    usedSuffixes.add(a)
+    return a
+  })
+
+  // やろ → かも / かもね
+  t = t.replace(/やろ(?=[。！？\n\s]|$)/g, () => {
+    const a = usedSuffixes.has('かも') ? 'かもね' : 'かも'
+    usedSuffixes.add(a)
+    return a
+  })
+
+  return t
 }
 
 
@@ -518,6 +550,29 @@ export async function GET(req: NextRequest) {
       // would_choose の image_url は previewCandidates から引く（detail fetch 済みのため正確）
       const wouldChoosePreview = previewCandidates.find(p => p.boardId === wouldChoose?.boardId)
 
+      // コメントのbefore/afterプレビュー（would_choose がある場合のみ）
+      let sourceCommentCount = 0
+      let rewrittenCommentCount = 0
+      let previewComments: Array<{ before: string; after: string }> = []
+      if (wouldChoose) {
+        try {
+          const dryDetail = await fetchAnimanchBoard(wouldChoose.boardId)
+          sourceCommentCount = dryDetail.comments.length
+          const dryValid = dryDetail.comments
+            .map(transformComment)
+            .filter(c => c.length >= 10 && c.length <= 300 && !hasGarbageStrings(c))
+          rewrittenCommentCount = dryValid.length
+          const dryUsedSuffixes = new Set<string>()
+          const drySelected = Array.from({ length: REQUIRED_COMMENT_COUNT }, (_, i) =>
+            dryValid[(sixHourIndex + i * 7) % Math.max(dryValid.length, 1)],
+          ).filter(Boolean)
+          previewComments = drySelected.map(before => ({
+            before,
+            after: rewriteComment(before, dryUsedSuffixes),
+          }))
+        } catch { /* ignore detail fetch failure in dry_run */ }
+      }
+
       return NextResponse.json({
         dry_run: true,
         total_fetched: animanchThreads.length,
@@ -534,6 +589,9 @@ export async function GET(req: NextRequest) {
             image_url: wouldChoosePreview?.image_url ?? wouldChoose.listImageUrl ?? null,
           }
           : null,
+        source_comment_count: sourceCommentCount,
+        rewritten_comment_count: rewrittenCommentCount,
+        preview_comments: previewComments,
         skipped_no_image_samples: skippedNoImage,
       })
     }
@@ -661,8 +719,10 @@ export async function GET(req: NextRequest) {
 
     // 13. コメント5件追加（service role でRLS回避）
     const commentErrors: string[] = []
+    const insertUsedSuffixes = new Set<string>()
     for (let i = 0; i < REQUIRED_COMMENT_COUNT; i++) {
-      const commentBody = validComments[(sixHourIndex + i * 7) % validComments.length]
+      const rawComment = validComments[(sixHourIndex + i * 7) % validComments.length]
+      const commentBody = rewriteComment(rawComment, insertUsedSuffixes)
       const { error: postError } = await serviceSupabase
         .from('posts')
         .insert({ thread_id: created.id, post_number: i + 1, body: commentBody, author_name: AUTHOR_NAME })
