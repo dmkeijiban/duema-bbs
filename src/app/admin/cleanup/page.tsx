@@ -42,13 +42,19 @@ export default async function CleanupPage() {
     .order('last_posted_at', { ascending: true })
     .limit(100)
 
-  // ③ 全投稿削除済みスレッド（post_count > 0 だが全 post が is_deleted=true）
-  // まず is_deleted=false の post が存在する thread_id を取得し、
-  // それ以外の post_count > 0 スレッドを「全削除済み」とみなす
+  // ③ 全投稿削除済みスレッド（post_count > 0 だが is_deleted=false の post が存在しない）
+  // 【注意】PostgREST はデフォルトで行数上限があるため、posts を全件取得するには
+  // .limit(100000) を明示する必要がある。上限なしだと途中で切れ、有効レスがある
+  // スレッドが誤って「全削除済み」に分類されるバグが発生する（確認済み: 116件→17件）
+  //
+  // 取得手順:
+  //   1. is_deleted=false の post が存在する thread_id を全件取得（上限明示）
+  //   2. そのスレッドを除いた post_count > 0 スレッドが本当の候補
   const { data: activePosts } = await supabase
     .from('posts')
     .select('thread_id')
     .eq('is_deleted', false)
+    .limit(100000) // PostgREST行数上限を回避（現在約1688件）
   const activeThreadIds = [...new Set((activePosts ?? []).map((p: { thread_id: number }) => p.thread_id))]
 
   let allDeletedQuery = supabase
