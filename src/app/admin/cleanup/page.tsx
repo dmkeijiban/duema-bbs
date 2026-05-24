@@ -2,7 +2,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-server'
-import { archiveThread, deleteThread, batchArchiveStale } from './actions'
+import { archiveThread, deleteThread, batchArchiveStale, batchArchiveAllDeleted } from './actions'
 import { ConfirmDeleteButton } from '@/components/admin/ConfirmDeleteButton'
 import { verifyAdminCookie } from '@/lib/admin-auth'
 
@@ -42,9 +42,32 @@ export default async function CleanupPage() {
     .order('last_posted_at', { ascending: true })
     .limit(100)
 
+  // ③ 全投稿削除済みスレッド（post_count > 0 だが全 post が is_deleted=true）
+  // まず is_deleted=false の post が存在する thread_id を取得し、
+  // それ以外の post_count > 0 スレッドを「全削除済み」とみなす
+  const { data: activePosts } = await supabase
+    .from('posts')
+    .select('thread_id')
+    .eq('is_deleted', false)
+  const activeThreadIds = [...new Set((activePosts ?? []).map((p: { thread_id: number }) => p.thread_id))]
+
+  let allDeletedQuery = supabase
+    .from('threads')
+    .select('id, title, created_at, post_count')
+    .eq('is_archived', false)
+    .gt('post_count', 0)
+    .order('created_at', { ascending: true })
+    .limit(200)
+
+  if (activeThreadIds.length > 0) {
+    allDeletedQuery = allDeletedQuery.not('id', 'in', `(${activeThreadIds.join(',')})`)
+  }
+  const { data: allDeleted } = await allDeletedQuery
+
   const fmt = (iso: string) => new Date(iso).toLocaleDateString('ja-JP')
 
   const staleIds = (stale ?? []).map(t => t.id).join(',')
+  const allDeletedIds = (allDeleted ?? []).map(t => t.id).join(',')
 
   return (
     <div className="max-w-4xl mx-auto px-3 py-4 text-sm">
@@ -153,6 +176,54 @@ export default async function CleanupPage() {
                     >
                       削除
                     </ConfirmDeleteButton>
+                  </form>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ③ 全投稿削除済みスレッド */}
+      <section className="mb-6">
+        <div className="flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
+          <h2 className="font-bold text-gray-700">
+            🗑️ 全投稿削除済みスレッド
+            <span className="text-xs text-gray-400 font-normal ml-2">（投稿があるが全て削除済み）{allDeleted?.length ?? 0}件</span>
+          </h2>
+          {allDeleted && allDeleted.length > 0 && (
+            <form action={batchArchiveAllDeleted}>
+              <input type="hidden" name="ids" value={allDeletedIds} />
+              <ConfirmDeleteButton
+                message={`${allDeleted.length}件を一括アーカイブしますか？`}
+                className="px-3 py-1 text-xs border border-gray-400 text-gray-600 hover:bg-gray-50"
+              >
+                全件アーカイブ
+              </ConfirmDeleteButton>
+            </form>
+          )}
+        </div>
+        {!allDeleted || allDeleted.length === 0 ? (
+          <p className="text-xs text-gray-400 py-3">該当スレッドはありません</p>
+        ) : (
+          <div className="space-y-1">
+            {allDeleted.map(t => (
+              <div key={t.id} className="bg-white border border-gray-200 p-2 flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <a href={`/thread/${t.id}`} target="_blank" className="text-blue-600 hover:underline text-xs line-clamp-1">
+                    {t.title}
+                  </a>
+                  <span className="text-[10px] text-gray-400 ml-1">
+                    投稿数(DB): {t.post_count} / 作成: {fmt(t.created_at)}
+                  </span>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <form action={archiveThread}>
+                    <input type="hidden" name="id" value={t.id} />
+                    <button type="submit"
+                      className="px-2 py-0.5 text-[10px] border border-gray-400 text-gray-600 hover:bg-gray-50">
+                      アーカイブ
+                    </button>
                   </form>
                 </div>
               </div>
