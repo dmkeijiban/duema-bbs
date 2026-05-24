@@ -25,7 +25,35 @@ Sentry.init({
       event.exception?.values?.map(value => value.value).join(' '),
     ].filter(Boolean).join(' ')
 
+    // 動画pause系（既存フィルタ）
     if (/pause/i.test(message) && /video|querySelector|undefined|null/i.test(message)) {
+      return null
+    }
+
+    // ① AdSense内部エラー: adsbygoogle.push() の非同期処理がグローバルエラーハンドラに届くもの
+    //   → 自コードにガードを追加したが、外部スクリプト起因のものはbeforeSendで除外
+    if (/adsbygoogle/i.test(message)) {
+      return null
+    }
+
+    // ② CONFIG undefined: pagead2.googlesyndication.com 等の外部スクリプト起因
+    //   → 自コードには CONFIG の参照なし（grep確認済み）
+    if (/\bCONFIG\b/.test(message) && /undefined|not defined/i.test(message)) {
+      return null
+    }
+
+    // ③ currentInset undefined: ブラウザ固有API or 外部スクリプト起因
+    //   → 自コードには currentInset の参照なし（grep確認済み）
+    if (/currentInset/i.test(message)) {
+      return null
+    }
+
+    // スタックトレースが外部スクリプト（googlesyndication, doubleclick等）のみの場合も除外
+    const frames = event.exception?.values?.flatMap(v => v.stacktrace?.frames ?? []) ?? []
+    const allExternal = frames.length > 0 && frames.every(f =>
+      /googlesyndication|doubleclick|googleads|pagead/i.test(f.filename ?? '')
+    )
+    if (allExternal) {
       return null
     }
 
