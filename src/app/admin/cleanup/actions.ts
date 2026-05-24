@@ -48,6 +48,16 @@ export async function batchArchiveStale(formData: FormData) {
   redirect('/admin/cleanup')
 }
 
+export async function unarchiveThread(formData: FormData) {
+  await requireAdmin()
+  const supabase = await createClient()
+  const id = parseInt(formData.get('id') as string)
+  await supabase.from('threads').update({ is_archived: false }).eq('id', id)
+  revalidatePath('/')
+  revalidateTag('threads', { expire: 0 })
+  redirect('/admin/cleanup')
+}
+
 export async function batchArchiveAllDeleted(formData: FormData) {
   await requireAdmin()
   const supabase = await createClient()
