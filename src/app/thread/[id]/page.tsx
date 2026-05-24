@@ -160,70 +160,80 @@ export async function renderThreadPage(threadId: number, page: number) {
     ? `${baseUrl}/category/${typedThread.categories.slug}#forum`
     : `${baseUrl}/#forum`
 
-  const discussionStructuredData = removeEmptyStructuredData({
-    "@context": "https://schema.org",
-    "@type": "DiscussionForumPosting",
-    "@id": `${canonicalUrl}#discussion`,
-    "headline": typedThread.title,
-    "url": canonicalUrl,
-    "mainEntityOfPage": canonicalUrl,
-    "datePublished": typedThread.created_at,
-    "dateModified": typedThread.last_posted_at ?? typedThread.created_at,
-    "isPartOf": { "@id": categoryForumId },
-    "publisher": {
-      "@type": "Organization",
-      "@id": `${baseUrl}/#organization`,
-      "name": "デュエマ掲示板",
-    },
-    "author": {
-      "@type": "Person",
-      "name": cleanAuthorName(typedThread.author_name),
-      "url": `${canonicalUrl}#post-1`,
-    },
-    "text": structuredText,
-    "description": structuredText.slice(0, 160),
-    "relatedLink": relatedForLD.slice(0, 5).map(t => `${baseUrl}/thread/${t.id}`),
-    "image": structuredImage ? [structuredImage] : undefined,
-    "interactionStatistic": [
-      {
-        "@type": "InteractionCounter",
-        "interactionType": { "@type": "CommentAction" },
-        "userInteractionCount": typedThread.post_count ?? 0,
-      },
-      ...(typedThread.view_count != null ? [{
-        "@type": "InteractionCounter",
-        "interactionType": { "@type": "ViewAction" },
-        "userInteractionCount": typedThread.view_count,
-      }] : []),
-    ],
-    "comment": (posts ?? []).map(post => {
-      const displayNumber = post.post_number + 1
-      const postUrl = currentPageUrl + '#post-' + displayNumber
-
-      return {
-        "@type": "Comment",
-        "url": postUrl,
-        "datePublished": post.created_at,
-        "text": cleanStructuredText(post.body, 'Comment'),
+  // レスが1件以上ある場合のみ DiscussionForumPosting を生成する。
+  // レス0件で comment プロパティが存在しないと Google が警告するため、
+  // 表示可能なレスがないページでは構造化データを出力しない。
+  const visiblePosts = posts ?? []
+  const discussionStructuredData = visiblePosts.length > 0
+    ? removeEmptyStructuredData({
+        "@context": "https://schema.org",
+        "@type": "DiscussionForumPosting",
+        "@id": `${canonicalUrl}#discussion`,
+        "headline": typedThread.title,
+        "url": canonicalUrl,
+        "mainEntityOfPage": canonicalUrl,
+        "datePublished": typedThread.created_at,
+        "dateModified": typedThread.last_posted_at ?? typedThread.created_at,
+        "isPartOf": { "@id": categoryForumId },
+        "publisher": {
+          "@type": "Organization",
+          "@id": `${baseUrl}/#organization`,
+          "name": "デュエマ掲示板",
+        },
         "author": {
           "@type": "Person",
-          "name": cleanAuthorName(post.author_name),
-          "url": postUrl,
+          "name": cleanAuthorName(typedThread.author_name),
+          "url": `${canonicalUrl}#post-1`,
         },
-      }
-    }),
-  })
+        "text": structuredText,
+        "description": structuredText.slice(0, 160),
+        "relatedLink": relatedForLD.slice(0, 5).map(t => `${baseUrl}/thread/${t.id}`),
+        "image": structuredImage ? [structuredImage] : undefined,
+        "interactionStatistic": [
+          {
+            "@type": "InteractionCounter",
+            "interactionType": { "@type": "CommentAction" },
+            "userInteractionCount": typedThread.post_count ?? 0,
+          },
+          ...(typedThread.view_count != null ? [{
+            "@type": "InteractionCounter",
+            "interactionType": { "@type": "ViewAction" },
+            "userInteractionCount": typedThread.view_count,
+          }] : []),
+        ],
+        "comment": visiblePosts.map(post => {
+          const displayNumber = post.post_number + 1
+          const postUrl = currentPageUrl + '#post-' + displayNumber
+
+          return {
+            "@type": "Comment",
+            "url": postUrl,
+            "datePublished": post.created_at,
+            "text": cleanStructuredText(post.body, 'Comment'),
+            "author": {
+              "@type": "Person",
+              "name": cleanAuthorName(post.author_name),
+              "url": postUrl,
+            },
+          }
+        }),
+      })
+    : null
 
   return (
     <div className="max-w-screen-xl mx-auto px-2 py-2 text-sm overflow-x-hidden">
       <ThreadViewPing threadId={threadId} />
-      {/* SEO: DiscussionForumPosting構造化データ（JSON-LD） */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(discussionStructuredData)
-        }}
-      />
+      {/* SEO: DiscussionForumPosting構造化データ（JSON-LD）
+          レスが1件以上ある場合のみ出力。レス0件では comment が存在しないため
+          Google Search Console の警告を避けるため出力しない。 */}
+      {discussionStructuredData && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(discussionStructuredData)
+          }}
+        />
+      )}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
