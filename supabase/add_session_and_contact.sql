@@ -11,6 +11,9 @@ create table if not exists contact_messages (
   created_at timestamptz not null default now()
 );
 
+-- DANGER: production posts/threads must not be physically deleted.
+-- This historical policy enabled DELETE during early development; do not run it on production again.
+-- Use posts.is_deleted=true for post removal and threads.is_archived=true for thread hiding.
 -- RLS: 削除は誰でも（server-side session check）
 create policy "threads_delete" on threads for delete using (true);
 create policy "posts_delete" on posts for delete using (true);

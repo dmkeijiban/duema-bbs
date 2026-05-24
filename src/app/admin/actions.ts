@@ -39,17 +39,11 @@ export async function adminDeleteThread(formData: FormData) {
   const threadId = parseInt(formData.get('threadId') as string)
   const supabase = createAdminClient()
 
-  // 関連する posts をソフト削除してからスレッド本体を削除
-  await supabase.from('posts').update({
-    is_deleted: true,
-    deleted_at: new Date().toISOString(),
-    deleted_by: 'admin_thread_delete',
-  }).eq('thread_id', threadId).eq('is_deleted', false)
-  await supabase.from('favorites').delete().eq('thread_id', threadId)
-  await supabase.from('threads').delete().eq('id', threadId)
+  await supabase.from('threads').update({ is_archived: true }).eq('id', threadId)
 
   revalidatePath('/')
   revalidatePath('/admin')
+  revalidateTag('threads', { expire: 0 })
   redirect('/admin')
 }
 

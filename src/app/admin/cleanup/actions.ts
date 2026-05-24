@@ -29,9 +29,7 @@ export async function deleteThread(formData: FormData) {
   await requireAdmin()
   const supabase = await createClient()
   const id = parseInt(formData.get('id') as string)
-  // レスも連鎖削除（外部キー制約がない場合は手動削除）
-  await supabase.from('posts').delete().eq('thread_id', id)
-  await supabase.from('threads').delete().eq('id', id)
+  await supabase.from('threads').update({ is_archived: true }).eq('id', id)
   revalidatePath('/')
   revalidateTag('threads', { expire: 0 })
   redirect('/admin/cleanup')

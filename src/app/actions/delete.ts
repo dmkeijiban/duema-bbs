@@ -23,10 +23,14 @@ export async function deleteOwnThread(threadId: number) {
   if (!thread) return { error: 'スレッドが見つかりません' }
   if (thread.session_id !== sessionId) return { error: '削除権限がありません' }
 
-  const { error } = await supabase.from('threads').delete().eq('id', threadId)
+  const { error } = await supabase
+    .from('threads')
+    .update({ is_archived: true })
+    .eq('id', threadId)
   if (error) return { error: '削除に失敗しました' }
 
   revalidatePath('/')
+  revalidateTag('threads', { expire: 0 })
   revalidatePath('/settings')
   return { success: true }
 }
