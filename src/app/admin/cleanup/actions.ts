@@ -37,12 +37,9 @@ export async function deleteThread(formData: FormData) {
 
 export async function batchArchiveStale(formData: FormData) {
   await requireAdmin()
-  const supabase = await createClient()
   const ids = (formData.get('ids') as string).split(',').map(Number).filter(Boolean)
   if (ids.length === 0) redirect('/admin/cleanup')
-  await supabase.from('threads').update({ is_archived: true }).in('id', ids)
-  revalidatePath('/')
-  revalidateTag('threads', { expire: 0 })
+  // Bulk archive is disabled while the initial-comment data loss incident is unresolved.
   redirect('/admin/cleanup')
 }
 
@@ -58,11 +55,8 @@ export async function unarchiveThread(formData: FormData) {
 
 export async function batchArchiveAllDeleted(formData: FormData) {
   await requireAdmin()
-  const supabase = await createClient()
   const ids = (formData.get('ids') as string).split(',').map(Number).filter(Boolean)
   if (ids.length === 0) redirect('/admin/cleanup')
-  await supabase.from('threads').update({ is_archived: true }).in('id', ids)
-  revalidatePath('/')
-  revalidateTag('threads', { expire: 0 })
+  // Bulk archive is disabled while the initial-comment data loss incident is unresolved.
   redirect('/admin/cleanup')
 }

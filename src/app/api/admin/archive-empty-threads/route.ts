@@ -23,7 +23,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { verifyAdminCookie } from '@/lib/admin-auth'
-import { revalidatePath, revalidateTag } from 'next/cache'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -120,40 +119,17 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  // -----------------------------------------------------------------
-  // 実際にアーカイブを実行
-  // -----------------------------------------------------------------
-  if (targets.length === 0) {
-    return NextResponse.json({
-      dry_run: false,
-      archived_count: 0,
-      archived_ids: [],
-      executed_at: new Date().toISOString(),
-    })
-  }
-
-  const targetIds = targets.map(t => t.id)
-  const { error: updateError } = await supabase
-    .from('threads')
-    .update({
-      is_archived: true,
-    })
-    .in('id', targetIds)
-    .eq('is_protected', false) // 二重安全ガード
-
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
-  }
-
-  // キャッシュ再検証
-  revalidatePath('/')
-  revalidateTag('threads', { expire: 0 })
-
   return NextResponse.json({
+    error: 'archive-empty-threads execution is disabled while the initial-comment data loss incident is unresolved',
     dry_run: false,
-    archived_count: targetIds.length,
-    archived_ids: targetIds,
-    archived_titles: targets.map(t => t.title),
+    target_count: targets.length,
+    candidates: targets.map(t => ({
+      thread_id: t.id,
+      title: t.title,
+      created_at: t.created_at,
+      post_count: t.post_count,
+    })),
     executed_at: new Date().toISOString(),
-  })
+  }, { status: 409 })
+
 }
