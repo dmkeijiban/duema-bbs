@@ -88,14 +88,51 @@ export async function adminUpdateThread(formData: FormData) {
   redirect('/admin')
 }
 
+/**
+ * ⚠️⚠️⚠️  絶対ルール：既存投稿本文の上書き禁止  ⚠️⚠️⚠️
+ *
+ * この関数は「誤字修正などごくまれな例外」のみを想定した管理者専用操作です。
+ * 以下の用途での使用は厳禁です：
+ *
+ *   ❌ リバイバル・復旧・補完目的での本文上書き
+ *   ❌ AI 生成コンテンツによる既存コメントの置き換え
+ *   ❌ スクリプト・自動化・バッチからの呼び出し
+ *   ❌ 複数投稿への一括適用
+ *
+ * 許可されるのは以下のみ：
+ *   ✅ 管理者が手動で、特定の1件の誤字・不正コンテンツを修正する場合
+ *   ✅ 事前に対象ID・変更前本文・変更後本文・差分をユーザーに提示して確認を得た場合
+ *
+ * 実行前後の本文差分は Vercel ログに記録されます（監査証跡）。
+ * dry-run なし・差分未確認での実行は禁止です。
+ */
 export async function adminUpdatePost(formData: FormData) {
   await checkAdmin()
   const postId = parseInt(formData.get('postId') as string)
   const threadId = parseInt(formData.get('threadId') as string)
-  const body = formData.get('body') as string
+  const newBody = formData.get('body') as string
   const supabase = createAdminClient()
 
-  const { error } = await supabase.from('posts').update({ body: body.trim() }).eq('id', postId)
+  // 変更前の本文を取得（監査証跡用）
+  const { data: existing, error: fetchError } = await supabase
+    .from('posts')
+    .select('id, body, created_at')
+    .eq('id', postId)
+    .single()
+
+  if (fetchError || !existing) {
+    throw new Error(`投稿取得失敗 (id=${postId}): ${fetchError?.message ?? 'Not found'}`)
+  }
+
+  // 監査ログ：変更前後の本文を記録（Vercel Functions ログに残る）
+  console.warn(
+    `[adminUpdatePost] AUDIT: post_id=${postId} thread_id=${threadId}\n` +
+    `  BEFORE: ${JSON.stringify(existing.body)}\n` +
+    `  AFTER:  ${JSON.stringify(newBody.trim())}\n` +
+    `  created_at: ${existing.created_at}`
+  )
+
+  const { error } = await supabase.from('posts').update({ body: newBody.trim() }).eq('id', postId)
 
   if (error) throw new Error(`投稿更新失敗: ${error.message}`)
 
