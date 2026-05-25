@@ -57,6 +57,20 @@ Sentry.init({
       return null
     }
 
+    // ④ AdSense/pagead の Failed to fetch: 広告ブロッカー・Google広告サーバー障害由来
+    //   "Failed to fetch" + googlesyndication/pagead が絡む場合のみ除外
+    //   掲示板本体（supabase.co 等）への fetch 失敗は除外しない
+    if (/failed to fetch/i.test(message)) {
+      const adPattern = /googlesyndication|pagead|doubleclick\.net|googleads/i
+      // メッセージ自体にURLが含まれるパターン（Sentryがbreadcrumbからタイトルに追記する形式）
+      if (adPattern.test(message)) return null
+      // スタックフレームが広告ドメインを指すパターン
+      if (frames.some(f => adPattern.test(f.filename ?? ''))) return null
+      // フェッチのbreadcrumbに広告URLが含まれるパターン
+      const crumbs = (event.breadcrumbs?.values ?? []) as Array<{ data?: Record<string, unknown> }>
+      if (crumbs.some(b => adPattern.test(String(b.data?.url ?? '')))) return null
+    }
+
     return event
   },
 })
