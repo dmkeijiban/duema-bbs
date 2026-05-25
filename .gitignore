@@ -50,3 +50,5 @@ scripts/post-forum.log
 # revival / recovery preview output dirs (生成物は .gitignore 、承認済みJSONのみ手動管理)
 revival-preview*/
 recovery-dry-run*/
+page8-revival-preview.*
+page8-revival-targets.csv
