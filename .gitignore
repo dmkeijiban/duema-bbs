@@ -46,3 +46,7 @@ next-env.d.ts
 
 # scripts runtime logs
 scripts/post-forum.log
+
+# revival / recovery preview output dirs (生成物は .gitignore 、承認済みJSONのみ手動管理)
+revival-preview*/
+recovery-dry-run*/

@@ -194,6 +194,7 @@ export default async function AdminPage({
             <span className="text-[10px] text-gray-400 w-14 shrink-0">ユーティリティ</span>
             <Link href="/admin/cleanup" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">🧹 データ整理</Link>
             <Link href="/admin/deleted-posts" className="px-2.5 py-1 text-xs border border-orange-300 text-orange-600 hover:bg-orange-50">🗑️ 削除済みレス</Link>
+            <Link href="/admin/revival" className="px-2.5 py-1 text-xs border border-green-400 text-green-700 hover:bg-green-50">♻️ リバイバル</Link>
           </div>
         </div>
       </div>
