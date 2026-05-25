@@ -22,6 +22,8 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createInterface } from 'node:readline/promises'
+import { stdin as rlInput, stdout as rlOutput } from 'node:process'
 import { createClient } from '@supabase/supabase-js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -197,6 +199,49 @@ async function insertRevivalComments(supabase, threadEntry) {
 }
 
 // ─────────────────────────────────────────────
+// 本番 INSERT 前の明示承認プロンプト
+// ─────────────────────────────────────────────
+
+/**
+ * 本番 INSERT 前に必ず人間が明示承認するためのプロンプト。
+ * y / yes（大文字可）以外はすべて中止する。
+ * --dry-run 時は呼ばない。
+ */
+async function promptConfirm(insertTargets, filePath) {
+  const totalComments = insertTargets.length * 5
+  const previewDir = path.dirname(filePath)
+  const previewMdPath = path.join(previewDir, 'preview.md')
+
+  logSection('⚠️  本番 INSERT 最終確認（dry-run ではありません）')
+  console.log(`  対象スレ数         : ${insertTargets.length} スレ`)
+  console.log(`  INSERT 予定コメント: ${totalComments} 件`)
+  console.log(`  preview JSON       : ${filePath}`)
+  console.log(`  preview.md         : ${previewMdPath}`)
+  console.log(`  dry-run            : false（本番 DB に書き込みます）`)
+  console.log()
+  console.log('  ▶ 実行前に preview.md を開いてコメント内容・スレタイ・件数を確認してください。')
+  console.log()
+
+  const rl = createInterface({ input: rlInput, output: rlOutput })
+  let answer = ''
+  try {
+    answer = await rl.question(
+      '  preview.md を確認し、対象スレ・コメント内容・件数に\n  問題ないことを確認しましたか？ [y/N]: '
+    )
+  } finally {
+    rl.close()
+  }
+
+  const normalized = answer.trim().toLowerCase()
+  if (normalized !== 'y' && normalized !== 'yes') {
+    console.log('\n  中止しました。preview.md を確認後に再実行してください。')
+    process.exit(0)
+  }
+
+  console.log('  ✅ 承認されました。本番 INSERT を開始します。')
+}
+
+// ─────────────────────────────────────────────
 // メイン
 // ─────────────────────────────────────────────
 
@@ -279,10 +324,9 @@ async function main() {
     process.exit(0)
   }
 
+  await promptConfirm(insertTargets, filePath)
+
   logSection(`④ 本番 DB INSERT（${insertTargets.length}スレ）`)
-  console.log('  ⚠️  ここから本番 DB を変更します。Ctrl+C で中断できます。')
-  console.log('  3秒後に開始します...')
-  await new Promise(r => setTimeout(r, 3000))
 
   const results = []
   for (const t of insertTargets) {
