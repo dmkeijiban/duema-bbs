@@ -75,12 +75,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly',
       priority: 0.4,
     },
-    {
-      url: `${BASE_URL}/thread/new`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
   ]
 
   try {
@@ -115,7 +109,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const fixedPages = fixedPagesResult.status === 'fulfilled' ? (fixedPagesResult.value.data ?? []) : []
 
     // 静的ページと重複するスラッグは除外（terms, privacy, contact, guide など）
-    const staticSlugs = new Set(['terms', 'privacy', 'contact', 'guide'])
+    const staticSlugs = new Set(['terms', 'privacy', 'contact', 'guide', 'settings'])
 
     // カテゴリごとの最終投稿日時マップを構築（正確な lastModified のため）
     const categoryLastPosted = new Map<number, Date>()
