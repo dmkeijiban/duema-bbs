@@ -5,11 +5,25 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
-export async function POST(_request: NextRequest, { params }: Props) {
+const BOT_USER_AGENT_PATTERN = /googlebot|bingbot|twitterbot|facebookexternalhit|discordbot|slackbot|bot|crawler|spider|preview/i
+
+function isBotRequest(request: NextRequest) {
+  const userAgent = request.headers.get('user-agent') ?? ''
+  return BOT_USER_AGENT_PATTERN.test(userAgent)
+}
+
+export async function POST(request: NextRequest, { params }: Props) {
   const { id } = await params
   const threadId = parseInt(id)
   if (Number.isNaN(threadId)) {
     return NextResponse.json({ error: 'Invalid thread id' }, { status: 400 })
+  }
+
+  if (isBotRequest(request)) {
+    return new NextResponse(null, {
+      status: 204,
+      headers: { 'Cache-Control': 'no-store' },
+    })
   }
 
   const supabase = createPublicClient()

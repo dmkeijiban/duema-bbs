@@ -6,6 +6,8 @@ export const runtime = 'nodejs'
 
 const OG_WIDTH = 1200
 const OG_HEIGHT = 675
+const SUCCESS_CACHE_CONTROL = 'public, s-maxage=2592000, max-age=86400, stale-while-revalidate=604800'
+const ERROR_CACHE_CONTROL = 'public, s-maxage=3600, max-age=300'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -75,21 +77,39 @@ async function renderOgImage(imageUrl: string): Promise<Buffer> {
 export async function GET(_req: NextRequest, { params }: Props) {
   const { id } = await params
   const threadId = parseInt(id.replace(/\.jpg$/i, ''))
-  if (isNaN(threadId)) return new NextResponse('Invalid thread id', { status: 400 })
+  if (isNaN(threadId)) {
+    return new NextResponse('Invalid thread id', {
+      status: 400,
+      headers: { 'Cache-Control': ERROR_CACHE_CONTROL },
+    })
+  }
 
   const imageUrl = await getThreadImage(threadId)
-  if (!imageUrl) return new NextResponse('No image', { status: 404 })
-  if (!isAllowedUrl(imageUrl)) return new NextResponse('Disallowed image url', { status: 403 })
+  if (!imageUrl) {
+    return new NextResponse('No image', {
+      status: 404,
+      headers: { 'Cache-Control': ERROR_CACHE_CONTROL },
+    })
+  }
+  if (!isAllowedUrl(imageUrl)) {
+    return new NextResponse('Disallowed image url', {
+      status: 403,
+      headers: { 'Cache-Control': ERROR_CACHE_CONTROL },
+    })
+  }
 
   try {
     const processed = await renderOgImage(imageUrl)
     return new NextResponse(new Uint8Array(processed), {
       headers: {
         'Content-Type': 'image/jpeg',
-        'Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400',
+        'Cache-Control': SUCCESS_CACHE_CONTROL,
       },
     })
   } catch {
-    return new NextResponse('Image processing failed', { status: 500 })
+    return new NextResponse('Image processing failed', {
+      status: 500,
+      headers: { 'Cache-Control': ERROR_CACHE_CONTROL },
+    })
   }
 }
