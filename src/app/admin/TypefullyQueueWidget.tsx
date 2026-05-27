@@ -15,20 +15,31 @@ interface TypefullyDraft {
   status?: string
 }
 
+function cleanEnvValue(value: string | undefined) {
+  return value?.replace(/\uFEFF/g, '').trim() ?? ''
+}
+
+function isHeaderSafeValue(value: string) {
+  return /^[\x20-\x7E]+$/.test(value)
+}
+
 async function fetchScheduledDrafts(): Promise<{
   ok: boolean
   drafts?: TypefullyDraft[]
   error?: string
   rawSample?: string
 }> {
-  const apiKey = process.env.TYPEFULLY_API_KEY
+  const apiKey = cleanEnvValue(process.env.TYPEFULLY_API_KEY)
   if (!apiKey) return { ok: false, error: 'TYPEFULLY_API_KEY が未設定です' }
+  if (!isHeaderSafeValue(apiKey)) {
+    return { ok: false, error: 'TYPEFULLY_API_KEY にHTTPヘッダーで使えない文字が含まれています' }
+  }
 
-  const socialSetId = process.env.TYPEFULLY_SOCIAL_SET_ID
+  const socialSetId = cleanEnvValue(process.env.TYPEFULLY_SOCIAL_SET_ID)
   if (!socialSetId) return { ok: false, error: 'TYPEFULLY_SOCIAL_SET_ID が未設定です' }
 
   try {
-    const url = `https://api.typefully.com/v2/social-sets/${socialSetId}/drafts?status=scheduled&order_by=scheduled_date&limit=50`
+    const url = `https://api.typefully.com/v2/social-sets/${encodeURIComponent(socialSetId)}/drafts?status=scheduled&order_by=scheduled_date&limit=50`
     const res = await fetch(url, {
       method: 'GET',
       headers: {
