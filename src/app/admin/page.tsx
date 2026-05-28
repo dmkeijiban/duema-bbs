@@ -62,7 +62,7 @@ function LoginPage({ error }: { error?: string }) {
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ thread?: string; error?: string; editThread?: string; editPost?: string; editSetting?: string; threadPage?: string }>
+  searchParams: Promise<{ thread?: string; error?: string; editThread?: string; editPost?: string; editSetting?: string; threadPage?: string; ban?: string; adminError?: string }>
 }) {
   const sp = await searchParams
   if (!(await isAdmin())) return <LoginPage error={sp.error} />
@@ -170,6 +170,22 @@ export default async function AdminPage({
           </form>
         </div>
       </div>
+
+      {sp.ban === '1' && (
+        <div className="mb-3 border border-green-300 bg-green-50 px-3 py-2 text-xs text-green-800">
+          BANを登録しました。対象セッションからの新規投稿・レス投稿をブロックします。
+        </div>
+      )}
+      {sp.adminError === 'ban_failed' && (
+        <div className="mb-3 border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">
+          BAN登録に失敗しました。moderation_bans の保存状態を確認してください。
+        </div>
+      )}
+      {sp.adminError === 'missing_session' && (
+        <div className="mb-3 border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">
+          session_id がないためBANできませんでした。
+        </div>
+      )}
 
       {/* 管理メニュー */}
       <div className="mb-4 border border-gray-200 bg-white p-3">
@@ -405,9 +421,14 @@ export default async function AdminPage({
                     <form action={adminBanSession} className="inline-flex">
                       <input type="hidden" name="sessionId" value={t.session_id} />
                       <input type="hidden" name="reason" value={`thread:${t.id}`} />
-                      <button type="submit" className="px-1.5 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity leading-none" style={{ background: '#111827' }}>
+                      <input type="hidden" name="threadPage" value={threadPage} />
+                      <AdminSubmitButton
+                        pendingText="BAN中..."
+                        className="px-1.5 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
+                        style={{ background: '#111827' }}
+                      >
                         BAN
-                      </button>
+                      </AdminSubmitButton>
                     </form>
                   )}
                   <a href={`/admin?thread=${t.id}`}
@@ -504,9 +525,13 @@ export default async function AdminPage({
                           <input type="hidden" name="sessionId" value={p.session_id} />
                           <input type="hidden" name="reason" value={`post:${p.id}`} />
                           <input type="hidden" name="returnToThread" value={selectedThread.id} />
-                          <button type="submit" className="px-2 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity leading-none" style={{ background: '#111827' }}>
+                          <AdminSubmitButton
+                            pendingText="BAN中..."
+                            className="px-2 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
+                            style={{ background: '#111827' }}
+                          >
                             BAN
-                          </button>
+                          </AdminSubmitButton>
                         </form>
                       )}
                     </div>

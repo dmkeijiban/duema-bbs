@@ -172,21 +172,52 @@ export async function adminBanSession(formData: FormData) {
   const sessionId = (formData.get('sessionId') as string)?.trim()
   const reason = (formData.get('reason') as string)?.trim() || 'admin'
   const returnToThread = formData.get('returnToThread') as string | null
-  if (!sessionId) redirect(returnToThread ? `/admin?thread=${returnToThread}` : '/admin')
+  const threadPage = Math.max(1, parseInt(formData.get('threadPage') as string) || 1)
+  const returnPath = returnToThread
+    ? `/admin?thread=${returnToThread}`
+    : threadPage > 1
+      ? `/admin?threadPage=${threadPage}`
+      : '/admin'
+
+  if (!sessionId) redirect(`${returnPath}${returnPath.includes('?') ? '&' : '?'}adminError=missing_session`)
 
   const supabase = createAdminClient()
-  await supabase
+  const { data: existing, error: fetchError } = await supabase
     .from('moderation_bans')
-    .upsert({
+    .select('id')
+    .eq('ban_type', 'session')
+    .eq('ban_value', sessionId)
+    .maybeSingle()
+
+  if (fetchError) {
+    redirect(`${returnPath}${returnPath.includes('?') ? '&' : '?'}adminError=ban_failed`)
+  }
+
+  const payload = {
+    reason,
+    is_active: true,
+    expires_at: null,
+  }
+
+  const { error } = existing?.id
+    ? await supabase
+      .from('moderation_bans')
+      .update(payload)
+      .eq('id', existing.id)
+    : await supabase
+      .from('moderation_bans')
+      .insert({
       ban_type: 'session',
       ban_value: sessionId,
-      reason,
-      is_active: true,
-      expires_at: null,
-    }, { onConflict: 'ban_type,ban_value' })
+      ...payload,
+    })
+
+  if (error) {
+    redirect(`${returnPath}${returnPath.includes('?') ? '&' : '?'}adminError=ban_failed`)
+  }
 
   revalidatePath('/admin')
-  redirect(returnToThread ? `/admin?thread=${returnToThread}` : '/admin')
+  redirect(`${returnPath}${returnPath.includes('?') ? '&' : '?'}ban=1`)
 }
 
 export async function adminUnbanSession(formData: FormData) {
