@@ -26,6 +26,6 @@ export async function updateSetting(key: string, value: string): Promise<{ error
   if (error) return { error: error.message }
   revalidatePath('/', 'layout')
   revalidatePath('/terms')
-  revalidateTag('settings', { expire: 0 })
+  revalidateTag('site_settings', { expire: 0 })  // sns-server.ts の unstable_cache タグに一致させる
   return {}
 }
