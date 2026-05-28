@@ -8,7 +8,7 @@ interface Props {
   params: Promise<{ id: string; page: string }>
 }
 
-export const revalidate = 300
+export const revalidate = 1800
 
 /**
  * Paginated thread pages need their own canonical URL.

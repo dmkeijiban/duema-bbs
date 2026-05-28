@@ -260,7 +260,7 @@ export function getCachedRelatedThreads(
       return withFallbackThumbnails(supabase, ranked)
     },
     [`related-threads-${threadId}-${categoryId ?? 'none'}`],
-    { revalidate: 300, tags: [`thread-${threadId}`, 'threads'] }
+    { revalidate: 300, tags: [`related-threads-${threadId}`, `thread-${threadId}`] }
   )()
 }
 
@@ -278,7 +278,7 @@ export const getCachedThread = (threadId: number) =>
       return data
     },
     [`thread-${threadId}`],
-    { revalidate: 300, tags: [`thread-${threadId}`, 'threads'] }
+    { revalidate: 300, tags: [`thread-${threadId}`] }
   )()
 
 export const getCachedThreadPosts = (threadId: number, page: number) =>
@@ -296,7 +296,7 @@ export const getCachedThreadPosts = (threadId: number, page: number) =>
       return { data: data ?? [] }
     },
     [`thread-posts-${threadId}-p${page}`],
-    { revalidate: 300, tags: [`thread-${threadId}`, 'threads'] }
+    { revalidate: 300, tags: [`thread-${threadId}`] }
   )()
 
 export { THREAD_POSTS_PER_PAGE }
@@ -356,6 +356,6 @@ export function getCachedThreadList(
       }
     },
     [cacheKey],
-    { revalidate: 60, tags: ['threads'] }
+    { revalidate: 300, tags: ['threads'] }
   )()
 }

@@ -267,7 +267,6 @@ export async function createPost(formData: FormData) {
       .single()
     if (!th?.image_url) {
       await supabase.from('threads').update({ image_url: imageUrl }).eq('id', threadId)
-      revalidateTag('threads', { expire: 0 })
     }
   }
 
