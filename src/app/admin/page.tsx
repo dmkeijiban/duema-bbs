@@ -15,6 +15,7 @@ import { getAllSettings } from '@/lib/settings'
 import { Notice } from '@/components/NoticeBlock'
 import { verifyAdminCookie } from '@/lib/admin-auth'
 import { TypefullyQueueWidget } from './TypefullyQueueWidget'
+import { AdminSubmitButton } from './AdminSubmitButton'
 
 const ADMIN_COOKIE = 'admin_auth'
 const THREADS_PER_PAGE = 60
@@ -77,6 +78,7 @@ export default async function AdminPage({
   const { data: threads, count: threadCount } = await supabase
     .from('threads')
     .select('id, title, body, post_count, is_archived, category_id, session_id, categories(name)', { count: 'exact' })
+    .eq('is_archived', false)
     .order('created_at', { ascending: false })
     .range(threadOffset, threadOffset + THREADS_PER_PAGE - 1)
 
@@ -418,9 +420,14 @@ export default async function AdminPage({
                   </a>
                   <form action={adminDeleteThread} className="inline-flex">
                     <input type="hidden" name="threadId" value={t.id} />
-                    <button type="submit" className="px-1.5 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity leading-none" style={{ background: '#dc3545' }}>
+                    <input type="hidden" name="threadPage" value={threadPage} />
+                    <AdminSubmitButton
+                      pendingText="削除中..."
+                      className="px-1.5 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
+                      style={{ background: '#dc3545' }}
+                    >
                       削除
-                    </button>
+                    </AdminSubmitButton>
                   </form>
                 </div>
               </div>
@@ -484,9 +491,13 @@ export default async function AdminPage({
                       <form action={adminDeletePost} className="inline-flex">
                         <input type="hidden" name="postId" value={p.id} />
                         <input type="hidden" name="threadId" value={selectedThread.id} />
-                        <button type="submit" className="px-2 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity leading-none" style={{ background: '#dc3545' }}>
+                        <AdminSubmitButton
+                          pendingText="削除中..."
+                          className="px-2 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
+                          style={{ background: '#dc3545' }}
+                        >
                           削除
-                        </button>
+                        </AdminSubmitButton>
                       </form>
                       {p.session_id && (
                         <form action={adminBanSession} className="inline-flex">

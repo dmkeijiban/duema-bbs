@@ -37,6 +37,7 @@ export async function adminLogin(formData: FormData) {
 export async function adminDeleteThread(formData: FormData) {
   await checkAdmin()
   const threadId = parseInt(formData.get('threadId') as string)
+  const threadPage = Math.max(1, parseInt(formData.get('threadPage') as string) || 1)
   const supabase = createAdminClient()
 
   await supabase.from('threads').update({ is_archived: true }).eq('id', threadId)
@@ -44,7 +45,7 @@ export async function adminDeleteThread(formData: FormData) {
   revalidatePath('/')
   revalidatePath('/admin')
   revalidateTag('threads', { expire: 0 })
-  redirect('/admin')
+  redirect(threadPage > 1 ? `/admin?threadPage=${threadPage}` : '/admin')
 }
 
 export async function adminDeletePost(formData: FormData) {
