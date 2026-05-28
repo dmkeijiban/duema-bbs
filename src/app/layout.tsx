@@ -6,8 +6,6 @@ import { getSnsUrls } from '@/lib/sns-server'
 import { getCachedCategories } from '@/lib/cached-queries'
 import Link from 'next/link'
 import { SITE_URL, SITE_NAME } from '@/lib/site-config'
-import { Analytics } from '@vercel/analytics/react'
-import { SpeedInsights } from '@vercel/speed-insights/next'
 // TBT削減: Client Component ラッパー経由で ssr:false dynamic import を使用
 import { LazyFloatingBar, LazyPostHogBridge } from '@/components/LazyClientComponents'
 
@@ -212,8 +210,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <div>©<Link href="/">デュエマ掲示板</Link> — デュエル・マスターズ専門掲示板</div>
             </div>
           </footer>
-          <Analytics />
-          <SpeedInsights />
       </body>
     </html>
   )
