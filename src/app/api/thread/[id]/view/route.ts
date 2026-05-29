@@ -5,7 +5,7 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
-const BOT_USER_AGENT_PATTERN = /googlebot|bingbot|twitterbot|facebookexternalhit|discordbot|slackbot|bot|crawler|spider|preview/i
+const BOT_USER_AGENT_PATTERN = /googlebot|bingbot|twitterbot|facebookexternalhit|discordbot|slackbot|bot|crawler|spider|preview|headless|puppeteer|playwright|lighthouse|pingdom|uptimerobot|gtmetrix|pagespeed|dataforseo|monitoring/i
 
 function isBotRequest(request: NextRequest) {
   const userAgent = request.headers.get('user-agent') ?? ''

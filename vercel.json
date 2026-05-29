@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/summary/cron",
-      "schedule": "0 0 * * *"
+      "schedule": "0 19 * * *"
     },
     {
       "path": "/api/seed/thread",
@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/youtube/check",
-      "schedule": "10 0 * * *"
+      "schedule": "30 0 * * *"
     },
     {
       "path": "/api/youtube/subscribe",

@@ -7,7 +7,7 @@ interface Props {
   threadId: number
 }
 
-const VIEW_THROTTLE_MS = 6 * 60 * 60 * 1000
+const VIEW_THROTTLE_MS = 24 * 60 * 60 * 1000
 
 export function ThreadViewPing({ threadId }: Props) {
   useEffect(() => {
