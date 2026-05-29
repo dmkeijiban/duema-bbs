@@ -14,7 +14,7 @@ import { SettingEditFormClient } from './SettingEditFormClient'
 import { getAllSettings } from '@/lib/settings'
 import { Notice } from '@/components/NoticeBlock'
 import { verifyAdminCookie } from '@/lib/admin-auth'
-import { TypefullyQueueWidget } from './TypefullyQueueWidget'
+// import { TypefullyQueueWidget } from './TypefullyQueueWidget' // 非表示中：戻すときはこの行と下のウィジェット行のコメントを外す
 import { AdminSubmitButton } from './AdminSubmitButton'
 
 const ADMIN_COOKIE = 'admin_auth'
@@ -371,8 +371,8 @@ export default async function AdminPage({
         )}
       </div>
 
-      {/* ② Typefully 予約キュー */}
-      <TypefullyQueueWidget />
+      {/* ② Typefully 予約キュー（非表示中：予約は直接Typefullyで運用のため。戻すには下行のコメントを外す） */}
+      {/* <TypefullyQueueWidget /> */}
 
       {/* ③ サイトテキスト設定 */}
       <div className="mb-4">
