@@ -346,6 +346,7 @@ export default async function SummarySlugPage({ params }: Props) {
               <Link
                 key={thread.id}
                 href={`/thread/${thread.id}`}
+                prefetch={false}
                 className="flex items-start gap-3 px-3 py-3 hover:bg-gray-50 transition-colors"
               >
                 {/* サムネイル */}

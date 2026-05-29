@@ -61,6 +61,7 @@ export async function RecommendSection({ threadId, title, categoryId = null }: P
             <Link
               key={thread.id}
               href={`/thread/${thread.id}`}
+              prefetch={false}
               className="flex bg-white hover:bg-gray-50 border-b border-r border-gray-300 overflow-hidden"
             >
               <div className="relative shrink-0 bg-gray-100 overflow-hidden w-11 h-11 md:w-16 md:h-16">

@@ -48,6 +48,7 @@ export async function RelatedThreads({ categoryId, categoryName, categorySlug, c
           <li key={t.id}>
             <Link
               href={`/thread/${t.id}`}
+              prefetch={false}
               className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 transition-colors"
             >
               <span className="text-xs text-gray-800 line-clamp-1 flex-1 mr-2">{t.title}</span>

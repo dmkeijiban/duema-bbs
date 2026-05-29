@@ -17,6 +17,7 @@ export function ThreadCard({ thread, rank, priority }: Props) {
   return (
     <Link
       href={`/thread/${thread.id}`}
+      prefetch={false}
       className="thread-card bg-white hover:bg-gray-50 overflow-hidden border-b border-r border-gray-300 block"
     >
       {/* ── モバイル: 横並び（あにまん式） ── */}

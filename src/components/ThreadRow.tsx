@@ -15,6 +15,7 @@ export function ThreadRow({ thread, rank }: Props) {
   return (
     <Link
       href={`/thread/${thread.id}`}
+      prefetch={false}
       className="flex items-center bg-white hover:bg-gray-50 border-b border-gray-200 last:border-b-0"
     >
       {/* ランク */}
