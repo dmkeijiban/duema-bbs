@@ -327,7 +327,11 @@ export async function renderThreadPage(threadId: number, page: number) {
       />
 
       {/* SNS フォロー導線 — 最終ページのみ表示（読み終えた直後が最もコンバージョン高い） */}
-      {page >= totalPages && <SnsCtaCard />}
+      {page >= totalPages && (
+        <Suspense fallback={null}>
+          <SnsCtaCard />
+        </Suspense>
+      )}
 
       {/* ── 1C: 次に読む ナビゲーション ──────────────────────────────
           スレ読了後に「次の行動」を迷わせないための底面固定ナビ。

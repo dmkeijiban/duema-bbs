@@ -441,7 +441,9 @@ export default async function Home({
           <InlineNewThreadServer />
         </Suspense>
 
-        <SnsCtaCard />
+        <Suspense fallback={null}>
+          <SnsCtaCard />
+        </Suspense>
         <div className="mb-6" />
       </div>
     </div>

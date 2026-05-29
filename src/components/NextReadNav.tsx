@@ -22,7 +22,7 @@ export function NextReadNav({ threadId }: Props) {
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         <Link
           href="/"
-          prefetch={true}
+          prefetch={false}
           onClick={() => trackClick('/', threadId)}
           className="flex items-center justify-center gap-1.5 min-h-[44px] px-2 border border-gray-300 bg-white rounded text-xs text-gray-700 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors"
         >
@@ -30,7 +30,7 @@ export function NextReadNav({ threadId }: Props) {
         </Link>
         <Link
           href="/new"
-          prefetch={true}
+          prefetch={false}
           onClick={() => trackClick('/new', threadId)}
           className="flex items-center justify-center gap-1.5 min-h-[44px] px-2 border border-blue-300 bg-blue-50 rounded text-xs text-blue-700 font-medium hover:bg-blue-100 active:bg-blue-200 transition-colors"
         >
@@ -38,7 +38,7 @@ export function NextReadNav({ threadId }: Props) {
         </Link>
         <Link
           href="/ranking"
-          prefetch={true}
+          prefetch={false}
           onClick={() => trackClick('/ranking', threadId)}
           className="flex items-center justify-center gap-1.5 min-h-[44px] px-2 border border-gray-300 bg-white rounded text-xs text-gray-700 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors"
         >
@@ -46,7 +46,7 @@ export function NextReadNav({ threadId }: Props) {
         </Link>
         <Link
           href="/random"
-          prefetch={true}
+          prefetch={false}
           onClick={() => trackClick('/random', threadId)}
           className="flex items-center justify-center gap-1.5 min-h-[44px] px-2 border border-gray-300 bg-white rounded text-xs text-gray-700 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors"
         >
