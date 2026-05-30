@@ -83,6 +83,8 @@ export async function adminUpdateThread(formData: FormData) {
 
   if (error) throw new Error(`スレッド更新失敗: ${error.message}`)
 
+  revalidateTag(`thread-${threadId}`, { expire: 0 })
+  revalidateTag('threads', { expire: 0 })
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/')
   revalidatePath('/admin')
@@ -137,6 +139,7 @@ export async function adminUpdatePost(formData: FormData) {
 
   if (error) throw new Error(`投稿更新失敗: ${error.message}`)
 
+  revalidateTag(`thread-${threadId}`, { expire: 0 })
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/admin')
   redirect(`/admin?thread=${threadId}`)
