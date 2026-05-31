@@ -11,6 +11,7 @@ import {
   generateTitleFromXPost,
   detectCategorySlugFromXPost,
   hashText,
+  sanitizeXPostForForumBody,
 } from '@/lib/x-post-to-thread'
 
 interface CreateThreadFromPostBody {
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // ── タイトル生成 ──────────────────────────────────────────────────────────
   const title = generateTitleFromXPost(trimmedText)
+  const forumBody = sanitizeXPostForForumBody(trimmedText) || title
 
   // ── カテゴリ解決 ──────────────────────────────────────────────────────────
   const categorySlug = detectCategorySlugFromXPost(trimmedText)
@@ -80,7 +82,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // ── スレッド作成 ──────────────────────────────────────────────────────────
   const insertData: Record<string, unknown> = {
     title,
-    body: trimmedText,
+    body: forumBody,
     category_id: categoryId,
     author_name: 'X自動投稿',
     source_text_hash: textHash,

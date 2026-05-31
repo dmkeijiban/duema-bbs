@@ -68,6 +68,23 @@ export function generateTitleFromXPost(text: string): string {
 }
 
 /**
+ * X由来のハッシュタグ（例：#デュエマ、#デュエルマスターズ 等）は掲示板本文には入れない。
+ * 本文に含まれる場合は削除する。掲示板ではハッシュタグに意味がないため、
+ * 自然な文章として読める形に整える。
+ */
+export function sanitizeXPostForForumBody(text: string): string {
+  return text
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/@\w+/g, '')
+    .replace(/#[\p{L}\p{N}_ー一-龠ぁ-んァ-ヶ]+/gu, '')
+    .replace(/DMPの人はリポスト・フォローお願いします。?/g, '')
+    .replace(/毎晩\d{1,2}時開催です。?/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+/**
  * X投稿テキストからカテゴリスラグを推定する
  * マッチしない場合は 'casual' を返す
  */
