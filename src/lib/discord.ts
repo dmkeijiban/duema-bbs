@@ -36,12 +36,16 @@ export async function notifySyncSummary({
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL
   if (!webhookUrl) return
 
-  // スレが作成されたときだけ通知する
-  if (created === 0 && !dryRun) return
+  // 作成成功時は notifyNewThread が個別通知を送るため、二重通知を避ける。
+  // エラーのみの実行や dry-run は、状況確認用にサマリーを送る。
+  if (!dryRun) {
+    if (created > 0) return
+    if (errors === 0) return
+  }
 
   const content = dryRun
-    ? `🧪 [DRY RUN] ${created}件作成予定`
-    : `スレが公開されました！`
+    ? `🧪 [DRY RUN] ${created}件作成予定\n- 重複: ${duplicate}件\n- エラー: ${errors}件\n- 取得: ${totalDrafts}件\n- 上限超過: ${skippedByLimit}件\n- 旧投稿スキップ: ${skippedOld}件\n- 実行時刻: ${executedAt ?? '-'}`
+    : `⚠️ Xスレ化でエラーが発生しました\n- エラー: ${errors}件\n- 重複: ${duplicate}件\n- 取得: ${totalDrafts}件\n- 実行時刻: ${executedAt ?? '-'}`
 
   try {
     const res = await fetch(webhookUrl, {
