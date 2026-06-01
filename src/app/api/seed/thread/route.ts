@@ -495,6 +495,112 @@ function rewriteComment(text: string, usedSuffixes: Set<string>): string {
   return t
 }
 
+const TRAILING_SOFTENERS = [
+  'な気がする',
+  'と思う',
+  'かもしれない',
+  'ではある',
+  'じゃないかな',
+  'かな',
+  'かも',
+  'かもね',
+  'だと思う',
+]
+
+interface CommentDiversityResult {
+  ok: boolean
+  reason?: string
+  maxSimilarity: number
+  normalizedUniqueCount: number
+}
+
+function normalizeCommentForSimilarity(text: string): string {
+  let value = text
+    .replace(/\r/g, '')
+    .replace(/>>?\d+/g, '')
+    .replace(/#res\d+/gi, '')
+    .replace(/#\d+/g, '')
+    .replace(/[「」『』（）()[\]【】]/g, '')
+    .replace(/[、。！？!?…・\s]/g, '')
+    .trim()
+
+  for (const suffix of TRAILING_SOFTENERS) {
+    value = value.replace(new RegExp(`${suffix}$`), '')
+  }
+
+  return value
+}
+
+function ngrams(value: string, size = 2): Set<string> {
+  const normalized = normalizeCommentForSimilarity(value)
+  if (normalized.length <= size) return new Set(normalized ? [normalized] : [])
+
+  const grams = new Set<string>()
+  for (let i = 0; i <= normalized.length - size; i++) {
+    grams.add(normalized.slice(i, i + size))
+  }
+  return grams
+}
+
+function commentSimilarity(a: string, b: string): number {
+  const aGrams = ngrams(a)
+  const bGrams = ngrams(b)
+  if (aGrams.size === 0 || bGrams.size === 0) return 0
+
+  let intersection = 0
+  for (const gram of aGrams) {
+    if (bGrams.has(gram)) intersection++
+  }
+  const union = new Set([...aGrams, ...bGrams]).size
+  return union === 0 ? 0 : intersection / union
+}
+
+function analyzeCommentDiversity(comments: string[]): CommentDiversityResult {
+  const normalized = comments.map(normalizeCommentForSimilarity)
+  const normalizedUniqueCount = new Set(normalized).size
+
+  if (comments.length < REQUIRED_COMMENT_COUNT) {
+    return { ok: false, reason: 'insufficient_selected_comments', maxSimilarity: 0, normalizedUniqueCount }
+  }
+  if (normalized.some(value => value.length < 5)) {
+    return { ok: false, reason: 'too_short_after_normalization', maxSimilarity: 0, normalizedUniqueCount }
+  }
+  if (normalizedUniqueCount < comments.length) {
+    return { ok: false, reason: 'duplicate_normalized_comment', maxSimilarity: 1, normalizedUniqueCount }
+  }
+
+  let maxSimilarity = 0
+  for (let i = 0; i < comments.length; i++) {
+    for (let j = i + 1; j < comments.length; j++) {
+      maxSimilarity = Math.max(maxSimilarity, commentSimilarity(comments[i], comments[j]))
+    }
+  }
+
+  if (maxSimilarity >= 0.75) {
+    return { ok: false, reason: 'comments_too_similar', maxSimilarity, normalizedUniqueCount }
+  }
+
+  return { ok: true, maxSimilarity, normalizedUniqueCount }
+}
+
+function selectDiverseComments(validComments: string[], offset: number): string[] {
+  const selected: string[] = []
+  const seenNormalized = new Set<string>()
+  const ordered = Array.from({ length: validComments.length }, (_, i) => validComments[(offset + i) % validComments.length])
+
+  for (const comment of ordered) {
+    const normalized = normalizeCommentForSimilarity(comment)
+    if (!normalized || seenNormalized.has(normalized)) continue
+    if (selected.some(existing => commentSimilarity(existing, comment) >= 0.75)) continue
+
+    selected.push(comment)
+    seenNormalized.add(normalized)
+    if (selected.length >= REQUIRED_COMMENT_COUNT) break
+  }
+
+  return selected
+}
+
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
@@ -578,6 +684,7 @@ export async function GET(req: NextRequest) {
       let sourceCommentCount = 0
       let rewrittenCommentCount = 0
       let previewComments: Array<{ original: string; rewritten: string }> = []
+      let previewDiversity: CommentDiversityResult | null = null
       if (wouldChoose) {
         try {
           const dryDetail = await fetchAnimanchBoard(wouldChoose.boardId)
@@ -587,13 +694,12 @@ export async function GET(req: NextRequest) {
             .filter(c => c.length >= 10 && c.length <= 300 && !hasGarbageStrings(c))
           rewrittenCommentCount = dryValid.length
           const dryUsedSuffixes = new Set<string>()
-          const drySelected = Array.from({ length: REQUIRED_COMMENT_COUNT }, (_, i) =>
-            dryValid[(sixHourIndex + i * 7) % Math.max(dryValid.length, 1)],
-          ).filter(Boolean)
+          const drySelected = selectDiverseComments(dryValid, sixHourIndex)
           previewComments = drySelected.map(original => ({
             original,
             rewritten: rewriteComment(original, dryUsedSuffixes),
           }))
+          previewDiversity = analyzeCommentDiversity(previewComments.map(comment => comment.rewritten))
         } catch { /* ignore detail fetch failure in dry_run */ }
       }
 
@@ -616,6 +722,8 @@ export async function GET(req: NextRequest) {
         source_comment_count: sourceCommentCount,
         rewritten_comment_count: rewrittenCommentCount,
         preview_comments: previewComments,
+        preview_diversity: previewDiversity,
+        manual_review_required: previewDiversity ? !previewDiversity.ok : false,
         skipped_no_image_samples: skippedNoImage,
       })
     }
@@ -659,6 +767,45 @@ export async function GET(req: NextRequest) {
       })
     }
 
+    const selectedRawComments = selectDiverseComments(validComments, sixHourIndex)
+    const selectedRawDiversity = analyzeCommentDiversity(selectedRawComments)
+    if (!selectedRawDiversity.ok) {
+      const msg =
+        `⏭️ 重複コメント検出・投稿停止\n` +
+        `- 理由: ${selectedRawDiversity.reason ?? 'unknown'}\n` +
+        `- 類似度最大: ${selectedRawDiversity.maxSimilarity.toFixed(3)}\n` +
+        `- 正規化ユニーク数: ${selectedRawDiversity.normalizedUniqueCount}\n` +
+        `- スレ: 「${chosen.title}」`
+      console.warn('Seed/thread: manual_review_required —', msg)
+      return NextResponse.json({
+        ok: true,
+        skipped: true,
+        manual_review_required: true,
+        reason: 'duplicate_comments_detected',
+        diversity: selectedRawDiversity,
+      })
+    }
+
+    const selectedUsedSuffixes = new Set<string>()
+    const selectedComments = selectedRawComments.map(comment => rewriteComment(comment, selectedUsedSuffixes))
+    const selectedDiversity = analyzeCommentDiversity(selectedComments)
+    if (!selectedDiversity.ok) {
+      const msg =
+        `⏭️ 重複コメント検出・投稿停止\n` +
+        `- 理由: ${selectedDiversity.reason ?? 'unknown'}\n` +
+        `- 類似度最大: ${selectedDiversity.maxSimilarity.toFixed(3)}\n` +
+        `- 正規化ユニーク数: ${selectedDiversity.normalizedUniqueCount}\n` +
+        `- スレ: 「${chosen.title}」`
+      console.warn('Seed/thread: manual_review_required —', msg)
+      return NextResponse.json({
+        ok: true,
+        skipped: true,
+        manual_review_required: true,
+        reason: 'duplicate_comments_detected',
+        diversity: selectedDiversity,
+      })
+    }
+
     // 8. スレ本文構築・ゴミ文字バリデーション
     const title = transformTitle(chosen.title)
     const body = buildThreadBody(title, detail.body)
@@ -697,11 +844,11 @@ export async function GET(req: NextRequest) {
     }
 
     // 11. 投稿前バリデーション（最終確認）
-    if (!title || !body || !imageUrl || validComments.length < REQUIRED_COMMENT_COUNT) {
+    if (!title || !body || !imageUrl || selectedComments.length < REQUIRED_COMMENT_COUNT) {
       const msg =
         `🚨 投稿前バリデーション失敗\n` +
         `- title: ${title ? 'OK' : 'NG'} / body: ${body ? 'OK' : 'NG'}` +
-        ` / image: ${imageUrl ? 'OK' : 'NG'} / comments: ${validComments.length}件\n` +
+        ` / image: ${imageUrl ? 'OK' : 'NG'} / comments: ${selectedComments.length}件\n` +
         `- スレ: 「${chosen.title}」`
       console.error('Seed/thread: pre-insert validation failed —', msg)
       return NextResponse.json({ ok: false, error: 'pre_insert_validation_failed' })
@@ -728,7 +875,7 @@ export async function GET(req: NextRequest) {
         `- 理由: DB insert 失敗\n` +
         `- 詳細: ${threadError?.message ?? 'unknown'}\n` +
         `- スレ: 「${title}」`
-      console.error('Seed/thread insert error:', threadError)
+      console.error('Seed/thread insert error:', msg, threadError)
       return NextResponse.json({ ok: false, error: threadError?.message ?? 'thread insert failed' })
     }
 
@@ -736,10 +883,8 @@ export async function GET(req: NextRequest) {
 
     // 13. コメント5件追加（service role でRLS回避）
     const commentErrors: string[] = []
-    const insertUsedSuffixes = new Set<string>()
     for (let i = 0; i < REQUIRED_COMMENT_COUNT; i++) {
-      const rawComment = validComments[(sixHourIndex + i * 7) % validComments.length]
-      const commentBody = rewriteComment(rawComment, insertUsedSuffixes)
+      const commentBody = selectedComments[i]
       const { error: postError } = await serviceSupabase
         .from('posts')
         .insert({ thread_id: created.id, post_number: i + 1, body: commentBody, author_name: AUTHOR_NAME })
@@ -796,7 +941,7 @@ export async function GET(req: NextRequest) {
     const msg =
       `🚨 予期せぬエラー\n` +
       `- 詳細: ${err instanceof Error ? err.message : String(err)}`
-    console.error('Seed/thread: unexpected error:', err)
+    console.error('Seed/thread: unexpected error:', msg, err)
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) })
   }
 }
