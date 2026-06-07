@@ -1,0 +1,54 @@
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
+
+function redirectTo(request: Request, path: string) {
+  return NextResponse.redirect(new URL(path, request.url))
+}
+
+function safeNextPath(value: string | null) {
+  if (!value) return '/'
+  if (!value.startsWith('/') || value.startsWith('//')) return '/'
+  return value
+}
+
+export async function GET(request: Request) {
+  const url = new URL(request.url)
+  const code = url.searchParams.get('code')
+  const next = safeNextPath(url.searchParams.get('next'))
+
+  if (!code) {
+    return redirectTo(request, '/login?error=missing_code')
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.exchangeCodeForSession(code)
+
+  if (error) {
+    return redirectTo(request, '/login?error=callback_failed')
+  }
+
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  const user = userData.user
+
+  if (userError || !user) {
+    return redirectTo(request, '/login?error=session_failed')
+  }
+
+  const admin = createAdminClient()
+  const { data: profile, error: profileError } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (profileError) {
+    return redirectTo(request, '/login?error=profile_check_failed')
+  }
+
+  if (!profile) {
+    return redirectTo(request, '/profile/new')
+  }
+
+  return redirectTo(request, next)
+}

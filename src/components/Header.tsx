@@ -42,6 +42,12 @@ export async function Header() {
               ))}
             </ul>
             <HeaderSearch />
+            <Link
+              href="/login"
+              className="px-2 py-3 block hover:text-blue-600 whitespace-nowrap text-sm"
+            >
+              ログイン
+            </Link>
 
           </div>
         </div>
