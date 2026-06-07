@@ -171,8 +171,10 @@ export async function createThread(formData: FormData) {
     error = e3
   }
 
-  // Retry without user_id for older schemas that do not have the column.
-  if (error && (error.code === '42703' || error.message?.includes('user_id'))) {
+  // Retry without user_id only when the column truly does not exist (42703).
+  // Previously this also matched any error whose message contained "user_id",
+  // which could silently re-insert without user_id and produce user_id=null.
+  if (error && error.code === '42703') {
     const { data: t4, error: e4 } = await supabase
       .from('threads')
       .insert({
@@ -302,8 +304,10 @@ export async function createPost(formData: FormData) {
     error = e3
   }
 
-  // Retry without user_id for older schemas that do not have the column.
-  if (error && (error.code === '42703' || error.message?.includes('user_id'))) {
+  // Retry without user_id only when the column truly does not exist (42703).
+  // Previously this also matched any error whose message contained "user_id",
+  // which could silently re-insert without user_id and produce user_id=null.
+  if (error && error.code === '42703') {
     const { error: e4 } = await supabase.from('posts').insert({
       thread_id: threadId,
       post_number: nextPostNumber,
