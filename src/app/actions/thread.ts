@@ -29,6 +29,34 @@ async function getOrCreateSessionId(): Promise<string> {
   })
   return newId
 }
+
+async function getActiveProfileUserId(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<string | null> {
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  const user = userData.user
+
+  if (userError || !user) return null
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, profile_hidden, account_suspended, withdrawn_at')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (
+    profileError ||
+    !profile ||
+    profile.profile_hidden ||
+    profile.account_suspended ||
+    profile.withdrawn_at
+  ) {
+    return null
+  }
+
+  return user.id
+}
+
 export async function createThread(formData: FormData) {
   if (hasHoneypotValue(formData)) return { error: '投稿に失敗しました' }
 
@@ -64,6 +92,7 @@ export async function createThread(formData: FormData) {
   }
 
   const sessionId = await getOrCreateSessionId()
+  const userId = await getActiveProfileUserId(supabase)
   if (await checkSessionBan(supabase, sessionId)) {
     return { error: 'Posting is restricted.' }
   }
@@ -96,6 +125,7 @@ export async function createThread(formData: FormData) {
     image_width: imageWidth,
     image_height: imageHeight,
     session_id: sessionId,
+    user_id: userId,
   }
 
   let { data: thread, error } = await supabase
@@ -108,7 +138,15 @@ export async function createThread(formData: FormData) {
   if (error && (error.code === '42703' || error.message?.includes('image_width'))) {
     const { data: t2, error: e2 } = await supabase
       .from('threads')
-      .insert({ title, body, author_name: authorName, category_id: categoryId ? parseInt(categoryId) : null, image_url: imageUrl, session_id: sessionId })
+      .insert({
+        title,
+        body,
+        author_name: authorName,
+        category_id: categoryId ? parseInt(categoryId) : null,
+        image_url: imageUrl,
+        session_id: sessionId,
+        user_id: userId,
+      })
       .select('id')
       .single()
     thread = t2
@@ -119,11 +157,36 @@ export async function createThread(formData: FormData) {
   if (error && (error.code === '42703' || error.message?.includes('session_id'))) {
     const { data: t3, error: e3 } = await supabase
       .from('threads')
-      .insert({ title, body, author_name: authorName, category_id: categoryId ? parseInt(categoryId) : null, image_url: imageUrl })
+      .insert({
+        title,
+        body,
+        author_name: authorName,
+        category_id: categoryId ? parseInt(categoryId) : null,
+        image_url: imageUrl,
+        user_id: userId,
+      })
       .select('id')
       .single()
     thread = t3
     error = e3
+  }
+
+  // Retry without user_id for older schemas that do not have the column.
+  if (error && (error.code === '42703' || error.message?.includes('user_id'))) {
+    const { data: t4, error: e4 } = await supabase
+      .from('threads')
+      .insert({
+        title,
+        body,
+        author_name: authorName,
+        category_id: categoryId ? parseInt(categoryId) : null,
+        image_url: imageUrl,
+        session_id: sessionId,
+      })
+      .select('id')
+      .single()
+    thread = t4
+    error = e4
   }
 
   if (error || !thread) {
@@ -166,6 +229,7 @@ export async function createPost(formData: FormData) {
   const supabase = await createClient()
 
   const sessionId = await getOrCreateSessionId()
+  const userId = await getActiveProfileUserId(supabase)
   if (await checkSessionBan(supabase, sessionId)) {
     return { error: 'Posting is restricted.' }
   }
@@ -208,6 +272,7 @@ export async function createPost(formData: FormData) {
     image_width: imageWidth,
     image_height: imageHeight,
     session_id: sessionId,
+    user_id: userId,
   })
 
   // image_width/height カラムが未作成の場合はなしで再試行
@@ -219,6 +284,7 @@ export async function createPost(formData: FormData) {
       author_name: authorName,
       image_url: imageUrl,
       session_id: sessionId,
+      user_id: userId,
     })
     error = e2
   }
@@ -231,8 +297,22 @@ export async function createPost(formData: FormData) {
       body,
       author_name: authorName,
       image_url: imageUrl,
+      user_id: userId,
     })
     error = e3
+  }
+
+  // Retry without user_id for older schemas that do not have the column.
+  if (error && (error.code === '42703' || error.message?.includes('user_id'))) {
+    const { error: e4 } = await supabase.from('posts').insert({
+      thread_id: threadId,
+      post_number: nextPostNumber,
+      body,
+      author_name: authorName,
+      image_url: imageUrl,
+      session_id: sessionId,
+    })
+    error = e4
   }
 
   if (error) {
