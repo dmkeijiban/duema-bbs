@@ -1,10 +1,12 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createPublicClient } from '@/lib/supabase-public'
+import { getCachedUserThreads, getCachedUserPosts } from '@/lib/cached-queries'
 
 export const revalidate = 300
 
 type Profile = {
+  id: string
   display_name: string
   profile_slug: string
   bio: string | null
@@ -25,6 +27,24 @@ function formatDate(value: string) {
   }).format(new Date(value))
 }
 
+function formatDateTime(value: string | null) {
+  if (!value) return ''
+  return new Intl.DateTimeFormat('ja-JP', {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Tokyo',
+  }).format(new Date(value))
+}
+
+function excerpt(value: string | null, max = 80) {
+  if (!value) return ''
+  const oneLine = value.replace(/\s+/g, ' ').trim()
+  return oneLine.length > max ? `${oneLine.slice(0, max)}…` : oneLine
+}
+
 function safeExternalLink(value: string | null, allowedHosts: string[]) {
   if (!value) return null
 
@@ -43,7 +63,7 @@ async function getProfile(slug: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'display_name, profile_slug, bio, x_url, youtube_url, created_at, profile_hidden, account_suspended, withdrawn_at'
+      'id, display_name, profile_slug, bio, x_url, youtube_url, created_at, profile_hidden, account_suspended, withdrawn_at'
     )
     .eq('profile_slug', slug)
     .maybeSingle()
@@ -78,6 +98,11 @@ export default async function UserProfilePage({
     'youtube.com',
     'www.youtube.com',
     'youtu.be',
+  ])
+
+  const [recentThreads, recentPosts] = await Promise.all([
+    getCachedUserThreads(profile.id),
+    getCachedUserPosts(profile.id),
   ])
 
   return (
@@ -152,11 +177,66 @@ export default async function UserProfilePage({
 
       <section className="bg-white border border-gray-300 rounded-sm mt-4">
         <div className="border-b border-gray-200 px-4 py-2">
-          <h2 className="font-bold text-sm text-gray-800">最近の投稿</h2>
+          <h2 className="font-bold text-sm text-gray-800">最近のスレッド</h2>
         </div>
-        <div className="px-4 py-5 text-sm text-gray-600">
-          まだ投稿履歴はありません。
+        {recentThreads.length > 0 ? (
+          <ul className="divide-y divide-gray-100">
+            {recentThreads.map((thread) => (
+              <li key={thread.id} className="px-4 py-3">
+                <Link
+                  href={`/thread/${thread.id}`}
+                  className="text-sm text-blue-600 hover:underline break-words"
+                >
+                  {thread.title}
+                </Link>
+                <p className="mt-1 text-xs text-gray-500">
+                  {formatDateTime(thread.created_at)}
+                  {typeof thread.post_count === 'number' && (
+                    <span className="ml-2">レス{thread.post_count}</span>
+                  )}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="px-4 py-5 text-sm text-gray-600">
+            まだスレッドはありません。
+          </div>
+        )}
+      </section>
+
+      <section className="bg-white border border-gray-300 rounded-sm mt-4">
+        <div className="border-b border-gray-200 px-4 py-2">
+          <h2 className="font-bold text-sm text-gray-800">最近のコメント</h2>
         </div>
+        {recentPosts.length > 0 ? (
+          <ul className="divide-y divide-gray-100">
+            {recentPosts.map((post) => (
+              <li key={post.id} className="px-4 py-3">
+                <Link
+                  href={
+                    post.post_number
+                      ? `/thread/${post.thread_id}#${post.post_number}`
+                      : `/thread/${post.thread_id}`
+                  }
+                  className="text-sm text-gray-800 hover:underline break-words"
+                >
+                  {excerpt(post.body)}
+                </Link>
+                <p className="mt-1 text-xs text-gray-500 break-words">
+                  {post.threads?.title && (
+                    <span className="text-gray-600">{post.threads.title}</span>
+                  )}
+                  <span className="ml-2">{formatDateTime(post.created_at)}</span>
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="px-4 py-5 text-sm text-gray-600">
+            まだコメントはありません。
+          </div>
+        )}
       </section>
     </main>
   )

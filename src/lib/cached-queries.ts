@@ -301,6 +301,68 @@ export const getCachedThreadPosts = (threadId: number, page: number) =>
 
 export { THREAD_POSTS_PER_PAGE }
 
+export type UserThreadRow = {
+  id: number
+  title: string
+  post_count: number | null
+  created_at: string | null
+}
+
+export type UserPostRow = {
+  id: number
+  thread_id: number
+  post_number: number | null
+  body: string | null
+  created_at: string | null
+  threads: { title: string | null } | null
+}
+
+// 投稿者ページ用：そのユーザーの最近スレッド（新しい順・最大10件、アーカイブ除外）
+export const getCachedUserThreads = (userId: string): Promise<UserThreadRow[]> =>
+  unstable_cache(
+    async () => {
+      try {
+        const supabase = createPublicClient()
+        const { data } = await supabase
+          .from('threads')
+          .select('id, title, post_count, created_at')
+          .eq('user_id', userId)
+          .eq('is_archived', false)
+          .order('created_at', { ascending: false })
+          .limit(10)
+        return (data ?? []) as UserThreadRow[]
+      } catch (error) {
+        console.warn('user threads fetch failed:', error)
+        return []
+      }
+    },
+    [`user-threads-${userId}`],
+    { revalidate: 300, tags: ['threads'] }
+  )()
+
+// 投稿者ページ用：そのユーザーの最近コメント（新しい順・最大10件、削除済み除外）
+export const getCachedUserPosts = (userId: string): Promise<UserPostRow[]> =>
+  unstable_cache(
+    async () => {
+      try {
+        const supabase = createPublicClient()
+        const { data } = await supabase
+          .from('posts')
+          .select('id, thread_id, post_number, body, created_at, threads(title)')
+          .eq('user_id', userId)
+          .eq('is_deleted', false)
+          .order('created_at', { ascending: false })
+          .limit(10)
+        return (data ?? []) as unknown as UserPostRow[]
+      } catch (error) {
+        console.warn('user posts fetch failed:', error)
+        return []
+      }
+    },
+    [`user-posts-${userId}`],
+    { revalidate: 300, tags: ['posts'] }
+  )()
+
 export interface CachedThreadListResult {
   threads: unknown[]
   count: number
