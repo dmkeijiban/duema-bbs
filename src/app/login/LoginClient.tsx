@@ -4,7 +4,17 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 
-export function LoginClient() {
+type LoginClientProps = {
+  nextPath?: string
+}
+
+function safeNextPath(value?: string) {
+  if (!value) return ''
+  if (!value.startsWith('/') || value.startsWith('//')) return ''
+  return value
+}
+
+export function LoginClient({ nextPath }: LoginClientProps) {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -13,10 +23,14 @@ export function LoginClient() {
     setIsLoading(true)
 
     const supabase = createClient()
+    const safeNext = safeNextPath(nextPath)
+    const callbackUrl = new URL('/auth/callback', window.location.origin)
+    if (safeNext) callbackUrl.searchParams.set('next', safeNext)
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: callbackUrl.toString(),
       },
     })
 

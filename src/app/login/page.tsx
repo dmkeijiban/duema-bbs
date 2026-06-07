@@ -8,7 +8,14 @@ type LoginPageProps = {
   searchParams?: Promise<{
     error?: string
     logged_out?: string
+    next?: string
   }>
+}
+
+function safeNextPath(value?: string) {
+  if (!value) return undefined
+  if (!value.startsWith('/') || value.startsWith('//')) return undefined
+  return value
 }
 
 async function getLoginState() {
@@ -53,6 +60,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams
   const { user, hasProfile } = await getLoginState()
   const message = errorMessage(params?.error)
+  const nextPath = safeNextPath(params?.next)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
@@ -96,6 +104,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                   </Link>
                 )}
 
+                {hasProfile && (
+                  <Link
+                    href="/mypage"
+                    className="block rounded bg-blue-600 px-4 py-2.5 text-center text-sm font-bold text-white hover:bg-blue-700"
+                  >
+                    マイページを開く
+                  </Link>
+                )}
+
                 <Link
                   href="/"
                   className="block rounded border border-gray-300 px-4 py-2.5 text-center text-sm text-gray-700 hover:bg-gray-50"
@@ -113,7 +130,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 </form>
               </div>
             ) : (
-              <LoginClient />
+              <LoginClient nextPath={nextPath} />
             )}
           </section>
 
