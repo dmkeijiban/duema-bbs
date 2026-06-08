@@ -363,6 +363,163 @@ export const getCachedUserPosts = (userId: string): Promise<UserPostRow[]> =>
     { revalidate: 300, tags: ['posts'] }
   )()
 
+const USER_RANKING_PROFILE_LIMIT = 100
+const USER_RANKING_LIMIT = 10
+const USER_RANKING_FETCH_LIMIT = 10000
+const USER_RANKING_THREAD_POINT = 2
+const USER_RANKING_POST_POINT = 1
+
+type UserRankingProfile = {
+  id: string
+  display_name: string | null
+  profile_slug: string | null
+}
+
+type UserRankingActivity = {
+  user_id: string | null
+}
+
+export type UserRankingRow = {
+  display_name: string
+  profile_slug: string
+  thread_count: number
+  post_count: number
+  points: number
+}
+
+export type UserRankingResult = {
+  monthly: UserRankingRow[]
+  total: UserRankingRow[]
+}
+
+function getJstMonthStartIso() {
+  const now = new Date()
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: 'numeric',
+  }).formatToParts(now)
+
+  const year = Number(parts.find(part => part.type === 'year')?.value ?? now.getUTCFullYear())
+  const month = Number(parts.find(part => part.type === 'month')?.value ?? now.getUTCMonth() + 1)
+
+  return new Date(Date.UTC(year, month - 1, 1, -9, 0, 0)).toISOString()
+}
+
+function countUserActivity(rows: UserRankingActivity[]) {
+  const counts = new Map<string, number>()
+
+  for (const row of rows) {
+    if (!row.user_id) continue
+    counts.set(row.user_id, (counts.get(row.user_id) ?? 0) + 1)
+  }
+
+  return counts
+}
+
+function buildUserRanking(
+  profiles: UserRankingProfile[],
+  threadRows: UserRankingActivity[],
+  postRows: UserRankingActivity[]
+) {
+  const threadCounts = countUserActivity(threadRows)
+  const postCounts = countUserActivity(postRows)
+
+  return profiles
+    .map((profile): UserRankingRow => {
+      const threadCount = threadCounts.get(profile.id) ?? 0
+      const postCount = postCounts.get(profile.id) ?? 0
+
+      return {
+        display_name: profile.display_name || '(未設定)',
+        profile_slug: profile.profile_slug || '',
+        thread_count: threadCount,
+        post_count: postCount,
+        points: threadCount * USER_RANKING_THREAD_POINT + postCount * USER_RANKING_POST_POINT,
+      }
+    })
+    .filter(row => row.profile_slug && row.points > 0)
+    .sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points
+      if (b.thread_count !== a.thread_count) return b.thread_count - a.thread_count
+      return b.post_count - a.post_count
+    })
+    .slice(0, USER_RANKING_LIMIT)
+}
+
+export const getCachedUserRankings = unstable_cache(
+  async (): Promise<UserRankingResult> => {
+    try {
+      const supabase = createPublicClient()
+      const monthStartIso = getJstMonthStartIso()
+
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, display_name, profile_slug')
+        .eq('profile_hidden', false)
+        .eq('ranking_enabled', true)
+        .eq('rank_excluded', false)
+        .eq('account_suspended', false)
+        .is('withdrawn_at', null)
+        .order('created_at', { ascending: false })
+        .limit(USER_RANKING_PROFILE_LIMIT)
+
+      const profiles = (profilesData ?? []) as UserRankingProfile[]
+      const userIds = profiles.map(profile => profile.id)
+      if (userIds.length === 0) return { monthly: [], total: [] }
+
+      const [monthlyThreads, monthlyPosts, totalThreads, totalPosts] = await Promise.all([
+        supabase
+          .from('threads')
+          .select('user_id')
+          .in('user_id', userIds)
+          .eq('is_archived', false)
+          .gte('created_at', monthStartIso)
+          .limit(USER_RANKING_FETCH_LIMIT),
+        supabase
+          .from('posts')
+          .select('user_id, threads!inner(is_archived)')
+          .in('user_id', userIds)
+          .eq('is_deleted', false)
+          .eq('threads.is_archived', false)
+          .gte('created_at', monthStartIso)
+          .limit(USER_RANKING_FETCH_LIMIT),
+        supabase
+          .from('threads')
+          .select('user_id')
+          .in('user_id', userIds)
+          .eq('is_archived', false)
+          .limit(USER_RANKING_FETCH_LIMIT),
+        supabase
+          .from('posts')
+          .select('user_id, threads!inner(is_archived)')
+          .in('user_id', userIds)
+          .eq('is_deleted', false)
+          .eq('threads.is_archived', false)
+          .limit(USER_RANKING_FETCH_LIMIT),
+      ])
+
+      return {
+        monthly: buildUserRanking(
+          profiles,
+          (monthlyThreads.data ?? []) as UserRankingActivity[],
+          (monthlyPosts.data ?? []) as UserRankingActivity[]
+        ),
+        total: buildUserRanking(
+          profiles,
+          (totalThreads.data ?? []) as UserRankingActivity[],
+          (totalPosts.data ?? []) as UserRankingActivity[]
+        ),
+      }
+    } catch (error) {
+      console.warn('user rankings fetch failed:', error)
+      return { monthly: [], total: [] }
+    }
+  },
+  ['user-rankings-public-v1'],
+  { revalidate: 21600, tags: ['user-rankings'] }
+)
+
 export interface CachedThreadListResult {
   threads: unknown[]
   count: number

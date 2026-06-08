@@ -4,6 +4,7 @@ import { ThreadCard } from '@/components/ThreadCard'
 import { RecommendSection } from '@/components/RecommendSection'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { SITE_URL } from '@/lib/site-config'
+import { getCachedUserRankings, UserRankingRow } from '@/lib/cached-queries'
 
 export const revalidate = 3600
 
@@ -30,6 +31,75 @@ import { Thread, Category } from '@/types'
 import Link from 'next/link'
 
 const PAGE_SIZE = 100
+
+function UserRankingList({
+  title,
+  rows,
+}: {
+  title: string
+  rows: UserRankingRow[]
+}) {
+  return (
+    <section className="border border-gray-300 bg-white">
+      <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
+        <h3 className="text-sm font-bold text-gray-800">{title}</h3>
+      </div>
+      {rows.length === 0 ? (
+        <div className="px-3 py-6 text-center text-sm text-gray-500">
+          対象になる投稿者はまだありません。
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-100">
+          {rows.map((row, index) => (
+            <div
+              key={row.profile_slug}
+              className="grid grid-cols-[2.5rem_1fr_auto] items-center gap-2 px-3 py-2 text-sm"
+            >
+              <div className="text-center font-mono text-xs font-bold text-gray-500">
+                {index + 1}
+              </div>
+              <div className="min-w-0">
+                <Link
+                  href={`/u/${row.profile_slug}`}
+                  className="font-bold text-blue-700 hover:underline"
+                >
+                  {row.display_name}
+                </Link>
+                <div className="mt-0.5 text-xs text-gray-500">
+                  <span className="font-mono">/{row.profile_slug}</span>
+                  <span className="ml-2">スレ {row.thread_count}</span>
+                  <span className="ml-2">コメント {row.post_count}</span>
+                </div>
+              </div>
+              <div className="whitespace-nowrap text-right font-mono text-sm font-bold text-gray-800">
+                {row.points}pt
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+async function UserRankingSection() {
+  const rankings = await getCachedUserRankings()
+
+  return (
+    <section className="mt-4 mb-4">
+      <div className="mb-2 border border-gray-300 bg-white px-3 py-2">
+        <h2 className="text-sm font-bold text-gray-800">投稿者ランキング</h2>
+        <p className="mt-1 text-xs leading-relaxed text-gray-500">
+          登録後の投稿をもとにした試験運用中のランキングです。集計条件は今後変更される場合があります。
+        </p>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <UserRankingList title="今月" rows={rankings.monthly} />
+        <UserRankingList title="総合" rows={rankings.total} />
+      </div>
+    </section>
+  )
+}
 
 async function RankingList({ page }: { page: number }) {
   const supabase = createPublicClient()
@@ -179,6 +249,10 @@ export default async function RankingPage({ searchParams }: Props) {
           </div>
         }>
           <RankingList page={page} />
+        </Suspense>
+
+        <Suspense fallback={null}>
+          <UserRankingSection />
         </Suspense>
 
         <BottomNav current="/ranking" />
