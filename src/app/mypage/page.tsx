@@ -160,7 +160,7 @@ export default async function MyPage() {
         <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
           <h1 className="text-lg font-bold text-gray-900">マイページ</h1>
           <p className="mt-1 text-sm leading-relaxed text-gray-600">
-            ログイン中の投稿者ページ情報を確認できます。プロフィール編集や投稿履歴は次の段階で追加予定です。
+            ログイン中の投稿者ページ情報を確認できます。
           </p>
         </div>
 
@@ -233,6 +233,12 @@ export default async function MyPage() {
                   className="rounded bg-blue-600 px-4 py-2.5 text-center text-sm font-bold text-white hover:bg-blue-700"
                 >
                   投稿者ページを見る
+                </Link>
+                <Link
+                  href="/mypage/edit"
+                  className="rounded border border-blue-300 px-4 py-2.5 text-center text-sm font-bold text-blue-700 hover:bg-blue-50"
+                >
+                  プロフィールを編集
                 </Link>
                 <Link
                   href="/"
