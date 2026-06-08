@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { HeaderSearch } from './HeaderSearch'
+import { HeaderAuthNav } from './HeaderAuthNav'
 import { MobileMenu } from './MobileMenu'
 import { getCachedNavPages } from '@/lib/cached-queries'
 
@@ -42,13 +43,7 @@ export async function Header() {
               ))}
             </ul>
             <HeaderSearch />
-            <Link
-              href="/login"
-              className="px-2 py-3 block hover:text-blue-600 whitespace-nowrap text-sm"
-            >
-              ログイン
-            </Link>
-
+            <HeaderAuthNav variant="desktop" />
           </div>
         </div>
       </nav>
