@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { verifyAdminCookie } from '@/lib/admin-auth'
+import { RankExcludedForm } from './RankExcludedForm'
 
 type AdminUserProfile = {
   id: string
@@ -198,7 +199,8 @@ export default async function AdminUserDetailPage({
       </div>
 
       <div className="mb-4 border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-        読み取り専用の詳細表示です。停止・BAN・ランキング除外などの操作はこのページからは行いません。
+        この詳細ページで行える操作は「ランキング除外 (rank_excluded) の ON/OFF」だけです。
+        停止・BAN・投稿/コメント削除・退会処理はこのページからは行いません。
       </div>
 
       <section className="mb-4 border border-gray-300 bg-white">
@@ -284,6 +286,18 @@ export default async function AdminUserDetailPage({
           <p className="text-[11px] text-gray-500">
             id: <span className="font-mono">{profile.id}</span>
           </p>
+        </div>
+      </section>
+
+      <section className="mb-4 border border-red-200 bg-white">
+        <div className="border-b border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+          管理操作：ランキング除外 (rank_excluded)
+        </div>
+        <div className="p-3">
+          <RankExcludedForm
+            targetId={profile.id}
+            currentExcluded={profile.rank_excluded === true}
+          />
         </div>
       </section>
 
