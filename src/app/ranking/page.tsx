@@ -1,7 +1,6 @@
 import { Suspense } from 'react'
 import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadCard } from '@/components/ThreadCard'
-import { RecommendSection } from '@/components/RecommendSection'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { SITE_URL } from '@/lib/site-config'
 import { getCachedUserRankings, UserRankingRow } from '@/lib/cached-queries'
@@ -215,11 +214,6 @@ export default async function RankingPage({ searchParams }: Props) {
       />
 
       <div className="max-w-screen-xl mx-auto px-2 pt-2">
-        {/* オススメ */}
-        <Suspense fallback={null}>
-          <RecommendSection />
-        </Suspense>
-
         {/* パンくず */}
         <nav className="text-xs text-gray-500 mb-2 flex items-center gap-x-1">
           <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
