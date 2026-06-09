@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { verifyAdminCookie } from '@/lib/admin-auth'
 import { RankExcludedForm } from './RankExcludedForm'
+import { AccountSuspendedForm } from './AccountSuspendedForm'
 
 type AdminUserProfile = {
   id: string
@@ -199,8 +200,10 @@ export default async function AdminUserDetailPage({
       </div>
 
       <div className="mb-4 border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-        この詳細ページで行える操作は「ランキング除外 (rank_excluded) の ON/OFF」だけです。
-        停止・BAN・投稿/コメント削除・退会処理はこのページからは行いません。
+        この詳細ページで行える操作は「ランキング除外 (rank_excluded) の ON/OFF」と
+        「アカウント停止 (account_suspended) の ON/OFF（表示系・ランキング系）」だけです。
+        アカウント停止は投稿やコメントを削除しません。
+        セッションBAN・投稿/コメント削除・退会処理はこのページからは行いません。
       </div>
 
       <section className="mb-4 border border-gray-300 bg-white">
@@ -297,6 +300,18 @@ export default async function AdminUserDetailPage({
           <RankExcludedForm
             targetId={profile.id}
             currentExcluded={profile.rank_excluded === true}
+          />
+        </div>
+      </section>
+
+      <section className="mb-4 border border-red-200 bg-white">
+        <div className="border-b border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+          管理操作：アカウント停止 (account_suspended)
+        </div>
+        <div className="p-3">
+          <AccountSuspendedForm
+            targetId={profile.id}
+            currentSuspended={profile.account_suspended === true}
           />
         </div>
       </section>
