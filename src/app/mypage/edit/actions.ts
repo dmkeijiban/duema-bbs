@@ -66,6 +66,26 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
 
   // 更新は本人の行（id = user.id）のみ。profile_slug・avatar 等は触らない。
   const admin = createAdminClient()
+
+  // アカウント停止中・退会済みなら保存を拒否する（UI だけに頼らず Server Action 側でも再確認）。
+  const { data: guardProfile, error: guardError } = await admin
+    .from('profiles')
+    .select('account_suspended, withdrawn_at')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (guardError) {
+    console.error('Failed to fetch profile for edit guard:', guardError.message)
+    return { error: 'プロフィールの更新に失敗しました。入力内容を確認してください。' }
+  }
+
+  if (
+    guardProfile?.account_suspended === true ||
+    (guardProfile?.withdrawn_at ?? null) !== null
+  ) {
+    return { error: 'このアカウントではプロフィール編集を利用できません。' }
+  }
+
   const { error } = await admin
     .from('profiles')
     .update({

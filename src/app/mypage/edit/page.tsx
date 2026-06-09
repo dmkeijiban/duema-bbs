@@ -12,13 +12,15 @@ type EditableProfile = {
   youtube_url: string | null
   profile_hidden: boolean | null
   ranking_enabled: boolean | null
+  account_suspended: boolean | null
+  withdrawn_at: string | null
 }
 
 async function getMyProfile(userId: string): Promise<EditableProfile | null> {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('profiles')
-    .select('display_name, bio, x_url, youtube_url, profile_hidden, ranking_enabled')
+    .select('display_name, bio, x_url, youtube_url, profile_hidden, ranking_enabled, account_suspended, withdrawn_at')
     .eq('id', userId)
     .maybeSingle()
 
@@ -49,6 +51,42 @@ export default async function MyPageEdit() {
 
   if (!profile) {
     redirect('/profile/new')
+  }
+
+  // アカウント停止中・退会済みの場合はプロフィール編集フォームを表示しない。
+  // （account_suspended=true もしくは withdrawn_at が設定されている）
+  const editingBlocked =
+    profile.account_suspended === true || profile.withdrawn_at !== null
+
+  if (editingBlocked) {
+    return (
+      <main className="mx-auto max-w-3xl px-4 py-8">
+        <div className="border border-gray-300 bg-white">
+          <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
+            <div className="mb-1 text-xs text-gray-500">
+              <Link href="/mypage" className="text-blue-600 hover:underline">
+                マイページ
+              </Link>
+              <span className="mx-2 text-gray-300">/</span>
+              <span>プロフィール編集</span>
+            </div>
+            <h1 className="text-lg font-bold text-gray-900">プロフィール編集</h1>
+          </div>
+          <div className="p-4">
+            <p className="text-sm leading-relaxed text-gray-700">
+              このアカウントではプロフィール編集を利用できません。
+              <br />
+              必要な場合はお問い合わせください。
+            </p>
+            <p className="mt-3 text-sm">
+              <Link href="/contact" className="text-blue-600 hover:underline">
+                お問い合わせはこちら
+              </Link>
+            </p>
+          </div>
+        </div>
+      </main>
+    )
   }
 
   return (
