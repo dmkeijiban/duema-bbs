@@ -49,7 +49,11 @@ export function MobileMenu({ navPages }: Props) {
                 onClick={() => setOpen(false)}>{p.nav_label || p.title}</Link>
             )
           )}
-          {/* 思い出図鑑（固定リンク・モックページへ） */}
+          {/* ランキング（固定リンク） */}
+          <Link href="/ranking"
+            className="block px-4 py-2.5 hover:bg-gray-50"
+            onClick={() => setOpen(false)}>ランキング</Link>
+          {/* 思い出図鑑（固定リンク） */}
           <Link href="/zukan"
             className="block px-4 py-2.5 hover:bg-gray-50"
             onClick={() => setOpen(false)}>思い出図鑑</Link>
