@@ -88,19 +88,9 @@ export function HeaderAuthNav({ variant, onNavigate }: Props) {
   }
 
   // has-profile
-  // 投稿者ページはPCでは窮屈回避のため広い画面(lg+)でのみ表示。
-  // モバイルメニューは縦並びで余裕があるため両方表示。
-  const subClassName =
-    variant === 'desktop' ? `${className} hidden lg:block` : className
-
   return (
-    <>
-      <Link href="/mypage" className={className} onClick={onNavigate}>
-        マイページ
-      </Link>
-      <Link href={`/u/${state.slug}`} className={subClassName} onClick={onNavigate}>
-        投稿者ページ
-      </Link>
-    </>
+    <Link href="/mypage" className={className} onClick={onNavigate}>
+      マイページ
+    </Link>
   )
 }

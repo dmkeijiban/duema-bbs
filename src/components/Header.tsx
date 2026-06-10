@@ -5,8 +5,11 @@ import { HeaderAuthNav } from './HeaderAuthNav'
 import { MobileMenu } from './MobileMenu'
 import { getCachedNavPages } from '@/lib/cached-queries'
 
+const HIDE_FROM_NAV = new Set(['terms', 'privacy', 'contact', 'settings'])
+
 export async function Header() {
-  const navPages = await getCachedNavPages()
+  const allNavPages = await getCachedNavPages()
+  const navPages = allNavPages.filter(p => !HIDE_FROM_NAV.has(p.slug))
 
   return (
     <header className="bg-white border-b border-gray-300 sticky top-0 z-50">
@@ -41,7 +44,13 @@ export async function Header() {
                   )}
                 </li>
               ))}
-              {/* 思い出図鑑（固定リンク・モックページへ） */}
+              {/* ランキング（固定リンク） */}
+              <li>
+                <Link href="/ranking" className="px-2 py-3 block hover:text-blue-600 whitespace-nowrap">
+                  ランキング
+                </Link>
+              </li>
+              {/* 思い出図鑑（固定リンク） */}
               <li>
                 <Link href="/zukan" className="px-2 py-3 block hover:text-blue-600 whitespace-nowrap">
                   思い出図鑑
