@@ -201,11 +201,21 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <footer className="bg-white border-t border-gray-200 py-4 mt-6">
             <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-600 space-y-2">
 
-              <div className="flex justify-center gap-4">
-                <Link href="/about" className="hover:underline">運営者情報</Link>
+              {/* サイト案内系リンク */}
+              <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+                <Link href="/" className="hover:underline">TOP</Link>
+                <Link href="/new" className="hover:underline">スレッド一覧</Link>
+                <Link href="/summary" className="hover:underline">人気まとめ</Link>
+                <Link href="/ranking" className="hover:underline">ランキング</Link>
+                <Link href="/mypage" className="hover:underline">マイページ</Link>
+                <Link href="/zukan" className="hover:underline">思い出図鑑</Link>
+              </div>
+              {/* 固定ページ系リンク */}
+              <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
                 <Link href="/terms" className="hover:underline">利用規約</Link>
                 <Link href="/privacy" className="hover:underline">プライバシーポリシー</Link>
                 <Link href="/contact" className="hover:underline">お問い合わせ</Link>
+                <Link href="/about" className="hover:underline">運営者情報</Link>
               </div>
               <div>©<Link href="/">デュエマ掲示板</Link> — デュエル・マスターズ専門掲示板</div>
             </div>

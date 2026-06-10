@@ -41,6 +41,12 @@ export async function Header() {
                   )}
                 </li>
               ))}
+              {/* 思い出図鑑（固定リンク・モックページへ） */}
+              <li>
+                <Link href="/zukan" className="px-2 py-3 block hover:text-blue-600 whitespace-nowrap">
+                  思い出図鑑
+                </Link>
+              </li>
             </ul>
             <HeaderSearch />
             <HeaderAuthNav variant="desktop" />
