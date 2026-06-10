@@ -34,6 +34,7 @@ create table if not exists public.zukan_cards (
   ability_text  text,
   flavor_text   text,
   image_url     text,
+  is_published  boolean not null default true,
   sort_order    int not null default 0,
   created_at    timestamptz not null default now()
 );
@@ -51,7 +52,8 @@ create policy "公開パック読み取り" on public.zukan_packs
 
 create policy "公開カード読み取り" on public.zukan_cards
   for select using (
-    exists (
+    is_published = true
+    and exists (
       select 1 from public.zukan_packs p
       where p.id = pack_id and p.is_published = true
     )
