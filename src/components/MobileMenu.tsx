@@ -49,6 +49,10 @@ export function MobileMenu({ navPages }: Props) {
                 onClick={() => setOpen(false)}>{p.nav_label || p.title}</Link>
             )
           )}
+          {/* 思い出図鑑（固定リンク・モックページへ） */}
+          <Link href="/zukan"
+            className="block px-4 py-2.5 hover:bg-gray-50"
+            onClick={() => setOpen(false)}>思い出図鑑</Link>
           <HeaderAuthNav variant="mobile" onNavigate={() => setOpen(false)} />
           <form onSubmit={search} className="flex gap-1 px-4 py-2.5">
             <label htmlFor="mobile-search-input" className="sr-only">検索ワード</label>
