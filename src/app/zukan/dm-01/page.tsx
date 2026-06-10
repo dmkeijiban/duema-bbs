@@ -4,7 +4,7 @@ import type { ZukanPack, ZukanCard } from '@/lib/zukan'
 
 export const metadata = {
   title: 'DM-01 基本セット | デュエマ思い出図鑑',
-  robots: { index: false, follow: false },
+  description: 'デュエル・マスターズ第1弾「DM-01 基本セット」のカード一覧。ボルシャック・ドラゴンをはじめ、2002年当時の名カードを振り返ろう。',
 }
 
 // --- モックフォールバック ---------------------------------------------------

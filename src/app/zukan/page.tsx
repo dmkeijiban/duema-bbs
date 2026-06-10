@@ -4,7 +4,7 @@ import type { ZukanPack } from '@/lib/zukan'
 
 export const metadata = {
   title: 'デュエマ思い出図鑑 | デュエマ掲示板',
-  robots: { index: false, follow: false },
+  description: 'デュエル・マスターズの歴代カード・パックを懐かしむ思い出図鑑。ボルシャック・ドラゴンをはじめ往年の名カードを振り返ろう。',
 }
 
 // モックフォールバック（DBテーブル未作成時に使用）

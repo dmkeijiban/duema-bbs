@@ -87,7 +87,6 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         : slug
   return {
     title: `${name} | デュエマ思い出図鑑`,
-    robots: { index: false, follow: false },
   }
 }
 
