@@ -22,6 +22,8 @@ const MOCK_CARD: ZukanCardWithPack = {
   ability_text: 'パワーアタッカー＋1000。W・ブレイカー。このクリーチャーが攻撃する時、自分の墓地にある火のカード1枚につき、このクリーチャーのパワーはそのターン＋1000される。',
   flavor_text: null,
   image_url: null,
+  official_page_url: null,
+  official_image_url: null,
   sort_order: 1,
   zukan_packs: { slug: 'dm-01', code: 'DM-01', name: '基本セット' },
 }
@@ -138,7 +140,17 @@ export default async function ZukanCardPage({
       {/* カードヘッダー */}
       <header className="mb-5 grid gap-4 border border-gray-300 bg-white p-4 md:grid-cols-[170px_1fr]">
         <div className="mx-auto w-full max-w-[200px] md:max-w-[170px]">
-          <CardThumb name={card.name} />
+          {card.official_image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={card.official_image_url}
+              alt={`${card.name} カード画像`}
+              className="w-full"
+              style={{ aspectRatio: '63 / 88', objectFit: 'cover' }}
+            />
+          ) : (
+            <CardThumb name={card.name} />
+          )}
         </div>
         <div>
           <div className="flex items-center gap-2">
@@ -176,6 +188,18 @@ export default async function ZukanCardPage({
             <p className="mt-2 text-xs leading-relaxed text-gray-400 italic border-l-2 border-gray-100 pl-2">
               {card.flavor_text}
             </p>
+          )}
+          {card.official_page_url && (
+            <div className="mt-3">
+              <a
+                href={card.official_page_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 hover:underline"
+              >
+                公式カード詳細 →
+              </a>
+            </div>
           )}
           <div className="mt-4 flex flex-wrap gap-2">
             <span className="inline-block cursor-default rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white opacity-60">

@@ -7,6 +7,8 @@ export const metadata = {
   description: 'デュエル・マスターズ第1弾「DM-01 基本セット」のカード一覧。ボルシャック・ドラゴンをはじめ、2002年当時の名カードを振り返ろう。',
 }
 
+const PAGE_SIZE = 60
+
 // --- モックフォールバック ---------------------------------------------------
 
 const MOCK_PACK: ZukanPack = {
@@ -14,22 +16,31 @@ const MOCK_PACK: ZukanPack = {
   slug: 'dm-01',
   code: 'DM-01',
   name: '基本セット',
-  released_year: '2002年',
+  released_year: '2002年5月30日',
   card_count: 120,
-  description: 'デュエル・マスターズの最初の弾。5つの文明とシンプルな能力で構成された原点のセット。',
+  description: '2002年5月に発売されたデュエル・マスターズ最初のパック。光・水・闇・火・自然の5文明が揃い、全120種のカードで構成された原点のセット。ボルシャック・ドラゴンやホーリー・スパークなど、当時の対戦を彩った定番カードが数多く収録されている。',
   is_published: true,
   sort_order: 1,
 }
 
 const MOCK_CARDS: ZukanCard[] = [
-  { id: '', pack_id: '', slug: 'bolshack-dragon', name: 'ボルシャック・ドラゴン', card_type: 'クリーチャー', civilization: '火', cost: 6, mana: 6, race: 'アーマード・ドラゴン', power: '6000+', rarity: 'VR', illustrator: null, ability_text: null, flavor_text: null, image_url: null, sort_order: 1 },
-  { id: '', pack_id: '', slug: 'aqua-hulcus', name: 'アクア・ハルカス', card_type: 'クリーチャー', civilization: '水', cost: 3, mana: 3, race: 'リキッド・ピープル', power: '2000', rarity: 'C', illustrator: null, ability_text: null, flavor_text: null, image_url: null, sort_order: 2 },
-  { id: '', pack_id: '', slug: 'gaia-mantis', name: 'ガイア・マンティス', card_type: 'クリーチャー', civilization: '自然', cost: 5, mana: 5, race: 'ビースト・フォーク', power: '5000', rarity: 'UC', illustrator: null, ability_text: null, flavor_text: null, image_url: null, sort_order: 3 },
-  { id: '', pack_id: '', slug: 'la-ura-giga', name: 'ラ・ウラ・ギガ', card_type: 'クリーチャー', civilization: '光', cost: 1, mana: 1, race: 'スターノイド', power: '2000', rarity: 'C', illustrator: null, ability_text: null, flavor_text: null, image_url: null, sort_order: 4 },
-  { id: '', pack_id: '', slug: 'death-smoke', name: 'デス・スモーク', card_type: '呪文', civilization: '闇', cost: 4, mana: 4, race: null, power: null, rarity: 'UC', illustrator: null, ability_text: null, flavor_text: null, image_url: null, sort_order: 5 },
-  { id: '', pack_id: '', slug: 'twin-cannon', name: 'ツイン・キャノン・ワイバーン', card_type: 'クリーチャー', civilization: '火', cost: 7, mana: 7, race: 'アーマード・ワイバーン', power: '6000', rarity: 'UC', illustrator: null, ability_text: null, flavor_text: null, image_url: null, sort_order: 6 },
-  { id: '', pack_id: '', slug: 'holy-spark', name: 'ホーリー・スパーク', card_type: '呪文', civilization: '光', cost: 4, mana: 4, race: null, power: null, rarity: 'VR', illustrator: null, ability_text: null, flavor_text: null, image_url: null, sort_order: 7 },
-  { id: '', pack_id: '', slug: 'spiral-gate', name: 'スパイラル・ゲート', card_type: '呪文', civilization: '水', cost: 2, mana: 2, race: null, power: null, rarity: 'C', illustrator: null, ability_text: null, flavor_text: null, image_url: null, sort_order: 8 },
+  { id: '', pack_id: '', slug: 'bolshack-dragon', name: 'ボルシャック・ドラゴン', card_type: 'クリーチャー', civilization: '火', cost: 6, mana: 6, race: 'アーマード・ドラゴン', power: '6000+', rarity: 'VR', illustrator: null, ability_text: null, flavor_text: null, image_url: null, official_page_url: null, official_image_url: null, sort_order: 1 },
+  { id: '', pack_id: '', slug: 'aqua-hulcus', name: 'アクア・ハルカス', card_type: 'クリーチャー', civilization: '水', cost: 3, mana: 3, race: 'リキッド・ピープル', power: '2000', rarity: 'C', illustrator: null, ability_text: null, flavor_text: null, image_url: null, official_page_url: null, official_image_url: null, sort_order: 2 },
+  { id: '', pack_id: '', slug: 'gaia-mantis', name: 'ガイア・マンティス', card_type: 'クリーチャー', civilization: '自然', cost: 5, mana: 5, race: 'ビースト・フォーク', power: '5000', rarity: 'UC', illustrator: null, ability_text: null, flavor_text: null, image_url: null, official_page_url: null, official_image_url: null, sort_order: 3 },
+  { id: '', pack_id: '', slug: 'la-ura-giga', name: 'ラ・ウラ・ギガ', card_type: 'クリーチャー', civilization: '光', cost: 1, mana: 1, race: 'スターノイド', power: '2000', rarity: 'C', illustrator: null, ability_text: null, flavor_text: null, image_url: null, official_page_url: null, official_image_url: null, sort_order: 4 },
+  { id: '', pack_id: '', slug: 'death-smoke', name: 'デス・スモーク', card_type: '呪文', civilization: '闇', cost: 4, mana: 4, race: null, power: null, rarity: 'UC', illustrator: null, ability_text: null, flavor_text: null, image_url: null, official_page_url: null, official_image_url: null, sort_order: 5 },
+  { id: '', pack_id: '', slug: 'twin-cannon', name: 'ツイン・キャノン・ワイバーン', card_type: 'クリーチャー', civilization: '火', cost: 7, mana: 7, race: 'アーマード・ワイバーン', power: '6000', rarity: 'UC', illustrator: null, ability_text: null, flavor_text: null, image_url: null, official_page_url: null, official_image_url: null, sort_order: 6 },
+  { id: '', pack_id: '', slug: 'holy-spark', name: 'ホーリー・スパーク', card_type: '呪文', civilization: '光', cost: 4, mana: 4, race: null, power: null, rarity: 'VR', illustrator: null, ability_text: null, flavor_text: null, image_url: null, official_page_url: null, official_image_url: null, sort_order: 7 },
+  { id: '', pack_id: '', slug: 'spiral-gate', name: 'スパイラル・ゲート', card_type: '呪文', civilization: '水', cost: 2, mana: 2, race: null, power: null, rarity: 'C', illustrator: null, ability_text: null, flavor_text: null, image_url: null, official_page_url: null, official_image_url: null, sort_order: 8 },
+]
+
+// 代表カード（page=1 のみ表示、DBにあればリンク、なければ準備中）
+const REP_CARDS = [
+  { slug: 'bolshack-dragon', name: 'ボルシャック・ドラゴン', civilization: '火' },
+  { slug: 'holy-spark',      name: 'ホーリー・スパーク',    civilization: '光' },
+  { slug: 'demon-hand',      name: 'デーモン・ハンド',      civilization: '闇' },
+  { slug: 'aqua-hulcus',     name: 'アクア・ハルカス',      civilization: '水' },
+  { slug: 'natural-trap',    name: 'ナチュラル・トラップ',  civilization: '自然' },
 ]
 
 const PACK_REVIEWS = [
@@ -67,9 +78,7 @@ function CardThumb({ name }: { name: string }) {
 }
 
 function cardHref(card: ZukanCard): string {
-  // bolshack-dragon だけ実装済みリンク、他は準備中
-  if (card.slug === 'bolshack-dragon') return '/zukan/card/bolshack-dragon'
-  return '#'
+  return card.id ? `/zukan/card/${card.slug}` : '#'
 }
 
 export default async function ZukanDm01Page({
@@ -123,6 +132,7 @@ export default async function ZukanDm01Page({
             {pack.card_count && (
               <div><dt className="inline font-bold">収録：</dt><dd className="inline">{pack.card_count}種</dd></div>
             )}
+            <div><dt className="inline font-bold">パック内容：</dt><dd className="inline">5枚入り 150円（税抜）</dd></div>
           </dl>
           {pack.description && (
             <p className="mt-3 text-sm leading-relaxed text-gray-700">{pack.description}</p>
@@ -167,12 +177,51 @@ export default async function ZukanDm01Page({
         </div>
       </section>
 
+      {/* 代表カード（page=1 のみ） */}
+      {page === 1 && (
+        <section className="mb-5">
+          <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
+            <h2 className="text-sm font-bold text-gray-800">代表カード</h2>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+            {REP_CARDS.map(rep => {
+              const dbCard = isDbReady ? cards.find(c => c.slug === rep.slug) : null
+              const href = dbCard ? `/zukan/card/${rep.slug}` : '#'
+              return (
+                <Link
+                  key={rep.slug}
+                  href={href}
+                  className={`block border border-gray-300 bg-white ${dbCard ? 'hover:border-blue-400' : 'opacity-60 cursor-default pointer-events-none'}`}
+                >
+                  <CardThumb name={rep.name} />
+                  <div className="px-1.5 py-1.5">
+                    <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[rep.civilization] ?? 'bg-gray-100 text-gray-600'}`}>
+                      {rep.civilization}
+                    </span>
+                    <div className="mt-1 truncate text-xs font-bold text-gray-800">{rep.name}</div>
+                    {!dbCard && <div className="text-[10px] text-gray-400">詳細準備中</div>}
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
       {/* 収録カード */}
+      {(() => {
+        const from = (page - 1) * PAGE_SIZE + 1
+        const to = (page - 1) * PAGE_SIZE + cards.length
+        const total = pack.card_count ?? null
+        const hasNextPage = total ? page * PAGE_SIZE < total : cards.length === PAGE_SIZE
+        return (
       <section className="mb-5">
         <div className="mb-2 flex items-baseline justify-between border border-gray-300 bg-gray-50 px-3 py-2">
           <h2 className="text-sm font-bold text-gray-800">
             収録カード
-            {page > 1 && <span className="ml-1 font-normal text-gray-500">（{page}ページ目）</span>}
+            {total && cards.length > 0 && (
+              <span className="ml-1 font-normal text-gray-500 text-xs">（全{total}種中 {from}〜{to}件目）</span>
+            )}
           </h2>
           <div className="flex gap-2 text-xs">
             {page > 1 && (
@@ -180,7 +229,7 @@ export default async function ZukanDm01Page({
                 ← 前の60件
               </Link>
             )}
-            {cards.length === 60 && (
+            {hasNextPage && (
               <Link href={`/zukan/dm-01?page=${page + 1}`} className="text-blue-600 hover:underline">
                 次の60件 →
               </Link>
@@ -216,6 +265,8 @@ export default async function ZukanDm01Page({
           </div>
         )}
       </section>
+        )
+      })()}
     </div>
   )
 }
