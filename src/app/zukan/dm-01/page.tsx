@@ -83,7 +83,30 @@ const CIV_TEXT: Record<string, string> = {
   闇: 'text-gray-400',
 }
 
-function CardThumb({ name, civilization }: { name: string; civilization?: string | null }) {
+function CardThumb({
+  name,
+  civilization,
+  imageUrl,
+}: {
+  name: string
+  civilization?: string | null
+  imageUrl?: string | null
+}) {
+  if (imageUrl) {
+    return (
+      <div className="bg-gray-100" style={{ aspectRatio: '63 / 88' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageUrl}
+          alt={`${name} カード画像`}
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+        />
+      </div>
+    )
+  }
+
   const bg = civilization ? (CIV_BG[civilization] ?? 'from-gray-100 to-gray-200') : 'from-gray-100 to-gray-200'
   const tc = civilization ? (CIV_TEXT[civilization] ?? 'text-gray-400') : 'text-gray-400'
   return (
@@ -206,7 +229,11 @@ export default async function ZukanDm01Page({
                   href={href}
                   className={`block border border-gray-300 bg-white ${isLinked ? 'hover:border-blue-400 hover:shadow-sm' : 'opacity-60 cursor-default pointer-events-none'}`}
                 >
-                  <CardThumb name={rep.name} civilization={rep.civilization} />
+                  <CardThumb
+                    name={rep.name}
+                    civilization={rep.civilization}
+                    imageUrl={dbCard?.official_image_url}
+                  />
                   <div className="px-1.5 py-1.5">
                     <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[rep.civilization] ?? 'bg-gray-100 text-gray-600'}`}>
                       {rep.civilization}
@@ -289,7 +316,11 @@ export default async function ZukanDm01Page({
                 href={cardHref(card)}
                 className={`block border border-gray-300 bg-white ${card.id ? 'hover:border-blue-400 hover:shadow-sm' : 'cursor-default'}`}
               >
-                <CardThumb name={card.name} civilization={card.civilization} />
+                <CardThumb
+                  name={card.name}
+                  civilization={card.civilization}
+                  imageUrl={card.official_image_url}
+                />
                 <div className="px-1.5 py-1.5">
                   <div className="flex items-center gap-1">
                     {card.civilization && (
