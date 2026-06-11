@@ -102,7 +102,7 @@ function CardThumb({
           alt={`${name} カード画像`}
           loading="lazy"
           decoding="async"
-          className="h-full w-full object-cover"
+          className="pointer-events-none h-full w-full object-cover"
         />
       </div>
     )
