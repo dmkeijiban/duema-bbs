@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { fetchPack, fetchCardsByPack } from '@/lib/zukan'
+import { fetchPack, fetchCardsByPack, fetchCardsBySlugs } from '@/lib/zukan'
 import type { ZukanPack, ZukanCard } from '@/lib/zukan'
 
 export const metadata = {
@@ -96,6 +96,10 @@ export default async function ZukanDm01Page({
   const cards = dbCards ?? (page === 1 ? MOCK_CARDS : [])
   const isDbReady = dbPack !== null
 
+  // 代表カードはページングとは独立して取得（page=2所属でもリンク可能にする）
+  const repSlugs = REP_CARDS.map(r => r.slug)
+  const dbRepCards = dbPack ? await fetchCardsBySlugs(dbPack.id, repSlugs) : null
+
   return (
     <div className="max-w-screen-xl mx-auto px-2 pt-2 pb-10">
       {/* パンくず */}
@@ -185,7 +189,7 @@ export default async function ZukanDm01Page({
           </div>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
             {REP_CARDS.map(rep => {
-              const dbCard = isDbReady ? cards.find(c => c.slug === rep.slug) : null
+              const dbCard = dbRepCards?.find(c => c.slug === rep.slug) ?? null
               const href = dbCard ? `/zukan/card/${rep.slug}` : '#'
               return (
                 <Link

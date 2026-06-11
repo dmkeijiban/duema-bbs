@@ -98,6 +98,25 @@ export async function fetchCardsByPack(
   }
 }
 
+export async function fetchCardsBySlugs(
+  packId: string,
+  slugs: string[]
+): Promise<ZukanCard[] | null> {
+  try {
+    const supabase = createPublicClient()
+    const { data, error } = await supabase
+      .from('zukan_cards')
+      .select('*')
+      .eq('pack_id', packId)
+      .eq('is_published', true)
+      .in('slug', slugs)
+    if (error) return null
+    return data as ZukanCard[]
+  } catch {
+    return null
+  }
+}
+
 type FetchCardResult =
   | { status: 'found'; card: ZukanCardWithPack }
   | { status: 'not_found' }
