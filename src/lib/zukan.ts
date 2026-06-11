@@ -124,6 +124,153 @@ type FetchCardResult =
   | { status: 'table_missing' }
   | { status: 'error' }
 
+// ============================================================
+// Review / Rating types
+// ============================================================
+
+export type PackReview = {
+  id: number
+  pack_id: string
+  display_name: string
+  body: string
+  created_at: string
+}
+
+export type CardReview = {
+  id: number
+  card_id: string
+  display_name: string
+  body: string
+  created_at: string
+}
+
+export type CardRatingRow = {
+  score_admiration: number | null
+  score_trauma: number | null
+  score_still_like: number | null
+  score_name: number | null
+  score_art: number | null
+}
+
+export type CardRatingSummary = {
+  admiration: { avg: number; count: number }
+  trauma:     { avg: number; count: number }
+  stillLike:  { avg: number; count: number }
+  name:       { avg: number; count: number }
+  art:        { avg: number; count: number }
+  totalCount: number
+}
+
+// ============================================================
+// Fetch reviews
+// ============================================================
+
+export async function fetchPackReviews(packId: string): Promise<PackReview[] | null> {
+  try {
+    const supabase = createPublicClient()
+    const { data, error } = await supabase
+      .from('zukan_pack_reviews')
+      .select('id, pack_id, display_name, body, created_at')
+      .eq('pack_id', packId)
+      .order('created_at', { ascending: false })
+      .limit(10)
+    if (error) {
+      if (isTableMissing(error)) return []
+      return null
+    }
+    return data as PackReview[]
+  } catch {
+    return null
+  }
+}
+
+export async function fetchCardReviews(cardId: string): Promise<CardReview[] | null> {
+  try {
+    const supabase = createPublicClient()
+    const { data, error } = await supabase
+      .from('zukan_card_reviews')
+      .select('id, card_id, display_name, body, created_at')
+      .eq('card_id', cardId)
+      .order('created_at', { ascending: false })
+      .limit(10)
+    if (error) {
+      if (isTableMissing(error)) return []
+      return null
+    }
+    return data as CardReview[]
+  } catch {
+    return null
+  }
+}
+
+export async function fetchCardRatings(cardId: string): Promise<CardRatingSummary | null> {
+  try {
+    const supabase = createPublicClient()
+    const { data, error } = await supabase
+      .from('zukan_card_ratings')
+      .select('score_admiration, score_trauma, score_still_like, score_name, score_art')
+      .eq('card_id', cardId)
+      .eq('is_deleted', false)
+    if (error) {
+      if (isTableMissing(error)) return null
+      return null
+    }
+    const rows = data as CardRatingRow[]
+    if (rows.length === 0) return null
+
+    const avg = (field: keyof CardRatingRow) => {
+      const vals = rows.map(r => r[field]).filter((v): v is number => v !== null)
+      return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0
+    }
+    const cnt = (field: keyof CardRatingRow) =>
+      rows.filter(r => r[field] !== null).length
+
+    return {
+      admiration: { avg: avg('score_admiration'), count: cnt('score_admiration') },
+      trauma:     { avg: avg('score_trauma'),     count: cnt('score_trauma') },
+      stillLike:  { avg: avg('score_still_like'), count: cnt('score_still_like') },
+      name:       { avg: avg('score_name'),        count: cnt('score_name') },
+      art:        { avg: avg('score_art'),         count: cnt('score_art') },
+      totalCount: rows.length,
+    }
+  } catch {
+    return null
+  }
+}
+
+// ============================================================
+// Related threads (lightweight title match)
+// ============================================================
+
+export type RelatedThread = {
+  id: string
+  title: string
+  slug: string
+  comment_count: number
+  created_at: string
+}
+
+export async function fetchRelatedThreads(keyword: string): Promise<RelatedThread[]> {
+  try {
+    const supabase = createPublicClient()
+    const { data, error } = await supabase
+      .from('threads')
+      .select('id, title, slug, comment_count, created_at')
+      .ilike('title', `%${keyword}%`)
+      .eq('is_archived', false)
+      .order('comment_count', { ascending: false })
+      .limit(5)
+    if (error) return []
+    return (data ?? []) as RelatedThread[]
+  } catch {
+    return []
+  }
+}
+
+// ============================================================
+// Card slug fetch (continued below)
+// ============================================================
+
 export async function fetchCardBySlug(slug: string): Promise<FetchCardResult> {
   try {
     const supabase = createPublicClient()
