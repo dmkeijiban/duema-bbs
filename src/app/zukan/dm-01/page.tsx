@@ -46,18 +46,6 @@ const REP_CARDS = [
   { slug: 'natural-trap',    name: 'ナチュラル・トラップ',  civilization: '自然' },
 ]
 
-const PACK_REVIEWS = [
-  { author: 'よっち', body: '初めて買ったパック。ボルシャックが当たって叫んだ記憶しかない。', when: '2026/06/01' },
-  { author: '名無し', body: 'シールド戦の入門にちょうどよかった。今のカードより素朴で好き。', when: '2026/05/28' },
-]
-
-const SHORT_REVIEWS = [
-  '小学校の机の中に隠してた',
-  'デッキケースが宝物だった',
-  'コロコロ片手に開けてた',
-  '近所の友達と交換しまくった',
-]
-
 // ---------------------------------------------------------------------------
 
 const CIV_BG: Record<string, string> = {
@@ -95,7 +83,16 @@ function CardThumb({
 }) {
   if (imageUrl) {
     return (
-      <ZukanImagePreview src={imageUrl} alt={`${name} カード画像`} />
+      <div className="w-full overflow-hidden bg-gray-100" style={{ aspectRatio: '63 / 88' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageUrl}
+          alt={`${name} カード画像`}
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+        />
+      </div>
     )
   }
 
@@ -194,11 +191,7 @@ export default async function ZukanDm01Page({
           {pack.description && (
             <p className="mt-3 text-sm leading-relaxed text-gray-700">{pack.description}</p>
           )}
-          <div className="mt-4">
-            <span className="inline-block cursor-default rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white opacity-50">
-              このパックの思い出を書く（準備中）
-            </span>
-          </div>
+          <p className="mt-3 text-xs text-gray-400">思い出投稿機能は近日実装予定です。</p>
         </div>
       </header>
 
@@ -213,11 +206,8 @@ export default async function ZukanDm01Page({
               const dbCard = dbRepCards?.find(c => c.slug === rep.slug) ?? null
               const href = dbCard ? `/zukan/card/${rep.slug}` : '#'
               const isLinked = !!dbCard
-              return (
-                <div
-                  key={rep.slug}
-                  className={`border border-gray-300 bg-white ${isLinked ? 'hover:border-blue-400 hover:shadow-sm' : 'opacity-60'}`}
-                >
+              const inner = (
+                <>
                   <CardThumb
                     name={rep.name}
                     civilization={rep.civilization}
@@ -227,17 +217,27 @@ export default async function ZukanDm01Page({
                     <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[rep.civilization] ?? 'bg-gray-100 text-gray-600'}`}>
                       {rep.civilization}
                     </span>
-                    <div className="mt-1 truncate text-xs font-bold text-gray-800">
-                      {isLinked ? (
-                        <Link href={href} className="text-blue-700 hover:underline">
-                          {rep.name}
-                        </Link>
-                      ) : (
-                        rep.name
-                      )}
+                    <div className="mt-1 truncate text-xs font-bold text-blue-700">
+                      {rep.name}
                     </div>
                     {!dbCard && <div className="text-[10px] text-gray-400">詳細準備中</div>}
                   </div>
+                </>
+              )
+              return isLinked ? (
+                <Link
+                  key={rep.slug}
+                  href={href}
+                  className="block border border-gray-300 bg-white hover:border-blue-400 hover:shadow-sm"
+                >
+                  {inner}
+                </Link>
+              ) : (
+                <div
+                  key={rep.slug}
+                  className="border border-gray-300 bg-white opacity-60"
+                >
+                  {inner}
                 </div>
               )
             })}
@@ -245,48 +245,26 @@ export default async function ZukanDm01Page({
         </section>
       )}
 
-      {/* このパックの思い出レビュー（モック固定） */}
+      {/* このパックの思い出レビュー */}
       {page === 1 && (
         <section className="mb-5">
-          <div className="mb-2 flex items-baseline justify-between border border-gray-300 bg-gray-50 px-3 py-2">
+          <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
             <h2 className="text-sm font-bold text-gray-800">このパックの思い出レビュー</h2>
-            <span className="text-xs text-gray-400">レビュー投稿は準備中</span>
           </div>
-          <div className="space-y-2">
-            {PACK_REVIEWS.map((r, i) => (
-              <div key={i} className="border border-gray-300 bg-white px-3 py-3">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-xs font-bold text-gray-700">{r.author}</span>
-                  <span className="text-xs text-gray-400">{r.when}</span>
-                </div>
-                <p className="mt-1 text-sm leading-relaxed text-gray-700">{r.body}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-2">
-            <span className="inline-block cursor-default rounded border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-400">
-              レビューを書く（準備中）
-            </span>
+          <div className="border border-gray-200 bg-white px-3 py-4 text-center">
+            <p className="text-xs text-gray-400">まだ投稿はありません</p>
+            <p className="mt-1 text-xs text-gray-400">思い出投稿機能は準備中です</p>
           </div>
         </section>
       )}
 
-      {/* ひとことメモ（モック固定） */}
+      {/* ひとことメモ */}
       {page === 1 && (
         <section className="mb-5">
           <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
             <h2 className="text-sm font-bold text-gray-800">ひとことメモ</h2>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {SHORT_REVIEWS.map((s, i) => (
-              <span key={i} className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs text-gray-700">
-                {s}
-              </span>
-            ))}
-            <span className="rounded-full border border-dashed border-gray-300 bg-gray-50 px-3 py-1 text-xs text-gray-400 cursor-default">
-              ＋ひとこと追加（準備中）
-            </span>
-          </div>
+          <p className="border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">まだひとことメモはありません</p>
         </section>
       )}
 
@@ -307,42 +285,51 @@ export default async function ZukanDm01Page({
           <p className="px-3 py-4 text-xs text-gray-400">このページにはカードがありません。</p>
         ) : (
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-            {cards.map(card => (
-              <div
-                key={card.slug}
-                className={`border border-gray-300 bg-white ${card.id ? 'hover:border-blue-400 hover:shadow-sm' : ''}`}
-              >
-                <CardThumb
-                  name={card.name}
-                  civilization={card.civilization}
-                  imageUrl={card.official_image_url}
-                />
-                <div className="px-1.5 py-1.5">
-                  <div className="flex items-center gap-1">
-                    {card.civilization && (
-                      <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[card.civilization] ?? 'bg-gray-100 text-gray-600'}`}>
-                        {card.civilization}
-                      </span>
-                    )}
-                    {card.rarity && (
-                      <span className="font-mono text-[10px] text-gray-400">{card.rarity}</span>
-                    )}
-                  </div>
-                  <div className="mt-0.5 truncate text-xs font-bold text-gray-800">
-                    {card.id ? (
-                      <Link href={cardHref(card)} className="text-blue-700 hover:underline">
-                        {card.name}
-                      </Link>
-                    ) : (
-                      card.name
+            {cards.map(card => {
+              const cardInner = (
+                <>
+                  <CardThumb
+                    name={card.name}
+                    civilization={card.civilization}
+                    imageUrl={card.official_image_url}
+                  />
+                  <div className="px-1.5 py-1.5">
+                    <div className="flex items-center gap-1">
+                      {card.civilization && (
+                        <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[card.civilization] ?? 'bg-gray-100 text-gray-600'}`}>
+                          {card.civilization}
+                        </span>
+                      )}
+                      {card.rarity && (
+                        <span className="font-mono text-[10px] text-gray-400">{card.rarity}</span>
+                      )}
+                    </div>
+                    <div className="mt-0.5 truncate text-xs font-bold text-blue-700">
+                      {card.name}
+                    </div>
+                    {card.card_type && (
+                      <div className="text-[10px] text-gray-400">{card.card_type}</div>
                     )}
                   </div>
-                  {card.card_type && (
-                    <div className="text-[10px] text-gray-400">{card.card_type}</div>
-                  )}
+                </>
+              )
+              return card.id ? (
+                <Link
+                  key={card.slug}
+                  href={cardHref(card)}
+                  className="block border border-gray-300 bg-white hover:border-blue-400 hover:shadow-sm"
+                >
+                  {cardInner}
+                </Link>
+              ) : (
+                <div
+                  key={card.slug}
+                  className="border border-gray-300 bg-white"
+                >
+                  {cardInner}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
 

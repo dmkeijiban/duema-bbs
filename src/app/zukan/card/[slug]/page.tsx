@@ -29,23 +29,6 @@ const MOCK_CARD: ZukanCardWithPack = {
   zukan_packs: { slug: 'dm-01', code: 'DM-01', name: '基本セット' },
 }
 
-const MOCK_REVIEWS = [
-  { author: 'よっち', body: '小学生のとき、これ1枚で全部解決すると思ってた。今見てもイラストが最高。', when: '2026/06/02' },
-  { author: '名無し', body: '友達がこれ出してきて毎回negられた。トラウマというか憧れというか。', when: '2026/05/30' },
-]
-
-const MOCK_SHORT_REVIEWS = [
-  'これが当たって学校で自慢した',
-  '初めての切り札だった',
-  '炎のドラゴンといえばコレ',
-  'パッケージで一目惚れ',
-]
-
-const MOCK_THREADS = [
-  { title: 'ボルシャック・ドラゴンの思い出を語るスレ', replies: 342, href: '#' },
-  { title: '【初代】DM-01世代だけがわかること', replies: 198, href: '#' },
-]
-
 // ---------------------------------------------------------------------------
 
 const CIV_BADGE: Record<string, string> = {
@@ -64,8 +47,6 @@ const RATING_LABELS = [
   'イラストのかっこよさ',
 ]
 
-// モック評価スコア（bolshack-dragon 用仮平均）
-const MOCK_SCORES = [4.8, 2.1, 4.6, 4.9, 4.5]
 
 function CardThumb({ name }: { name: string }) {
   return (
@@ -200,11 +181,7 @@ export default async function ZukanCardPage({
               </a>
             </div>
           )}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="inline-block cursor-default rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white opacity-60">
-              レビューを書く（準備中）
-            </span>
-          </div>
+          <p className="mt-4 text-xs text-gray-400">思い出投稿機能は近日実装予定です。</p>
           {/* シェアボタン */}
           <div className="mt-3">
             <ShareButtons cardName={card.name} />
@@ -218,20 +195,15 @@ export default async function ZukanCardPage({
           <h2 className="text-sm font-bold text-gray-800">みんなの思い出評価</h2>
         </div>
         <div className="border border-gray-300 bg-white divide-y divide-gray-100">
-          {RATING_LABELS.map((label, i) => {
-            const score = MOCK_SCORES[i]
-            return (
-              <div key={i} className="grid grid-cols-[9rem_1fr_3rem] items-center gap-2 px-3 py-2.5 sm:grid-cols-[11rem_1fr_3rem]">
-                <span className="text-xs font-bold text-gray-700">{label}</span>
-                <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-                  <div className="h-full rounded-full bg-amber-400" style={{ width: `${(score / 5) * 100}%` }} />
-                </div>
-                <span className="text-right font-mono text-xs font-bold text-gray-700">{score.toFixed(1)}</span>
-              </div>
-            )
-          })}
+          {RATING_LABELS.map((label, i) => (
+            <div key={i} className="grid grid-cols-[9rem_1fr_3rem] items-center gap-2 px-3 py-2.5 sm:grid-cols-[11rem_1fr_3rem]">
+              <span className="text-xs font-bold text-gray-700">{label}</span>
+              <div className="h-2 overflow-hidden rounded-full bg-gray-100" />
+              <span className="text-right font-mono text-xs text-gray-400">—</span>
+            </div>
+          ))}
         </div>
-        <p className="mt-1 text-xs text-gray-400">※5項目はすべて入力 or すべて未入力（部分入力なし）。評価投稿は準備中。</p>
+        <p className="mt-1 text-xs text-gray-400">評価機能は準備中です。</p>
       </section>
 
       {/* ひとことメモ */}
@@ -239,13 +211,7 @@ export default async function ZukanCardPage({
         <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
           <h2 className="text-sm font-bold text-gray-800">ひとことメモ</h2>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {MOCK_SHORT_REVIEWS.map((s, i) => (
-            <span key={i} className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs text-gray-700">
-              {s}
-            </span>
-          ))}
-        </div>
+        <p className="border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">まだありません</p>
       </section>
 
       {/* レビュー */}
@@ -253,16 +219,9 @@ export default async function ZukanCardPage({
         <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
           <h2 className="text-sm font-bold text-gray-800">思い出レビュー</h2>
         </div>
-        <div className="space-y-2">
-          {MOCK_REVIEWS.map((r, i) => (
-            <div key={i} className="border border-gray-300 bg-white px-3 py-3">
-              <div className="flex items-baseline justify-between">
-                <span className="text-xs font-bold text-gray-700">{r.author}</span>
-                <span className="text-xs text-gray-400">{r.when}</span>
-              </div>
-              <p className="mt-1 text-sm leading-relaxed text-gray-700">{r.body}</p>
-            </div>
-          ))}
+        <div className="border border-gray-200 bg-white px-3 py-4 text-center">
+          <p className="text-xs text-gray-400">まだ投稿はありません</p>
+          <p className="mt-1 text-xs text-gray-400">思い出投稿機能は準備中です</p>
         </div>
       </section>
 
@@ -272,14 +231,7 @@ export default async function ZukanCardPage({
           <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
             <h2 className="text-sm font-bold text-gray-800">関連スレッド</h2>
           </div>
-          <div className="divide-y divide-gray-100">
-            {MOCK_THREADS.map((t, i) => (
-              <Link key={i} href={t.href} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
-                <span className="truncate text-sm font-bold text-blue-700">{t.title}</span>
-                <span className="ml-2 whitespace-nowrap font-mono text-xs text-gray-500">{t.replies}</span>
-              </Link>
-            ))}
-          </div>
+          <p className="px-3 py-3 text-xs text-gray-400">まだ関連スレッドはありません</p>
         </div>
       </section>
     </div>
