@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { fetchPublishedPacks, fetchCardsBySlugs } from '@/lib/zukan'
 import type { ZukanPack, ZukanCard } from '@/lib/zukan'
-import ZukanImagePreview from '@/components/ZukanImagePreview'
 
 export const metadata = {
   title: 'デュエマ思い出図鑑 | デュエマ掲示板',
@@ -50,7 +49,18 @@ function CardThumb({
   imageUrl?: string | null
 }) {
   if (imageUrl) {
-    return <ZukanImagePreview src={imageUrl} alt={`${name} カード画像`} />
+    return (
+      <div className="w-full overflow-hidden bg-gray-100" style={{ aspectRatio: '63 / 88' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageUrl}
+          alt={`${name} カード画像`}
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+        />
+      </div>
+    )
   }
   const bg = civilization ? (CIV_BG[civilization] ?? 'from-gray-100 to-gray-200') : 'from-gray-100 to-gray-200'
   const tc = civilization ? (CIV_TEXT[civilization] ?? 'text-gray-400') : 'text-gray-400'
@@ -72,7 +82,6 @@ const DM01_PREVIEW_DEFS = [
   { slug: 'holy-spark',      name: 'ホーリー・スパーク',     civ: '光' },
   { slug: 'demon-hand',      name: 'デーモン・ハンド',       civ: '闇' },
   { slug: 'natural-trap',    name: 'ナチュラル・トラップ',   civ: '自然' },
-  { slug: 'spiral-gate',     name: 'スパイラル・ゲート',     civ: '水' },
 ]
 
 export default async function ZukanTopPage() {
@@ -142,14 +151,15 @@ export default async function ZukanTopPage() {
             パックページへ
           </Link>
         </div>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
           {DM01_PREVIEW_DEFS.map(def => {
             const dbCard = cardMap.get(def.slug) ?? null
             const href = dbCard ? `/zukan/card/${def.slug}` : '#'
             return (
-              <div
+              <Link
                 key={def.slug}
-                className="border border-gray-300 bg-white hover:border-blue-400"
+                href={href}
+                className="block border border-gray-300 bg-white hover:border-blue-400"
               >
                 <CardThumb
                   name={def.name}
@@ -160,17 +170,11 @@ export default async function ZukanTopPage() {
                   <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[def.civ] ?? 'bg-gray-100 text-gray-600'}`}>
                     {def.civ}
                   </span>
-                  <div className="mt-1 truncate text-xs font-bold text-gray-800">
-                    {dbCard ? (
-                      <Link href={href} className="text-blue-700 hover:underline">
-                        {def.name}
-                      </Link>
-                    ) : (
-                      def.name
-                    )}
+                  <div className="mt-1 truncate text-xs font-bold text-gray-800 text-blue-700">
+                    {def.name}
                   </div>
                 </div>
-              </div>
+              </Link>
             )
           })}
         </div>
