@@ -1,8 +1,3 @@
-'use client'
-
-import { useEffect, useCallback, useState } from 'react'
-import { createPortal } from 'react-dom'
-
 type ZukanImagePreviewProps = {
   src: string
   alt: string
@@ -11,79 +6,8 @@ type ZukanImagePreviewProps = {
   aspectRatio?: string
 }
 
-function ImageModal({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleKey)
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', handleKey)
-      document.body.style.overflow = ''
-    }
-  }, [onClose])
-
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={alt}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        background: 'rgba(0,0,0,0.80)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{ position: 'relative', display: 'inline-block' }}
-        onClick={e => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          style={{
-            position: 'absolute',
-            top: '-12px',
-            right: '-12px',
-            zIndex: 1,
-            background: '#fff',
-            border: 'none',
-            borderRadius: '4px',
-            padding: '2px 8px',
-            fontSize: '12px',
-            fontWeight: 'bold',
-            color: '#374151',
-            cursor: 'pointer',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-          }}
-          aria-label="閉じる"
-        >
-          閉じる
-        </button>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={src}
-          alt={alt}
-          style={{
-            display: 'block',
-            maxWidth: '90vw',
-            maxHeight: '90vh',
-            objectFit: 'contain',
-            borderRadius: '6px',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
-            background: '#fff',
-          }}
-        />
-      </div>
-    </div>,
-    document.body,
-  )
+function previewId(src: string): string {
+  return `zukan-preview-${src.replace(/[^a-zA-Z0-9_-]/g, '-').slice(-80)}`
 }
 
 export default function ZukanImagePreview({
@@ -93,17 +17,22 @@ export default function ZukanImagePreview({
   imageClassName = '',
   aspectRatio = '63 / 88',
 }: ZukanImagePreviewProps) {
-  const [open, setOpen] = useState(false)
-  const handleClose = useCallback(() => setOpen(false), [])
+  const id = previewId(src)
 
   return (
     <>
+      <style>{`
+        .zukan-image-popover::backdrop {
+          background: rgba(0, 0, 0, 0.8);
+        }
+      `}</style>
       <button
         type="button"
         className={`block w-full overflow-hidden bg-gray-100 cursor-zoom-in ${className}`}
         style={{ aspectRatio }}
         aria-label={`${alt}を拡大表示`}
-        onClick={() => setOpen(true)}
+        popoverTarget={id}
+        popoverTargetAction="show"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -115,7 +44,19 @@ export default function ZukanImagePreview({
         />
       </button>
 
-      {open && <ImageModal src={src} alt={alt} onClose={handleClose} />}
+      <div
+        id={id}
+        popover="auto"
+        className="zukan-image-popover m-auto border-0 bg-transparent p-0 outline-none"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={alt}
+          decoding="async"
+          className="block max-h-[90vh] max-w-[90vw] rounded-md bg-white object-contain shadow-2xl"
+        />
+      </div>
     </>
   )
 }
