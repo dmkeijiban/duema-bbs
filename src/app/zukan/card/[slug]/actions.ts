@@ -2,6 +2,8 @@
 
 import { createPublicClient } from '@/lib/supabase-public'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
+import { randomUUID } from 'crypto'
 
 export type CardReviewFormState =
   | { status: 'idle' }
@@ -44,7 +46,7 @@ export async function submitCardReview(
 
 export type CardRatingFormState =
   | { status: 'idle' }
-  | { status: 'success' }
+  | { status: 'success'; isUpdate: boolean }
   | { status: 'error'; message: string }
 
 export async function submitCardRating(
@@ -73,16 +75,57 @@ export async function submitCardRating(
     return { status: 'error', message: '少なくとも1項目は評価してください' }
   }
 
-  const supabase = createPublicClient()
-  const { error } = await supabase.from('zukan_card_ratings').insert({
-    card_id: cardId,
-    ...scores,
-  })
+  // Get or create anonymous session key for de-duplication
+  const cookieStore = await cookies()
+  let anonKey = cookieStore.get('zukan_anon_key')?.value
+  if (!anonKey) {
+    anonKey = randomUUID()
+  }
 
-  if (error) {
+  const supabase = createPublicClient()
+
+  // Select → update/insert to avoid UNIQUE constraint issues with NULL user_id
+  const { data: existing, error: selectError } = await supabase
+    .from('zukan_card_ratings')
+    .select('id')
+    .eq('card_id', cardId)
+    .eq('anon_key', anonKey)
+    .maybeSingle()
+
+  if (selectError) {
+    console.error('[submitCardRating] select:', selectError.code, selectError.message)
     return { status: 'error', message: '評価の送信に失敗しました。しばらくしてから再試行してください。' }
   }
 
+  let dbError
+  const isUpdate = !!existing
+
+  if (existing) {
+    const { error } = await supabase
+      .from('zukan_card_ratings')
+      .update(scores)
+      .eq('id', existing.id)
+    dbError = error
+  } else {
+    const { error } = await supabase
+      .from('zukan_card_ratings')
+      .insert({ card_id: cardId, anon_key: anonKey, ...scores })
+    dbError = error
+  }
+
+  if (dbError) {
+    console.error('[submitCardRating] write:', dbError.code, dbError.message, dbError.details)
+    return { status: 'error', message: '評価の送信に失敗しました。しばらくしてから再試行してください。' }
+  }
+
+  // Persist anon_key cookie after successful save
+  cookieStore.set('zukan_anon_key', anonKey, {
+    maxAge: 60 * 60 * 24 * 365,
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+  })
+
   revalidatePath(`/zukan/card/${slug}`)
-  return { status: 'success' }
+  return { status: 'success', isUpdate }
 }
