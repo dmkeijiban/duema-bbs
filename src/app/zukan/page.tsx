@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { fetchPublishedPacks, fetchCardsBySlugs } from '@/lib/zukan'
 import type { ZukanPack, ZukanCard } from '@/lib/zukan'
-import ZukanImagePreview from '@/components/ZukanImagePreview'
 
 export const metadata = {
   title: 'デュエマ思い出図鑑 | デュエマ掲示板',
@@ -50,7 +49,18 @@ function CardThumb({
   imageUrl?: string | null
 }) {
   if (imageUrl) {
-    return <ZukanImagePreview src={imageUrl} alt={`${name} カード画像`} />
+    return (
+      <div className="bg-gray-100" style={{ aspectRatio: '63 / 88' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageUrl}
+          alt={`${name} カード画像`}
+          loading="lazy"
+          decoding="async"
+          className="pointer-events-none h-full w-full object-cover"
+        />
+      </div>
+    )
   }
   const bg = civilization ? (CIV_BG[civilization] ?? 'from-gray-100 to-gray-200') : 'from-gray-100 to-gray-200'
   const tc = civilization ? (CIV_TEXT[civilization] ?? 'text-gray-400') : 'text-gray-400'
@@ -72,7 +82,6 @@ const DM01_PREVIEW_DEFS = [
   { slug: 'holy-spark',      name: 'ホーリー・スパーク',     civ: '光' },
   { slug: 'demon-hand',      name: 'デーモン・ハンド',       civ: '闇' },
   { slug: 'natural-trap',    name: 'ナチュラル・トラップ',   civ: '自然' },
-  { slug: 'spiral-gate',     name: 'スパイラル・ゲート',     civ: '水' },
 ]
 
 export default async function ZukanTopPage() {
@@ -146,30 +155,32 @@ export default async function ZukanTopPage() {
           {DM01_PREVIEW_DEFS.map(def => {
             const dbCard = cardMap.get(def.slug) ?? null
             const href = dbCard ? `/zukan/card/${def.slug}` : '#'
-            return (
-              <div
-                key={def.slug}
-                className="border border-gray-300 bg-white hover:border-blue-400"
-              >
+            const cardClass = `border border-gray-300 bg-white ${dbCard ? 'block hover:border-blue-400' : 'opacity-60'}`
+            const cardBody = (
+              <>
                 <CardThumb
-                  name={def.name}
-                  civilization={def.civ}
+                  name={dbCard?.name ?? def.name}
+                  civilization={dbCard?.civilization ?? def.civ}
                   imageUrl={dbCard?.official_image_url}
                 />
                 <div className="px-1.5 py-1.5">
                   <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[def.civ] ?? 'bg-gray-100 text-gray-600'}`}>
                     {def.civ}
                   </span>
-                  <div className="mt-1 truncate text-xs font-bold text-gray-800">
-                    {dbCard ? (
-                      <Link href={href} className="text-blue-700 hover:underline">
-                        {def.name}
-                      </Link>
-                    ) : (
-                      def.name
-                    )}
+                  <div className={`mt-1 truncate text-xs font-bold ${dbCard ? 'text-blue-700' : 'text-gray-800'}`}>
+                    {dbCard?.name ?? def.name}
                   </div>
                 </div>
+              </>
+            )
+
+            return dbCard ? (
+              <Link key={def.slug} href={href} className={cardClass}>
+                {cardBody}
+              </Link>
+            ) : (
+              <div key={def.slug} className={cardClass}>
+                {cardBody}
               </div>
             )
           })}
