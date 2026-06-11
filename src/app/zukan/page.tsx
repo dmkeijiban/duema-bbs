@@ -151,7 +151,7 @@ export default async function ZukanTopPage() {
             パックページへ
           </Link>
         </div>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
           {DM01_PREVIEW_DEFS.map(def => {
             const dbCard = cardMap.get(def.slug) ?? null
             const href = dbCard ? `/zukan/card/${def.slug}` : '#'
