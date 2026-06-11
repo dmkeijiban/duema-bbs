@@ -50,14 +50,14 @@ function CardThumb({
 }) {
   if (imageUrl) {
     return (
-      <div className="w-full overflow-hidden bg-gray-100" style={{ aspectRatio: '63 / 88' }}>
+      <div className="bg-gray-100" style={{ aspectRatio: '63 / 88' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imageUrl}
           alt={`${name} カード画像`}
           loading="lazy"
           decoding="async"
-          className="h-full w-full object-cover"
+          className="pointer-events-none h-full w-full object-cover"
         />
       </div>
     )
@@ -155,26 +155,33 @@ export default async function ZukanTopPage() {
           {DM01_PREVIEW_DEFS.map(def => {
             const dbCard = cardMap.get(def.slug) ?? null
             const href = dbCard ? `/zukan/card/${def.slug}` : '#'
-            return (
-              <Link
-                key={def.slug}
-                href={href}
-                className="block border border-gray-300 bg-white hover:border-blue-400"
-              >
+            const cardClass = `border border-gray-300 bg-white ${dbCard ? 'block hover:border-blue-400' : 'opacity-60'}`
+            const cardBody = (
+              <>
                 <CardThumb
-                  name={def.name}
-                  civilization={def.civ}
+                  name={dbCard?.name ?? def.name}
+                  civilization={dbCard?.civilization ?? def.civ}
                   imageUrl={dbCard?.official_image_url}
                 />
                 <div className="px-1.5 py-1.5">
                   <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[def.civ] ?? 'bg-gray-100 text-gray-600'}`}>
                     {def.civ}
                   </span>
-                  <div className="mt-1 truncate text-xs font-bold text-gray-800 text-blue-700">
-                    {def.name}
+                  <div className={`mt-1 truncate text-xs font-bold ${dbCard ? 'text-blue-700' : 'text-gray-800'}`}>
+                    {dbCard?.name ?? def.name}
                   </div>
                 </div>
+              </>
+            )
+
+            return dbCard ? (
+              <Link key={def.slug} href={href} className={cardClass}>
+                {cardBody}
               </Link>
+            ) : (
+              <div key={def.slug} className={cardClass}>
+                {cardBody}
+              </div>
             )
           })}
         </div>

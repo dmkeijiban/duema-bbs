@@ -83,14 +83,14 @@ function CardThumb({
 }) {
   if (imageUrl) {
     return (
-      <div className="w-full overflow-hidden bg-gray-100" style={{ aspectRatio: '63 / 88' }}>
+      <div className="bg-gray-100" style={{ aspectRatio: '63 / 88' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imageUrl}
           alt={`${name} カード画像`}
           loading="lazy"
           decoding="async"
-          className="h-full w-full object-cover"
+          className="pointer-events-none h-full w-full object-cover"
         />
       </div>
     )
@@ -206,7 +206,8 @@ export default async function ZukanDm01Page({
               const dbCard = dbRepCards?.find(c => c.slug === rep.slug) ?? null
               const href = dbCard ? `/zukan/card/${rep.slug}` : '#'
               const isLinked = !!dbCard
-              const inner = (
+              const cardClass = `border border-gray-300 bg-white ${isLinked ? 'block hover:border-blue-400 hover:shadow-sm' : 'opacity-60'}`
+              const cardBody = (
                 <>
                   <CardThumb
                     name={rep.name}
@@ -217,27 +218,21 @@ export default async function ZukanDm01Page({
                     <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[rep.civilization] ?? 'bg-gray-100 text-gray-600'}`}>
                       {rep.civilization}
                     </span>
-                    <div className="mt-1 truncate text-xs font-bold text-blue-700">
+                    <div className={`mt-1 truncate text-xs font-bold ${isLinked ? 'text-blue-700' : 'text-gray-800'}`}>
                       {rep.name}
                     </div>
                     {!dbCard && <div className="text-[10px] text-gray-400">詳細準備中</div>}
                   </div>
                 </>
               )
+
               return isLinked ? (
-                <Link
-                  key={rep.slug}
-                  href={href}
-                  className="block border border-gray-300 bg-white hover:border-blue-400 hover:shadow-sm"
-                >
-                  {inner}
+                <Link key={rep.slug} href={href} className={cardClass}>
+                  {cardBody}
                 </Link>
               ) : (
-                <div
-                  key={rep.slug}
-                  className="border border-gray-300 bg-white opacity-60"
-                >
-                  {inner}
+                <div key={rep.slug} className={cardClass}>
+                  {cardBody}
                 </div>
               )
             })}
@@ -286,7 +281,9 @@ export default async function ZukanDm01Page({
         ) : (
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
             {cards.map(card => {
-              const cardInner = (
+              const isLinked = !!card.id
+              const cardClass = `border border-gray-300 bg-white ${isLinked ? 'block hover:border-blue-400 hover:shadow-sm' : ''}`
+              const cardBody = (
                 <>
                   <CardThumb
                     name={card.name}
@@ -304,7 +301,7 @@ export default async function ZukanDm01Page({
                         <span className="font-mono text-[10px] text-gray-400">{card.rarity}</span>
                       )}
                     </div>
-                    <div className="mt-0.5 truncate text-xs font-bold text-blue-700">
+                    <div className={`mt-0.5 truncate text-xs font-bold ${isLinked ? 'text-blue-700' : 'text-gray-800'}`}>
                       {card.name}
                     </div>
                     {card.card_type && (
@@ -313,20 +310,14 @@ export default async function ZukanDm01Page({
                   </div>
                 </>
               )
-              return card.id ? (
-                <Link
-                  key={card.slug}
-                  href={cardHref(card)}
-                  className="block border border-gray-300 bg-white hover:border-blue-400 hover:shadow-sm"
-                >
-                  {cardInner}
+
+              return isLinked ? (
+                <Link key={card.slug} href={cardHref(card)} className={cardClass}>
+                  {cardBody}
                 </Link>
               ) : (
-                <div
-                  key={card.slug}
-                  className="border border-gray-300 bg-white"
-                >
-                  {cardInner}
+                <div key={card.slug} className={cardClass}>
+                  {cardBody}
                 </div>
               )
             })}
