@@ -163,14 +163,10 @@ export default async function ZukanDm01Page({
       <header className="mb-5 grid gap-4 border border-gray-300 bg-white p-4 md:grid-cols-[200px_1fr]">
         <div className="mx-auto w-full max-w-[200px]">
           {pack.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <ZukanImagePreview
               src={pack.image_url}
               alt={`${pack.code} ${pack.name} パック画像`}
-              loading="lazy"
-              decoding="async"
-              className="w-full rounded"
-              style={{ aspectRatio: '3 / 4', objectFit: 'cover' }}
+              aspectRatio="3 / 4"
             />
           ) : (
             <div
