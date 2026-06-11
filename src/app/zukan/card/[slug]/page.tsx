@@ -1,9 +1,11 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { fetchCardBySlug } from '@/lib/zukan'
+import { fetchCardBySlug, fetchCardReviews, fetchCardRatings, fetchRelatedThreads } from '@/lib/zukan'
 import type { ZukanCardWithPack } from '@/lib/zukan'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import ShareButtons from './ShareButtons'
+import CardReviewForm from './CardReviewForm'
+import CardRatingForm from './CardRatingForm'
 
 // --- モックフォールバック（bolshack-dragon 専用） ---------------------------
 
@@ -38,15 +40,6 @@ const CIV_BADGE: Record<string, string> = {
   光: 'bg-yellow-100 text-yellow-700',
   闇: 'bg-gray-200 text-gray-700',
 }
-
-const RATING_LABELS = [
-  '当時の憧れ度',
-  '使われた時のトラウマ度',
-  '今見ても好き度',
-  '名前のかっこよさ',
-  'イラストのかっこよさ',
-]
-
 
 function CardThumb({ name }: { name: string }) {
   return (
@@ -95,6 +88,10 @@ export default async function ZukanCardPage({
     if (slug !== 'bolshack-dragon') notFound()
     card = MOCK_CARD
   }
+
+  const cardReviews = isDbReady ? await fetchCardReviews(card.id) : null
+  const ratingsSummary = isDbReady ? await fetchCardRatings(card.id) : null
+  const relatedThreads = await fetchRelatedThreads(card.name)
 
   const pack = card.zukan_packs
   const packHref = pack ? `/zukan/${pack.slug}` : '/zukan'
@@ -181,7 +178,6 @@ export default async function ZukanCardPage({
               </a>
             </div>
           )}
-          <p className="mt-4 text-xs text-gray-400">思い出投稿機能は近日実装予定です。</p>
           {/* シェアボタン */}
           <div className="mt-3">
             <ShareButtons cardName={card.name} />
@@ -194,16 +190,36 @@ export default async function ZukanCardPage({
         <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
           <h2 className="text-sm font-bold text-gray-800">みんなの思い出評価</h2>
         </div>
-        <div className="border border-gray-300 bg-white divide-y divide-gray-100">
-          {RATING_LABELS.map((label, i) => (
-            <div key={i} className="grid grid-cols-[9rem_1fr_3rem] items-center gap-2 px-3 py-2.5 sm:grid-cols-[11rem_1fr_3rem]">
-              <span className="text-xs font-bold text-gray-700">{label}</span>
-              <div className="h-2 overflow-hidden rounded-full bg-gray-100" />
-              <span className="text-right font-mono text-xs text-gray-400">—</span>
-            </div>
-          ))}
-        </div>
-        <p className="mt-1 text-xs text-gray-400">評価機能は準備中です。</p>
+        {ratingsSummary ? (
+          <div className="mb-3 border border-gray-300 bg-white divide-y divide-gray-100">
+            {(
+              [
+                ['当時の憧れ度', ratingsSummary.admiration],
+                ['使われた時のトラウマ度', ratingsSummary.trauma],
+                ['今見ても好き度', ratingsSummary.stillLike],
+                ['名前のかっこよさ', ratingsSummary.name],
+                ['イラストのかっこよさ', ratingsSummary.art],
+              ] as const
+            ).map(([label, stat]) => {
+              const pct = stat.avg ? Math.round((stat.avg / 5) * 100) : 0
+              return (
+                <div key={label} className="grid grid-cols-[9rem_1fr_3rem] items-center gap-2 px-3 py-2.5 sm:grid-cols-[11rem_1fr_3rem]">
+                  <span className="text-xs font-bold text-gray-700">{label}</span>
+                  <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                    {pct > 0 && <div className="h-full rounded-full bg-yellow-400" style={{ width: `${pct}%` }} />}
+                  </div>
+                  <span className="text-right font-mono text-xs text-gray-600">
+                    {stat.avg ? stat.avg.toFixed(1) : '—'}
+                    {stat.count > 0 && <span className="text-gray-400 text-[10px] ml-0.5">({stat.count})</span>}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="mb-3 border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">まだ評価はありません</p>
+        )}
+        {isDbReady && <CardRatingForm cardId={card.id} slug={slug} />}
       </section>
 
       {/* ひとことメモ */}
@@ -219,10 +235,23 @@ export default async function ZukanCardPage({
         <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
           <h2 className="text-sm font-bold text-gray-800">思い出レビュー</h2>
         </div>
-        <div className="border border-gray-200 bg-white px-3 py-4 text-center">
-          <p className="text-xs text-gray-400">まだ投稿はありません</p>
-          <p className="mt-1 text-xs text-gray-400">思い出投稿機能は準備中です</p>
-        </div>
+        {cardReviews && cardReviews.length > 0 && (
+          <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
+            {cardReviews.map(r => (
+              <div key={r.id} className="px-3 py-2.5">
+                <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                  <span className="font-bold text-gray-700">{r.display_name}</span>
+                  <span>{new Date(r.created_at).toLocaleDateString('ja-JP')}</span>
+                </div>
+                <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        {cardReviews !== null && cardReviews.length === 0 && (
+          <p className="mb-3 border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">まだ投稿はありません。最初の思い出を書いてみませんか？</p>
+        )}
+        {isDbReady && <CardReviewForm cardId={card.id} slug={slug} />}
       </section>
 
       {/* 関連スレッド */}
@@ -231,7 +260,19 @@ export default async function ZukanCardPage({
           <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
             <h2 className="text-sm font-bold text-gray-800">関連スレッド</h2>
           </div>
-          <p className="px-3 py-3 text-xs text-gray-400">まだ関連スレッドはありません</p>
+          {relatedThreads.length > 0 ? (
+            <ul className="divide-y divide-gray-100">
+              {relatedThreads.map(t => (
+                <li key={t.id}>
+                  <Link href={`/threads/${t.id}`} className="block px-3 py-2.5 text-xs text-blue-600 hover:underline hover:bg-blue-50">
+                    {t.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="px-3 py-3 text-xs text-gray-400">まだ関連スレッドはありません</p>
+          )}
         </div>
       </section>
     </div>

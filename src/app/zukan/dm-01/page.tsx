@@ -1,8 +1,9 @@
 import Link from 'next/link'
-import { fetchPack, fetchCardsByPack, fetchCardsBySlugs } from '@/lib/zukan'
+import { fetchPack, fetchCardsByPack, fetchCardsBySlugs, fetchPackReviews } from '@/lib/zukan'
 import type { ZukanPack, ZukanCard } from '@/lib/zukan'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import PackShareButtons from './PackShareButtons'
+import PackReviewForm from './PackReviewForm'
 
 export const metadata = {
   title: 'DM-01 基本セット | デュエマ思い出図鑑',
@@ -126,6 +127,7 @@ export default async function ZukanDm01Page({
   const pack = dbPack ?? MOCK_PACK
 
   const dbCards = dbPack ? await fetchCardsByPack(dbPack.id, page) : null
+  const packReviews = dbPack && page === 1 ? await fetchPackReviews(dbPack.id) : null
   const cards = dbCards ?? (page === 1 ? MOCK_CARDS : [])
   const isDbReady = dbPack !== null
 
@@ -191,7 +193,6 @@ export default async function ZukanDm01Page({
           {pack.description && (
             <p className="mt-3 text-sm leading-relaxed text-gray-700">{pack.description}</p>
           )}
-          <p className="mt-3 text-xs text-gray-400">思い出投稿機能は近日実装予定です。</p>
         </div>
       </header>
 
@@ -246,10 +247,24 @@ export default async function ZukanDm01Page({
           <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
             <h2 className="text-sm font-bold text-gray-800">このパックの思い出レビュー</h2>
           </div>
-          <div className="border border-gray-200 bg-white px-3 py-4 text-center">
-            <p className="text-xs text-gray-400">まだ投稿はありません</p>
-            <p className="mt-1 text-xs text-gray-400">思い出投稿機能は準備中です</p>
-          </div>
+          {packReviews && packReviews.length > 0 && (
+            <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
+              {packReviews.map(r => (
+                <div key={r.id} className="px-3 py-2.5">
+                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                    <span className="font-bold text-gray-700">{r.display_name}</span>
+                    <span>{new Date(r.created_at).toLocaleDateString('ja-JP')}</span>
+                  </div>
+                  <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {packReviews !== null && packReviews.length === 0 && (
+            <p className="mb-3 border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">まだ投稿はありません。最初の思い出を書いてみませんか？</p>
+          )}
+          {isDbReady && pack.id && <PackReviewForm packId={pack.id} />}
+          {!isDbReady && <p className="border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">DBが準備中のため投稿できません</p>}
         </section>
       )}
 
