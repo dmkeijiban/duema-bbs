@@ -22,6 +22,7 @@ const MOCK_PACK: ZukanPack = {
   description: '2002年5月に発売されたデュエル・マスターズ最初のパック。光・水・闇・火・自然の5文明が揃い、全120種のカードで構成された原点のセット。ボルシャック・ドラゴンやホーリー・スパークなど、当時の対戦を彩った定番カードが数多く収録されている。',
   is_published: true,
   sort_order: 1,
+  image_url: null,
 }
 
 const MOCK_CARDS: ZukanCard[] = [
@@ -145,13 +146,25 @@ export default async function ZukanDm01Page({
 
       {/* 商品ヘッダー */}
       <header className="mb-5 grid gap-4 border border-gray-300 bg-white p-4 md:grid-cols-[200px_1fr]">
-        <div
-          className="mx-auto w-full max-w-[200px] items-center justify-center rounded bg-gradient-to-br from-amber-50 to-orange-100 text-xs text-orange-300 flex flex-col gap-1 font-bold"
-          style={{ aspectRatio: '3 / 4' }}
-          aria-label="DM-01 商品画像（準備中）"
-        >
-          <span className="text-3xl">🐉</span>
-          <span>商品画像準備中</span>
+        <div className="mx-auto w-full max-w-[200px]">
+          {pack.image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={pack.image_url}
+              alt={`${pack.code} ${pack.name} パック画像`}
+              className="w-full rounded"
+              style={{ aspectRatio: '3 / 4', objectFit: 'cover' }}
+            />
+          ) : (
+            <div
+              className="flex flex-col items-center justify-center rounded bg-gradient-to-br from-amber-50 to-orange-100 text-xs text-orange-300 font-bold gap-1"
+              style={{ aspectRatio: '3 / 4' }}
+              aria-label="DM-01 商品画像（準備中）"
+            >
+              <span className="text-3xl">🐉</span>
+              <span>商品画像準備中</span>
+            </div>
+          )}
         </div>
         <div>
           <div className="font-mono text-xs font-bold text-blue-700">{pack.code}</div>

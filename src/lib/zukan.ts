@@ -10,6 +10,7 @@ export type ZukanPack = {
   description: string | null
   is_published: boolean
   sort_order: number
+  image_url: string | null
 }
 
 export type ZukanCard = {

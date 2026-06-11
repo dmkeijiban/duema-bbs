@@ -9,10 +9,10 @@ export const metadata = {
 
 // モックフォールバック（DBテーブル未作成時に使用）
 const MOCK_PACKS: ZukanPack[] = [
-  { id: '', slug: 'dm-01', code: 'DM-01', name: '基本セット', released_year: '2002年', card_count: null, description: null, is_published: true, sort_order: 1 },
-  { id: '', slug: 'dm-02', code: 'DM-02', name: '進化獣降臨', released_year: '2002年', card_count: null, description: null, is_published: true, sort_order: 2 },
-  { id: '', slug: 'dm-03', code: 'DM-03', name: '闇旋風サイクロン', released_year: '2002年', card_count: null, description: null, is_published: true, sort_order: 3 },
-  { id: '', slug: 'dm-04', code: 'DM-04', name: '闘魂編 第1弾', released_year: '2003年', card_count: null, description: null, is_published: true, sort_order: 4 },
+  { id: '', slug: 'dm-01', code: 'DM-01', name: '基本セット', released_year: '2002年', card_count: null, description: null, is_published: true, sort_order: 1, image_url: null },
+  { id: '', slug: 'dm-02', code: 'DM-02', name: '進化獣降臨', released_year: '2002年', card_count: null, description: null, is_published: true, sort_order: 2, image_url: null },
+  { id: '', slug: 'dm-03', code: 'DM-03', name: '闇旋風サイクロン', released_year: '2002年', card_count: null, description: null, is_published: true, sort_order: 3, image_url: null },
+  { id: '', slug: 'dm-04', code: 'DM-04', name: '闘魂編 第1弾', released_year: '2003年', card_count: null, description: null, is_published: true, sort_order: 4, image_url: null },
 ]
 
 const CIV_BADGE: Record<string, string> = {
