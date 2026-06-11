@@ -28,6 +28,8 @@ export type ZukanCard = {
   ability_text: string | null
   flavor_text: string | null
   image_url: string | null
+  official_page_url: string | null
+  official_image_url: string | null
   sort_order: number
 }
 
