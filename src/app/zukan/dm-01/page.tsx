@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { fetchPack, fetchCardsByPack, fetchCardsBySlugs } from '@/lib/zukan'
 import type { ZukanPack, ZukanCard } from '@/lib/zukan'
+import PackShareButtons from './PackShareButtons'
 
 export const metadata = {
   title: 'DM-01 基本セット | デュエマ思い出図鑑',
@@ -57,6 +58,14 @@ const SHORT_REVIEWS = [
 
 // ---------------------------------------------------------------------------
 
+const CIV_BG: Record<string, string> = {
+  火: 'from-red-100 to-red-200',
+  水: 'from-blue-100 to-blue-200',
+  自然: 'from-green-100 to-green-200',
+  光: 'from-yellow-50 to-yellow-200',
+  闇: 'from-gray-200 to-gray-300',
+}
+
 const CIV_BADGE: Record<string, string> = {
   火: 'bg-red-100 text-red-700',
   水: 'bg-blue-100 text-blue-700',
@@ -65,14 +74,25 @@ const CIV_BADGE: Record<string, string> = {
   闇: 'bg-gray-200 text-gray-700',
 }
 
-function CardThumb({ name }: { name: string }) {
+const CIV_TEXT: Record<string, string> = {
+  火: 'text-red-400',
+  水: 'text-blue-400',
+  自然: 'text-green-400',
+  光: 'text-yellow-500',
+  闇: 'text-gray-400',
+}
+
+function CardThumb({ name, civilization }: { name: string; civilization?: string | null }) {
+  const bg = civilization ? (CIV_BG[civilization] ?? 'from-gray-100 to-gray-200') : 'from-gray-100 to-gray-200'
+  const tc = civilization ? (CIV_TEXT[civilization] ?? 'text-gray-400') : 'text-gray-400'
   return (
     <div
-      className="flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-[10px] text-gray-400"
+      className={`flex flex-col items-center justify-center bg-gradient-to-br ${bg} text-[9px] font-bold ${tc}`}
       style={{ aspectRatio: '63 / 88' }}
       aria-label={`${name} のカード画像（準備中）`}
     >
-      画像準備中
+      <span className="text-base">{civilization ?? '？'}</span>
+      <span className="mt-0.5">画像準備中</span>
     </div>
   )
 }
@@ -100,6 +120,12 @@ export default async function ZukanDm01Page({
   const repSlugs = REP_CARDS.map(r => r.slug)
   const dbRepCards = dbPack ? await fetchCardsBySlugs(dbPack.id, repSlugs) : null
 
+  const total = pack.card_count ?? null
+  const totalPages = total ? Math.ceil(total / PAGE_SIZE) : null
+  const from = (page - 1) * PAGE_SIZE + 1
+  const to = (page - 1) * PAGE_SIZE + cards.length
+  const hasNextPage = total ? page * PAGE_SIZE < total : cards.length === PAGE_SIZE
+
   return (
     <div className="max-w-screen-xl mx-auto px-2 pt-2 pb-10">
       {/* パンくず */}
@@ -120,11 +146,12 @@ export default async function ZukanDm01Page({
       {/* 商品ヘッダー */}
       <header className="mb-5 grid gap-4 border border-gray-300 bg-white p-4 md:grid-cols-[200px_1fr]">
         <div
-          className="mx-auto w-full max-w-[200px] items-center justify-center rounded bg-gradient-to-br from-gray-100 to-gray-200 text-xs text-gray-400 flex"
+          className="mx-auto w-full max-w-[200px] items-center justify-center rounded bg-gradient-to-br from-amber-50 to-orange-100 text-xs text-orange-300 flex flex-col gap-1 font-bold"
           style={{ aspectRatio: '3 / 4' }}
           aria-label="DM-01 商品画像（準備中）"
         >
-          商品画像準備中
+          <span className="text-3xl">🐉</span>
+          <span>商品画像準備中</span>
         </div>
         <div>
           <div className="font-mono text-xs font-bold text-blue-700">{pack.code}</div>
@@ -142,44 +169,12 @@ export default async function ZukanDm01Page({
             <p className="mt-3 text-sm leading-relaxed text-gray-700">{pack.description}</p>
           )}
           <div className="mt-4">
-            <span className="inline-block cursor-default rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white opacity-60">
+            <span className="inline-block cursor-default rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white opacity-50">
               このパックの思い出を書く（準備中）
             </span>
           </div>
         </div>
       </header>
-
-      {/* このパックの思い出レビュー（モック固定） */}
-      <section className="mb-5">
-        <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
-          <h2 className="text-sm font-bold text-gray-800">このパックの思い出レビュー</h2>
-        </div>
-        <div className="space-y-2">
-          {PACK_REVIEWS.map((r, i) => (
-            <div key={i} className="border border-gray-300 bg-white px-3 py-3">
-              <div className="flex items-baseline justify-between">
-                <span className="text-xs font-bold text-gray-700">{r.author}</span>
-                <span className="text-xs text-gray-400">{r.when}</span>
-              </div>
-              <p className="mt-1 text-sm leading-relaxed text-gray-700">{r.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ひとことメモ（モック固定） */}
-      <section className="mb-5">
-        <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
-          <h2 className="text-sm font-bold text-gray-800">ひとことメモ</h2>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {SHORT_REVIEWS.map((s, i) => (
-            <span key={i} className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs text-gray-700">
-              {s}
-            </span>
-          ))}
-        </div>
-      </section>
 
       {/* 代表カード（page=1 のみ） */}
       {page === 1 && (
@@ -191,13 +186,14 @@ export default async function ZukanDm01Page({
             {REP_CARDS.map(rep => {
               const dbCard = dbRepCards?.find(c => c.slug === rep.slug) ?? null
               const href = dbCard ? `/zukan/card/${rep.slug}` : '#'
+              const isLinked = !!dbCard
               return (
                 <Link
                   key={rep.slug}
                   href={href}
-                  className={`block border border-gray-300 bg-white ${dbCard ? 'hover:border-blue-400' : 'opacity-60 cursor-default pointer-events-none'}`}
+                  className={`block border border-gray-300 bg-white ${isLinked ? 'hover:border-blue-400 hover:shadow-sm' : 'opacity-60 cursor-default pointer-events-none'}`}
                 >
-                  <CardThumb name={rep.name} />
+                  <CardThumb name={rep.name} civilization={rep.civilization} />
                   <div className="px-1.5 py-1.5">
                     <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[rep.civilization] ?? 'bg-gray-100 text-gray-600'}`}>
                       {rep.civilization}
@@ -212,33 +208,63 @@ export default async function ZukanDm01Page({
         </section>
       )}
 
+      {/* このパックの思い出レビュー（モック固定） */}
+      {page === 1 && (
+        <section className="mb-5">
+          <div className="mb-2 flex items-baseline justify-between border border-gray-300 bg-gray-50 px-3 py-2">
+            <h2 className="text-sm font-bold text-gray-800">このパックの思い出レビュー</h2>
+            <span className="text-xs text-gray-400">レビュー投稿は準備中</span>
+          </div>
+          <div className="space-y-2">
+            {PACK_REVIEWS.map((r, i) => (
+              <div key={i} className="border border-gray-300 bg-white px-3 py-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs font-bold text-gray-700">{r.author}</span>
+                  <span className="text-xs text-gray-400">{r.when}</span>
+                </div>
+                <p className="mt-1 text-sm leading-relaxed text-gray-700">{r.body}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2">
+            <span className="inline-block cursor-default rounded border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-400">
+              レビューを書く（準備中）
+            </span>
+          </div>
+        </section>
+      )}
+
+      {/* ひとことメモ（モック固定） */}
+      {page === 1 && (
+        <section className="mb-5">
+          <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
+            <h2 className="text-sm font-bold text-gray-800">ひとことメモ</h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {SHORT_REVIEWS.map((s, i) => (
+              <span key={i} className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs text-gray-700">
+                {s}
+              </span>
+            ))}
+            <span className="rounded-full border border-dashed border-gray-300 bg-gray-50 px-3 py-1 text-xs text-gray-400 cursor-default">
+              ＋ひとこと追加（準備中）
+            </span>
+          </div>
+        </section>
+      )}
+
       {/* 収録カード */}
-      {(() => {
-        const from = (page - 1) * PAGE_SIZE + 1
-        const to = (page - 1) * PAGE_SIZE + cards.length
-        const total = pack.card_count ?? null
-        const hasNextPage = total ? page * PAGE_SIZE < total : cards.length === PAGE_SIZE
-        return (
       <section className="mb-5">
-        <div className="mb-2 flex items-baseline justify-between border border-gray-300 bg-gray-50 px-3 py-2">
+        <div className="mb-2 flex items-center justify-between border border-gray-300 bg-gray-50 px-3 py-2">
           <h2 className="text-sm font-bold text-gray-800">
             収録カード
             {total && cards.length > 0 && (
-              <span className="ml-1 font-normal text-gray-500 text-xs">（全{total}種中 {from}〜{to}件目）</span>
+              <span className="ml-1 font-normal text-gray-500 text-xs">全{total}種中 {from}〜{to}件目</span>
             )}
           </h2>
-          <div className="flex gap-2 text-xs">
-            {page > 1 && (
-              <Link href={`/zukan/dm-01?page=${page - 1}`} className="text-blue-600 hover:underline">
-                ← 前の60件
-              </Link>
-            )}
-            {hasNextPage && (
-              <Link href={`/zukan/dm-01?page=${page + 1}`} className="text-blue-600 hover:underline">
-                次の60件 →
-              </Link>
-            )}
-          </div>
+          {totalPages && totalPages > 1 && (
+            <span className="font-mono text-xs text-gray-500">{page} / {totalPages} ページ</span>
+          )}
         </div>
         {cards.length === 0 ? (
           <p className="px-3 py-4 text-xs text-gray-400">このページにはカードがありません。</p>
@@ -248,9 +274,9 @@ export default async function ZukanDm01Page({
               <Link
                 key={card.slug}
                 href={cardHref(card)}
-                className="block border border-gray-300 bg-white hover:border-blue-400"
+                className={`block border border-gray-300 bg-white ${card.id ? 'hover:border-blue-400 hover:shadow-sm' : 'cursor-default'}`}
               >
-                <CardThumb name={card.name} />
+                <CardThumb name={card.name} civilization={card.civilization} />
                 <div className="px-1.5 py-1.5">
                   <div className="flex items-center gap-1">
                     {card.civilization && (
@@ -262,15 +288,53 @@ export default async function ZukanDm01Page({
                       <span className="font-mono text-[10px] text-gray-400">{card.rarity}</span>
                     )}
                   </div>
-                  <div className="mt-1 truncate text-xs font-bold text-gray-800">{card.name}</div>
+                  <div className="mt-0.5 truncate text-xs font-bold text-gray-800">{card.name}</div>
+                  {card.card_type && (
+                    <div className="text-[10px] text-gray-400">{card.card_type}</div>
+                  )}
                 </div>
               </Link>
             ))}
           </div>
         )}
+
+        {/* ページネーション */}
+        {(page > 1 || hasNextPage) && (
+          <div className="mt-3 flex items-center justify-between border border-gray-200 bg-gray-50 px-3 py-2">
+            <div>
+              {page > 1 ? (
+                <Link href={`/zukan/dm-01?page=${page - 1}`} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50">
+                  ← 前の60件
+                </Link>
+              ) : (
+                <span className="rounded border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-400">
+                  ← 前の60件
+                </span>
+              )}
+            </div>
+            {totalPages && (
+              <span className="font-mono text-xs text-gray-500">{page} / {totalPages}</span>
+            )}
+            <div>
+              {hasNextPage ? (
+                <Link href={`/zukan/dm-01?page=${page + 1}`} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50">
+                  次の60件 →
+                </Link>
+              ) : (
+                <span className="rounded border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-400">
+                  次の60件 →
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </section>
-        )
-      })()}
+
+      {/* シェア */}
+      <section className="border border-gray-300 bg-white px-4 py-3">
+        <div className="mb-2 text-xs font-bold text-gray-700">このページをシェアする</div>
+        <PackShareButtons packName={`${pack.code} ${pack.name}`} />
+      </section>
     </div>
   )
 }

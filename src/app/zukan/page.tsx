@@ -38,11 +38,11 @@ function CardThumb({ name }: { name: string }) {
 // DM-01 プレビュー用モックカード（パックページへの誘導）
 const DM01_PREVIEW = [
   { slug: 'bolshack-dragon', name: 'ボルシャック・ドラゴン', civ: '火', href: '/zukan/card/bolshack-dragon' },
-  { slug: 'aqua-hulcus', name: 'アクア・ハルカス', civ: '水', href: '#' },
-  { slug: 'gaia-mantis', name: 'ガイア・マンティス', civ: '自然', href: '#' },
-  { slug: 'la-ura-giga', name: 'ラ・ウラ・ギガ', civ: '光', href: '#' },
-  { slug: 'death-smoke', name: 'デス・スモーク', civ: '闇', href: '#' },
-  { slug: 'twin-cannon', name: 'ツイン・キャノン', civ: '火', href: '#' },
+  { slug: 'aqua-hulcus', name: 'アクア・ハルカス', civ: '水', href: '/zukan/card/aqua-hulcus' },
+  { slug: 'holy-spark', name: 'ホーリー・スパーク', civ: '光', href: '/zukan/card/holy-spark' },
+  { slug: 'demon-hand', name: 'デーモン・ハンド', civ: '闇', href: '/zukan/card/demon-hand' },
+  { slug: 'natural-trap', name: 'ナチュラル・トラップ', civ: '自然', href: '/zukan/card/natural-trap' },
+  { slug: 'spiral-gate', name: 'スパイラル・ゲート', civ: '水', href: '#' },
 ]
 
 export default async function ZukanTopPage() {
