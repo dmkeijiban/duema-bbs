@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { fetchCardBySlug } from '@/lib/zukan'
 import type { ZukanCardWithPack } from '@/lib/zukan'
+import ZukanImagePreview from '@/components/ZukanImagePreview'
 import ShareButtons from './ShareButtons'
 
 // --- モックフォールバック（bolshack-dragon 専用） ---------------------------
@@ -141,12 +142,10 @@ export default async function ZukanCardPage({
       <header className="mb-5 grid gap-4 border border-gray-300 bg-white p-4 md:grid-cols-[170px_1fr]">
         <div className="mx-auto w-full max-w-[200px] md:max-w-[170px]">
           {card.official_image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <ZukanImagePreview
               src={card.official_image_url}
               alt={`${card.name} カード画像`}
-              className="w-full"
-              style={{ aspectRatio: '63 / 88', objectFit: 'cover' }}
+              imageClassName="w-full"
             />
           ) : (
             <CardThumb name={card.name} />

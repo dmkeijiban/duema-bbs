@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { fetchPack, fetchCardsByPack, fetchCardsBySlugs } from '@/lib/zukan'
 import type { ZukanPack, ZukanCard } from '@/lib/zukan'
+import ZukanImagePreview from '@/components/ZukanImagePreview'
 import PackShareButtons from './PackShareButtons'
 
 export const metadata = {
@@ -94,16 +95,7 @@ function CardThumb({
 }) {
   if (imageUrl) {
     return (
-      <div className="bg-gray-100" style={{ aspectRatio: '63 / 88' }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={imageUrl}
-          alt={`${name} カード画像`}
-          loading="lazy"
-          decoding="async"
-          className="h-full w-full object-cover"
-        />
-      </div>
+      <ZukanImagePreview src={imageUrl} alt={`${name} カード画像`} />
     )
   }
 
@@ -171,12 +163,10 @@ export default async function ZukanDm01Page({
       <header className="mb-5 grid gap-4 border border-gray-300 bg-white p-4 md:grid-cols-[200px_1fr]">
         <div className="mx-auto w-full max-w-[200px]">
           {pack.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <ZukanImagePreview
               src={pack.image_url}
               alt={`${pack.code} ${pack.name} パック画像`}
-              className="w-full rounded"
-              style={{ aspectRatio: '3 / 4', objectFit: 'cover' }}
+              aspectRatio="3 / 4"
             />
           ) : (
             <div
@@ -224,10 +214,9 @@ export default async function ZukanDm01Page({
               const href = dbCard ? `/zukan/card/${rep.slug}` : '#'
               const isLinked = !!dbCard
               return (
-                <Link
+                <div
                   key={rep.slug}
-                  href={href}
-                  className={`block border border-gray-300 bg-white ${isLinked ? 'hover:border-blue-400 hover:shadow-sm' : 'opacity-60 cursor-default pointer-events-none'}`}
+                  className={`border border-gray-300 bg-white ${isLinked ? 'hover:border-blue-400 hover:shadow-sm' : 'opacity-60'}`}
                 >
                   <CardThumb
                     name={rep.name}
@@ -238,10 +227,18 @@ export default async function ZukanDm01Page({
                     <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[rep.civilization] ?? 'bg-gray-100 text-gray-600'}`}>
                       {rep.civilization}
                     </span>
-                    <div className="mt-1 truncate text-xs font-bold text-gray-800">{rep.name}</div>
+                    <div className="mt-1 truncate text-xs font-bold text-gray-800">
+                      {isLinked ? (
+                        <Link href={href} className="text-blue-700 hover:underline">
+                          {rep.name}
+                        </Link>
+                      ) : (
+                        rep.name
+                      )}
+                    </div>
                     {!dbCard && <div className="text-[10px] text-gray-400">詳細準備中</div>}
                   </div>
-                </Link>
+                </div>
               )
             })}
           </div>
@@ -311,10 +308,9 @@ export default async function ZukanDm01Page({
         ) : (
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
             {cards.map(card => (
-              <Link
+              <div
                 key={card.slug}
-                href={cardHref(card)}
-                className={`block border border-gray-300 bg-white ${card.id ? 'hover:border-blue-400 hover:shadow-sm' : 'cursor-default'}`}
+                className={`border border-gray-300 bg-white ${card.id ? 'hover:border-blue-400 hover:shadow-sm' : ''}`}
               >
                 <CardThumb
                   name={card.name}
@@ -332,12 +328,20 @@ export default async function ZukanDm01Page({
                       <span className="font-mono text-[10px] text-gray-400">{card.rarity}</span>
                     )}
                   </div>
-                  <div className="mt-0.5 truncate text-xs font-bold text-gray-800">{card.name}</div>
+                  <div className="mt-0.5 truncate text-xs font-bold text-gray-800">
+                    {card.id ? (
+                      <Link href={cardHref(card)} className="text-blue-700 hover:underline">
+                        {card.name}
+                      </Link>
+                    ) : (
+                      card.name
+                    )}
+                  </div>
                   {card.card_type && (
                     <div className="text-[10px] text-gray-400">{card.card_type}</div>
                   )}
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
