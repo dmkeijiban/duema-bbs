@@ -1,6 +1,7 @@
 import Link from 'next/link'
-import { fetchPublishedPacks } from '@/lib/zukan'
-import type { ZukanPack } from '@/lib/zukan'
+import { fetchPublishedPacks, fetchCardsBySlugs } from '@/lib/zukan'
+import type { ZukanPack, ZukanCard } from '@/lib/zukan'
+import ZukanImagePreview from '@/components/ZukanImagePreview'
 
 export const metadata = {
   title: 'デュエマ思い出図鑑 | デュエマ掲示板',
@@ -23,32 +24,67 @@ const CIV_BADGE: Record<string, string> = {
   闇: 'bg-gray-200 text-gray-700',
 }
 
-function CardThumb({ name }: { name: string }) {
+const CIV_BG: Record<string, string> = {
+  火: 'from-red-100 to-red-200',
+  水: 'from-blue-100 to-blue-200',
+  自然: 'from-green-100 to-green-200',
+  光: 'from-yellow-50 to-yellow-200',
+  闇: 'from-gray-200 to-gray-300',
+}
+
+const CIV_TEXT: Record<string, string> = {
+  火: 'text-red-400',
+  水: 'text-blue-400',
+  自然: 'text-green-400',
+  光: 'text-yellow-500',
+  闇: 'text-gray-400',
+}
+
+function CardThumb({
+  name,
+  civilization,
+  imageUrl,
+}: {
+  name: string
+  civilization?: string | null
+  imageUrl?: string | null
+}) {
+  if (imageUrl) {
+    return <ZukanImagePreview src={imageUrl} alt={`${name} カード画像`} />
+  }
+  const bg = civilization ? (CIV_BG[civilization] ?? 'from-gray-100 to-gray-200') : 'from-gray-100 to-gray-200'
+  const tc = civilization ? (CIV_TEXT[civilization] ?? 'text-gray-400') : 'text-gray-400'
   return (
     <div
-      className="flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-[10px] text-gray-400"
+      className={`flex flex-col items-center justify-center bg-gradient-to-br ${bg} text-[9px] font-bold ${tc}`}
       style={{ aspectRatio: '63 / 88' }}
       aria-label={`${name} のカード画像（準備中）`}
     >
-      画像準備中
+      <span className="text-base">{civilization ?? '？'}</span>
+      <span className="mt-0.5">画像準備中</span>
     </div>
   )
 }
 
-// DM-01 プレビュー用モックカード（パックページへの誘導）
-const DM01_PREVIEW = [
-  { slug: 'bolshack-dragon', name: 'ボルシャック・ドラゴン', civ: '火', href: '/zukan/card/bolshack-dragon' },
-  { slug: 'aqua-hulcus', name: 'アクア・ハルカス', civ: '水', href: '/zukan/card/aqua-hulcus' },
-  { slug: 'holy-spark', name: 'ホーリー・スパーク', civ: '光', href: '/zukan/card/holy-spark' },
-  { slug: 'demon-hand', name: 'デーモン・ハンド', civ: '闇', href: '/zukan/card/demon-hand' },
-  { slug: 'natural-trap', name: 'ナチュラル・トラップ', civ: '自然', href: '/zukan/card/natural-trap' },
-  { slug: 'spiral-gate', name: 'スパイラル・ゲート', civ: '水', href: '#' },
+const DM01_PREVIEW_DEFS = [
+  { slug: 'bolshack-dragon', name: 'ボルシャック・ドラゴン', civ: '火' },
+  { slug: 'aqua-hulcus',     name: 'アクア・ハルカス',       civ: '水' },
+  { slug: 'holy-spark',      name: 'ホーリー・スパーク',     civ: '光' },
+  { slug: 'demon-hand',      name: 'デーモン・ハンド',       civ: '闇' },
+  { slug: 'natural-trap',    name: 'ナチュラル・トラップ',   civ: '自然' },
+  { slug: 'spiral-gate',     name: 'スパイラル・ゲート',     civ: '水' },
 ]
 
 export default async function ZukanTopPage() {
   const dbPacks = await fetchPublishedPacks()
   const packs = dbPacks ?? MOCK_PACKS
   const isDbReady = dbPacks !== null
+
+  const dm01Pack = dbPacks?.find(p => p.slug === 'dm-01') ?? null
+  const dm01Cards = dm01Pack
+    ? await fetchCardsBySlugs(dm01Pack.id, DM01_PREVIEW_DEFS.map(d => d.slug))
+    : null
+  const cardMap = new Map<string, ZukanCard>((dm01Cards ?? []).map(c => [c.slug, c]))
 
   return (
     <div className="max-w-screen-xl mx-auto px-2 pt-2 pb-10">
@@ -98,7 +134,7 @@ export default async function ZukanTopPage() {
         </div>
       </section>
 
-      {/* DM-01 のカード（モック固定プレビュー） */}
+      {/* DM-01 のカード */}
       <section className="mb-5">
         <div className="mb-2 flex items-baseline justify-between border border-gray-300 bg-gray-50 px-3 py-2">
           <h2 className="text-sm font-bold text-gray-800">DM-01 基本セットのカード</h2>
@@ -107,21 +143,36 @@ export default async function ZukanTopPage() {
           </Link>
         </div>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-          {DM01_PREVIEW.map(card => (
-            <Link
-              key={card.slug}
-              href={card.href}
-              className="block border border-gray-300 bg-white hover:border-blue-400"
-            >
-              <CardThumb name={card.name} />
-              <div className="px-1.5 py-1.5">
-                <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[card.civ] ?? 'bg-gray-100 text-gray-600'}`}>
-                  {card.civ}
-                </span>
-                <div className="mt-1 truncate text-xs font-bold text-gray-800">{card.name}</div>
+          {DM01_PREVIEW_DEFS.map(def => {
+            const dbCard = cardMap.get(def.slug) ?? null
+            const href = dbCard ? `/zukan/card/${def.slug}` : '#'
+            return (
+              <div
+                key={def.slug}
+                className="border border-gray-300 bg-white hover:border-blue-400"
+              >
+                <CardThumb
+                  name={def.name}
+                  civilization={def.civ}
+                  imageUrl={dbCard?.official_image_url}
+                />
+                <div className="px-1.5 py-1.5">
+                  <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[def.civ] ?? 'bg-gray-100 text-gray-600'}`}>
+                    {def.civ}
+                  </span>
+                  <div className="mt-1 truncate text-xs font-bold text-gray-800">
+                    {dbCard ? (
+                      <Link href={href} className="text-blue-700 hover:underline">
+                        {def.name}
+                      </Link>
+                    ) : (
+                      def.name
+                    )}
+                  </div>
+                </div>
               </div>
-            </Link>
-          ))}
+            )
+          })}
         </div>
       </section>
 
