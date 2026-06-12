@@ -4,6 +4,7 @@ import { ThreadCard } from '@/components/ThreadCard'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { SITE_URL } from '@/lib/site-config'
 import { getCachedUserRankings, UserRankingRow } from '@/lib/cached-queries'
+import { ProfileAvatar } from '@/components/ProfileAvatar'
 
 export const revalidate = 3600
 
@@ -31,32 +32,103 @@ import Link from 'next/link'
 
 const PAGE_SIZE = 100
 
+const rankDecoration = [
+  {
+    medal: '🥇',
+    card: 'border-yellow-300 bg-yellow-50/80 shadow-sm',
+    rank: 'text-yellow-700',
+    badge: 'bg-yellow-500 text-white',
+    avatar: 'bg-yellow-100 text-yellow-700 ring-yellow-200',
+  },
+  {
+    medal: '🥈',
+    card: 'border-gray-300 bg-gray-50/90',
+    rank: 'text-gray-600',
+    badge: 'bg-gray-500 text-white',
+    avatar: 'bg-gray-100 text-gray-600 ring-gray-200',
+  },
+  {
+    medal: '🥉',
+    card: 'border-orange-300 bg-orange-50/80',
+    rank: 'text-orange-700',
+    badge: 'bg-orange-500 text-white',
+    avatar: 'bg-orange-100 text-orange-700 ring-orange-200',
+  },
+]
+
+function RankingAvatar({ row, rank }: { row: UserRankingRow; rank: number }) {
+  if (row.avatar_url) {
+    return <ProfileAvatar src={row.avatar_url} alt={`${row.display_name}のアイコン`} size="md" />
+  }
+
+  const decoration = rankDecoration[rank - 1]
+  const initial = row.display_name.trim().charAt(0) || '?'
+
+  return (
+    <span
+      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ring-1 ${
+        decoration?.avatar ?? 'bg-blue-50 text-blue-700 ring-blue-100'
+      }`}
+      aria-hidden="true"
+    >
+      {initial}
+    </span>
+  )
+}
+
 function UserRankingList({
   title,
+  subtitle,
+  topLabel,
   rows,
+  variant,
 }: {
   title: string
+  subtitle: string
+  topLabel: string
   rows: UserRankingRow[]
+  variant: 'monthly' | 'total'
 }) {
+  const sectionAccent =
+    variant === 'monthly'
+      ? 'border-blue-200 bg-blue-50/70 text-blue-800'
+      : 'border-purple-200 bg-purple-50/70 text-purple-800'
+
   return (
-    <section className="border border-gray-300 bg-white">
-      <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
-        <h3 className="text-sm font-bold text-gray-800">{title}</h3>
+    <section className="overflow-hidden border border-gray-300 bg-white">
+      <div className={`border-b px-3 py-2 ${sectionAccent}`}>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-bold">{title}</h3>
+          <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-bold">
+            {variant === 'monthly' ? '今月' : '総合'}
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-gray-600">{subtitle}</p>
       </div>
       {rows.length === 0 ? (
         <div className="px-3 py-6 text-center text-sm text-gray-500">
-          対象になる投稿者はまだありません。
+          まだランキング対象者はいません
         </div>
       ) : (
-        <div className="divide-y divide-gray-100">
+        <div className="space-y-2 p-2">
           {rows.map((row, index) => (
             <div
               key={row.profile_slug}
-              className="grid grid-cols-[2.5rem_1fr_auto] items-center gap-2 px-3 py-2 text-sm"
+              className={`grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md border px-3 py-2 text-sm ${
+                rankDecoration[index]?.card ?? 'border-gray-200 bg-white'
+              }`}
             >
-              <div className="text-center font-mono text-xs font-bold text-gray-500">
-                {index + 1}
+              <div className={`text-center font-mono font-black ${rankDecoration[index]?.rank ?? 'text-gray-500'}`}>
+                <span className="block text-lg leading-none">{rankDecoration[index]?.medal ?? index + 1}</span>
+                {index < 3 && (
+                  <span className="mt-1 block text-[10px] leading-none text-gray-500">
+                    {index + 1}位
+                  </span>
+                )}
               </div>
+              <Link href={`/u/${row.profile_slug}`} aria-label={`${row.display_name}の投稿者ページ`}>
+                <RankingAvatar row={row} rank={index + 1} />
+              </Link>
               <div className="min-w-0">
                 <Link
                   href={`/u/${row.profile_slug}`}
@@ -64,13 +136,18 @@ function UserRankingList({
                 >
                   {row.display_name}
                 </Link>
+                {index === 0 && (
+                  <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${rankDecoration[0].badge}`}>
+                    {topLabel}
+                  </span>
+                )}
                 <div className="mt-0.5 text-xs text-gray-500">
-                  <span className="font-mono">/{row.profile_slug}</span>
-                  <span className="ml-2">スレ {row.thread_count}</span>
-                  <span className="ml-2">コメント {row.post_count}</span>
+                  <span>コメント{row.post_count}件</span>
+                  <span className="ml-2">スレッド{row.thread_count}件</span>
+                  <span className="ml-2 font-mono text-gray-400">@{row.profile_slug}</span>
                 </div>
               </div>
-              <div className="whitespace-nowrap text-right font-mono text-sm font-bold text-gray-800">
+              <div className="whitespace-nowrap text-right font-mono text-base font-black text-blue-700">
                 {row.points}pt
               </div>
             </div>
@@ -93,8 +170,20 @@ async function UserRankingSection() {
         </p>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
-        <UserRankingList title="今月" rows={rankings.monthly} />
-        <UserRankingList title="総合" rows={rankings.total} />
+        <UserRankingList
+          title="今月のランキング"
+          subtitle="今月よく投稿している登録ユーザー"
+          topLabel="今月1位"
+          rows={rankings.monthly}
+          variant="monthly"
+        />
+        <UserRankingList
+          title="歴代ランキング"
+          subtitle="登録後の投稿をもとにした総合順位"
+          topLabel="総合1位"
+          rows={rankings.total}
+          variant="total"
+        />
       </div>
     </section>
   )
