@@ -1,4 +1,5 @@
 import { createPublicClient } from './supabase-public'
+import { normalizeZukanDisplayName } from './zukan-display'
 
 export type ZukanPack = {
   id: string
@@ -137,6 +138,7 @@ export type PackReview = {
   user_id: string | null
   display_name: string
   avatar_url: string | null
+  profile_slug: string | null
   body: string
   created_at: string
 }
@@ -147,6 +149,7 @@ export type CardReview = {
   user_id: string | null
   display_name: string
   avatar_url: string | null
+  profile_slug: string | null
   body: string
   created_at: string
 }
@@ -200,32 +203,55 @@ export type CardRatingSummary = {
 // Fetch reviews
 // ============================================================
 
-async function attachReviewAvatars<T extends { user_id: string | null }>(
+async function attachReviewAuthors<T extends { user_id: string | null; display_name: string }>(
   rows: T[]
-): Promise<(T & { avatar_url: string | null })[]> {
+): Promise<(T & { avatar_url: string | null; profile_slug: string | null })[]> {
   const userIds = Array.from(new Set(rows.map(row => row.user_id).filter((id): id is string => !!id)))
   if (userIds.length === 0) {
-    return rows.map(row => ({ ...row, avatar_url: null }))
+    return rows.map(row => ({ ...row, avatar_url: null, profile_slug: null }))
   }
 
   try {
     const supabase = createPublicClient()
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, avatar_url')
+      .select('id, display_name, profile_slug, avatar_url, profile_hidden, account_suspended, withdrawn_at')
       .in('id', userIds)
 
     if (error) {
-      return rows.map(row => ({ ...row, avatar_url: null }))
+      return rows.map(row => ({ ...row, avatar_url: null, profile_slug: null }))
     }
 
-    const avatarMap = new Map((data ?? []).map(profile => [
-      String(profile.id),
-      typeof profile.avatar_url === 'string' ? profile.avatar_url : null,
-    ]))
-    return rows.map(row => ({ ...row, avatar_url: row.user_id ? avatarMap.get(row.user_id) ?? null : null }))
+    const profileMap = new Map((data ?? []).map(profile => [String(profile.id), profile]))
+    return rows.map(row => {
+      const profile = row.user_id ? profileMap.get(row.user_id) : null
+      const publicProfile =
+        profile &&
+        !profile.profile_hidden &&
+        !profile.account_suspended &&
+        !profile.withdrawn_at &&
+        profile.profile_slug
+          ? profile
+          : null
+
+      if (!publicProfile) {
+        return {
+          ...row,
+          display_name: row.user_id ? '名無しのデュエリスト' : row.display_name,
+          avatar_url: null,
+          profile_slug: null,
+        }
+      }
+
+      return {
+        ...row,
+        display_name: normalizeZukanDisplayName(publicProfile.display_name),
+        avatar_url: typeof publicProfile.avatar_url === 'string' ? publicProfile.avatar_url : null,
+        profile_slug: String(publicProfile.profile_slug),
+      }
+    })
   } catch {
-    return rows.map(row => ({ ...row, avatar_url: null }))
+    return rows.map(row => ({ ...row, avatar_url: null, profile_slug: null }))
   }
 }
 
@@ -244,7 +270,7 @@ export async function fetchPackReviews(packId: string): Promise<PackReview[] | n
       if (isTableMissing(error)) return []
       return null
     }
-    return attachReviewAvatars(data as Omit<PackReview, 'avatar_url'>[])
+    return attachReviewAuthors(data as Omit<PackReview, 'avatar_url' | 'profile_slug'>[])
   } catch {
     return null
   }
@@ -265,7 +291,7 @@ export async function fetchCardReviews(cardId: string): Promise<CardReview[] | n
       if (isTableMissing(error)) return []
       return null
     }
-    return attachReviewAvatars(data as Omit<CardReview, 'avatar_url'>[])
+    return attachReviewAuthors(data as Omit<CardReview, 'avatar_url' | 'profile_slug'>[])
   } catch {
     return null
   }

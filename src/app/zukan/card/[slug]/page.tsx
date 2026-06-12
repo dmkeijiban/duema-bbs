@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { fetchCardBySlug, fetchCardReviews, fetchCardRatings } from '@/lib/zukan'
 import type { ZukanCardWithPack } from '@/lib/zukan'
 import { normalizeZukanDisplayName } from '@/lib/zukan-display'
+import { hasViewerRatedCard } from '@/lib/zukan-server'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import ShareButtons from './ShareButtons'
@@ -94,12 +95,13 @@ export default async function ZukanCardPage({
     card = MOCK_CARD
   }
 
-  const [cardReviews, ratingsSummary] = isDbReady
+  const [cardReviews, ratingsSummary, viewerHasRated] = isDbReady
     ? await Promise.all([
         fetchCardReviews(card.id),
         fetchCardRatings(card.id),
+        hasViewerRatedCard(card.id),
       ])
-    : [null, null]
+    : [null, null, false]
 
   const pack = card.zukan_packs
   const packHref = pack ? `/zukan/${pack.slug}` : '/zukan'
@@ -224,7 +226,15 @@ export default async function ZukanCardPage({
                 まだ評価はありません
               </p>
             )}
-            {isDbReady && <CardRatingForm cardId={card.id} slug={slug} />}
+            {isDbReady && (
+              viewerHasRated ? (
+                <p className="border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                  このカードは評価済みです。評価は1カードにつき1回までです。
+                </p>
+              ) : (
+                <CardRatingForm cardId={card.id} slug={slug} />
+              )
+            )}
           </section>
 
           <section>
@@ -233,16 +243,32 @@ export default async function ZukanCardPage({
             </h3>
             {cardReviews && cardReviews.length > 0 && (
               <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
-                {cardReviews.map(r => (
+                {cardReviews.map(r => {
+                  const displayName = normalizeZukanDisplayName(r.display_name)
+                  const author = (
+                    <>
+                      <ProfileAvatar src={r.avatar_url} alt={`${displayName}のアイコン`} size="sm" />
+                      <span className="font-bold text-gray-700">{displayName}</span>
+                      {r.profile_slug && <span className="text-[10px] text-gray-400">@{r.profile_slug}</span>}
+                    </>
+                  )
+
+                  return (
                   <article key={r.id} className="px-3 py-2.5">
                     <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                      <ProfileAvatar src={r.avatar_url} alt={`${normalizeZukanDisplayName(r.display_name)}のアイコン`} size="sm" />
-                      <span className="font-bold text-gray-700">{normalizeZukanDisplayName(r.display_name)}</span>
+                      {r.profile_slug ? (
+                        <Link href={`/u/${r.profile_slug}`} className="inline-flex items-center gap-2 hover:underline">
+                          {author}
+                        </Link>
+                      ) : (
+                        <span className="inline-flex items-center gap-2">{author}</span>
+                      )}
                       <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
                     </div>
                     <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
                   </article>
-                ))}
+                  )
+                })}
               </div>
             )}
             {cardReviews !== null && cardReviews.length === 0 && (

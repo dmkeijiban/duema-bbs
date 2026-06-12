@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 
 import { createAdminClient } from '@/lib/supabase-admin'
-import { getZukanPosterContext, hasRecentZukanPost } from '@/lib/zukan-server'
+import { getZukanDailyPostIssue, getZukanPosterContext, hasRecentZukanPost } from '@/lib/zukan-server'
 
 export type PackReviewFormState =
   | { status: 'idle' }
@@ -31,6 +31,13 @@ export async function submitPackReview(
   }
   if (await hasRecentZukanPost('zukan_pack_reviews', 'pack_id', packId, poster)) {
     return { status: 'error', message: '短時間に連続して投稿されています。少し待ってから投稿してください。' }
+  }
+  const dailyIssue = await getZukanDailyPostIssue('zukan_pack_reviews', 'pack_id', packId, poster, body)
+  if (dailyIssue === 'limit') {
+    return { status: 'error', message: '同じパックへの思い出投稿は1日3件までです。明日また投稿してください。' }
+  }
+  if (dailyIssue === 'duplicate') {
+    return { status: 'error', message: '同じ内容の思い出は今日はすでに投稿済みです。' }
   }
 
   const supabase = createAdminClient()
