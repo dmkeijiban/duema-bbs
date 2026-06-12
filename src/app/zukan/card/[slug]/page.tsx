@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { fetchCardBySlug, fetchCardReviews, fetchCardRatings, fetchManualRelatedThreads } from '@/lib/zukan'
+import { fetchCardBySlug, fetchCardReviews, fetchCardRatings } from '@/lib/zukan'
 import type { ZukanCardWithPack } from '@/lib/zukan'
 import { normalizeZukanDisplayName } from '@/lib/zukan-display'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
@@ -8,8 +8,6 @@ import ZukanImagePreview from '@/components/ZukanImagePreview'
 import ShareButtons from './ShareButtons'
 import CardReviewForm from './CardReviewForm'
 import CardRatingForm from './CardRatingForm'
-
-// --- モックフォールバック（bolshack-dragon 専用） ---------------------------
 
 const MOCK_CARD: ZukanCardWithPack = {
   id: '',
@@ -33,8 +31,6 @@ const MOCK_CARD: ZukanCardWithPack = {
   zukan_packs: { slug: 'dm-01', code: 'DM-01', name: '基本セット' },
 }
 
-// ---------------------------------------------------------------------------
-
 const CIV_BADGE: Record<string, string> = {
   火: 'bg-red-100 text-red-700',
   水: 'bg-blue-100 text-blue-700',
@@ -42,6 +38,14 @@ const CIV_BADGE: Record<string, string> = {
   光: 'bg-yellow-100 text-yellow-700',
   闇: 'bg-gray-200 text-gray-700',
 }
+
+const RATING_LABELS = [
+  ['当時の憧れ度', 'admiration'],
+  ['使われた時のトラウマ度', 'trauma'],
+  ['今見ても好き度', 'stillLike'],
+  ['名前のかっこよさ', 'name'],
+  ['イラストのかっこよさ', 'art'],
+] as const
 
 function CardThumb({ name }: { name: string }) {
   return (
@@ -86,27 +90,25 @@ export default async function ZukanCardPage({
   } else if (result.status === 'not_found') {
     notFound()
   } else {
-    // table_missing or error: fallback to mock for bolshack-dragon only
     if (slug !== 'bolshack-dragon') notFound()
     card = MOCK_CARD
   }
 
-  const [cardReviews, ratingsSummary, manualThreads] = isDbReady
+  const [cardReviews, ratingsSummary] = isDbReady
     ? await Promise.all([
         fetchCardReviews(card.id),
         fetchCardRatings(card.id),
-        fetchManualRelatedThreads(card.id),
       ])
-    : [null, null, []]
-  const relatedThreads = manualThreads
+    : [null, null]
 
   const pack = card.zukan_packs
   const packHref = pack ? `/zukan/${pack.slug}` : '/zukan'
   const packLabel = pack ? `${pack.code} ${pack.name}` : '図鑑トップ'
+  const ratingCount = ratingsSummary?.totalCount ?? 0
+  const reviewCount = cardReviews?.length ?? 0
 
   return (
     <div className="mx-auto max-w-[1080px] px-2 pt-2 pb-10">
-      {/* パンくず */}
       <nav className="text-xs text-gray-500 mb-2 flex items-center gap-x-1 flex-wrap">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
         <span>{'>'}</span>
@@ -123,7 +125,6 @@ export default async function ZukanCardPage({
         </p>
       )}
 
-      {/* カードヘッダー */}
       <header className="mb-5 grid gap-4 border border-gray-300 bg-white p-4 md:grid-cols-[170px_1fr]">
         <div className="mx-auto w-full max-w-[200px] md:max-w-[170px]">
           {card.official_image_url ? (
@@ -185,94 +186,72 @@ export default async function ZukanCardPage({
               </a>
             </div>
           )}
-          {/* シェアボタン */}
           <div className="mt-3">
             <ShareButtons cardName={card.name} />
           </div>
         </div>
       </header>
 
-      {/* 5項目評価 */}
-      <section className="mb-5">
-        <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
-          <h2 className="text-sm font-bold text-gray-800">みんなの思い出評価</h2>
+      <section className="mb-5 border border-gray-300 bg-white">
+        <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
+          <h2 className="text-base font-bold text-gray-800">みんなの思い出</h2>
         </div>
-        {ratingsSummary ? (
-          <div className="mb-3 border border-gray-300 bg-white divide-y divide-gray-100">
-            {(
-              [
-                ['当時の憧れ度', ratingsSummary.admiration],
-                ['使われた時のトラウマ度', ratingsSummary.trauma],
-                ['今見ても好き度', ratingsSummary.stillLike],
-                ['名前のかっこよさ', ratingsSummary.name],
-                ['イラストのかっこよさ', ratingsSummary.art],
-              ] as const
-            ).map(([label, stat]) => {
-              const pct = stat.avg ? Math.round((stat.avg / 5) * 100) : 0
-              return (
-                <div key={label} className="grid grid-cols-[9rem_1fr_3rem] items-center gap-2 px-3 py-2.5 sm:grid-cols-[11rem_1fr_3rem]">
-                  <span className="text-xs font-bold text-gray-700">{label}</span>
-                  <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-                    {pct > 0 && <div className="h-full rounded-full bg-yellow-400" style={{ width: `${pct}%` }} />}
-                  </div>
-                  <span className="text-right font-mono text-xs text-gray-600">
-                    {stat.avg ? stat.avg.toFixed(1) : '—'}
-                    {stat.count > 0 && <span className="text-gray-400 text-[10px] ml-0.5">({stat.count})</span>}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        ) : (
-          <p className="mb-3 border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">まだ評価はありません</p>
-        )}
-        {isDbReady && <CardRatingForm cardId={card.id} slug={slug} />}
-      </section>
+        <div className="space-y-5 p-3">
+          <section>
+            <h3 className="mb-2 text-sm font-bold text-gray-800">
+              みんなの思い出評価{ratingCount > 0 ? `（${ratingCount}件）` : ''}
+            </h3>
+            {ratingsSummary ? (
+              <div className="mb-3 border border-gray-200 bg-white divide-y divide-gray-100">
+                {RATING_LABELS.map(([label, key]) => {
+                  const stat = ratingsSummary[key]
+                  const pct = stat.avg ? Math.round((stat.avg / 5) * 100) : 0
+                  return (
+                    <div key={label} className="grid grid-cols-[9rem_1fr_3rem] items-center gap-2 px-3 py-2.5 sm:grid-cols-[11rem_1fr_3rem]">
+                      <span className="text-xs font-bold text-gray-700">{label}</span>
+                      <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                        {pct > 0 && <div className="h-full rounded-full bg-yellow-400" style={{ width: `${pct}%` }} />}
+                      </div>
+                      <span className="text-right font-mono text-xs text-gray-600">
+                        {stat.avg ? stat.avg.toFixed(1) : '-'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="mb-3 border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">
+                まだ評価はありません
+              </p>
+            )}
+            {isDbReady && <CardRatingForm cardId={card.id} slug={slug} />}
+          </section>
 
-      {/* レビュー */}
-      <section className="mb-5">
-        <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
-          <h2 className="text-sm font-bold text-gray-800">思い出レビュー</h2>
-        </div>
-        {cardReviews && cardReviews.length > 0 && (
-          <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
-            {cardReviews.map(r => (
-              <article key={r.id} className="px-3 py-2.5">
-                <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                  <ProfileAvatar src={r.avatar_url} alt={`${normalizeZukanDisplayName(r.display_name)}のアイコン`} size="sm" />
-                  <span className="font-bold text-gray-700">{normalizeZukanDisplayName(r.display_name)}</span>
-                  <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
-                </div>
-                <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
-              </article>
-            ))}
-          </div>
-        )}
-        {cardReviews !== null && cardReviews.length === 0 && (
-          <p className="mb-3 border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">まだ投稿はありません。最初の思い出を書いてみませんか？</p>
-        )}
-        {isDbReady && <CardReviewForm cardId={card.id} slug={slug} />}
-      </section>
-
-      {/* 関連スレッド */}
-      <section className="mb-2">
-        <div className="border border-gray-300 bg-white">
-          <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
-            <h2 className="text-sm font-bold text-gray-800">関連スレッド</h2>
-          </div>
-          {relatedThreads.length > 0 ? (
-            <ul className="divide-y divide-gray-100">
-              {relatedThreads.map(t => (
-                <li key={t.id}>
-                  <Link href={`/thread/${t.id}`} className="block px-3 py-2.5 text-xs text-blue-600 cursor-pointer transition-colors duration-100 hover:underline hover:bg-blue-50 active:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400">
-                    {t.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="px-3 py-3 text-xs text-gray-400">まだ関連スレッドはありません</p>
-          )}
+          <section>
+            <h3 className="mb-2 text-sm font-bold text-gray-800">
+              このカードの思い出レビュー（{reviewCount}件）
+            </h3>
+            {cardReviews && cardReviews.length > 0 && (
+              <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
+                {cardReviews.map(r => (
+                  <article key={r.id} className="px-3 py-2.5">
+                    <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                      <ProfileAvatar src={r.avatar_url} alt={`${normalizeZukanDisplayName(r.display_name)}のアイコン`} size="sm" />
+                      <span className="font-bold text-gray-700">{normalizeZukanDisplayName(r.display_name)}</span>
+                      <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
+                    </div>
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
+                  </article>
+                ))}
+              </div>
+            )}
+            {cardReviews !== null && cardReviews.length === 0 && (
+              <p className="mb-3 border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">
+                まだ投稿はありません。最初の思い出を書いてみませんか？
+              </p>
+            )}
+            {isDbReady && <CardReviewForm cardId={card.id} slug={slug} />}
+          </section>
         </div>
       </section>
     </div>

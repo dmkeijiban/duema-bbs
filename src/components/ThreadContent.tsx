@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { Post, Thread, Category } from '@/types'
+import { Post, Thread, Category, PublicAuthorProfile } from '@/types'
 import { PostItem, renderBody } from './PostItem'
 import { NewPostForm } from './NewPostForm'
 import { PostLikeButton } from './PostLikeButton'
@@ -11,6 +11,7 @@ import { ReportButton } from './ReportButton'
 import { formatDateTimeJP, resolveImageUrl } from '@/lib/utils'
 import { ImageViewer } from './ImageViewer'
 import { getThreadViewerState } from '@/lib/thread-viewer-client'
+import { ProfileAvatar } from './ProfileAvatar'
 
 const InlinePushSubscribeButton = dynamic(
   () => import('./PushSubscribeButton').then(mod => mod.PushSubscribeButton),
@@ -21,6 +22,7 @@ interface Props {
   posts: Post[]
   threadId: number
   thread: Thread & { categories: Category | null }
+  authorProfiles?: Record<string, PublicAuthorProfile>
   isArchived: boolean
   page: number
   totalPages: number
@@ -30,7 +32,29 @@ interface Props {
 
 type DisplayPost = Post & { displayNumber: number }
 
-export function ThreadContent({ posts, threadId, thread, isArchived, page, totalPages, recommendSlot, threadRules }: Props) {
+function ThreadAuthorName({
+  fallbackName,
+  profile,
+}: {
+  fallbackName: string
+  profile?: PublicAuthorProfile
+}) {
+  if (!profile) {
+    return <span className="font-medium text-gray-700">{fallbackName}</span>
+  }
+
+  return (
+    <Link
+      href={`/u/${profile.profile_slug}`}
+      className="inline-flex items-center gap-1.5 font-medium text-blue-700 hover:underline"
+    >
+      <ProfileAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} size="sm" />
+      <span>{profile.display_name}</span>
+    </Link>
+  )
+}
+
+export function ThreadContent({ posts, threadId, thread, authorProfiles = {}, isArchived, page, totalPages, recommendSlot, threadRules }: Props) {
   const [bodyValue, setBodyValue] = useState('')
   const [sessionId, setSessionId] = useState('')
   const [isAdmin, setIsAdmin] = useState(false)
@@ -69,6 +93,7 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
   }))
 
   const threadSessionId = (thread as Thread & { session_id?: string }).session_id ?? ''
+  const threadAuthorProfile = thread.user_id ? authorProfiles[thread.user_id] : undefined
 
   return (
     <>
@@ -85,7 +110,7 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
               &gt;&gt;1
             </button>
             <span className="inline-block px-0.5 text-white text-[10px] leading-4" style={{ background: '#dc3545' }}>スレ主</span>
-            <span className="font-medium text-gray-700">{thread.author_name}</span>
+            <ThreadAuthorName fallbackName={thread.author_name} profile={threadAuthorProfile} />
             <span className="text-gray-400 text-[10px]">{formatDateTimeJP(thread.created_at)}</span>
             <PostLikeButton likeKey={`thread-${thread.id}`} />
             <ReportButton itemType="thread" itemId={thread.id} itemBody={thread.body} />
@@ -110,6 +135,7 @@ export function ThreadContent({ posts, threadId, thread, isArchived, page, total
             sessionId={sessionId}
             threadSessionId={threadSessionId}
             threadId={threadId}
+            authorProfile={post.user_id ? authorProfiles[post.user_id] : undefined}
           />
         ))}
       </div>

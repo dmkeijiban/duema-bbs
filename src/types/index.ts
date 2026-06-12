@@ -13,6 +13,7 @@ export interface Thread {
   body: string
   category_id: number | null
   author_name: string
+  user_id?: string | null
   image_url: string | null
   view_count: number
   post_count: number
@@ -28,8 +29,16 @@ export interface Post {
   post_number: number
   body: string
   author_name: string
+  user_id?: string | null
   image_url: string | null
   created_at: string
+}
+
+export interface PublicAuthorProfile {
+  id: string
+  display_name: string
+  profile_slug: string
+  avatar_url: string | null
 }
 
 export interface Favorite {

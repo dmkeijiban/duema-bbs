@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, useTransition } from 'react'
+import type { ChangeEvent, CSSProperties } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { updateProfile } from './actions'
 
@@ -14,6 +15,68 @@ type ProfileEditFormProps = {
   initialAvatarUrl: string | null
   initialProfileHidden: boolean
   initialRankingEnabled: boolean
+}
+
+type CropImageState = {
+  url: string
+  naturalWidth: number
+  naturalHeight: number
+  centerX: number
+  centerY: number
+  zoom: number
+}
+
+const CROP_SIZE = 220
+const OUTPUT_SIZE = 512
+const MAX_AVATAR_SIZE = 500 * 1024
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function clampCropCenter(image: CropImageState, centerX: number, centerY: number, zoom = image.zoom) {
+  const sourceSize = Math.min(image.naturalWidth, image.naturalHeight) / zoom
+  const minX = sourceSize / 2 / image.naturalWidth
+  const maxX = 1 - minX
+  const minY = sourceSize / 2 / image.naturalHeight
+  const maxY = 1 - minY
+
+  return {
+    centerX: clamp(centerX, minX, maxX),
+    centerY: clamp(centerY, minY, maxY),
+  }
+}
+
+function getCropImageStyle(image: CropImageState, size: number): CSSProperties {
+  const baseScale = Math.max(size / image.naturalWidth, size / image.naturalHeight)
+  const width = image.naturalWidth * baseScale * image.zoom
+  const height = image.naturalHeight * baseScale * image.zoom
+
+  return {
+    position: 'absolute',
+    left: size / 2 - image.centerX * width,
+    top: size / 2 - image.centerY * height,
+    width,
+    height,
+    maxWidth: 'none',
+    userSelect: 'none',
+    touchAction: 'none',
+  }
+}
+
+function loadImage(url: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('image load failed'))
+    image.src = url
+  })
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number) {
+  return new Promise<Blob | null>(resolve => {
+    canvas.toBlob(resolve, type, quality)
+  })
 }
 
 export default function ProfileEditForm({
@@ -29,22 +92,77 @@ export default function ProfileEditForm({
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(initialAvatarUrl)
+  const [cropImage, setCropImage] = useState<CropImageState | null>(null)
   const [deleteAvatar, setDeleteAvatar] = useState(false)
+  const [isProcessingAvatar, setIsProcessingAvatar] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const dragRef = useRef<{
+    pointerId: number
+    startX: number
+    startY: number
+    centerX: number
+    centerY: number
+  } | null>(null)
 
   useEffect(() => {
     return () => {
-      if (avatarPreview?.startsWith('blob:')) {
-        URL.revokeObjectURL(avatarPreview)
+      if (cropImage?.url.startsWith('blob:')) {
+        URL.revokeObjectURL(cropImage.url)
       }
     }
-  }, [avatarPreview])
+  }, [cropImage])
 
-  const handleSubmit = (formData: FormData) => {
+  const createCroppedAvatarFile = async () => {
+    if (!cropImage) return null
+
+    const image = await loadImage(cropImage.url)
+    const canvas = document.createElement('canvas')
+    canvas.width = OUTPUT_SIZE
+    canvas.height = OUTPUT_SIZE
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('canvas unavailable')
+
+    const sourceSize = Math.min(image.naturalWidth, image.naturalHeight) / cropImage.zoom
+    const sx = clamp(cropImage.centerX * image.naturalWidth - sourceSize / 2, 0, image.naturalWidth - sourceSize)
+    const sy = clamp(cropImage.centerY * image.naturalHeight - sourceSize / 2, 0, image.naturalHeight - sourceSize)
+    context.drawImage(image, sx, sy, sourceSize, sourceSize, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE)
+
+    for (const quality of [0.9, 0.82, 0.74, 0.66, 0.58, 0.5, 0.42]) {
+      const blob = await canvasToBlob(canvas, 'image/webp', quality)
+      if (blob && blob.size <= MAX_AVATAR_SIZE) {
+        return new File([blob], 'avatar.webp', { type: 'image/webp' })
+      }
+    }
+
+    throw new Error('avatar too large')
+  }
+
+  const handleSubmit = async (formData: FormData) => {
     setError('')
     setSaved(false)
+    let submitData = formData
+
+    if (cropImage && !deleteAvatar) {
+      setIsProcessingAvatar(true)
+      try {
+        const croppedFile = await createCroppedAvatarFile()
+        if (croppedFile) {
+          submitData = new FormData()
+          formData.forEach((value, key) => {
+            if (key !== 'avatar_file') submitData.append(key, value)
+          })
+          submitData.set('avatar_file', croppedFile)
+        }
+      } catch {
+        setError('アイコン画像の切り抜きに失敗しました。別の画像で試してください。')
+        setIsProcessingAvatar(false)
+        return
+      }
+      setIsProcessingAvatar(false)
+    }
+
     startTransition(async () => {
-      const result = await updateProfile(formData)
+      const result = await updateProfile(submitData)
       if (result?.error) {
         setError(result.error)
         return
@@ -52,6 +170,62 @@ export default function ProfileEditForm({
       setSaved(true)
       router.refresh()
     })
+  }
+
+  const updateCropCenter = (dx: number, dy: number) => {
+    setCropImage(current => {
+      if (!current || !dragRef.current) return current
+      const baseScale = Math.max(CROP_SIZE / current.naturalWidth, CROP_SIZE / current.naturalHeight)
+      const renderedWidth = current.naturalWidth * baseScale * current.zoom
+      const renderedHeight = current.naturalHeight * baseScale * current.zoom
+      const next = clampCropCenter(
+        current,
+        dragRef.current.centerX - dx / renderedWidth,
+        dragRef.current.centerY - dy / renderedHeight
+      )
+      return { ...current, ...next }
+    })
+  }
+
+  const handleAvatarChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0]
+    setError('')
+    if (!file) {
+      setAvatarPreview(initialAvatarUrl)
+      setCropImage(null)
+      return
+    }
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('アイコンは jpg / png / webp の画像を選んでください。')
+      event.currentTarget.value = ''
+      return
+    }
+
+    setDeleteAvatar(false)
+    const nextUrl = URL.createObjectURL(file)
+    if (cropImage?.url.startsWith('blob:')) {
+      URL.revokeObjectURL(cropImage.url)
+    }
+
+    const image = new Image()
+    image.onload = () => {
+      const crop = {
+        url: nextUrl,
+        naturalWidth: image.naturalWidth,
+        naturalHeight: image.naturalHeight,
+        centerX: 0.5,
+        centerY: 0.5,
+        zoom: 1,
+      }
+      setCropImage({ ...crop, ...clampCropCenter(crop, 0.5, 0.5, 1) })
+      setAvatarPreview(nextUrl)
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(nextUrl)
+      setError('アイコン画像を読み込めませんでした。別の画像で試してください。')
+    }
+    image.src = nextUrl
   }
 
   return (
@@ -64,7 +238,7 @@ export default function ProfileEditForm({
 
       {saved && (
         <p className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-          プロフィールを更新しました。投稿者ページへの反映はキャッシュの都合で数分かかる場合があります。
+          プロフィールを更新しました。投稿者ページへの反映はキャッシュの都合で少し時間がかかる場合があります。
         </p>
       )}
 
@@ -87,19 +261,85 @@ export default function ProfileEditForm({
             type="file"
             accept="image/jpeg,image/png,image/webp"
             className="block w-full text-sm text-gray-700 file:mr-3 file:rounded file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white hover:file:bg-blue-700"
-            onChange={(event) => {
-              const file = event.currentTarget.files?.[0]
-              if (!file) {
-                setAvatarPreview(initialAvatarUrl)
-                return
-              }
-              setDeleteAvatar(false)
-              setAvatarPreview(URL.createObjectURL(file))
-            }}
+            onChange={handleAvatarChange}
           />
           <p className="mt-1 text-xs text-gray-500">
-            jpg / png / webp、500KB以内。表示は丸型に切り抜かれます。
+            jpg / png / webp、500KB以内。保存時に512px四方へ切り抜いてアップロードします。
           </p>
+
+          {cropImage && !deleteAvatar && (
+            <div className="mt-4 rounded border border-gray-200 bg-white p-3">
+              <p className="mb-2 text-xs font-bold text-gray-700">正方形に切り抜き</p>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div
+                  className="relative shrink-0 overflow-hidden border border-gray-300 bg-gray-100"
+                  style={{ width: CROP_SIZE, height: CROP_SIZE, touchAction: 'none' }}
+                  onPointerDown={(event) => {
+                    event.currentTarget.setPointerCapture(event.pointerId)
+                    dragRef.current = {
+                      pointerId: event.pointerId,
+                      startX: event.clientX,
+                      startY: event.clientY,
+                      centerX: cropImage.centerX,
+                      centerY: cropImage.centerY,
+                    }
+                  }}
+                  onPointerMove={(event) => {
+                    if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return
+                    updateCropCenter(event.clientX - dragRef.current.startX, event.clientY - dragRef.current.startY)
+                  }}
+                  onPointerUp={(event) => {
+                    if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null
+                  }}
+                  onPointerCancel={() => {
+                    dragRef.current = null
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={cropImage.url}
+                    alt="切り抜き範囲"
+                    draggable={false}
+                    style={getCropImageStyle(cropImage, CROP_SIZE)}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-3 flex items-center gap-3">
+                    <div className="relative h-16 w-16 overflow-hidden rounded-full border border-gray-200 bg-gray-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={cropImage.url}
+                        alt="丸型プレビュー"
+                        draggable={false}
+                        style={getCropImageStyle(cropImage, 64)}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">ドラッグで位置調整、スライダーで拡大できます。</p>
+                  </div>
+                  <label className="block text-xs font-bold text-gray-600" htmlFor="avatar_zoom">
+                    拡大
+                  </label>
+                  <input
+                    id="avatar_zoom"
+                    type="range"
+                    min={1}
+                    max={3}
+                    step={0.05}
+                    value={cropImage.zoom}
+                    onChange={(event) => {
+                      const zoom = Number(event.currentTarget.value)
+                      setCropImage(current => {
+                        if (!current) return current
+                        return { ...current, zoom, ...clampCropCenter(current, current.centerX, current.centerY, zoom) }
+                      })
+                    }}
+                    className="mt-1 w-full"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {initialAvatarUrl && (
             <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">
               <input
@@ -192,7 +432,7 @@ export default function ProfileEditForm({
           <label htmlFor="profile_hidden" className="text-sm text-gray-700">
             <span className="font-bold">プロフィール非公開</span>
             <span className="mt-0.5 block text-xs text-gray-500">
-              ONにすると投稿者ページが非表示になります
+              ONにすると投稿者ページが非表示になります。
             </span>
           </label>
         </div>
@@ -208,7 +448,7 @@ export default function ProfileEditForm({
           <label htmlFor="ranking_enabled" className="text-sm text-gray-700">
             <span className="font-bold">ランキング参加</span>
             <span className="mt-0.5 block text-xs text-gray-500">
-              OFFにすると投稿者ランキングから外れます
+              OFFにすると投稿者ランキングから外れます。
             </span>
           </label>
         </div>
@@ -217,10 +457,10 @@ export default function ProfileEditForm({
       <div className="flex flex-col gap-2 sm:flex-row">
         <button
           type="submit"
-          disabled={isPending}
+          disabled={isPending || isProcessingAvatar}
           className="rounded bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isPending ? '保存中…' : '保存する'}
+          {isPending || isProcessingAvatar ? '保存中…' : '保存する'}
         </button>
         <Link
           href="/mypage"

@@ -3,6 +3,7 @@ import { createPublicClient } from './supabase-public'
 import { withFallbackThumbnails } from './thumbnail'
 import type { NavPage, FixedPage } from '@/types/fixed-pages'
 import { parseBlocks } from '@/types/fixed-pages'
+import type { PublicAuthorProfile } from '@/types'
 
 export type { NavPage, FixedPage }
 
@@ -272,7 +273,7 @@ export const getCachedThread = (threadId: number) =>
       const supabase = createPublicClient()
       const { data } = await supabase
         .from('threads')
-        .select('id, title, body, author_name, image_url, view_count, post_count, is_archived, created_at, last_posted_at, session_id, category_id, categories(id,name,slug,color,description,sort_order)')
+        .select('id, title, body, author_name, user_id, image_url, view_count, post_count, is_archived, created_at, last_posted_at, session_id, category_id, categories(id,name,slug,color,description,sort_order)')
         .eq('id', threadId)
         .single()
       return data
@@ -288,7 +289,7 @@ export const getCachedThreadPosts = (threadId: number, page: number) =>
       const offset = (page - 1) * THREAD_POSTS_PER_PAGE
       const { data } = await supabase
         .from('posts')
-        .select('id, thread_id, post_number, body, author_name, image_url, created_at')
+        .select('id, thread_id, post_number, body, author_name, user_id, image_url, created_at')
         .eq('thread_id', threadId)
         .eq('is_deleted', false)
         .order('post_number', { ascending: true })
@@ -300,6 +301,48 @@ export const getCachedThreadPosts = (threadId: number, page: number) =>
   )()
 
 export { THREAD_POSTS_PER_PAGE }
+
+export const getCachedPublicAuthorProfiles = (userIds: string[]) => {
+  const ids = Array.from(new Set(userIds.filter(Boolean))).sort()
+  const key = ids.join(',')
+
+  return unstable_cache(
+    async (): Promise<Record<string, PublicAuthorProfile>> => {
+      if (ids.length === 0) return {}
+
+      try {
+        const supabase = createPublicClient()
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, display_name, profile_slug, avatar_url')
+          .in('id', ids)
+          .eq('profile_hidden', false)
+          .eq('account_suspended', false)
+          .is('withdrawn_at', null)
+
+        if (error) return {}
+
+        return Object.fromEntries(
+          (data ?? [])
+            .filter(profile => profile.profile_slug && profile.display_name)
+            .map(profile => [
+              String(profile.id),
+              {
+                id: String(profile.id),
+                display_name: String(profile.display_name),
+                profile_slug: String(profile.profile_slug),
+                avatar_url: typeof profile.avatar_url === 'string' ? profile.avatar_url : null,
+              },
+            ])
+        )
+      } catch {
+        return {}
+      }
+    },
+    [`public-author-profiles-${key || 'none'}`],
+    { revalidate: 300, tags: ['profiles'] }
+  )()
+}
 
 export type UserThreadRow = {
   id: number

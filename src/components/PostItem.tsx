@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useTransition, useEffect, useRef } from 'react'
-import { Post } from '@/types'
+import Link from 'next/link'
+import { Post, PublicAuthorProfile } from '@/types'
 import { formatDateTimeJP } from '@/lib/utils'
 import { deleteOwnPost } from '@/app/actions/delete'
 import { PostLikeButton } from './PostLikeButton'
 import { ReportButton } from './ReportButton'
 import { ImageViewer } from './ImageViewer'
 import { LinkCard } from './LinkCard'
+import { ProfileAvatar } from './ProfileAvatar'
 
 declare global {
   interface Window {
@@ -31,6 +33,7 @@ interface Props {
   sessionId: string
   threadSessionId: string
   threadId: number
+  authorProfile?: PublicAuthorProfile
 }
 
 interface AnchorProps {
@@ -113,7 +116,6 @@ function TwitterEmbed({ url }: { url: string }) {
 
   useEffect(() => {
     if (!ref.current) return
-    setFailed(false)
     ref.current.innerHTML = `<blockquote class="twitter-tweet" data-lang="ja"><a href="${escapeHtmlAttr(url)}"></a></blockquote>`
 
     const onWidgetError = (event: ErrorEvent) => {
@@ -282,7 +284,29 @@ export function renderBody(body: string, allPosts: Post[]): React.ReactNode[] {
   return elements
 }
 
-export function PostItem({ post, allPosts, onAnchorClick, displayNumber, sessionId, threadSessionId, threadId }: Props) {
+function PostAuthorName({
+  fallbackName,
+  profile,
+}: {
+  fallbackName: string
+  profile?: PublicAuthorProfile
+}) {
+  if (!profile) {
+    return <span className="font-medium text-gray-700">{fallbackName}</span>
+  }
+
+  return (
+    <Link
+      href={`/u/${profile.profile_slug}`}
+      className="inline-flex items-center gap-1.5 font-medium text-blue-700 hover:underline"
+    >
+      <ProfileAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} size="sm" />
+      <span>{profile.display_name}</span>
+    </Link>
+  )
+}
+
+export function PostItem({ post, allPosts, onAnchorClick, displayNumber, sessionId, threadSessionId, threadId, authorProfile }: Props) {
   const [deleted, setDeleted] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -312,7 +336,7 @@ export function PostItem({ post, allPosts, onAnchorClick, displayNumber, session
         >
           ▶{displayNumber}
         </button>
-        <span className="font-medium text-gray-700">{post.author_name}</span>
+        <PostAuthorName fallbackName={post.author_name} profile={authorProfile} />
         <span className="text-gray-400">{formatDateTimeJP(post.created_at)}</span>
         <PostLikeButton likeKey={`post-${post.id}`} />
         <ReportButton itemType="post" itemId={post.id} itemBody={post.body} />
