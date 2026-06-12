@@ -130,7 +130,7 @@ export default async function ZukanTopPage() {
               <Link
                 key={pack.slug}
                 href={href}
-                className="block border border-gray-300 bg-white px-3 py-3 hover:border-blue-400 hover:bg-blue-50"
+                className="block border border-gray-300 bg-white px-3 py-3 cursor-pointer transition-all duration-100 hover:border-blue-400 hover:bg-blue-50 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]"
               >
                 <div className="font-mono text-xs font-bold text-blue-700">{pack.code}</div>
                 <div className="mt-0.5 text-sm font-bold text-gray-800">{pack.name}</div>
@@ -155,7 +155,7 @@ export default async function ZukanTopPage() {
           {DM01_PREVIEW_DEFS.map(def => {
             const dbCard = cardMap.get(def.slug) ?? null
             const href = dbCard ? `/zukan/card/${def.slug}` : '#'
-            const cardClass = `border border-gray-300 bg-white ${dbCard ? 'block hover:border-blue-400' : 'opacity-60'}`
+            const cardClass = `border border-gray-300 bg-white ${dbCard ? 'block cursor-pointer transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]' : 'opacity-60'}`
             const cardBody = (
               <>
                 <CardThumb

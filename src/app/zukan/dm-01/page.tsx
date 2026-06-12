@@ -207,7 +207,7 @@ export default async function ZukanDm01Page({
               const dbCard = dbRepCards?.find(c => c.slug === rep.slug) ?? null
               const href = dbCard ? `/zukan/card/${rep.slug}` : '#'
               const isLinked = !!dbCard
-              const cardClass = `border border-gray-300 bg-white ${isLinked ? 'block hover:border-blue-400 hover:shadow-sm' : 'opacity-60'}`
+              const cardClass = `border border-gray-300 bg-white ${isLinked ? 'block cursor-pointer transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]' : 'opacity-60'}`
               const cardBody = (
                 <>
                   <CardThumb
@@ -297,7 +297,7 @@ export default async function ZukanDm01Page({
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
             {cards.map(card => {
               const isLinked = !!card.id
-              const cardClass = `border border-gray-300 bg-white ${isLinked ? 'block hover:border-blue-400 hover:shadow-sm' : ''}`
+              const cardClass = `border border-gray-300 bg-white ${isLinked ? 'block cursor-pointer transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]' : ''}`
               const cardBody = (
                 <>
                   <CardThumb
@@ -344,7 +344,7 @@ export default async function ZukanDm01Page({
           <div className="mt-3 flex items-center justify-between border border-gray-200 bg-gray-50 px-3 py-2">
             <div>
               {page > 1 ? (
-                <Link href={`/zukan/dm-01?page=${page - 1}`} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50">
+                <Link href={`/zukan/dm-01?page=${page - 1}`} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-600 cursor-pointer transition-all duration-100 hover:bg-blue-50 hover:border-blue-400 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
                   ← 前の60件
                 </Link>
               ) : (
@@ -358,7 +358,7 @@ export default async function ZukanDm01Page({
             )}
             <div>
               {hasNextPage ? (
-                <Link href={`/zukan/dm-01?page=${page + 1}`} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50">
+                <Link href={`/zukan/dm-01?page=${page + 1}`} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-600 cursor-pointer transition-all duration-100 hover:bg-blue-50 hover:border-blue-400 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
                   次の60件 →
                 </Link>
               ) : (

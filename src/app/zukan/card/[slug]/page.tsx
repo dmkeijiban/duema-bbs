@@ -264,7 +264,7 @@ export default async function ZukanCardPage({
             <ul className="divide-y divide-gray-100">
               {relatedThreads.map(t => (
                 <li key={t.id}>
-                  <Link href={`/threads/${t.id}`} className="block px-3 py-2.5 text-xs text-blue-600 hover:underline hover:bg-blue-50">
+                  <Link href={`/threads/${t.id}`} className="block px-3 py-2.5 text-xs text-blue-600 cursor-pointer transition-colors duration-100 hover:underline hover:bg-blue-50 active:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400">
                     {t.title}
                   </Link>
                 </li>
