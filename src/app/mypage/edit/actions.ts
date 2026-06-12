@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { revalidatePath } from 'next/cache'
 
 type UpdateProfileResult = {
   error?: string
@@ -10,6 +11,13 @@ type UpdateProfileResult = {
 
 const X_HOSTS = ['x.com', 'twitter.com']
 const YOUTUBE_HOSTS = ['youtube.com', 'www.youtube.com', 'youtu.be']
+const AVATAR_BUCKET = 'profile-avatars'
+const MAX_AVATAR_SIZE = 500 * 1024
+const AVATAR_TYPES = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+} as const
 
 // 入力URLを検証する。空ならnull、httpsかつ許可ホストならそのURL、それ以外はinvalid。
 function normalizeUrl(
@@ -36,6 +44,8 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
   const youtubeUrlRaw = String(formData.get('youtube_url') ?? '')
   const profileHidden = formData.get('profile_hidden') === 'on'
   const rankingEnabled = formData.get('ranking_enabled') === 'on'
+  const deleteAvatar = formData.get('delete_avatar') === 'on'
+  const avatarFile = formData.get('avatar_file')
 
   if (displayName.length < 1 || displayName.length > 20) {
     return { error: '表示名は1〜20文字で入力してください。' }
@@ -64,13 +74,12 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
     return { error: 'ログイン状態を確認できませんでした。もう一度ログインしてください。' }
   }
 
-  // 更新は本人の行（id = user.id）のみ。profile_slug・avatar 等は触らない。
   const admin = createAdminClient()
 
   // アカウント停止中・退会済みなら保存を拒否する（UI だけに頼らず Server Action 側でも再確認）。
   const { data: guardProfile, error: guardError } = await admin
     .from('profiles')
-    .select('account_suspended, withdrawn_at')
+    .select('profile_slug, account_suspended, withdrawn_at')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -86,21 +95,81 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
     return { error: 'このアカウントではプロフィール編集を利用できません。' }
   }
 
+  let nextAvatarUrl: string | null | undefined
+  const hasAvatarFile = avatarFile instanceof File && avatarFile.size > 0
+
+  if (deleteAvatar || hasAvatarFile) {
+    const existingPaths = ['.jpg', '.jpeg', '.png', '.webp'].map(ext => `${user.id}/avatar${ext}`)
+    const { error: removeError } = await admin.storage.from(AVATAR_BUCKET).remove(existingPaths)
+    if (removeError) {
+      console.error('Failed to remove existing avatar:', removeError.message)
+      return { error: 'アイコンの更新に失敗しました。少し時間を置いて再試行してください。' }
+    }
+    nextAvatarUrl = null
+  }
+
+  if (hasAvatarFile) {
+    const ext = AVATAR_TYPES[avatarFile.type as keyof typeof AVATAR_TYPES]
+    if (!ext) {
+      return { error: 'アイコンは jpg / png / webp の画像を選択してください。' }
+    }
+    if (avatarFile.size > MAX_AVATAR_SIZE) {
+      return { error: 'アイコン画像は500KB以内にしてください。' }
+    }
+
+    const path = `${user.id}/avatar${ext}`
+    const { error: uploadError } = await admin.storage
+      .from(AVATAR_BUCKET)
+      .upload(path, avatarFile, {
+        contentType: avatarFile.type,
+        upsert: true,
+      })
+
+    if (uploadError) {
+      console.error('Failed to upload avatar:', uploadError.message)
+      return { error: 'アイコンのアップロードに失敗しました。画像形式と容量を確認してください。' }
+    }
+
+    const { data: publicUrl } = admin.storage.from(AVATAR_BUCKET).getPublicUrl(path)
+    nextAvatarUrl = publicUrl.publicUrl
+  }
+
+  const updatePayload: {
+    display_name: string
+    bio: string | null
+    x_url: string | null
+    youtube_url: string | null
+    profile_hidden: boolean
+    ranking_enabled: boolean
+    avatar_url?: string | null
+  } = {
+    display_name: displayName,
+    bio: bio || null,
+    x_url: xUrl.value,
+    youtube_url: youtubeUrl.value,
+    profile_hidden: profileHidden,
+    ranking_enabled: rankingEnabled,
+  }
+
+  if (nextAvatarUrl !== undefined) {
+    updatePayload.avatar_url = nextAvatarUrl
+  }
+
   const { error } = await admin
     .from('profiles')
-    .update({
-      display_name: displayName,
-      bio: bio || null,
-      x_url: xUrl.value,
-      youtube_url: youtubeUrl.value,
-      profile_hidden: profileHidden,
-      ranking_enabled: rankingEnabled,
-    })
+    .update(updatePayload)
     .eq('id', user.id)
 
   if (error) {
     console.error('Failed to update profile:', error.message)
     return { error: 'プロフィールの更新に失敗しました。入力内容を確認してください。' }
+  }
+
+  if (guardProfile?.profile_slug) {
+    revalidatePath('/mypage')
+    revalidatePath('/mypage/edit')
+    revalidatePath(`/u/${guardProfile.profile_slug}`)
+    revalidatePath('/zukan/dm-01')
   }
 
   return { success: true }

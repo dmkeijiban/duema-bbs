@@ -39,6 +39,9 @@ export type ZukanCardWithPack = ZukanCard & {
 }
 
 const PAGE_SIZE = 60
+const PACK_SELECT = 'id, slug, code, name, released_year, card_count, description, is_published, sort_order, image_url'
+const CARD_LIST_SELECT = 'id, pack_id, slug, name, card_type, civilization, rarity, official_image_url, sort_order'
+const CARD_DETAIL_SELECT = 'id, pack_id, slug, name, card_type, civilization, cost, mana, race, power, rarity, illustrator, ability_text, flavor_text, image_url, official_page_url, official_image_url, sort_order, zukan_packs(slug, code, name)'
 
 // テーブル未作成エラーコード (PostgreSQL: undefined_table)
 const TABLE_NOT_FOUND = '42P01'
@@ -52,7 +55,7 @@ export async function fetchPublishedPacks(): Promise<ZukanPack[] | null> {
     const supabase = createPublicClient()
     const { data, error } = await supabase
       .from('zukan_packs')
-      .select('*')
+      .select(PACK_SELECT)
       .eq('is_published', true)
       .order('sort_order', { ascending: true })
     if (error) return null
@@ -67,7 +70,7 @@ export async function fetchPack(slug: string): Promise<ZukanPack | null> {
     const supabase = createPublicClient()
     const { data, error } = await supabase
       .from('zukan_packs')
-      .select('*')
+      .select(PACK_SELECT)
       .eq('slug', slug)
       .single()
     if (error) return null
@@ -87,7 +90,7 @@ export async function fetchCardsByPack(
     const to = from + PAGE_SIZE - 1
     const { data, error } = await supabase
       .from('zukan_cards')
-      .select('*')
+      .select(CARD_LIST_SELECT)
       .eq('pack_id', packId)
       .eq('is_published', true)
       .order('sort_order', { ascending: true })
@@ -107,7 +110,7 @@ export async function fetchCardsBySlugs(
     const supabase = createPublicClient()
     const { data, error } = await supabase
       .from('zukan_cards')
-      .select('*')
+      .select(CARD_LIST_SELECT)
       .eq('pack_id', packId)
       .eq('is_published', true)
       .in('slug', slugs)
@@ -131,7 +134,9 @@ type FetchCardResult =
 export type PackReview = {
   id: number
   pack_id: string
+  user_id: string | null
   display_name: string
+  avatar_url: string | null
   body: string
   created_at: string
 }
@@ -139,7 +144,9 @@ export type PackReview = {
 export type CardReview = {
   id: number
   card_id: string
+  user_id: string | null
   display_name: string
+  avatar_url: string | null
   body: string
   created_at: string
 }
@@ -165,12 +172,41 @@ export type CardRatingSummary = {
 // Fetch reviews
 // ============================================================
 
+async function attachReviewAvatars<T extends { user_id: string | null }>(
+  rows: T[]
+): Promise<(T & { avatar_url: string | null })[]> {
+  const userIds = Array.from(new Set(rows.map(row => row.user_id).filter((id): id is string => !!id)))
+  if (userIds.length === 0) {
+    return rows.map(row => ({ ...row, avatar_url: null }))
+  }
+
+  try {
+    const supabase = createPublicClient()
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, avatar_url')
+      .in('id', userIds)
+
+    if (error) {
+      return rows.map(row => ({ ...row, avatar_url: null }))
+    }
+
+    const avatarMap = new Map((data ?? []).map(profile => [
+      String(profile.id),
+      typeof profile.avatar_url === 'string' ? profile.avatar_url : null,
+    ]))
+    return rows.map(row => ({ ...row, avatar_url: row.user_id ? avatarMap.get(row.user_id) ?? null : null }))
+  } catch {
+    return rows.map(row => ({ ...row, avatar_url: null }))
+  }
+}
+
 export async function fetchPackReviews(packId: string): Promise<PackReview[] | null> {
   try {
     const supabase = createPublicClient()
     const { data, error } = await supabase
       .from('zukan_pack_reviews')
-      .select('id, pack_id, display_name, body, created_at')
+      .select('id, pack_id, user_id, display_name, body, created_at')
       .eq('pack_id', packId)
       .eq('is_deleted', false)
       .eq('is_hidden', false)
@@ -180,7 +216,7 @@ export async function fetchPackReviews(packId: string): Promise<PackReview[] | n
       if (isTableMissing(error)) return []
       return null
     }
-    return data as PackReview[]
+    return attachReviewAvatars(data as Omit<PackReview, 'avatar_url'>[])
   } catch {
     return null
   }
@@ -191,7 +227,7 @@ export async function fetchCardReviews(cardId: string): Promise<CardReview[] | n
     const supabase = createPublicClient()
     const { data, error } = await supabase
       .from('zukan_card_reviews')
-      .select('id, card_id, display_name, body, created_at')
+      .select('id, card_id, user_id, display_name, body, created_at')
       .eq('card_id', cardId)
       .eq('is_deleted', false)
       .eq('is_hidden', false)
@@ -201,7 +237,7 @@ export async function fetchCardReviews(cardId: string): Promise<CardReview[] | n
       if (isTableMissing(error)) return []
       return null
     }
-    return data as CardReview[]
+    return attachReviewAvatars(data as Omit<CardReview, 'avatar_url'>[])
   } catch {
     return null
   }
@@ -329,7 +365,7 @@ export async function fetchCardBySlug(slug: string): Promise<FetchCardResult> {
     const supabase = createPublicClient()
     const { data, error } = await supabase
       .from('zukan_cards')
-      .select('*, zukan_packs(slug, code, name)')
+      .select(CARD_DETAIL_SELECT)
       .eq('slug', slug)
       .single()
     if (error) {
@@ -338,7 +374,7 @@ export async function fetchCardBySlug(slug: string): Promise<FetchCardResult> {
       if (error.code === 'PGRST116') return { status: 'not_found' }
       return { status: 'error' }
     }
-    return { status: 'found', card: data as ZukanCardWithPack }
+    return { status: 'found', card: data as unknown as ZukanCardWithPack }
   } catch {
     return { status: 'error' }
   }

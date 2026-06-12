@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { createPublicClient } from '@/lib/supabase-public'
 import { getCachedUserThreads, getCachedUserPosts } from '@/lib/cached-queries'
 
@@ -12,6 +13,7 @@ type Profile = {
   bio: string | null
   x_url: string | null
   youtube_url: string | null
+  avatar_url: string | null
   created_at: string
   profile_hidden: boolean | null
   account_suspended: boolean | null
@@ -63,12 +65,28 @@ async function getProfile(slug: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'id, display_name, profile_slug, bio, x_url, youtube_url, created_at, profile_hidden, account_suspended, withdrawn_at'
+      'id, display_name, profile_slug, bio, x_url, youtube_url, avatar_url, created_at, profile_hidden, account_suspended, withdrawn_at'
     )
     .eq('profile_slug', slug)
     .maybeSingle()
 
   if (error) {
+    if (error.message.includes('avatar_url')) {
+      const { data: fallback, error: fallbackError } = await supabase
+        .from('profiles')
+        .select(
+          'id, display_name, profile_slug, bio, x_url, youtube_url, created_at, profile_hidden, account_suspended, withdrawn_at'
+        )
+        .eq('profile_slug', slug)
+        .maybeSingle()
+
+      if (fallbackError) {
+        console.error('Failed to fetch public profile:', fallbackError.message)
+        return null
+      }
+
+      return fallback ? { ...fallback, avatar_url: null } : null
+    }
     console.error('Failed to fetch public profile:', error.message)
     return null
   }
@@ -106,7 +124,7 @@ export default async function UserProfilePage({
   ])
 
   return (
-    <main className="mx-auto max-w-[1080px] px-3 py-4">
+    <main className="mx-auto w-full max-w-[1100px] px-3 py-4">
       <div className="text-xs text-gray-500 mb-3">
         <Link href="/" className="text-blue-600 hover:underline">
           TOP
@@ -118,12 +136,17 @@ export default async function UserProfilePage({
       <section className="bg-white border border-gray-300 rounded-sm">
         <div className="border-b border-gray-200 px-4 py-3">
           <p className="text-xs text-gray-500 mb-1">投稿者ページ</p>
-          <h1 className="text-xl font-bold text-gray-900 break-words">
-            {profile.display_name}
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            URL ID: <span className="font-mono">{profile.profile_slug}</span>
-          </p>
+          <div className="mt-2 flex items-center gap-3">
+            <ProfileAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} size="lg" />
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold text-gray-900 break-words">
+                {profile.display_name}
+              </h1>
+              <p className="text-sm text-gray-600 mt-1">
+                URL ID: <span className="font-mono">{profile.profile_slug}</span>
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="px-4 py-4 space-y-4">
@@ -175,69 +198,71 @@ export default async function UserProfilePage({
         </div>
       </section>
 
-      <section className="bg-white border border-gray-300 rounded-sm mt-4">
-        <div className="border-b border-gray-200 px-4 py-2">
-          <h2 className="font-bold text-sm text-gray-800">最近のスレッド</h2>
-        </div>
-        {recentThreads.length > 0 ? (
-          <ul className="divide-y divide-gray-100">
-            {recentThreads.map((thread) => (
-              <li key={thread.id} className="px-4 py-3">
-                <Link
-                  href={`/thread/${thread.id}`}
-                  className="text-sm text-blue-600 hover:underline break-words"
-                >
-                  {thread.title}
-                </Link>
-                <p className="mt-1 text-xs text-gray-500">
-                  {formatDateTime(thread.created_at)}
-                  {typeof thread.post_count === 'number' && (
-                    <span className="ml-2">レス{thread.post_count}</span>
-                  )}
-                </p>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="px-4 py-5 text-sm text-gray-600">
-            まだスレッドはありません。
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <section className="bg-white border border-gray-300 rounded-sm">
+          <div className="border-b border-gray-200 px-4 py-2">
+            <h2 className="font-bold text-sm text-gray-800">最近のスレッド</h2>
           </div>
-        )}
-      </section>
+          {recentThreads.length > 0 ? (
+            <ul className="divide-y divide-gray-100">
+              {recentThreads.map((thread) => (
+                <li key={thread.id} className="px-4 py-3">
+                  <Link
+                    href={`/thread/${thread.id}`}
+                    className="text-sm text-blue-600 hover:underline break-words"
+                  >
+                    {thread.title}
+                  </Link>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {formatDateTime(thread.created_at)}
+                    {typeof thread.post_count === 'number' && (
+                      <span className="ml-2">レス{thread.post_count}</span>
+                    )}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="px-4 py-5 text-sm text-gray-600">
+              まだスレッドはありません。
+            </div>
+          )}
+        </section>
 
-      <section className="bg-white border border-gray-300 rounded-sm mt-4">
-        <div className="border-b border-gray-200 px-4 py-2">
-          <h2 className="font-bold text-sm text-gray-800">最近のコメント</h2>
-        </div>
-        {recentPosts.length > 0 ? (
-          <ul className="divide-y divide-gray-100">
-            {recentPosts.map((post) => (
-              <li key={post.id} className="px-4 py-3">
-                <Link
-                  href={
-                    post.post_number
-                      ? `/thread/${post.thread_id}#${post.post_number}`
-                      : `/thread/${post.thread_id}`
-                  }
-                  className="text-sm text-gray-800 hover:underline break-words"
-                >
-                  {excerpt(post.body)}
-                </Link>
-                <p className="mt-1 text-xs text-gray-500 break-words">
-                  {post.threads?.title && (
-                    <span className="text-gray-600">{post.threads.title}</span>
-                  )}
-                  <span className="ml-2">{formatDateTime(post.created_at)}</span>
-                </p>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="px-4 py-5 text-sm text-gray-600">
-            まだコメントはありません。
+        <section className="bg-white border border-gray-300 rounded-sm">
+          <div className="border-b border-gray-200 px-4 py-2">
+            <h2 className="font-bold text-sm text-gray-800">最近のコメント</h2>
           </div>
-        )}
-      </section>
+          {recentPosts.length > 0 ? (
+            <ul className="divide-y divide-gray-100">
+              {recentPosts.map((post) => (
+                <li key={post.id} className="px-4 py-3">
+                  <Link
+                    href={
+                      post.post_number
+                        ? `/thread/${post.thread_id}#${post.post_number}`
+                        : `/thread/${post.thread_id}`
+                    }
+                    className="text-sm text-gray-800 hover:underline break-words"
+                  >
+                    {excerpt(post.body)}
+                  </Link>
+                  <p className="mt-1 text-xs text-gray-500 break-words">
+                    {post.threads?.title && (
+                      <span className="text-gray-600">{post.threads.title}</span>
+                    )}
+                    <span className="ml-2">{formatDateTime(post.created_at)}</span>
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="px-4 py-5 text-sm text-gray-600">
+              まだコメントはありません。
+            </div>
+          )}
+        </section>
+      </div>
     </main>
   )
 }

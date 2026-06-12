@@ -1,6 +1,6 @@
 export default function CardLoading() {
   return (
-    <div className="max-w-4xl mx-auto px-2 pt-2 pb-10">
+    <div className="mx-auto w-full max-w-[1100px] px-2 pt-2 pb-10">
       <div className="h-1 w-full rounded-full bg-blue-200 animate-pulse mb-4" />
       <div className="mb-5 grid gap-4 border border-gray-200 bg-gray-100 p-4 md:grid-cols-[170px_1fr] animate-pulse">
         <div className="mx-auto w-full max-w-[170px] bg-gray-200 rounded" style={{ aspectRatio: '63 / 88' }} />

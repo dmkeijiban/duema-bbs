@@ -10,6 +10,7 @@ type EditableProfile = {
   bio: string | null
   x_url: string | null
   youtube_url: string | null
+  avatar_url: string | null
   profile_hidden: boolean | null
   ranking_enabled: boolean | null
   account_suspended: boolean | null
@@ -20,11 +21,25 @@ async function getMyProfile(userId: string): Promise<EditableProfile | null> {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('profiles')
-    .select('display_name, bio, x_url, youtube_url, profile_hidden, ranking_enabled, account_suspended, withdrawn_at')
+    .select('display_name, bio, x_url, youtube_url, avatar_url, profile_hidden, ranking_enabled, account_suspended, withdrawn_at')
     .eq('id', userId)
     .maybeSingle()
 
   if (error) {
+    if (error.message.includes('avatar_url')) {
+      const { data: fallback, error: fallbackError } = await admin
+        .from('profiles')
+        .select('display_name, bio, x_url, youtube_url, profile_hidden, ranking_enabled, account_suspended, withdrawn_at')
+        .eq('id', userId)
+        .maybeSingle()
+
+      if (fallbackError) {
+        console.error('Failed to fetch profile for edit:', fallbackError.message)
+        return null
+      }
+
+      return fallback ? { ...fallback, avatar_url: null } : null
+    }
     console.error('Failed to fetch profile for edit:', error.message)
     return null
   }
@@ -60,8 +75,8 @@ export default async function MyPageEdit() {
 
   if (editingBlocked) {
     return (
-      <main className="mx-auto max-w-[1080px] px-4 py-8">
-        <div className="border border-gray-300 bg-white">
+      <main className="mx-auto w-full max-w-[1100px] px-4 py-8">
+        <div className="w-full border border-gray-300 bg-white">
           <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
             <div className="mb-1 text-xs text-gray-500">
               <Link href="/mypage" className="text-blue-600 hover:underline">
@@ -90,8 +105,8 @@ export default async function MyPageEdit() {
   }
 
   return (
-    <main className="mx-auto max-w-[1080px] px-4 py-8">
-      <div className="border border-gray-300 bg-white">
+    <main className="mx-auto w-full max-w-[1100px] px-4 py-8">
+      <div className="w-full border border-gray-300 bg-white">
         <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
           <div className="mb-1 text-xs text-gray-500">
             <Link href="/mypage" className="text-blue-600 hover:underline">
@@ -112,6 +127,7 @@ export default async function MyPageEdit() {
             initialBio={profile.bio ?? ''}
             initialXUrl={profile.x_url ?? ''}
             initialYoutubeUrl={profile.youtube_url ?? ''}
+            initialAvatarUrl={profile.avatar_url}
             initialProfileHidden={!!profile.profile_hidden}
             initialRankingEnabled={profile.ranking_enabled !== false}
           />
