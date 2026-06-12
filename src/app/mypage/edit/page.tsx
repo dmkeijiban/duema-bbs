@@ -117,7 +117,7 @@ export default async function MyPageEdit() {
           </div>
           <h1 className="text-lg font-bold text-gray-900">プロフィール編集</h1>
           <p className="mt-1 text-sm leading-relaxed text-gray-600">
-            表示名・自己紹介・SNSリンク・公開設定を変更できます。URL ID（slug）やアイコンはここでは変更できません。
+            表示名・アイコン・自己紹介・SNSリンク・公開設定を変更できます。URL ID（slug）はここでは変更できません。
           </p>
         </div>
 
