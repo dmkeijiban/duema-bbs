@@ -7,7 +7,7 @@ import { RecommendSection, RecommendSectionSkeleton } from '@/components/Recomme
 import { Thread, Post, Category } from '@/types'
 import { ThreadViewPing } from '@/components/ThreadViewPing'
 import Link from 'next/link'
-import { getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, getCachedRelatedThreads, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
+import { getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, getCachedRelatedThreads, getCachedPublicAuthorProfiles, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
@@ -146,6 +146,10 @@ export async function renderThreadPage(threadId: number, page: number) {
 
   const posts = postsResult.data
   const typedThread = thread as unknown as Thread & { categories: Category | null }
+  const authorProfiles = await getCachedPublicAuthorProfiles([
+    typedThread.user_id ?? '',
+    ...(posts ?? []).map(post => (post as Post).user_id ?? ''),
+  ])
   const totalPages = Math.max(1, Math.ceil((typedThread.post_count ?? 0) / POSTS_PER_PAGE))
 
   const baseUrl = SITE_URL
@@ -311,6 +315,7 @@ export async function renderThreadPage(threadId: number, page: number) {
         posts={(posts ?? []) as Post[]}
         threadId={threadId}
         thread={typedThread}
+        authorProfiles={authorProfiles}
         isArchived={typedThread.is_archived}
         page={page}
         totalPages={totalPages}
