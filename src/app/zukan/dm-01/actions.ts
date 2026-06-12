@@ -1,7 +1,9 @@
 'use server'
 
-import { createPublicClient } from '@/lib/supabase-public'
 import { revalidatePath } from 'next/cache'
+
+import { createAdminClient } from '@/lib/supabase-admin'
+import { getZukanPosterContext, hasRecentZukanPost } from '@/lib/zukan-server'
 
 export type PackReviewFormState =
   | { status: 'idle' }
@@ -13,23 +15,30 @@ export async function submitPackReview(
   _prev: PackReviewFormState,
   formData: FormData,
 ): Promise<PackReviewFormState> {
-  const displayName = (formData.get('display_name') as string | null)?.trim() || '名無しさん'
+  const rawDisplayName = (formData.get('display_name') as string | null)?.trim() || null
   const body = (formData.get('body') as string | null)?.trim() ?? ''
 
-  if (body.length < 2) {
-    return { status: 'error', message: '本文を2文字以上入力してください' }
+  if (body.length < 3) {
+    return { status: 'error', message: '本文を3文字以上入力してください' }
   }
-  if (body.length > 500) {
-    return { status: 'error', message: '本文は500文字以内にしてください' }
-  }
-  if (displayName.length > 50) {
-    return { status: 'error', message: '名前は50文字以内にしてください' }
+  if (body.length > 1000) {
+    return { status: 'error', message: '本文は1000文字以内にしてください' }
   }
 
-  const supabase = createPublicClient()
+  const poster = await getZukanPosterContext(rawDisplayName)
+  if (poster.blockedMessage) {
+    return { status: 'error', message: poster.blockedMessage }
+  }
+  if (await hasRecentZukanPost('zukan_pack_reviews', 'pack_id', packId, poster)) {
+    return { status: 'error', message: '短時間に連続して投稿されています。少し待ってから投稿してください。' }
+  }
+
+  const supabase = createAdminClient()
   const { error } = await supabase.from('zukan_pack_reviews').insert({
     pack_id: packId,
-    display_name: displayName,
+    user_id: poster.userId,
+    anon_key: poster.anonKey,
+    display_name: poster.displayName,
     body,
   })
 
