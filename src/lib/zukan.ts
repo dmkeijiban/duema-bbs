@@ -211,6 +211,7 @@ export async function fetchCardRatings(cardId: string): Promise<CardRatingSummar
       .select('score_admiration, score_trauma, score_still_like, score_name, score_art')
       .eq('card_id', cardId)
       .eq('is_deleted', false)
+      .eq('is_hidden', false)
     if (error) {
       if (isTableMissing(error)) return null
       return null
