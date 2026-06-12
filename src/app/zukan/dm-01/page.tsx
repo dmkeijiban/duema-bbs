@@ -359,32 +359,64 @@ export default async function ZukanDm01Page({
           </div>
           {packReviews && packReviews.length > 0 && (
             <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
-              {latestPackReviews.map(r => (
+              {latestPackReviews.map(r => {
+                const displayName = normalizeZukanDisplayName(r.display_name)
+                const author = (
+                  <>
+                    <ProfileAvatar src={r.avatar_url} alt={`${displayName}のアイコン`} size="sm" />
+                    <span className="font-bold text-gray-700">{displayName}</span>
+                    {r.profile_slug && <span className="text-[10px] text-gray-400">@{r.profile_slug}</span>}
+                  </>
+                )
+
+                return (
                 <article key={r.id} className="px-3 py-2.5">
                   <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                    <ProfileAvatar src={r.avatar_url} alt={`${normalizeZukanDisplayName(r.display_name)}のアイコン`} size="sm" />
-                    <span className="font-bold text-gray-700">{normalizeZukanDisplayName(r.display_name)}</span>
+                    {r.profile_slug ? (
+                      <Link href={`/u/${r.profile_slug}`} className="inline-flex items-center gap-2 hover:underline">
+                        {author}
+                      </Link>
+                    ) : (
+                      <span className="inline-flex items-center gap-2">{author}</span>
+                    )}
                     <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
                   </div>
                   <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
                 </article>
-              ))}
+                )
+              })}
               {morePackReviews.length > 0 && (
                 <details className="border-t border-gray-100">
                   <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-blue-600 transition-colors duration-100 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400">
                     もっと見る
                   </summary>
                   <div className="divide-y divide-gray-100 border-t border-gray-100">
-                    {morePackReviews.map(r => (
+                    {morePackReviews.map(r => {
+                      const displayName = normalizeZukanDisplayName(r.display_name)
+                      const author = (
+                        <>
+                          <ProfileAvatar src={r.avatar_url} alt={`${displayName}のアイコン`} size="sm" />
+                          <span className="font-bold text-gray-700">{displayName}</span>
+                          {r.profile_slug && <span className="text-[10px] text-gray-400">@{r.profile_slug}</span>}
+                        </>
+                      )
+
+                      return (
                       <article key={r.id} className="px-3 py-2.5">
                         <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                          <ProfileAvatar src={r.avatar_url} alt={`${normalizeZukanDisplayName(r.display_name)}のアイコン`} size="sm" />
-                          <span className="font-bold text-gray-700">{normalizeZukanDisplayName(r.display_name)}</span>
+                          {r.profile_slug ? (
+                            <Link href={`/u/${r.profile_slug}`} className="inline-flex items-center gap-2 hover:underline">
+                              {author}
+                            </Link>
+                          ) : (
+                            <span className="inline-flex items-center gap-2">{author}</span>
+                          )}
                           <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
                         </div>
                         <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
                       </article>
-                    ))}
+                      )
+                    })}
                   </div>
                 </details>
               )}

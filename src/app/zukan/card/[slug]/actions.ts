@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 
 import { createAdminClient } from '@/lib/supabase-admin'
-import { getZukanPosterContext, hasRecentZukanPost } from '@/lib/zukan-server'
+import { getZukanDailyPostIssue, getZukanPosterContext, hasRecentZukanPost } from '@/lib/zukan-server'
 
 export type CardReviewFormState =
   | { status: 'idle' }
@@ -33,6 +33,13 @@ export async function submitCardReview(
   if (await hasRecentZukanPost('zukan_card_reviews', 'card_id', cardId, poster)) {
     return { status: 'error', message: '短時間に連続して投稿されています。少し待ってから投稿してください。' }
   }
+  const dailyIssue = await getZukanDailyPostIssue('zukan_card_reviews', 'card_id', cardId, poster, body)
+  if (dailyIssue === 'limit') {
+    return { status: 'error', message: '同じカードへのレビュー投稿は1日3件までです。明日また投稿してください。' }
+  }
+  if (dailyIssue === 'duplicate') {
+    return { status: 'error', message: '同じ内容のレビューは今日はすでに投稿済みです。' }
+  }
 
   const supabase = createAdminClient()
   const { error } = await supabase.from('zukan_card_reviews').insert({
@@ -53,7 +60,7 @@ export async function submitCardReview(
 
 export type CardRatingFormState =
   | { status: 'idle' }
-  | { status: 'success'; isUpdate: boolean }
+  | { status: 'success' }
   | { status: 'error'; message: string }
 
 export async function submitCardRating(
@@ -107,6 +114,10 @@ export async function submitCardRating(
   }
 
   const existing = existingRows?.[0]
+  if (existing) {
+    return { status: 'error', message: 'このカードはすでに評価済みです。評価は1カードにつき1回までです。' }
+  }
+
   const payload = {
     ...scores,
     user_id: poster.userId,
@@ -114,17 +125,18 @@ export async function submitCardRating(
     display_name: poster.displayName,
   }
 
-  const { error } = existing
-    ? await supabase.from('zukan_card_ratings').update(payload).eq('id', existing.id)
-    : await supabase.from('zukan_card_ratings').insert({
-        card_id: cardId,
-        ...payload,
-      })
+  const { error } = await supabase.from('zukan_card_ratings').insert({
+    card_id: cardId,
+    ...payload,
+  })
 
   if (error) {
+    if (error.code === '23505') {
+      return { status: 'error', message: 'このカードはすでに評価済みです。評価は1カードにつき1回までです。' }
+    }
     return { status: 'error', message: '評価の送信に失敗しました。しばらくしてから再試行してください。' }
   }
 
   revalidatePath(`/zukan/card/${slug}`)
-  return { status: 'success', isUpdate: Boolean(existing) }
+  return { status: 'success' }
 }

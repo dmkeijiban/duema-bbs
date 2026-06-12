@@ -77,7 +77,7 @@ export default function CardRatingForm({ cardId, slug }: { cardId: string; slug:
   if (state.status === 'success') {
     return (
       <p className="border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700">
-        {state.isUpdate ? '評価を更新しました！' : '評価を送信しました！'}ありがとうございます。
+        評価を送信しました！ありがとうございます。
       </p>
     )
   }

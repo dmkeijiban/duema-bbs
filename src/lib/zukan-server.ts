@@ -6,6 +6,7 @@ import { createClient } from './supabase-server'
 import { normalizeZukanAnonInput, normalizeZukanDisplayName } from './zukan-display'
 
 const ZUKAN_ANON_COOKIE = 'zukan_anon_key'
+const ZUKAN_DAILY_POST_LIMIT = 3
 
 export type ZukanPosterContext = {
   userId: string | null
@@ -88,6 +89,76 @@ export async function hasRecentZukanPost(
   } else {
     query = query.eq('anon_key', context.anonKey)
   }
+
+  const { data, error } = await query
+  if (error) return false
+  return Boolean(data && data.length > 0)
+}
+
+function getJstDayRange(date = new Date()): { start: string; end: string } {
+  const jst = new Date(date.getTime() + 9 * 60 * 60 * 1000)
+  const [year, month, day] = jst.toISOString().slice(0, 10).split('-').map(Number)
+  const start = new Date(Date.UTC(year, month - 1, day, -9, 0, 0, 0))
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000)
+  return { start: start.toISOString(), end: end.toISOString() }
+}
+
+export async function getZukanDailyPostIssue(
+  table: 'zukan_pack_reviews' | 'zukan_card_reviews',
+  targetColumn: 'pack_id' | 'card_id',
+  targetId: string,
+  context: ZukanPosterContext,
+  body: string,
+): Promise<'limit' | 'duplicate' | null> {
+  const { start, end } = getJstDayRange()
+  const admin = createAdminClient()
+  let query = admin
+    .from(table)
+    .select('id, body')
+    .eq(targetColumn, targetId)
+    .eq('is_deleted', false)
+    .gte('created_at', start)
+    .lt('created_at', end)
+    .limit(ZUKAN_DAILY_POST_LIMIT + 1)
+
+  if (context.userId) {
+    query = query.eq('user_id', context.userId)
+  } else {
+    query = query.eq('anon_key', context.anonKey).is('user_id', null)
+  }
+
+  const { data, error } = await query
+  if (error) return null
+
+  const rows = data ?? []
+  if (rows.some(row => String(row.body ?? '').trim() === body)) {
+    return 'duplicate'
+  }
+
+  return rows.length >= ZUKAN_DAILY_POST_LIMIT ? 'limit' : null
+}
+
+export async function hasViewerRatedCard(cardId: string): Promise<boolean> {
+  const cookieStore = await cookies()
+  const anonKey = cookieStore.get(ZUKAN_ANON_COOKIE)?.value ?? null
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user && !anonKey) return false
+
+  const admin = createAdminClient()
+  const base = admin
+    .from('zukan_card_ratings')
+    .select('id')
+    .eq('card_id', cardId)
+    .eq('is_deleted', false)
+    .limit(1)
+
+  const query = user
+    ? base.eq('user_id', user.id)
+    : base.eq('anon_key', anonKey as string).is('user_id', null)
 
   const { data, error } = await query
   if (error) return false
