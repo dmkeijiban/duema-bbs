@@ -345,10 +345,11 @@ export async function fetchManualRelatedThreads(cardId: string): Promise<Related
     if (error || !data || data.length === 0) return []
 
     const threadIds = data.map((r: { thread_id: string }) => r.thread_id)
+    const numericIds = threadIds.map(id => parseInt(id, 10)).filter(n => !isNaN(n))
     const { data: threads } = await supabase
       .from('threads')
       .select('id, title, slug, comment_count, created_at')
-      .in('id', threadIds)
+      .in('id', numericIds)
       .eq('is_archived', false)
     if (!threads) return []
 
