@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { fetchCardBySlug, fetchCardReviews, fetchCardRatings, fetchRelatedThreads } from '@/lib/zukan'
+import { fetchCardBySlug, fetchCardReviews, fetchCardRatings, fetchRelatedThreads, fetchCardMemo, fetchManualRelatedThreads } from '@/lib/zukan'
 import type { ZukanCardWithPack } from '@/lib/zukan'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import ShareButtons from './ShareButtons'
@@ -91,7 +91,9 @@ export default async function ZukanCardPage({
 
   const cardReviews = isDbReady ? await fetchCardReviews(card.id) : null
   const ratingsSummary = isDbReady ? await fetchCardRatings(card.id) : null
-  const relatedThreads = await fetchRelatedThreads(card.name)
+  const cardMemo = isDbReady ? await fetchCardMemo(card.id) : ''
+  const manualThreads = isDbReady ? await fetchManualRelatedThreads(card.id) : []
+  const relatedThreads = manualThreads.length > 0 ? manualThreads : await fetchRelatedThreads(card.name)
 
   const pack = card.zukan_packs
   const packHref = pack ? `/zukan/${pack.slug}` : '/zukan'
@@ -227,7 +229,11 @@ export default async function ZukanCardPage({
         <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
           <h2 className="text-sm font-bold text-gray-800">ひとことメモ</h2>
         </div>
-        <p className="border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">まだありません</p>
+        {cardMemo ? (
+          <p className="border border-gray-200 bg-white px-3 py-3 text-xs text-gray-700 whitespace-pre-wrap leading-5">{cardMemo}</p>
+        ) : (
+          <p className="border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">まだありません</p>
+        )}
       </section>
 
       {/* レビュー */}

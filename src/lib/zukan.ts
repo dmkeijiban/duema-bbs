@@ -272,6 +272,54 @@ export async function fetchRelatedThreads(keyword: string): Promise<RelatedThrea
 // Card slug fetch (continued below)
 // ============================================================
 
+// ============================================================
+// Card memo (ひとこと) – public client, empty if not set
+// ============================================================
+
+export async function fetchCardMemo(cardId: string): Promise<string> {
+  try {
+    const supabase = createPublicClient()
+    const { data } = await supabase
+      .from('zukan_card_memos')
+      .select('body')
+      .eq('card_id', cardId)
+      .maybeSingle()
+    return data?.body ?? ''
+  } catch {
+    return ''
+  }
+}
+
+// ============================================================
+// Manual related threads – public client
+// ============================================================
+
+export async function fetchManualRelatedThreads(cardId: string): Promise<RelatedThread[]> {
+  try {
+    const supabase = createPublicClient()
+    const { data, error } = await supabase
+      .from('zukan_related_threads')
+      .select('thread_id, sort_order')
+      .eq('card_id', cardId)
+      .order('sort_order', { ascending: true })
+    if (error || !data || data.length === 0) return []
+
+    const threadIds = data.map((r: { thread_id: string }) => r.thread_id)
+    const { data: threads } = await supabase
+      .from('threads')
+      .select('id, title, slug, comment_count, created_at')
+      .in('id', threadIds)
+      .eq('is_archived', false)
+    if (!threads) return []
+
+    // Preserve sort_order
+    const threadMap = new Map((threads as RelatedThread[]).map(t => [t.id, t]))
+    return threadIds.map(id => threadMap.get(id)).filter((t): t is RelatedThread => !!t)
+  } catch {
+    return []
+  }
+}
+
 export async function fetchCardBySlug(slug: string): Promise<FetchCardResult> {
   try {
     const supabase = createPublicClient()
