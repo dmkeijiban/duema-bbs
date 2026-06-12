@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { fetchPublishedPacks, fetchCardsBySlugs } from '@/lib/zukan'
-import type { ZukanPack, ZukanCard } from '@/lib/zukan'
+import { fetchPublishedPacks, fetchCardsBySlugs, fetchCardReviewHighlights } from '@/lib/zukan'
+import type { ZukanPack, ZukanCard, ZukanCardReviewHighlight } from '@/lib/zukan'
 
 export const metadata = {
   title: 'デュエマ思い出図鑑 | デュエマ掲示板',
@@ -76,6 +76,109 @@ function CardThumb({
   )
 }
 
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('ja-JP', {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    timeZone: 'Asia/Tokyo',
+  }).format(new Date(value))
+}
+
+function PackListCard({ pack }: { pack: ZukanPack }) {
+  const href = pack.slug === 'dm-01' ? '/zukan/dm-01' : '#'
+  const isLinked = pack.slug === 'dm-01'
+
+  const body = (
+    <div className="flex h-full flex-col overflow-hidden border border-gray-300 bg-white transition-all duration-100 sm:flex-row">
+      <div className="w-full bg-orange-50 sm:w-28 sm:shrink-0">
+        {pack.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={pack.image_url}
+            alt={`${pack.code} ${pack.name} パック画像`}
+            loading="lazy"
+            decoding="async"
+            className="h-36 w-full object-contain p-2 sm:h-full"
+          />
+        ) : (
+          <div className="flex h-36 items-center justify-center text-xs font-bold text-orange-300 sm:h-full">
+            パック画像準備中
+          </div>
+        )}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col px-3 py-3">
+        <div className="font-mono text-xs font-bold text-blue-700">{pack.code}</div>
+        <div className="mt-0.5 text-sm font-bold text-gray-800">{pack.name}</div>
+        <dl className="mt-2 space-y-1 text-xs text-gray-600">
+          {pack.released_year && (
+            <div><dt className="inline font-bold">発売日：</dt><dd className="inline">{pack.released_year}</dd></div>
+          )}
+          {pack.card_count && (
+            <div><dt className="inline font-bold">収録：</dt><dd className="inline">全{pack.card_count}種</dd></div>
+          )}
+        </dl>
+        <p className="mt-2 max-h-9 overflow-hidden text-xs leading-relaxed text-gray-500">
+          {pack.description ?? 'パックを開いた思い出や、当時使っていたカードを振り返るページです。'}
+        </p>
+      </div>
+    </div>
+  )
+
+  return isLinked ? (
+    <Link
+      href={href}
+      className="block h-full cursor-pointer hover:border-blue-400 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]"
+    >
+      {body}
+    </Link>
+  ) : (
+    <div className="h-full opacity-70">{body}</div>
+  )
+}
+
+function ReviewHighlightSection({
+  title,
+  emptyText,
+  cards,
+}: {
+  title: string
+  emptyText: string
+  cards: ZukanCardReviewHighlight[]
+}) {
+  return (
+    <section className="border border-gray-300 bg-white">
+      <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
+        <h2 className="text-sm font-bold text-gray-800">{title}</h2>
+      </div>
+      {cards.length === 0 ? (
+        <p className="px-3 py-4 text-xs text-gray-400">{emptyText}</p>
+      ) : (
+        <div className="divide-y divide-gray-100">
+          {cards.map(card => (
+            <Link
+              key={card.id}
+              href={`/zukan/card/${card.slug}`}
+              className="grid grid-cols-[54px_minmax(0,1fr)_auto] gap-2 px-3 py-2.5 transition-colors hover:bg-blue-50/50"
+            >
+              <CardThumb name={card.name} civilization={card.civilization} imageUrl={card.official_image_url} />
+              <div className="min-w-0">
+                <div className="truncate text-sm font-bold text-blue-700">{card.name}</div>
+                <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-gray-500">
+                  {card.civilization && <span>{card.civilization}</span>}
+                  <span>レビュー{card.review_count}件</span>
+                  <span>最新 {formatDate(card.latest_reviewed_at)}</span>
+                </div>
+              </div>
+              <span className="self-center text-xs text-blue-500">→</span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
 const DM01_PREVIEW_DEFS = [
   { slug: 'bolshack-dragon', name: 'ボルシャック・ドラゴン', civ: '火' },
   { slug: 'aqua-hulcus',     name: 'アクア・ハルカス',       civ: '水' },
@@ -85,7 +188,10 @@ const DM01_PREVIEW_DEFS = [
 ]
 
 export default async function ZukanTopPage() {
-  const dbPacks = await fetchPublishedPacks()
+  const [dbPacks, reviewHighlights] = await Promise.all([
+    fetchPublishedPacks(),
+    fetchCardReviewHighlights(),
+  ])
   const packs = dbPacks ?? MOCK_PACKS
   const isDbReady = dbPacks !== null
 
@@ -123,23 +229,10 @@ export default async function ZukanTopPage() {
         <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
           <h2 className="text-sm font-bold text-gray-800">パックから探す</h2>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-          {packs.map(pack => {
-            const href = pack.slug === 'dm-01' ? '/zukan/dm-01' : '#'
-            return (
-              <Link
-                key={pack.slug}
-                href={href}
-                className="block border border-gray-300 bg-white px-3 py-3 cursor-pointer transition-all duration-100 hover:border-blue-400 hover:bg-blue-50 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]"
-              >
-                <div className="font-mono text-xs font-bold text-blue-700">{pack.code}</div>
-                <div className="mt-0.5 text-sm font-bold text-gray-800">{pack.name}</div>
-                {pack.released_year && (
-                  <div className="mt-1 text-xs text-gray-500">{pack.released_year}</div>
-                )}
-              </Link>
-            )
-          })}
+        <div className="grid gap-3 md:grid-cols-2">
+          {packs.map(pack => (
+            <PackListCard key={pack.slug} pack={pack} />
+          ))}
         </div>
       </section>
 
@@ -187,20 +280,18 @@ export default async function ZukanTopPage() {
         </div>
       </section>
 
-      {/* 下段2カラム：準備中 */}
+      {/* 下段2カラム */}
       <div className="grid gap-3 md:grid-cols-2">
-        <section className="border border-gray-300 bg-white">
-          <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
-            <h2 className="text-sm font-bold text-gray-800">最近レビューされたカード</h2>
-          </div>
-          <p className="px-3 py-4 text-xs text-gray-400">準備中</p>
-        </section>
-        <section className="border border-gray-300 bg-white">
-          <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
-            <h2 className="text-sm font-bold text-gray-800">思い出レビューが多いカード</h2>
-          </div>
-          <p className="px-3 py-4 text-xs text-gray-400">準備中</p>
-        </section>
+        <ReviewHighlightSection
+          title="最近レビューされたカード"
+          emptyText="まだレビューされたカードはありません"
+          cards={reviewHighlights?.recent ?? []}
+        />
+        <ReviewHighlightSection
+          title="思い出レビューが多いカード"
+          emptyText="まだ思い出レビューはありません"
+          cards={reviewHighlights?.mostReviewed ?? []}
+        />
       </div>
     </div>
   )

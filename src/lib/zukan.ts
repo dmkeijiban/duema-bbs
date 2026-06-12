@@ -151,6 +151,34 @@ export type CardReview = {
   created_at: string
 }
 
+export type ZukanCardReviewHighlight = {
+  id: string
+  slug: string
+  name: string
+  civilization: string | null
+  official_image_url: string | null
+  review_count: number
+  latest_reviewed_at: string
+}
+
+export type ZukanCardReviewHighlights = {
+  recent: ZukanCardReviewHighlight[]
+  mostReviewed: ZukanCardReviewHighlight[]
+}
+
+type CardReviewHighlightRow = {
+  card_id: string
+  created_at: string
+  zukan_cards: {
+    id: string
+    slug: string
+    name: string
+    civilization: string | null
+    official_image_url: string | null
+    is_published: boolean | null
+  } | null
+}
+
 export type CardRatingRow = {
   score_admiration: number | null
   score_trauma: number | null
@@ -238,6 +266,67 @@ export async function fetchCardReviews(cardId: string): Promise<CardReview[] | n
       return null
     }
     return attachReviewAvatars(data as Omit<CardReview, 'avatar_url'>[])
+  } catch {
+    return null
+  }
+}
+
+export async function fetchCardReviewHighlights(
+  displayLimit = 5
+): Promise<ZukanCardReviewHighlights | null> {
+  try {
+    const supabase = createPublicClient()
+    const { data, error } = await supabase
+      .from('zukan_card_reviews')
+      .select('card_id, created_at, zukan_cards!inner(id, slug, name, civilization, official_image_url, is_published)')
+      .eq('is_deleted', false)
+      .eq('is_hidden', false)
+      .eq('zukan_cards.is_published', true)
+      .order('created_at', { ascending: false })
+      .limit(500)
+
+    if (error) {
+      if (isTableMissing(error)) return { recent: [], mostReviewed: [] }
+      return null
+    }
+
+    const summaries = new Map<string, ZukanCardReviewHighlight>()
+    for (const row of (data ?? []) as unknown as CardReviewHighlightRow[]) {
+      const card = row.zukan_cards
+      if (!card?.slug) continue
+
+      const current = summaries.get(card.id)
+      if (current) {
+        current.review_count += 1
+        if (new Date(row.created_at).getTime() > new Date(current.latest_reviewed_at).getTime()) {
+          current.latest_reviewed_at = row.created_at
+        }
+        continue
+      }
+
+      summaries.set(card.id, {
+        id: card.id,
+        slug: card.slug,
+        name: card.name,
+        civilization: card.civilization,
+        official_image_url: card.official_image_url,
+        review_count: 1,
+        latest_reviewed_at: row.created_at,
+      })
+    }
+
+    const cards = Array.from(summaries.values())
+    const recent = [...cards]
+      .sort((a, b) => new Date(b.latest_reviewed_at).getTime() - new Date(a.latest_reviewed_at).getTime())
+      .slice(0, displayLimit)
+    const mostReviewed = [...cards]
+      .sort((a, b) => {
+        if (b.review_count !== a.review_count) return b.review_count - a.review_count
+        return new Date(b.latest_reviewed_at).getTime() - new Date(a.latest_reviewed_at).getTime()
+      })
+      .slice(0, displayLimit)
+
+    return { recent, mostReviewed }
   } catch {
     return null
   }
