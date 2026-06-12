@@ -1,8 +1,16 @@
 import Link from 'next/link'
-import { fetchPack, fetchCardsByPack, fetchCardsBySlugs } from '@/lib/zukan'
+import {
+  fetchPack,
+  fetchCardsByPack,
+  fetchCardsBySlugs,
+  fetchPackReviews,
+  fetchRelatedThreadsByTerms,
+} from '@/lib/zukan'
 import type { ZukanPack, ZukanCard } from '@/lib/zukan'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import PackShareButtons from './PackShareButtons'
+import ZukanReviewForm from '../ZukanReviewForm'
+import { submitPackReview } from '../actions'
 
 export const metadata = {
   title: 'DM-01 基本セット | デュエマ思い出図鑑',
@@ -46,17 +54,7 @@ const REP_CARDS = [
   { slug: 'natural-trap',    name: 'ナチュラル・トラップ',  civilization: '自然' },
 ]
 
-const PACK_REVIEWS = [
-  { author: 'よっち', body: '初めて買ったパック。ボルシャックが当たって叫んだ記憶しかない。', when: '2026/06/01' },
-  { author: '名無し', body: 'シールド戦の入門にちょうどよかった。今のカードより素朴で好き。', when: '2026/05/28' },
-]
 
-const SHORT_REVIEWS = [
-  '小学校の机の中に隠してた',
-  'デッキケースが宝物だった',
-  'コロコロ片手に開けてた',
-  '近所の友達と交換しまくった',
-]
 
 // ---------------------------------------------------------------------------
 
@@ -144,6 +142,10 @@ export default async function ZukanDm01Page({
   // 代表カードはページングとは独立して取得（page=2所属でもリンク可能にする）
   const repSlugs = REP_CARDS.map(r => r.slug)
   const dbRepCards = dbPack ? await fetchCardsBySlugs(dbPack.id, repSlugs) : null
+  const packReviews = dbPack ? await fetchPackReviews(dbPack.id) : []
+  const relatedThreads = dbPack
+    ? await fetchRelatedThreadsByTerms([pack.code, pack.name])
+    : []
 
   const total = pack.card_count ?? null
   const totalPages = total ? Math.ceil(total / PAGE_SIZE) : null
@@ -203,11 +205,6 @@ export default async function ZukanDm01Page({
           {pack.description && (
             <p className="mt-3 text-sm leading-relaxed text-gray-700">{pack.description}</p>
           )}
-          <div className="mt-4">
-            <span className="inline-block cursor-default rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white opacity-50">
-              このパックの思い出を書く（準備中）
-            </span>
-          </div>
         </div>
       </header>
 
@@ -261,43 +258,61 @@ export default async function ZukanDm01Page({
         <section className="mb-5">
           <div className="mb-2 flex items-baseline justify-between border border-gray-300 bg-gray-50 px-3 py-2">
             <h2 className="text-sm font-bold text-gray-800">このパックの思い出レビュー</h2>
-            <span className="text-xs text-gray-400">レビュー投稿は準備中</span>
+            <span className="text-xs text-gray-400">最新10件</span>
           </div>
           <div className="space-y-2">
-            {PACK_REVIEWS.map((r, i) => (
-              <div key={i} className="border border-gray-300 bg-white px-3 py-3">
+            {packReviews.length > 0 ? packReviews.map((r) => (
+              <div key={r.id} className="border border-gray-300 bg-white px-3 py-3">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-xs font-bold text-gray-700">{r.author}</span>
-                  <span className="text-xs text-gray-400">{r.when}</span>
+                  <span className="text-xs font-bold text-gray-700">{r.author_name || '匿名'}</span>
+                  <span className="text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString('ja-JP')}</span>
                 </div>
-                <p className="mt-1 text-sm leading-relaxed text-gray-700">{r.body}</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-gray-700">{r.body}</p>
               </div>
-            ))}
+            )) : (
+              <p className="border border-dashed border-gray-300 bg-white px-3 py-4 text-xs text-gray-500">
+                まだ投稿はありません。最初の思い出を書いてみてください。
+              </p>
+            )}
           </div>
-          <div className="mt-2">
-            <span className="inline-block cursor-default rounded border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-400">
-              レビューを書く（準備中）
-            </span>
-          </div>
+          {dbPack && (
+            <div className="mt-3">
+              <ZukanReviewForm
+                targetId={dbPack.id}
+                targetSlug={pack.slug}
+                targetKind="pack"
+                action={submitPackReview}
+              />
+            </div>
+          )}
         </section>
       )}
 
-      {/* ひとことメモ（モック固定） */}
+      {/* 関連スレッド */}
+
       {page === 1 && (
         <section className="mb-5">
           <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
-            <h2 className="text-sm font-bold text-gray-800">ひとことメモ</h2>
+            <h2 className="text-sm font-bold text-gray-800">関連スレッド</h2>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {SHORT_REVIEWS.map((s, i) => (
-              <span key={i} className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs text-gray-700">
-                {s}
-              </span>
-            ))}
-            <span className="rounded-full border border-dashed border-gray-300 bg-gray-50 px-3 py-1 text-xs text-gray-400 cursor-default">
-              ＋ひとこと追加（準備中）
-            </span>
-          </div>
+          {relatedThreads.length > 0 ? (
+            <ul className="divide-y border border-gray-300 bg-white">
+              {relatedThreads.map((thread) => (
+                <li key={thread.id}>
+                  <Link href={"/thread/" + thread.id} className="block px-3 py-2 text-sm text-blue-700 hover:bg-blue-50 hover:underline">
+                    {thread.title}
+                    <time className="ml-2 text-xs text-gray-400" dateTime={thread.created_at}>
+                      {new Date(thread.created_at).toLocaleDateString("ja-JP")}
+                    </time>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="border border-dashed border-gray-300 bg-white px-3 py-4 text-xs text-gray-500">
+              関連スレッドはまだ見つかっていません。
+            </p>
+          )}
         </section>
       )}
 

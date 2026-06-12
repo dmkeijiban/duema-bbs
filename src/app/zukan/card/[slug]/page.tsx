@@ -1,9 +1,17 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { fetchCardBySlug } from '@/lib/zukan'
+import {
+  fetchCardBySlug,
+  fetchCardRatingSummary,
+  fetchCardReviews,
+  fetchRelatedThreadsByTerms,
+} from '@/lib/zukan'
 import type { ZukanCardWithPack } from '@/lib/zukan'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import ShareButtons from './ShareButtons'
+import ZukanReviewForm from '../../ZukanReviewForm'
+import ZukanRatingForm from '../../ZukanRatingForm'
+import { submitCardReview } from '../../actions'
 
 // --- モックフォールバック（bolshack-dragon 専用） ---------------------------
 
@@ -29,22 +37,8 @@ const MOCK_CARD: ZukanCardWithPack = {
   zukan_packs: { slug: 'dm-01', code: 'DM-01', name: '基本セット' },
 }
 
-const MOCK_REVIEWS = [
-  { author: 'よっち', body: '小学生のとき、これ1枚で全部解決すると思ってた。今見てもイラストが最高。', when: '2026/06/02' },
-  { author: '名無し', body: '友達がこれ出してきて毎回negられた。トラウマというか憧れというか。', when: '2026/05/30' },
-]
 
-const MOCK_SHORT_REVIEWS = [
-  'これが当たって学校で自慢した',
-  '初めての切り札だった',
-  '炎のドラゴンといえばコレ',
-  'パッケージで一目惚れ',
-]
 
-const MOCK_THREADS = [
-  { title: 'ボルシャック・ドラゴンの思い出を語るスレ', replies: 342, href: '#' },
-  { title: '【初代】DM-01世代だけがわかること', replies: 198, href: '#' },
-]
 
 // ---------------------------------------------------------------------------
 
@@ -63,9 +57,6 @@ const RATING_LABELS = [
   '名前のかっこよさ',
   'イラストのかっこよさ',
 ]
-
-// モック評価スコア（bolshack-dragon 用仮平均）
-const MOCK_SCORES = [4.8, 2.1, 4.6, 4.9, 4.5]
 
 function CardThumb({ name }: { name: string }) {
   return (
@@ -118,6 +109,14 @@ export default async function ZukanCardPage({
   const pack = card.zukan_packs
   const packHref = pack ? `/zukan/${pack.slug}` : '/zukan'
   const packLabel = pack ? `${pack.code} ${pack.name}` : '図鑑トップ'
+
+  const cardReviews = isDbReady ? await fetchCardReviews(card.id) : []
+  const ratingSummary = isDbReady
+    ? await fetchCardRatingSummary(card.id)
+    : { count: 0, averages: null }
+  const relatedThreads = isDbReady
+    ? await fetchRelatedThreadsByTerms([card.name, pack?.name ?? ''])
+    : []
 
   return (
     <div className="max-w-4xl mx-auto px-2 pt-2 pb-10">
@@ -200,11 +199,6 @@ export default async function ZukanCardPage({
               </a>
             </div>
           )}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="inline-block cursor-default rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white opacity-60">
-              レビューを書く（準備中）
-            </span>
-          </div>
           {/* シェアボタン */}
           <div className="mt-3">
             <ShareButtons cardName={card.name} />
@@ -212,76 +206,80 @@ export default async function ZukanCardPage({
         </div>
       </header>
 
-      {/* 5項目評価 */}
       <section className="mb-5">
         <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
           <h2 className="text-sm font-bold text-gray-800">みんなの思い出評価</h2>
         </div>
-        <div className="border border-gray-300 bg-white divide-y divide-gray-100">
-          {RATING_LABELS.map((label, i) => {
-            const score = MOCK_SCORES[i]
-            return (
-              <div key={i} className="grid grid-cols-[9rem_1fr_3rem] items-center gap-2 px-3 py-2.5 sm:grid-cols-[11rem_1fr_3rem]">
-                <span className="text-xs font-bold text-gray-700">{label}</span>
-                <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-                  <div className="h-full rounded-full bg-amber-400" style={{ width: `${(score / 5) * 100}%` }} />
+        {ratingSummary.averages ? (
+          <div className="border border-gray-300 bg-white divide-y divide-gray-100">
+            {RATING_LABELS.map((label, i) => {
+              const keys = ["nostalgia", "play", "now", "name", "illustration"] as const
+              const score = ratingSummary.averages?.[keys[i]] ?? 0
+              return (
+                <div key={label} className="grid grid-cols-[9rem_1fr_3rem] items-center gap-2 px-3 py-2.5 sm:grid-cols-[11rem_1fr_3rem]">
+                  <span className="text-xs font-bold text-gray-700">{label}</span>
+                  <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-full rounded-full bg-amber-400" style={{ width: `${(score / 5) * 100}%` }} />
+                  </div>
+                  <span className="text-right font-mono text-xs font-bold text-gray-700">{score.toFixed(1)}</span>
                 </div>
-                <span className="text-right font-mono text-xs font-bold text-gray-700">{score.toFixed(1)}</span>
-              </div>
-            )
-          })}
-        </div>
-        <p className="mt-1 text-xs text-gray-400">※5項目はすべて入力 or すべて未入力（部分入力なし）。評価投稿は準備中。</p>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="border border-dashed border-gray-300 bg-white px-3 py-4 text-xs text-gray-500">まだ評価はありません。</p>
+        )}
+        <p className="mt-1 text-xs text-gray-400">評価件数: {ratingSummary.count}件。再評価すると前回分を更新します。</p>
+        {isDbReady && <div className="mt-3"><ZukanRatingForm cardId={card.id} cardSlug={card.slug} /></div>}
       </section>
 
-      {/* ひとことメモ */}
-      <section className="mb-5">
-        <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
-          <h2 className="text-sm font-bold text-gray-800">ひとことメモ</h2>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {MOCK_SHORT_REVIEWS.map((s, i) => (
-            <span key={i} className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs text-gray-700">
-              {s}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      {/* レビュー */}
       <section className="mb-5">
         <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
           <h2 className="text-sm font-bold text-gray-800">思い出レビュー</h2>
         </div>
         <div className="space-y-2">
-          {MOCK_REVIEWS.map((r, i) => (
-            <div key={i} className="border border-gray-300 bg-white px-3 py-3">
-              <div className="flex items-baseline justify-between">
-                <span className="text-xs font-bold text-gray-700">{r.author}</span>
-                <span className="text-xs text-gray-400">{r.when}</span>
+          {cardReviews.length > 0 ? cardReviews.map((review) => (
+            <div key={review.id} className="border border-gray-300 bg-white px-3 py-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-xs font-bold text-gray-700">{review.author_name || "匿名"}</span>
+                <time className="text-xs text-gray-400" dateTime={review.created_at}>{new Date(review.created_at).toLocaleDateString("ja-JP")}</time>
               </div>
-              <p className="mt-1 text-sm leading-relaxed text-gray-700">{r.body}</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-gray-700">{review.body}</p>
             </div>
-          ))}
+          )) : (
+            <p className="border border-dashed border-gray-300 bg-white px-3 py-4 text-xs text-gray-500">まだレビューはありません。</p>
+          )}
         </div>
+        {isDbReady && <div className="mt-3"><ZukanReviewForm targetId={card.id} targetSlug={card.slug} targetKind="card" action={submitCardReview} /></div>}
       </section>
 
-      {/* 関連スレッド */}
       <section className="mb-2">
         <div className="border border-gray-300 bg-white">
           <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
             <h2 className="text-sm font-bold text-gray-800">関連スレッド</h2>
           </div>
-          <div className="divide-y divide-gray-100">
-            {MOCK_THREADS.map((t, i) => (
-              <Link key={i} href={t.href} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
-                <span className="truncate text-sm font-bold text-blue-700">{t.title}</span>
-                <span className="ml-2 whitespace-nowrap font-mono text-xs text-gray-500">{t.replies}</span>
-              </Link>
-            ))}
-          </div>
+          {relatedThreads.length > 0 ? (
+            <div className="divide-y divide-gray-100">
+              {relatedThreads.map((thread) => (
+                <Link key={thread.id} href={"/thread/" + thread.id} className="block px-3 py-2 hover:bg-gray-50">
+                  <span className="truncate text-sm font-bold text-blue-700">{thread.title}</span>
+                  <time className="ml-2 text-xs text-gray-400" dateTime={thread.created_at}>{new Date(thread.created_at).toLocaleDateString("ja-JP")}</time>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="px-3 py-4 text-xs text-gray-500">関連スレッドはまだ見つかっていません。</p>
+          )}
         </div>
       </section>
+
+      {/* 5項目評価 */}
+
+      {/* ひとことメモ */}
+
+      {/* レビュー */}
+
+      {/* 関連スレッド */}
     </div>
   )
 }
