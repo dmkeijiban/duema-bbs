@@ -41,6 +41,10 @@ function formatDateTime(value: string | null) {
   }).format(new Date(value))
 }
 
+function formatCount(value: number) {
+  return `${new Intl.NumberFormat('ja-JP').format(value)}件`
+}
+
 function excerpt(value: string | null, max = 80) {
   if (!value) return ''
   const oneLine = value.replace(/\s+/g, ' ').trim()
@@ -93,6 +97,28 @@ async function getProfile(slug: string): Promise<Profile | null> {
   return data
 }
 
+async function getUserActivityCounts(userId: string) {
+  const supabase = createPublicClient()
+  const [threadsResult, postsResult] = await Promise.all([
+    supabase
+      .from('threads')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_archived', false),
+    supabase
+      .from('posts')
+      .select('id, threads!inner(is_archived)', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_deleted', false)
+      .eq('threads.is_archived', false),
+  ])
+
+  return {
+    threadCount: threadsResult.count ?? 0,
+    postCount: postsResult.count ?? 0,
+  }
+}
+
 function XIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -143,10 +169,11 @@ export default async function UserProfilePage({
     'youtu.be',
   ])
 
-  const [recentThreads, recentPosts, rankings] = await Promise.all([
+  const [recentThreads, recentPosts, rankings, activityCounts] = await Promise.all([
     getCachedUserThreads(profile.id),
     getCachedUserPosts(profile.id),
     getCachedUserRankings(),
+    getUserActivityCounts(profile.id),
   ])
 
   const monthlyRankIndex = rankings.monthly.findIndex(
@@ -158,10 +185,8 @@ export default async function UserProfilePage({
   const monthlyRank = monthlyRankIndex >= 0 ? monthlyRankIndex + 1 : null
   const totalRank = totalRankIndex >= 0 ? totalRankIndex + 1 : null
 
-  const threadDisplayCount =
-    recentThreads.length === 10 ? '10+' : String(recentThreads.length)
-  const postDisplayCount =
-    recentPosts.length === 10 ? '10+' : String(recentPosts.length)
+  const threadDisplayCount = formatCount(activityCounts.threadCount)
+  const postDisplayCount = formatCount(activityCounts.postCount)
 
   return (
     <main className="mx-auto w-full max-w-[1100px] px-3 py-4">
