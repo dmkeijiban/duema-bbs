@@ -14,6 +14,12 @@ export const metadata = {
 
 const PAGE_SIZE = 60
 
+const PACK_DESCRIPTION_PARAGRAPHS = [
+  '2002年5月30日に発売された、デュエル・マスターズ最初の弾。',
+  '火・水・自然・光・闇の5文明から全120種を収録し、ボルシャック・ドラゴン、ホーリー・スパーク、デーモン・ハンドなど、シリーズを象徴するカードが多数登場しました。',
+  '1パック5枚入り・150円（税抜）。',
+]
+
 // --- モックフォールバック ---------------------------------------------------
 
 const MOCK_PACK: ZukanPack = {
@@ -183,7 +189,7 @@ export default async function ZukanDm01Page({
             </div>
           )}
         </div>
-        <div>
+        <div className="flex min-h-full flex-col">
           <div className="font-mono text-xs font-bold text-blue-700">{pack.code}</div>
           <h1 className="mt-0.5 text-lg font-bold text-gray-800">{pack.code} {pack.name}</h1>
           <dl className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-600">
@@ -195,9 +201,15 @@ export default async function ZukanDm01Page({
             )}
             <div><dt className="inline font-bold">パック内容：</dt><dd className="inline">5枚入り 150円（税抜）</dd></div>
           </dl>
-          {pack.description && (
-            <p className="mt-3 text-sm leading-relaxed text-gray-700">{pack.description}</p>
-          )}
+          <div className="mt-3 space-y-2 text-sm leading-relaxed text-gray-700">
+            {PACK_DESCRIPTION_PARAGRAPHS.map(paragraph => (
+              <p key={paragraph}>{paragraph}</p>
+            ))}
+          </div>
+          <div className="mt-auto pt-4">
+            <div className="mb-2 text-xs font-bold text-gray-700">このページをシェア</div>
+            <PackShareButtons packName={`${pack.code} ${pack.name}`} />
+          </div>
         </div>
       </header>
 
@@ -385,12 +397,6 @@ export default async function ZukanDm01Page({
           {!isDbReady && <p className="border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">DBが準備中のため投稿できません</p>}
         </section>
       )}
-
-      {/* シェア */}
-      <section className="border border-gray-300 bg-white px-4 py-3">
-        <div className="mb-2 text-xs font-bold text-gray-700">このページをシェアする</div>
-        <PackShareButtons packName={`${pack.code} ${pack.name}`} />
-      </section>
     </div>
   )
 }
