@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { fetchPack, fetchCardsByPack, fetchCardsBySlugs, fetchPackReviews } from '@/lib/zukan'
 import type { ZukanPack, ZukanCard } from '@/lib/zukan'
 import { normalizeZukanDisplayName } from '@/lib/zukan-display'
+import { ProfileAvatar } from '@/components/ProfileAvatar'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import PackShareButtons from './PackShareButtons'
 import PackReviewForm from './PackReviewForm'
@@ -127,14 +128,15 @@ export default async function ZukanDm01Page({
   const dbPack = await fetchPack('dm-01')
   const pack = dbPack ?? MOCK_PACK
 
-  const dbCards = dbPack ? await fetchCardsByPack(dbPack.id, page) : null
-  const packReviews = dbPack && page === 1 ? await fetchPackReviews(dbPack.id) : null
+  const [dbCards, packReviews, dbRepCards] = dbPack
+    ? await Promise.all([
+        fetchCardsByPack(dbPack.id, page),
+        page === 1 ? fetchPackReviews(dbPack.id) : Promise.resolve(null),
+        page === 1 ? fetchCardsBySlugs(dbPack.id, REP_CARDS.map(r => r.slug)) : Promise.resolve(null),
+      ])
+    : [null, null, null]
   const cards = dbCards ?? (page === 1 ? MOCK_CARDS : [])
   const isDbReady = dbPack !== null
-
-  // 代表カードはページングとは独立して取得（page=2所属でもリンク可能にする）
-  const repSlugs = REP_CARDS.map(r => r.slug)
-  const dbRepCards = dbPack ? await fetchCardsBySlugs(dbPack.id, repSlugs) : null
 
   const total = pack.card_count ?? null
   const totalPages = total ? Math.ceil(total / PAGE_SIZE) : null
@@ -348,6 +350,7 @@ export default async function ZukanDm01Page({
               {latestPackReviews.map(r => (
                 <article key={r.id} className="px-3 py-2.5">
                   <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                    <ProfileAvatar src={r.avatar_url} alt={`${normalizeZukanDisplayName(r.display_name)}のアイコン`} size="sm" />
                     <span className="font-bold text-gray-700">{normalizeZukanDisplayName(r.display_name)}</span>
                     <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
                   </div>
@@ -363,6 +366,7 @@ export default async function ZukanDm01Page({
                     {morePackReviews.map(r => (
                       <article key={r.id} className="px-3 py-2.5">
                         <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                          <ProfileAvatar src={r.avatar_url} alt={`${normalizeZukanDisplayName(r.display_name)}のアイコン`} size="sm" />
                           <span className="font-bold text-gray-700">{normalizeZukanDisplayName(r.display_name)}</span>
                           <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
                         </div>

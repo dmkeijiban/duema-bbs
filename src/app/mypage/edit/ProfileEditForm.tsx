@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
+import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { updateProfile } from './actions'
 
 type ProfileEditFormProps = {
@@ -10,6 +11,7 @@ type ProfileEditFormProps = {
   initialBio: string
   initialXUrl: string
   initialYoutubeUrl: string
+  initialAvatarUrl: string | null
   initialProfileHidden: boolean
   initialRankingEnabled: boolean
 }
@@ -19,13 +21,24 @@ export default function ProfileEditForm({
   initialBio,
   initialXUrl,
   initialYoutubeUrl,
+  initialAvatarUrl,
   initialProfileHidden,
   initialRankingEnabled,
 }: ProfileEditFormProps) {
   const router = useRouter()
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(initialAvatarUrl)
+  const [deleteAvatar, setDeleteAvatar] = useState(false)
   const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreview?.startsWith('blob:')) {
+        URL.revokeObjectURL(avatarPreview)
+      }
+    }
+  }, [avatarPreview])
 
   const handleSubmit = (formData: FormData) => {
     setError('')
@@ -54,6 +67,53 @@ export default function ProfileEditForm({
           プロフィールを更新しました。投稿者ページへの反映はキャッシュの都合で数分かかる場合があります。
         </p>
       )}
+
+      <div>
+        <label htmlFor="avatar_file" className="mb-1 block text-sm font-bold text-gray-700">
+          プロフィールアイコン
+        </label>
+        <div className="rounded border border-gray-200 bg-gray-50 px-3 py-3">
+          <div className="mb-3 flex items-center gap-3">
+            <ProfileAvatar src={deleteAvatar ? null : avatarPreview} alt="現在のプロフィールアイコン" size="lg" />
+            {!avatarPreview || deleteAvatar ? (
+              <p className="text-xs text-gray-500">アイコン未設定</p>
+            ) : (
+              <p className="text-xs text-gray-500">現在のアイコン</p>
+            )}
+          </div>
+          <input
+            id="avatar_file"
+            name="avatar_file"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="block w-full text-sm text-gray-700 file:mr-3 file:rounded file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white hover:file:bg-blue-700"
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0]
+              if (!file) {
+                setAvatarPreview(initialAvatarUrl)
+                return
+              }
+              setDeleteAvatar(false)
+              setAvatarPreview(URL.createObjectURL(file))
+            }}
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            jpg / png / webp、500KB以内。表示は丸型に切り抜かれます。
+          </p>
+          {initialAvatarUrl && (
+            <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                name="delete_avatar"
+                checked={deleteAvatar}
+                onChange={(event) => setDeleteAvatar(event.currentTarget.checked)}
+                className="h-4 w-4"
+              />
+              アイコンを削除する
+            </label>
+          )}
+        </div>
+      </div>
 
       <div>
         <label htmlFor="display_name" className="mb-1 block text-sm font-bold text-gray-700">
@@ -160,7 +220,7 @@ export default function ProfileEditForm({
           disabled={isPending}
           className="rounded bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isPending ? '保存中...' : '保存する'}
+          {isPending ? '保存中…' : '保存する'}
         </button>
         <Link
           href="/mypage"

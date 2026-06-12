@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { logout } from '@/app/auth/actions'
+import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 
@@ -11,6 +12,7 @@ type Profile = {
   bio: string | null
   x_url: string | null
   youtube_url: string | null
+  avatar_url: string | null
   created_at: string
 }
 
@@ -108,11 +110,25 @@ async function getMyProfile(userId: string): Promise<Profile | null> {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('profiles')
-    .select('display_name, profile_slug, bio, x_url, youtube_url, created_at')
+    .select('display_name, profile_slug, bio, x_url, youtube_url, avatar_url, created_at')
     .eq('id', userId)
     .maybeSingle()
 
   if (error) {
+    if (error.message.includes('avatar_url')) {
+      const { data: fallback, error: fallbackError } = await admin
+        .from('profiles')
+        .select('display_name, profile_slug, bio, x_url, youtube_url, created_at')
+        .eq('id', userId)
+        .maybeSingle()
+
+      if (fallbackError) {
+        console.error('Failed to fetch my profile:', fallbackError.message)
+        return null
+      }
+
+      return fallback ? { ...fallback, avatar_url: null } : null
+    }
     console.error('Failed to fetch my profile:', error.message)
     return null
   }
@@ -155,8 +171,8 @@ export default async function MyPage() {
   ])
 
   return (
-    <main className="mx-auto max-w-[1080px] px-4 py-8">
-      <div className="border border-gray-300 bg-white">
+    <main className="mx-auto w-full max-w-[1100px] px-4 py-8">
+      <div className="w-full border border-gray-300 bg-white">
         <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
           <h1 className="text-lg font-bold text-gray-900">マイページ</h1>
           <p className="mt-1 text-sm leading-relaxed text-gray-600">
@@ -172,12 +188,17 @@ export default async function MyPage() {
           <section className="rounded border border-gray-200">
             <div className="border-b border-gray-200 px-4 py-3">
               <p className="text-xs text-gray-500">投稿者プロフィール</p>
-              <h2 className="mt-1 text-xl font-bold text-gray-900 break-words">
-                {profile.display_name}
-              </h2>
-              <p className="mt-1 text-sm text-gray-600">
-                URL ID: <span className="font-mono">{profile.profile_slug}</span>
-              </p>
+              <div className="mt-2 flex items-center gap-3">
+                <ProfileAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} size="lg" />
+                <div className="min-w-0">
+                  <h2 className="text-xl font-bold text-gray-900 break-words">
+                    {profile.display_name}
+                  </h2>
+                  <p className="mt-1 text-sm text-gray-600">
+                    URL ID: <span className="font-mono">{profile.profile_slug}</span>
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-4 px-4 py-4">
@@ -250,69 +271,71 @@ export default async function MyPage() {
             </div>
           </section>
 
-          <section className="rounded border border-gray-200">
-            <div className="border-b border-gray-200 px-4 py-3">
-              <h2 className="text-sm font-bold text-gray-800">最近のスレッド</h2>
-            </div>
-            {myThreads.length > 0 ? (
-              <ul className="divide-y divide-gray-100">
-                {myThreads.map((thread) => (
-                  <li key={thread.id} className="px-4 py-3">
-                    <Link
-                      href={`/thread/${thread.id}`}
-                      className="text-sm text-blue-600 hover:underline break-words"
-                    >
-                      {thread.title}
-                    </Link>
-                    <p className="mt-1 text-xs text-gray-500">
-                      {formatDateTime(thread.created_at)}
-                      {typeof thread.post_count === 'number' && (
-                        <span className="ml-2">レス{thread.post_count}</span>
-                      )}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="px-4 py-5 text-sm text-gray-600">
-                まだスレッドはありません。
-              </p>
-            )}
-          </section>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <section className="rounded border border-gray-200">
+              <div className="border-b border-gray-200 px-4 py-3">
+                <h2 className="text-sm font-bold text-gray-800">最近のスレッド</h2>
+              </div>
+              {myThreads.length > 0 ? (
+                <ul className="divide-y divide-gray-100">
+                  {myThreads.map((thread) => (
+                    <li key={thread.id} className="px-4 py-3">
+                      <Link
+                        href={`/thread/${thread.id}`}
+                        className="text-sm text-blue-600 hover:underline break-words"
+                      >
+                        {thread.title}
+                      </Link>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {formatDateTime(thread.created_at)}
+                        {typeof thread.post_count === 'number' && (
+                          <span className="ml-2">レス{thread.post_count}</span>
+                        )}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="px-4 py-5 text-sm text-gray-600">
+                  まだスレッドはありません。
+                </p>
+              )}
+            </section>
 
-          <section className="rounded border border-gray-200">
-            <div className="border-b border-gray-200 px-4 py-3">
-              <h2 className="text-sm font-bold text-gray-800">最近のコメント</h2>
-            </div>
-            {myPosts.length > 0 ? (
-              <ul className="divide-y divide-gray-100">
-                {myPosts.map((post) => (
-                  <li key={post.id} className="px-4 py-3">
-                    <Link
-                      href={
-                        post.post_number
-                          ? `/thread/${post.thread_id}#${post.post_number}`
-                          : `/thread/${post.thread_id}`
-                      }
-                      className="text-sm text-gray-800 hover:underline break-words"
-                    >
-                      {excerpt(post.body)}
-                    </Link>
-                    <p className="mt-1 text-xs text-gray-500 break-words">
-                      {post.threads?.title && (
-                        <span className="text-gray-600">{post.threads.title}</span>
-                      )}
-                      <span className="ml-2">{formatDateTime(post.created_at)}</span>
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="px-4 py-5 text-sm text-gray-600">
-                まだコメントはありません。
-              </p>
-            )}
-          </section>
+            <section className="rounded border border-gray-200">
+              <div className="border-b border-gray-200 px-4 py-3">
+                <h2 className="text-sm font-bold text-gray-800">最近のコメント</h2>
+              </div>
+              {myPosts.length > 0 ? (
+                <ul className="divide-y divide-gray-100">
+                  {myPosts.map((post) => (
+                    <li key={post.id} className="px-4 py-3">
+                      <Link
+                        href={
+                          post.post_number
+                            ? `/thread/${post.thread_id}#${post.post_number}`
+                            : `/thread/${post.thread_id}`
+                        }
+                        className="text-sm text-gray-800 hover:underline break-words"
+                      >
+                        {excerpt(post.body)}
+                      </Link>
+                      <p className="mt-1 text-xs text-gray-500 break-words">
+                        {post.threads?.title && (
+                          <span className="text-gray-600">{post.threads.title}</span>
+                        )}
+                        <span className="ml-2">{formatDateTime(post.created_at)}</span>
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="px-4 py-5 text-sm text-gray-600">
+                  まだコメントはありません。
+                </p>
+              )}
+            </section>
+          </div>
 
           <form action={logout}>
             <button

@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useState } from 'react'
+import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { createClient } from '@/lib/supabase'
 import { normalizeZukanDisplayName, ZUKAN_DEFAULT_DISPLAY_NAME, ZUKAN_MAX_ANON_DISPLAY_NAME_LENGTH } from '@/lib/zukan-display'
 import { submitCardReview, type CardReviewFormState } from './actions'
@@ -10,7 +11,7 @@ const INITIAL: CardReviewFormState = { status: 'idle' }
 type ViewerState =
   | { status: 'checking' }
   | { status: 'anonymous' }
-  | { status: 'profile'; displayName: string }
+  | { status: 'profile'; displayName: string; avatarUrl: string | null }
 
 export default function CardReviewForm({ cardId, slug }: { cardId: string; slug: string }) {
   const action = submitCardReview.bind(null, cardId, slug)
@@ -33,13 +34,17 @@ export default function CardReviewForm({ cardId, slug }: { cardId: string; slug:
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('display_name, profile_hidden, account_suspended, withdrawn_at')
+        .select('display_name, avatar_url, profile_hidden, account_suspended, withdrawn_at')
         .eq('id', user.id)
         .maybeSingle()
 
       if (!active) return
       if (profile && !profile.profile_hidden && !profile.account_suspended && !profile.withdrawn_at) {
-        setViewer({ status: 'profile', displayName: normalizeZukanDisplayName(profile.display_name) })
+        setViewer({
+          status: 'profile',
+          displayName: normalizeZukanDisplayName(profile.display_name),
+          avatarUrl: typeof profile.avatar_url === 'string' ? profile.avatar_url : null,
+        })
       } else {
         setViewer({ status: 'anonymous' })
       }
@@ -67,9 +72,10 @@ export default function CardReviewForm({ cardId, slug }: { cardId: string; slug:
           投稿者情報を確認中です。
         </p>
       ) : viewer.status === 'profile' ? (
-        <p className="mb-2 rounded border border-blue-100 bg-blue-50 px-2 py-1.5 text-xs text-blue-800">
-          投稿者：<span className="font-bold">{viewer.displayName}</span>
-        </p>
+        <div className="mb-2 flex items-center gap-2 rounded border border-blue-100 bg-blue-50 px-2 py-1.5 text-xs text-blue-800">
+          <ProfileAvatar src={viewer.avatarUrl} alt={`${viewer.displayName}のアイコン`} size="sm" />
+          <span>投稿者：<span className="font-bold">{viewer.displayName}</span></span>
+        </div>
       ) : (
         <div className="mb-2">
           <label className="block text-xs font-bold text-gray-600 mb-1" htmlFor="card-display-name">

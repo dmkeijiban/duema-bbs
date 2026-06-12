@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { fetchCardBySlug, fetchCardReviews, fetchCardRatings, fetchRelatedThreads, fetchManualRelatedThreads } from '@/lib/zukan'
+import { fetchCardBySlug, fetchCardReviews, fetchCardRatings, fetchManualRelatedThreads } from '@/lib/zukan'
 import type { ZukanCardWithPack } from '@/lib/zukan'
 import { normalizeZukanDisplayName } from '@/lib/zukan-display'
+import { ProfileAvatar } from '@/components/ProfileAvatar'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import ShareButtons from './ShareButtons'
 import CardReviewForm from './CardReviewForm'
@@ -97,7 +98,7 @@ export default async function ZukanCardPage({
         fetchManualRelatedThreads(card.id),
       ])
     : [null, null, []]
-  const relatedThreads = manualThreads.length > 0 ? manualThreads : await fetchRelatedThreads(card.name)
+  const relatedThreads = manualThreads
 
   const pack = card.zukan_packs
   const packHref = pack ? `/zukan/${pack.slug}` : '/zukan'
@@ -238,6 +239,7 @@ export default async function ZukanCardPage({
             {cardReviews.map(r => (
               <article key={r.id} className="px-3 py-2.5">
                 <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                  <ProfileAvatar src={r.avatar_url} alt={`${normalizeZukanDisplayName(r.display_name)}のアイコン`} size="sm" />
                   <span className="font-bold text-gray-700">{normalizeZukanDisplayName(r.display_name)}</span>
                   <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
                 </div>
