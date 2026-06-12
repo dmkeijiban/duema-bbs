@@ -286,8 +286,7 @@ export async function fetchCardRatings(cardId: string): Promise<CardRatingSummar
 export type RelatedThread = {
   id: string
   title: string
-  slug: string
-  comment_count: number
+  post_count: number
   created_at: string
 }
 
@@ -296,10 +295,10 @@ export async function fetchRelatedThreads(keyword: string): Promise<RelatedThrea
     const supabase = createPublicClient()
     const { data, error } = await supabase
       .from('threads')
-      .select('id, title, slug, comment_count, created_at')
+      .select('id, title, post_count, created_at')
       .ilike('title', `%${keyword}%`)
       .eq('is_archived', false)
-      .order('comment_count', { ascending: false })
+      .order('post_count', { ascending: false })
       .limit(5)
     if (error) return []
     return (data ?? []) as RelatedThread[]
@@ -348,7 +347,7 @@ export async function fetchManualRelatedThreads(cardId: string): Promise<Related
     const numericIds = threadIds.map(id => parseInt(id, 10)).filter(n => !isNaN(n))
     const { data: threads } = await supabase
       .from('threads')
-      .select('id, title, slug, comment_count, created_at')
+      .select('id, title, post_count, created_at')
       .in('id', numericIds)
       .eq('is_archived', false)
     if (!threads) return []
