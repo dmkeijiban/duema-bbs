@@ -353,7 +353,7 @@ export async function fetchManualRelatedThreads(cardId: string): Promise<Related
     if (!threads) return []
 
     // Preserve sort_order
-    const threadMap = new Map((threads as RelatedThread[]).map(t => [t.id, t]))
+    const threadMap = new Map((threads as RelatedThread[]).map(t => [String(t.id), t]))
     return threadIds.map(id => threadMap.get(id)).filter((t): t is RelatedThread => !!t)
   } catch {
     return []

@@ -94,7 +94,7 @@ export async function saveCardMemo(
       )
     if (error) return { status: 'error', message: error.message }
 
-    revalidatePath('/zukan/card')
+    revalidatePath('/zukan/card/[slug]', 'page')
     revalidatePath('/admin/zukan/cards')
     return { status: 'success', message: '保存しました' }
   } catch {
@@ -138,7 +138,7 @@ export async function addRelatedThread(
       return { status: 'error', message: error.message }
     }
 
-    revalidatePath('/zukan/card')
+    revalidatePath('/zukan/card/[slug]', 'page')
     revalidatePath('/admin/zukan/cards')
     return { status: 'success', message: `「${thread.title}」を追加しました` }
   } catch {
@@ -163,7 +163,7 @@ export async function removeRelatedThread(
       .eq('id', linkId)
     if (error) return { status: 'error', message: error.message }
 
-    revalidatePath('/zukan/card')
+    revalidatePath('/zukan/card/[slug]', 'page')
     revalidatePath('/admin/zukan/cards')
     return { status: 'success', message: '削除しました' }
   } catch {
