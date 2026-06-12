@@ -1,13 +1,14 @@
 type ProfileAvatarProps = {
   src: string | null | undefined
   alt: string
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
 }
 
 const sizeClass = {
   sm: 'h-8 w-8',
   md: 'h-10 w-10',
   lg: 'h-14 w-14',
+  xl: 'h-20 w-20',
 }
 
 export function ProfileAvatar({ src, alt, size = 'md' }: ProfileAvatarProps) {
