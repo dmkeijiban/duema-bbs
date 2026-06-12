@@ -4,13 +4,17 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { HeaderAuthNav } from './HeaderAuthNav'
-import type { NavPage } from '@/types/fixed-pages'
 
 interface Props {
-  navPages: NavPage[]
+  navItems: {
+    key: string
+    label: string
+    href: string
+    external?: boolean
+  }[]
 }
 
-export function MobileMenu({ navPages }: Props) {
+export function MobileMenu({ navItems }: Props) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const router = useRouter()
@@ -39,24 +43,16 @@ export function MobileMenu({ navPages }: Props) {
 
       {open && (
         <div className="md:hidden border-t border-gray-200 bg-white text-sm text-gray-700 absolute top-full left-0 right-0 z-40">
-          {navPages.map(p =>
-            p.external_url ? (
-              <a key={p.id} href={p.external_url} target="_blank" rel="noopener noreferrer"
-                className="block px-4 py-2.5 hover:bg-gray-50">{p.nav_label || p.title}</a>
+          {navItems.map(item =>
+            item.external ? (
+              <a key={item.key} href={item.href} target="_blank" rel="noopener noreferrer"
+                className="block px-4 py-2.5 transition-colors duration-100 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400">{item.label}</a>
             ) : (
-              <Link key={p.id} href={`/${p.slug}`}
-                className="block px-4 py-2.5 hover:bg-gray-50"
-                onClick={() => setOpen(false)}>{p.nav_label || p.title}</Link>
+              <Link key={item.key} href={item.href}
+                className="block px-4 py-2.5 transition-colors duration-100 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400"
+                onClick={() => setOpen(false)}>{item.label}</Link>
             )
           )}
-          {/* ランキング（固定リンク） */}
-          <Link href="/ranking"
-            className="block px-4 py-2.5 hover:bg-gray-50"
-            onClick={() => setOpen(false)}>ランキング</Link>
-          {/* 思い出図鑑（固定リンク） */}
-          <Link href="/zukan"
-            className="block px-4 py-2.5 hover:bg-gray-50"
-            onClick={() => setOpen(false)}>思い出図鑑</Link>
           <HeaderAuthNav variant="mobile" onNavigate={() => setOpen(false)} />
           <form onSubmit={search} className="flex gap-1 px-4 py-2.5">
             <label htmlFor="mobile-search-input" className="sr-only">検索ワード</label>

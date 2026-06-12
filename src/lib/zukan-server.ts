@@ -3,9 +3,9 @@ import { cookies } from 'next/headers'
 
 import { createAdminClient } from './supabase-admin'
 import { createClient } from './supabase-server'
+import { normalizeZukanAnonInput, normalizeZukanDisplayName } from './zukan-display'
 
 const ZUKAN_ANON_COOKIE = 'zukan_anon_key'
-const MAX_DISPLAY_NAME_LENGTH = 30
 
 export type ZukanPosterContext = {
   userId: string | null
@@ -29,7 +29,7 @@ export async function getZukanPosterContext(
     })
   }
 
-  const fallbackName = (rawDisplayName || '').trim().slice(0, MAX_DISPLAY_NAME_LENGTH) || '匿名'
+  const fallbackName = normalizeZukanAnonInput(rawDisplayName)
   const supabase = await createClient()
   const {
     data: { user },
@@ -56,11 +56,10 @@ export async function getZukanPosterContext(
   }
 
   if (profile && !profile.profile_hidden) {
-    const profileName = String(profile.display_name || '').trim()
     return {
       userId: user.id,
       anonKey,
-      displayName: profileName || fallbackName,
+      displayName: normalizeZukanDisplayName(profile.display_name),
     }
   }
 

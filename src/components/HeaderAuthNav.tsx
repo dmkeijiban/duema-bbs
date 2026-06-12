@@ -68,8 +68,8 @@ export function HeaderAuthNav({ variant, onNavigate }: Props) {
 
   const className =
     variant === 'desktop'
-      ? 'px-2 py-3 block hover:text-blue-600 whitespace-nowrap text-sm'
-      : 'block px-4 py-2.5 hover:bg-gray-50'
+      ? 'inline-flex items-center justify-center whitespace-nowrap rounded border border-blue-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-700 transition-all duration-100 hover:border-blue-400 hover:bg-blue-50 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400'
+      : 'mx-4 my-2 inline-flex items-center justify-center rounded border border-blue-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-700 transition-all duration-100 hover:border-blue-400 hover:bg-blue-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400'
 
   if (state.status === 'anon') {
     return (

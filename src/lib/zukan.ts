@@ -172,6 +172,8 @@ export async function fetchPackReviews(packId: string): Promise<PackReview[] | n
       .from('zukan_pack_reviews')
       .select('id, pack_id, display_name, body, created_at')
       .eq('pack_id', packId)
+      .eq('is_deleted', false)
+      .eq('is_hidden', false)
       .order('created_at', { ascending: false })
       .limit(10)
     if (error) {
@@ -191,6 +193,8 @@ export async function fetchCardReviews(cardId: string): Promise<CardReview[] | n
       .from('zukan_card_reviews')
       .select('id, card_id, display_name, body, created_at')
       .eq('card_id', cardId)
+      .eq('is_deleted', false)
+      .eq('is_hidden', false)
       .order('created_at', { ascending: false })
       .limit(10)
     if (error) {

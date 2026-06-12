@@ -155,7 +155,7 @@ export default async function MyPage() {
   ])
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
+    <main className="mx-auto max-w-[1080px] px-4 py-8">
       <div className="border border-gray-300 bg-white">
         <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
           <h1 className="text-lg font-bold text-gray-900">マイページ</h1>

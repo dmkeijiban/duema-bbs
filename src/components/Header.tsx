@@ -7,9 +7,69 @@ import { getCachedNavPages } from '@/lib/cached-queries'
 
 const HIDE_FROM_NAV = new Set(['terms', 'privacy', 'contact', 'settings'])
 
+type HeaderNavItem = {
+  key: string
+  label: string
+  href: string
+  external?: boolean
+}
+
+type NavPage = Awaited<ReturnType<typeof getCachedNavPages>>[number]
+
+function pageLabel(page: NavPage) {
+  return page.nav_label || page.title
+}
+
+function pageHref(page: NavPage) {
+  return page.external_url || `/${page.slug}`
+}
+
+function isNewProductPage(page: NavPage) {
+  const text = `${page.slug} ${pageLabel(page)}`.toLowerCase()
+  return text.includes('新商品') || text.includes('新着品') || text.includes('new-cards') || text.includes('dmsaishin')
+}
+
+function isYoutubePage(page: NavPage) {
+  const text = `${page.slug} ${pageLabel(page)} ${page.external_url ?? ''}`.toLowerCase()
+  return text.includes('youtube') || text.includes('youtu.be')
+}
+
+function isGuidePage(page: NavPage) {
+  const text = `${page.slug} ${pageLabel(page)}`.toLowerCase()
+  return text.includes('guide') || text.includes('使い方')
+}
+
+function buildHeaderNavItems(navPages: NavPage[]): HeaderNavItem[] {
+  const remaining = [...navPages]
+  const take = (matcher: (page: NavPage) => boolean) => {
+    const index = remaining.findIndex(matcher)
+    return index >= 0 ? remaining.splice(index, 1)[0] : null
+  }
+  const toItem = (page: NavPage): HeaderNavItem => ({
+    key: String(page.id),
+    label: pageLabel(page),
+    href: pageHref(page),
+    external: Boolean(page.external_url),
+  })
+
+  const newProduct = take(isNewProductPage)
+  const youtube = take(isYoutubePage)
+  const guide = take(isGuidePage)
+
+  return [
+    newProduct ? toItem(newProduct) : null,
+    { key: 'ranking', label: 'ランキング', href: '/ranking' },
+    { key: 'zukan', label: '思い出図鑑', href: '/zukan' },
+    youtube ? toItem(youtube) : null,
+    guide ? toItem(guide) : null,
+    ...remaining.map(toItem),
+  ].filter((item): item is HeaderNavItem => item !== null)
+}
+
 export async function Header() {
   const allNavPages = await getCachedNavPages()
   const navPages = allNavPages.filter(p => !HIDE_FROM_NAV.has(p.slug))
+  const navItems = buildHeaderNavItems(navPages)
 
   return (
     <header className="bg-white border-b border-gray-300 sticky top-0 z-50">
@@ -25,37 +85,25 @@ export async function Header() {
           </Link>
 
           {/* ハンバーガー（モバイル） */}
-          <MobileMenu navPages={navPages} />
+          <MobileMenu navItems={navItems} />
 
           {/* PC ナビ */}
           <div className="hidden md:flex items-center flex-1 min-w-0 gap-2">
             <ul className="flex items-center justify-evenly flex-1 text-sm text-gray-700">
-              {navPages.map(p => (
-                <li key={p.id}>
-                  {p.external_url ? (
-                    <a href={p.external_url} target="_blank" rel="noopener noreferrer"
-                      className="px-2 py-3 block hover:text-blue-600 whitespace-nowrap">
-                      {p.nav_label || p.title}
+              {navItems.map(item => (
+                <li key={item.key}>
+                  {item.external ? (
+                    <a href={item.href} target="_blank" rel="noopener noreferrer"
+                      className="px-2 py-3 block whitespace-nowrap transition-colors duration-100 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
+                      {item.label}
                     </a>
                   ) : (
-                    <Link href={`/${p.slug}`} className="px-2 py-3 block hover:text-blue-600 whitespace-nowrap">
-                      {p.nav_label || p.title}
+                    <Link href={item.href} className="px-2 py-3 block whitespace-nowrap transition-colors duration-100 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
+                      {item.label}
                     </Link>
                   )}
                 </li>
               ))}
-              {/* ランキング（固定リンク） */}
-              <li>
-                <Link href="/ranking" className="px-2 py-3 block hover:text-blue-600 whitespace-nowrap">
-                  ランキング
-                </Link>
-              </li>
-              {/* 思い出図鑑（固定リンク） */}
-              <li>
-                <Link href="/zukan" className="px-2 py-3 block hover:text-blue-600 whitespace-nowrap">
-                  思い出図鑑
-                </Link>
-              </li>
             </ul>
             <HeaderSearch />
             <HeaderAuthNav variant="desktop" />

@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { fetchCardBySlug, fetchCardReviews, fetchCardRatings, fetchRelatedThreads, fetchCardMemo, fetchManualRelatedThreads } from '@/lib/zukan'
+import { fetchCardBySlug, fetchCardReviews, fetchCardRatings, fetchRelatedThreads, fetchManualRelatedThreads } from '@/lib/zukan'
 import type { ZukanCardWithPack } from '@/lib/zukan'
+import { normalizeZukanDisplayName } from '@/lib/zukan-display'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import ShareButtons from './ShareButtons'
 import CardReviewForm from './CardReviewForm'
@@ -89,10 +90,13 @@ export default async function ZukanCardPage({
     card = MOCK_CARD
   }
 
-  const cardReviews = isDbReady ? await fetchCardReviews(card.id) : null
-  const ratingsSummary = isDbReady ? await fetchCardRatings(card.id) : null
-  const cardMemo = isDbReady ? await fetchCardMemo(card.id) : ''
-  const manualThreads = isDbReady ? await fetchManualRelatedThreads(card.id) : []
+  const [cardReviews, ratingsSummary, manualThreads] = isDbReady
+    ? await Promise.all([
+        fetchCardReviews(card.id),
+        fetchCardRatings(card.id),
+        fetchManualRelatedThreads(card.id),
+      ])
+    : [null, null, []]
   const relatedThreads = manualThreads.length > 0 ? manualThreads : await fetchRelatedThreads(card.name)
 
   const pack = card.zukan_packs
@@ -100,7 +104,7 @@ export default async function ZukanCardPage({
   const packLabel = pack ? `${pack.code} ${pack.name}` : '図鑑トップ'
 
   return (
-    <div className="max-w-4xl mx-auto px-2 pt-2 pb-10">
+    <div className="mx-auto max-w-[1080px] px-2 pt-2 pb-10">
       {/* パンくず */}
       <nav className="text-xs text-gray-500 mb-2 flex items-center gap-x-1 flex-wrap">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
@@ -224,18 +228,6 @@ export default async function ZukanCardPage({
         {isDbReady && <CardRatingForm cardId={card.id} slug={slug} />}
       </section>
 
-      {/* ひとことメモ */}
-      <section className="mb-5">
-        <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
-          <h2 className="text-sm font-bold text-gray-800">ひとことメモ</h2>
-        </div>
-        {cardMemo ? (
-          <p className="border border-gray-200 bg-white px-3 py-3 text-xs text-gray-700 whitespace-pre-wrap leading-5">{cardMemo}</p>
-        ) : (
-          <p className="border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">まだありません</p>
-        )}
-      </section>
-
       {/* レビュー */}
       <section className="mb-5">
         <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
@@ -244,13 +236,13 @@ export default async function ZukanCardPage({
         {cardReviews && cardReviews.length > 0 && (
           <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
             {cardReviews.map(r => (
-              <div key={r.id} className="px-3 py-2.5">
-                <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-                  <span className="font-bold text-gray-700">{r.display_name}</span>
-                  <span>{new Date(r.created_at).toLocaleDateString('ja-JP')}</span>
+              <article key={r.id} className="px-3 py-2.5">
+                <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                  <span className="font-bold text-gray-700">{normalizeZukanDisplayName(r.display_name)}</span>
+                  <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
                 </div>
                 <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
-              </div>
+              </article>
             ))}
           </div>
         )}
@@ -270,7 +262,7 @@ export default async function ZukanCardPage({
             <ul className="divide-y divide-gray-100">
               {relatedThreads.map(t => (
                 <li key={t.id}>
-                  <Link href={`/threads/${t.id}`} className="block px-3 py-2.5 text-xs text-blue-600 cursor-pointer transition-colors duration-100 hover:underline hover:bg-blue-50 active:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400">
+                  <Link href={`/thread/${t.id}`} className="block px-3 py-2.5 text-xs text-blue-600 cursor-pointer transition-colors duration-100 hover:underline hover:bg-blue-50 active:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400">
                     {t.title}
                   </Link>
                 </li>

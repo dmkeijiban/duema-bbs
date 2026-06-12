@@ -60,7 +60,7 @@ export default async function MyPageEdit() {
 
   if (editingBlocked) {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-8">
+      <main className="mx-auto max-w-[1080px] px-4 py-8">
         <div className="border border-gray-300 bg-white">
           <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
             <div className="mb-1 text-xs text-gray-500">
@@ -90,7 +90,7 @@ export default async function MyPageEdit() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
+    <main className="mx-auto max-w-[1080px] px-4 py-8">
       <div className="border border-gray-300 bg-white">
         <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
           <div className="mb-1 text-xs text-gray-500">

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { fetchPack, fetchCardsByPack, fetchCardsBySlugs, fetchPackReviews } from '@/lib/zukan'
 import type { ZukanPack, ZukanCard } from '@/lib/zukan'
+import { normalizeZukanDisplayName } from '@/lib/zukan-display'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import PackShareButtons from './PackShareButtons'
 import PackReviewForm from './PackReviewForm'
@@ -140,6 +141,8 @@ export default async function ZukanDm01Page({
   const from = (page - 1) * PAGE_SIZE + 1
   const to = (page - 1) * PAGE_SIZE + cards.length
   const hasNextPage = total ? page * PAGE_SIZE < total : cards.length === PAGE_SIZE
+  const latestPackReviews = packReviews?.slice(0, 3) ?? []
+  const morePackReviews = packReviews?.slice(3) ?? []
 
   return (
     <div className="max-w-screen-xl mx-auto px-2 pt-2 pb-10">
@@ -241,43 +244,6 @@ export default async function ZukanDm01Page({
         </section>
       )}
 
-      {/* このパックの思い出レビュー */}
-      {page === 1 && (
-        <section className="mb-5">
-          <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
-            <h2 className="text-sm font-bold text-gray-800">このパックの思い出レビュー</h2>
-          </div>
-          {packReviews && packReviews.length > 0 && (
-            <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
-              {packReviews.map(r => (
-                <div key={r.id} className="px-3 py-2.5">
-                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-                    <span className="font-bold text-gray-700">{r.display_name}</span>
-                    <span>{new Date(r.created_at).toLocaleDateString('ja-JP')}</span>
-                  </div>
-                  <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
-                </div>
-              ))}
-            </div>
-          )}
-          {packReviews !== null && packReviews.length === 0 && (
-            <p className="mb-3 border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">まだ投稿はありません。最初の思い出を書いてみませんか？</p>
-          )}
-          {isDbReady && pack.id && <PackReviewForm packId={pack.id} />}
-          {!isDbReady && <p className="border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">DBが準備中のため投稿できません</p>}
-        </section>
-      )}
-
-      {/* ひとことメモ */}
-      {page === 1 && (
-        <section className="mb-5">
-          <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
-            <h2 className="text-sm font-bold text-gray-800">ひとことメモ</h2>
-          </div>
-          <p className="border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">まだひとことメモはありません</p>
-        </section>
-      )}
-
       {/* 収録カード */}
       <section className="mb-5">
         <div className="mb-2 flex items-center justify-between border border-gray-300 bg-gray-50 px-3 py-2">
@@ -370,6 +336,51 @@ export default async function ZukanDm01Page({
           </div>
         )}
       </section>
+
+      {/* このパックの思い出レビュー */}
+      {page === 1 && (
+        <section className="mb-5">
+          <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
+            <h2 className="text-sm font-bold text-gray-800">このパックの思い出レビュー</h2>
+          </div>
+          {packReviews && packReviews.length > 0 && (
+            <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
+              {latestPackReviews.map(r => (
+                <article key={r.id} className="px-3 py-2.5">
+                  <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                    <span className="font-bold text-gray-700">{normalizeZukanDisplayName(r.display_name)}</span>
+                    <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
+                  </div>
+                  <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
+                </article>
+              ))}
+              {morePackReviews.length > 0 && (
+                <details className="border-t border-gray-100">
+                  <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-blue-600 transition-colors duration-100 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400">
+                    もっと見る
+                  </summary>
+                  <div className="divide-y divide-gray-100 border-t border-gray-100">
+                    {morePackReviews.map(r => (
+                      <article key={r.id} className="px-3 py-2.5">
+                        <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                          <span className="font-bold text-gray-700">{normalizeZukanDisplayName(r.display_name)}</span>
+                          <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
+                        </div>
+                        <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
+                      </article>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
+          {packReviews !== null && packReviews.length === 0 && (
+            <p className="mb-3 border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">まだ投稿はありません。最初の思い出を書いてみませんか？</p>
+          )}
+          {isDbReady && pack.id && <PackReviewForm packId={pack.id} />}
+          {!isDbReady && <p className="border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">DBが準備中のため投稿できません</p>}
+        </section>
+      )}
 
       {/* シェア */}
       <section className="border border-gray-300 bg-white px-4 py-3">
