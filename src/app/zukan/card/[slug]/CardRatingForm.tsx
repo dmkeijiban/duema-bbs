@@ -46,7 +46,7 @@ function StarRow({
             onMouseEnter={() => setHover(v)}
             onClick={() => onChange(v)}
             onTouchEnd={(e) => { e.preventDefault(); onChange(v) }}
-            className={`text-2xl leading-none select-none transition-colors focus:outline-none ${
+            className={`text-2xl leading-none select-none transition-colors duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 ${
               v <= display ? 'text-yellow-400' : 'text-gray-300'
             }`}
           >
@@ -102,9 +102,9 @@ export default function CardRatingForm({ cardId, slug }: { cardId: string; slug:
         <button
           type="submit"
           disabled={isPending || !allSelected}
-          className="rounded bg-blue-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="rounded bg-blue-600 px-4 py-1.5 text-xs font-bold text-white transition-all duration-100 hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
         >
-          {isPending ? '送信中...' : '評価を送信する'}
+          {isPending ? '送信中…' : '評価を送信する'}
         </button>
         {!allSelected && (
           <span className="text-xs text-gray-400">全項目を選択してください</span>

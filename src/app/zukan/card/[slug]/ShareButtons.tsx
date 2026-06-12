@@ -31,21 +31,21 @@ export default function ShareButtons({ cardName }: { cardName: string }) {
     <div className="flex flex-wrap gap-2">
       <button
         onClick={shareX}
-        className="rounded border border-gray-300 bg-white px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+        className="rounded border border-black bg-black px-3 py-1.5 text-xs font-bold text-white transition-all duration-100 hover:bg-gray-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
         type="button"
       >
         Xでシェア
       </button>
       <button
         onClick={shareLine}
-        className="rounded border border-gray-300 bg-white px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+        className="rounded border border-[#06c755] bg-[#06c755] px-3 py-1.5 text-xs font-bold text-white transition-all duration-100 hover:bg-[#05b84f] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
         type="button"
       >
         LINEでシェア
       </button>
       <button
         onClick={copyUrl}
-        className="rounded border border-gray-300 bg-white px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+        className="rounded border border-blue-500 bg-blue-600 px-3 py-1.5 text-xs font-bold text-white transition-all duration-100 hover:bg-blue-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
         type="button"
       >
         {copied ? 'コピーしました！' : 'URLをコピー'}

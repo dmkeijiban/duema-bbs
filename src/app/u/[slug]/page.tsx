@@ -106,7 +106,7 @@ export default async function UserProfilePage({
   ])
 
   return (
-    <main className="max-w-screen-md mx-auto px-3 py-4">
+    <main className="mx-auto max-w-[1080px] px-3 py-4">
       <div className="text-xs text-gray-500 mb-3">
         <Link href="/" className="text-blue-600 hover:underline">
           TOP
