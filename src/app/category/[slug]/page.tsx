@@ -9,7 +9,6 @@ const InlineNewThread = dynamic(
 )
 import { RecommendSection } from '@/components/RecommendSection'
 import { SortTabs } from '@/components/SortTabs'
-import { BottomNav } from '@/components/ThreadSortPage'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { seededShuffle } from '@/lib/stable-shuffle'
 import { Thread, Category } from '@/types'
@@ -278,8 +277,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         <CategoryThreadList category={category} sort={sort} page={page} />
 
         {botNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
-
-        <BottomNav />
 
         <InlineNewThread categories={categories} newThreadRules={newThreadRules} />
 

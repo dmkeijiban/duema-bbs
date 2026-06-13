@@ -91,7 +91,14 @@ async function SummaryList() {
   }
 
   const manualSummaries = summaries.filter(summary => summary.type === 'manual')
-  const weeklySummaries = summaries.filter(summary => summary.type === 'weekly')
+  const currentJstMonth = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric', month: '2-digit', timeZone: 'Asia/Tokyo',
+  }).format(new Date()).slice(0, 7)
+  const weeklySummaries = summaries.filter(summary => {
+    if (summary.type !== 'weekly') return false
+    const dateStr = summary.period_start ?? summary.period_end
+    return dateStr ? dateStr.slice(0, 7) === currentJstMonth : false
+  })
   const monthlySummaries = summaries.filter(summary => summary.type === 'monthly')
 
   return (

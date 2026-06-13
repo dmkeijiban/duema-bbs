@@ -23,7 +23,7 @@ function trackClick(target: string, threadId: number) {
 export function NextReadNav({ threadId }: Props) {
   return (
     <nav className="mt-3 mb-4" aria-label="スレッド下部ナビゲーション">
-      <div className="grid grid-cols-1 gap-1.5 min-[420px]:grid-cols-3">
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         <Link
           href="/"
           prefetch={false}
@@ -47,6 +47,14 @@ export function NextReadNav({ threadId }: Props) {
           className="flex items-center justify-center gap-1.5 min-h-[44px] px-2 border border-gray-300 bg-white rounded text-xs text-gray-700 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors"
         >
           <span>📊</span><span>人気スレ一覧</span>
+        </Link>
+        <Link
+          href="/random"
+          prefetch={false}
+          onClick={() => trackClick('/random', threadId)}
+          className="flex items-center justify-center gap-1.5 min-h-[44px] px-2 border border-gray-300 bg-white rounded text-xs text-gray-700 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors"
+        >
+          <span>🎲</span><span>ランダムで読む</span>
         </Link>
       </div>
     </nav>
