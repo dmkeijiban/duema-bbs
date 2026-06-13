@@ -91,7 +91,7 @@ function PackListCard({ pack }: { pack: ZukanPack }) {
 
   const body = (
     <div className="flex h-full flex-col overflow-hidden border border-gray-300 bg-white transition-all duration-100 sm:flex-row">
-      <div className="w-full bg-orange-50 sm:w-28 sm:shrink-0">
+      <div className="w-full bg-orange-50 sm:w-32 sm:shrink-0">
         {pack.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -118,7 +118,7 @@ function PackListCard({ pack }: { pack: ZukanPack }) {
             <div><dt className="inline font-bold">収録：</dt><dd className="inline">全{pack.card_count}種</dd></div>
           )}
         </dl>
-        <p className="mt-2 max-h-9 overflow-hidden text-xs leading-relaxed text-gray-500">
+        <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-500">
           {pack.description ?? 'パックを開いた思い出や、当時使っていたカードを振り返るページです。'}
         </p>
       </div>

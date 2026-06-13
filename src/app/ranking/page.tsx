@@ -1,9 +1,9 @@
 import { Suspense } from 'react'
 import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadCard } from '@/components/ThreadCard'
-import { BottomNav } from '@/components/ThreadSortPage'
+import { SortTabs } from '@/components/SortTabs'
 import { SITE_URL } from '@/lib/site-config'
-import { getCachedUserRankings, UserRankingRow } from '@/lib/cached-queries'
+import { getCachedCategories, getCachedUserRankings, UserRankingRow } from '@/lib/cached-queries'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 
 export const revalidate = 3600
@@ -272,6 +272,7 @@ interface Props {
 export default async function RankingPage({ searchParams }: Props) {
   const { page: pageStr } = await searchParams
   const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
+  const categories = await getCachedCategories()
 
   return (
     <div className="w-full px-0 py-0">
@@ -317,6 +318,15 @@ export default async function RankingPage({ searchParams }: Props) {
         </div>
       </div>
 
+      <SortTabs
+        currentSort="popular"
+        categories={categories}
+        recentHref="/update"
+        newHref="/new"
+        rankingHref="/ranking"
+        randomHref="/random"
+      />
+
       <div className="max-w-screen-xl mx-auto px-2">
         <Suspense fallback={
           <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300 animate-pulse">
@@ -337,8 +347,6 @@ export default async function RankingPage({ searchParams }: Props) {
         <Suspense fallback={null}>
           <UserRankingSection />
         </Suspense>
-
-        <BottomNav current="/ranking" />
 
         <div className="mb-6" />
       </div>

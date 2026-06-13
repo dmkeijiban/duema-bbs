@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { fetchCardBySlug, fetchCardReviews, fetchCardRatings } from '@/lib/zukan'
 import type { ZukanCardWithPack } from '@/lib/zukan'
 import { normalizeZukanDisplayName } from '@/lib/zukan-display'
-import { ProfileAvatar } from '@/components/ProfileAvatar'
+import { ZukanReviewAuthor } from '@/components/ZukanReviewAuthor'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import ShareButtons from './ShareButtons'
 import CardReviewForm from './CardReviewForm'
@@ -186,7 +186,8 @@ export default async function ZukanCardPage({
               </a>
             </div>
           )}
-          <div className="mt-3">
+          <div className="mt-4 border-t border-gray-100 pt-3">
+            <h2 className="mb-2 text-xs font-bold text-gray-700">このカードを共有</h2>
             <ShareButtons cardName={card.name} />
           </div>
         </div>
@@ -236,8 +237,11 @@ export default async function ZukanCardPage({
                 {cardReviews.map(r => (
                   <article key={r.id} className="px-3 py-2.5">
                     <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                      <ProfileAvatar src={r.avatar_url} alt={`${normalizeZukanDisplayName(r.display_name)}のアイコン`} size="sm" />
-                      <span className="font-bold text-gray-700">{normalizeZukanDisplayName(r.display_name)}</span>
+                      <ZukanReviewAuthor
+                        displayName={normalizeZukanDisplayName(r.display_name)}
+                        avatarUrl={r.avatar_url}
+                        profileSlug={r.profile_slug}
+                      />
                       <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
                     </div>
                     <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
