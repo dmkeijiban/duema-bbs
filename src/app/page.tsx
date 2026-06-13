@@ -501,26 +501,25 @@ function ThreadListSkeleton() {
 // カテゴリ一覧が届く前の表示として使う。
 // アクティブタブは sort が既知なので正確に描画できる。
 const SORT_TABS_META = [
-  { sort: 'recent',  short: '更新', label: '更新順', icon: '↺' },
-  { sort: 'new',     short: '新着', label: '新着',   icon: '⏱' },
-  { sort: 'popular', short: '人気', label: '人気',   icon: '📊' },
-  { sort: 'random',  short: 'ランダ', label: 'ランダム', icon: '🎲' },
+  { sort: 'recent',  short: '更新', label: '更新順一覧', icon: '↺' },
+  { sort: 'new',     short: '新着', label: '新着一覧',   icon: '⏱' },
+  { sort: 'popular', short: '人気', label: 'ランキング', icon: '📊' },
+  { sort: 'random',  short: 'ランダム', label: 'ランダム', icon: '🎲' },
 ]
 
 function SortTabsSkeleton({ sort }: { sort: string }) {
   return (
     <div className="max-w-screen-xl mx-auto px-2">
-      <ul className="flex mb-3 mt-2" role="tablist" style={{ borderBottom: '1px solid #dee2e6' }}>
+      <ul className="mb-3 mt-2 flex flex-wrap items-center gap-1.5 border-b border-gray-200 pb-1.5" role="tablist">
         {SORT_TABS_META.map(tab => {
           const active = sort === tab.sort
           return (
-            <li key={tab.sort} className="flex-1 min-w-0" role="presentation">
+            <li key={tab.sort} className="shrink-0" role="presentation">
               <div
-                className="w-full text-center py-2 font-medium border border-transparent select-none overflow-hidden text-xs md:text-sm flex items-center justify-center gap-0.5"
-                style={
+                className={
                   active
-                    ? { background: '#2563eb', color: '#fff', borderColor: '#2563eb', borderRadius: '4px 4px 0 0', marginBottom: -1 }
-                    : { color: '#2563eb' }
+                    ? 'flex min-h-9 items-center justify-center gap-1 rounded border border-blue-600 bg-blue-600 px-2.5 text-xs font-bold text-white shadow-sm md:px-3 md:text-sm'
+                    : 'flex min-h-9 items-center justify-center gap-1 rounded border border-blue-100 bg-white px-2.5 text-xs font-medium text-blue-700 md:px-3 md:text-sm'
                 }
               >
                 <span className="opacity-80">{tab.icon}</span>
@@ -531,8 +530,12 @@ function SortTabsSkeleton({ sort }: { sort: string }) {
           )
         })}
         {/* CategoryDropdown プレースホルダー */}
-        <li className="flex-1 min-w-0 flex items-center justify-center px-1 py-2">
-          <div className="h-4 bg-gray-100 rounded w-full animate-pulse" />
+        <li className="shrink-0">
+          <div className="flex min-h-9 items-center justify-center rounded border border-blue-100 bg-white px-2.5 text-xs font-medium text-blue-700 md:px-3 md:text-sm">
+            <span className="opacity-80">📁</span>
+            <span className="ml-0.5 hidden md:inline">カテゴリ</span>
+            <span className="ml-0.5 md:hidden">▾</span>
+          </div>
         </li>
       </ul>
     </div>

@@ -23,7 +23,7 @@ function trackClick(target: string, threadId: number) {
 export function NextReadNav({ threadId }: Props) {
   return (
     <nav className="mt-3 mb-4" aria-label="スレッド下部ナビゲーション">
-      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-1.5 md:grid-cols-4">
         <Link
           href="/"
           prefetch={false}

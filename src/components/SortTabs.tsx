@@ -8,13 +8,17 @@ interface Props {
   categories: Category[]
   /** カテゴリページで使用。指定すると `/basePath?sort=xxx` 形式のリンクを生成する */
   basePath?: string
+  recentHref?: string
+  newHref?: string
+  rankingHref?: string
+  randomHref?: string
 }
 
 const TABS = [
-  { label: '更新順', sort: 'recent',  icon: '↺', short: '更新'  },
-  { label: '新着',   sort: 'new',     icon: '⏱', short: '新着'  },
-  { label: '人気',   sort: 'popular', icon: '📊', short: '人気'  },
-  { label: 'ランダム', sort: 'random', icon: '🎲', short: 'ランダ' },
+  { label: '更新順一覧', sort: 'recent',  icon: '↺', short: '更新'  },
+  { label: '新着一覧',   sort: 'new',     icon: '⏱', short: '新着'  },
+  { label: 'ランキング', sort: 'popular', icon: '📊', short: '人気'  },
+  { label: 'ランダム',   sort: 'random', icon: '🎲', short: 'ランダム' },
 ]
 
 const ROOT_SORT_HREF: Record<string, string> = {
@@ -24,10 +28,23 @@ const ROOT_SORT_HREF: Record<string, string> = {
   random: '/?sort=random',
 }
 
-export function SortTabs({ currentSort, currentCategory, categories, basePath }: Props) {
+export function SortTabs({
+  currentSort,
+  currentCategory,
+  categories,
+  basePath,
+  recentHref = '/',
+  newHref = ROOT_SORT_HREF.new,
+  rankingHref = ROOT_SORT_HREF.popular,
+  randomHref = ROOT_SORT_HREF.random,
+}: Props) {
   const getTabHref = (sort: string) => {
     if (basePath) return `${basePath}?sort=${sort}`
     if (currentCategory) return `/category/${currentCategory}?sort=${sort}`
+    if (sort === 'recent') return recentHref
+    if (sort === 'new') return newHref
+    if (sort === 'popular') return rankingHref
+    if (sort === 'random') return randomHref
     return ROOT_SORT_HREF[sort] ?? '/'
   }
 

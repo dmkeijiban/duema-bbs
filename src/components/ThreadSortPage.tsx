@@ -3,6 +3,8 @@ import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadRow } from '@/components/ThreadRow'
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { Pagination } from '@/components/Pagination'
+import { SortTabs } from '@/components/SortTabs'
+import { getCachedCategories } from '@/lib/cached-queries'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { seededShuffle } from '@/lib/stable-shuffle'
 import { Thread, Category } from '@/types'
@@ -175,17 +177,25 @@ function SkeletonList() {
 }
 
 export function BottomNav({ current }: { current?: string }) {
+  const currentSort =
+    current === '/new'
+      ? 'new'
+      : current === '/ranking'
+        ? 'popular'
+        : current === '/random'
+          ? 'random'
+          : 'recent'
+
   return (
-    <div className="flex mt-3 text-sm border border-gray-300">
+    <div className="mt-3 grid grid-cols-2 gap-1.5 text-sm sm:grid-cols-5">
       {NAV_LINKS.map((btn) => (
         <Link
           key={btn.href}
           href={btn.href}
-          className="flex-1 text-center py-2 border-r border-gray-300 last:border-r-0 text-xs md:text-sm"
-          style={
-            current === btn.href
-              ? { background: '#2563eb', color: '#fff' }
-              : { color: '#2563eb' }
+          className={
+            current === btn.href || (btn.href === '/update' && currentSort === 'recent')
+              ? 'flex min-h-9 items-center justify-center rounded border border-blue-600 bg-blue-600 px-2 text-center text-xs font-bold text-white shadow-sm md:text-sm'
+              : 'flex min-h-9 items-center justify-center rounded border border-blue-100 bg-white px-2 text-center text-xs font-medium text-blue-700 hover:bg-blue-50 md:text-sm'
           }
         >
           {btn.label}
@@ -196,7 +206,7 @@ export function BottomNav({ current }: { current?: string }) {
 }
 
 export async function ThreadSortPage({ sort, title, icon, page = 1 }: Props) {
-  const href = sort === 'recent' ? '/update' : sort === 'new' ? '/new' : sort === 'random' ? '/random' : '/archived'
+  const categories = await getCachedCategories()
 
   return (
     <div className="w-full px-0 py-0">
@@ -216,12 +226,19 @@ export async function ThreadSortPage({ sort, title, icon, page = 1 }: Props) {
         </div>
       </div>
 
+      <SortTabs
+        currentSort={sort}
+        categories={categories}
+        recentHref="/update"
+        newHref="/new"
+        rankingHref="/ranking"
+        randomHref="/random"
+      />
+
       <div className="max-w-screen-xl mx-auto px-2">
         <Suspense fallback={<SkeletonList />}>
           <ThreadList sort={sort} page={page} />
         </Suspense>
-
-        <BottomNav current={href} />
         <div className="mb-6" />
       </div>
     </div>
