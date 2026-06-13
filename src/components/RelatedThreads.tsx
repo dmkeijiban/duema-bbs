@@ -16,7 +16,7 @@ const getCachedRelatedThreads = unstable_cache(
     return data ?? []
   },
   ['related-threads'],
-  { revalidate: 600 }
+  { revalidate: 21600 }
 )
 
 interface Props {

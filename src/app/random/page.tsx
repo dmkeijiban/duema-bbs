@@ -2,7 +2,7 @@ import { ThreadSortPage } from '@/components/ThreadSortPage'
 import { SITE_URL } from '@/lib/site-config'
 
 // 5分キャッシュ（ISR Writes 削減のため 60→300 に変更）
-export const revalidate = 300
+export const revalidate = 3600
 
 export const metadata = {
   title: 'ランダム | デュエマ掲示板',

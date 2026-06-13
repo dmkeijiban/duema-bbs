@@ -7,6 +7,10 @@ import type { PublicAuthorProfile } from '@/types'
 
 export type { NavPage, FixedPage }
 
+const STANDARD_CACHE_SECONDS = 3600
+const NOTICE_CACHE_SECONDS = 1800
+const THREAD_CACHE_SECONDS = 21600
+
 export const getCachedNavPages = unstable_cache(
   async (): Promise<NavPage[]> => {
     try {
@@ -23,7 +27,7 @@ export const getCachedNavPages = unstable_cache(
     }
   },
   ['nav-pages'],
-  { revalidate: 300, tags: ['fixed_pages'] }
+  { revalidate: STANDARD_CACHE_SECONDS, tags: ['fixed_pages'] }
 )
 
 export const getCachedFixedPage = (slug: string): Promise<FixedPage | null> =>
@@ -44,7 +48,7 @@ export const getCachedFixedPage = (slug: string): Promise<FixedPage | null> =>
       }
     },
     [`fixed-page-${slug}`],
-    { revalidate: 300, tags: ['fixed_pages', `fixed-page-${slug}`] }
+    { revalidate: STANDARD_CACHE_SECONDS, tags: ['fixed_pages', `fixed-page-${slug}`] }
   )()
 
 type ThreadRow = { id: number; title: string; image_url: string | null; post_count: number }
@@ -69,7 +73,7 @@ export const getCachedCategories = unstable_cache(
     }
   },
   ['categories'],
-  { revalidate: 300, tags: ['categories'] }
+  { revalidate: STANDARD_CACHE_SECONDS, tags: ['categories'] }
 )
 
 export const getCachedActiveNotices = unstable_cache(
@@ -88,7 +92,7 @@ export const getCachedActiveNotices = unstable_cache(
     }
   },
   ['notices-active'],
-  { revalidate: 60, tags: ['notices'] }
+  { revalidate: NOTICE_CACHE_SECONDS, tags: ['notices'] }
 )
 
 export const getCachedThreadNotices = unstable_cache(
@@ -108,7 +112,7 @@ export const getCachedThreadNotices = unstable_cache(
     }
   },
   ['notices-thread'],
-  { revalidate: 60, tags: ['notices'] }
+  { revalidate: NOTICE_CACHE_SECONDS, tags: ['notices'] }
 )
 
 export const getCachedSetting = unstable_cache(
@@ -127,7 +131,7 @@ export const getCachedSetting = unstable_cache(
     }
   },
   ['setting'],
-  { revalidate: 300, tags: ['settings'] }
+  { revalidate: STANDARD_CACHE_SECONDS, tags: ['settings'] }
 )
 
 export const getCachedTopThreads = unstable_cache(
@@ -148,7 +152,7 @@ export const getCachedTopThreads = unstable_cache(
     }
   },
   ['top-threads'],
-  { revalidate: 300, tags: ['threads'] }
+  { revalidate: STANDARD_CACHE_SECONDS, tags: ['threads'] }
 )
 
 const COMMON_RECOMMEND_WORDS = new Set([
@@ -261,7 +265,7 @@ export function getCachedRelatedThreads(
       return withFallbackThumbnails(supabase, ranked)
     },
     [`related-threads-${threadId}-${categoryId ?? 'none'}`],
-    { revalidate: 300, tags: [`related-threads-${threadId}`, `thread-${threadId}`] }
+    { revalidate: THREAD_CACHE_SECONDS, tags: [`related-threads-${threadId}`, `thread-${threadId}`] }
   )()
 }
 
@@ -279,7 +283,7 @@ export const getCachedThread = (threadId: number) =>
       return data
     },
     [`thread-${threadId}`],
-    { revalidate: 300, tags: [`thread-${threadId}`] }
+    { revalidate: THREAD_CACHE_SECONDS, tags: [`thread-${threadId}`] }
   )()
 
 export const getCachedThreadPosts = (threadId: number, page: number) =>
@@ -297,7 +301,7 @@ export const getCachedThreadPosts = (threadId: number, page: number) =>
       return { data: data ?? [] }
     },
     [`thread-posts-${threadId}-p${page}`],
-    { revalidate: 300, tags: [`thread-${threadId}`] }
+    { revalidate: THREAD_CACHE_SECONDS, tags: [`thread-${threadId}`] }
   )()
 
 export { THREAD_POSTS_PER_PAGE }
@@ -340,7 +344,7 @@ export const getCachedPublicAuthorProfiles = (userIds: string[]) => {
       }
     },
     [`public-author-profiles-${key || 'none'}`],
-    { revalidate: 300, tags: ['profiles'] }
+    { revalidate: STANDARD_CACHE_SECONDS, tags: ['profiles'] }
   )()
 }
 
@@ -380,7 +384,7 @@ export const getCachedUserThreads = (userId: string): Promise<UserThreadRow[]> =
       }
     },
     [`user-threads-${userId}`],
-    { revalidate: 300, tags: ['threads'] }
+    { revalidate: STANDARD_CACHE_SECONDS, tags: ['threads'] }
   )()
 
 // 投稿者ページ用：そのユーザーの最近コメント（新しい順・最大10件、削除済み除外）
@@ -403,7 +407,7 @@ export const getCachedUserPosts = (userId: string): Promise<UserPostRow[]> =>
       }
     },
     [`user-posts-${userId}`],
-    { revalidate: 300, tags: ['posts'] }
+    { revalidate: STANDARD_CACHE_SECONDS, tags: ['posts'] }
   )()
 
 const USER_RANKING_PROFILE_LIMIT = 100
@@ -621,6 +625,6 @@ export function getCachedThreadList(
       }
     },
     [cacheKey],
-    { revalidate: 300, tags: ['threads'] }
+    { revalidate: STANDARD_CACHE_SECONDS, tags: ['threads'] }
   )()
 }

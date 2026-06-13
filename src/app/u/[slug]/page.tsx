@@ -4,7 +4,7 @@ import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { createPublicClient } from '@/lib/supabase-public'
 import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings } from '@/lib/cached-queries'
 
-export const revalidate = 300
+export const revalidate = 3600
 
 type Profile = {
   id: string

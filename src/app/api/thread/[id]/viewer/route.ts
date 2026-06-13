@@ -7,7 +7,14 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
-export async function GET(_request: NextRequest, { params }: Props) {
+const BOT_USER_AGENT_PATTERN = /googlebot|bingbot|twitterbot|facebookexternalhit|discordbot|slackbot|bot|crawler|spider|preview|headless|puppeteer|playwright|lighthouse|pingdom|uptimerobot|gtmetrix|pagespeed|dataforseo|monitoring/i
+
+function isBotRequest(request: NextRequest) {
+  const userAgent = request.headers.get('user-agent') ?? ''
+  return BOT_USER_AGENT_PATTERN.test(userAgent)
+}
+
+export async function GET(request: NextRequest, { params }: Props) {
   const { id } = await params
   const threadId = parseInt(id)
   if (Number.isNaN(threadId)) {
@@ -17,10 +24,11 @@ export async function GET(_request: NextRequest, { params }: Props) {
   const cookieStore = await cookies()
   const sessionId = cookieStore.get('bbs_session')?.value ?? ''
   const isAdmin = verifyAdminCookie(cookieStore.get('admin_auth')?.value)
+  const shouldCountView = request.nextUrl.searchParams.get('view') === '1' && !isBotRequest(request)
+  const supabase = sessionId || shouldCountView ? await createClient() : null
 
   let isFavorited = false
-  if (sessionId) {
-    const supabase = await createClient()
+  if (sessionId && supabase) {
     const { data } = await supabase
       .from('favorites')
       .select('id')
@@ -28,6 +36,10 @@ export async function GET(_request: NextRequest, { params }: Props) {
       .eq('thread_id', threadId)
       .maybeSingle()
     isFavorited = !!data
+  }
+
+  if (shouldCountView && supabase) {
+    await supabase.rpc('increment_view_count', { thread_id: threadId })
   }
 
   return NextResponse.json(

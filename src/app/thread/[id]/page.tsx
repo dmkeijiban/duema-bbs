@@ -5,7 +5,6 @@ import { FavoriteButton } from '@/components/FavoriteButton'
 import { ShareXButton } from '@/components/ShareXButton'
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { Thread, Post, Category } from '@/types'
-import { ThreadViewPing } from '@/components/ThreadViewPing'
 import Link from 'next/link'
 import { getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, getCachedRelatedThreads, getCachedPublicAuthorProfiles, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
@@ -17,7 +16,7 @@ import { AdBanner } from '@/components/AdBanner'
 
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
-export const revalidate = 1800
+export const revalidate = 21600
 
 export async function generateStaticParams() {
   const supabase = createPublicClient()
@@ -226,7 +225,6 @@ export async function renderThreadPage(threadId: number, page: number) {
 
   return (
     <div className="max-w-screen-xl mx-auto px-2 py-2 text-sm overflow-x-hidden">
-      <ThreadViewPing threadId={threadId} />
       {/* SEO: DiscussionForumPosting構造化データ（JSON-LD）
           レスが1件以上ある場合のみ出力。レス0件では comment が存在しないため
           Google Search Console の警告を避けるため出力しない。 */}
