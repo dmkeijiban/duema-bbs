@@ -279,8 +279,18 @@ export function LoginClient({ nextPath }: LoginClientProps) {
         <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white font-bold">
           <span className="text-blue-600">G</span>
         </span>
-        {isLoading ? 'Googleログインへ移動中...' : 'Googleでログイン'}
+        {isLoading
+          ? 'Googleログインへ移動中...'
+          : mode === 'login'
+            ? 'Googleでログイン'
+            : 'Googleで新規登録'}
       </button>
+
+      <p className="text-xs leading-relaxed text-gray-400">
+        {mode === 'login'
+          ? '登録時に選んだ方法でログインしてください。'
+          : 'メールアドレス登録またはGoogle登録のどちらか一方を選んでください。'}
+      </p>
 
       <p className="text-xs leading-relaxed text-gray-500">
         ログインすると、
