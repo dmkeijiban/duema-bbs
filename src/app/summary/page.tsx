@@ -1,10 +1,11 @@
 import { createPublicClient } from '@/lib/supabase-public'
 import { RecommendSection } from '@/components/RecommendSection'
-import { BottomNav } from '@/components/ThreadSortPage'
+import { SortTabs } from '@/components/SortTabs'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { Metadata } from 'next'
 import { SITE_URL } from '@/lib/site-config'
+import { getCachedCategories } from '@/lib/cached-queries'
 
 export const revalidate = 3600
 
@@ -78,6 +79,36 @@ function SummaryLinks({ summaries }: { summaries: Summary[] }) {
   )
 }
 
+function getJstMonthRange() {
+  const now = new Date()
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: 'numeric',
+  }).formatToParts(now)
+
+  const year = Number(parts.find(part => part.type === 'year')?.value ?? now.getUTCFullYear())
+  const month = Number(parts.find(part => part.type === 'month')?.value ?? now.getUTCMonth() + 1)
+  const start = new Date(Date.UTC(year, month - 1, 1, -9, 0, 0))
+  const end = new Date(Date.UTC(year, month, 1, -9, 0, 0))
+
+  return { start, end }
+}
+
+function overlapsCurrentJstMonth(summary: Summary) {
+  if (!summary.period_start || !summary.period_end) return false
+
+  const start = new Date(`${summary.period_start}T00:00:00+09:00`)
+  const end = new Date(`${summary.period_end}T23:59:59.999+09:00`)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false
+
+  const month = getJstMonthRange()
+  const now = new Date()
+  if (start > now) return false
+
+  return start < month.end && end >= month.start
+}
+
 async function SummaryList() {
   const summaries = await getSummaries()
 
@@ -91,7 +122,9 @@ async function SummaryList() {
   }
 
   const manualSummaries = summaries.filter(summary => summary.type === 'manual')
-  const weeklySummaries = summaries.filter(summary => summary.type === 'weekly')
+  const weeklySummaries = summaries.filter(
+    summary => summary.type === 'weekly' && overlapsCurrentJstMonth(summary)
+  )
   const monthlySummaries = summaries.filter(summary => summary.type === 'monthly')
 
   return (
@@ -152,6 +185,8 @@ async function SummaryList() {
 }
 
 export default async function SummaryIndexPage() {
+  const categories = await getCachedCategories()
+
   return (
     <div className="w-full px-0 py-0">
       {/* SEO: BreadcrumbList + WebPage 構造化データ */}
@@ -194,7 +229,18 @@ export default async function SummaryIndexPage() {
         <div className="mb-3 px-3 py-2 border border-gray-300 bg-white">
           <h1 className="font-bold text-sm text-gray-800">まとめ一覧</h1>
         </div>
+      </div>
 
+      <SortTabs
+        currentSort="popular"
+        categories={categories}
+        recentHref="/update"
+        newHref="/new"
+        rankingHref="/ranking"
+        randomHref="/random"
+      />
+
+      <div className="max-w-screen-xl mx-auto px-2">
         <Suspense fallback={
           <div className="border border-gray-300 bg-white animate-pulse divide-y divide-gray-200">
             {[...Array(5)].map((_, i) => (
@@ -207,8 +253,6 @@ export default async function SummaryIndexPage() {
         }>
           <SummaryList />
         </Suspense>
-
-        <BottomNav current="/" />
         <div className="mb-6" />
       </div>
     </div>
