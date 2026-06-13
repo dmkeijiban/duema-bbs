@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ProfileHeaderCard } from '@/components/ProfileHeaderCard'
-import { ShareButtons } from '@/components/ShareButtons'
+import { UserProfileShareButtons } from '@/components/UserProfileShareButtons'
 import { createPublicClient } from '@/lib/supabase-public'
 import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings } from '@/lib/cached-queries'
 
@@ -188,7 +188,12 @@ export default async function UserProfilePage({
         totalRank={totalRank}
       />
 
-      <ShareButtons slug={profile.profile_slug} displayName={profile.display_name} />
+      <section className="mt-4 rounded-sm border border-gray-200 bg-white px-4 py-3">
+        <h2 className="text-sm font-bold text-gray-800">この投稿者ページを共有</h2>
+        <div className="mt-2">
+          <UserProfileShareButtons displayName={profile.display_name} />
+        </div>
+      </section>
 
       {/* Recent activity */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">

@@ -292,10 +292,10 @@ export const getCachedThreadPosts = (threadId: number, page: number) =>
       const supabase = createPublicClient()
       const offset = (page - 1) * THREAD_POSTS_PER_PAGE
       const { data } = await supabase
-        .from('posts')
-        .select('id, thread_id, post_number, body, author_name, user_id, image_url, created_at')
+          .from('posts')
+          .select('id, thread_id, post_number, body, author_name, user_id, image_url, created_at, is_deleted, deleted_by, deleted_at')
         .eq('thread_id', threadId)
-        .eq('is_deleted', false)
+        .or('is_deleted.eq.false,deleted_by.eq.registered_user')
         .order('post_number', { ascending: true })
         .range(offset, offset + THREAD_POSTS_PER_PAGE - 1)
       return { data: data ?? [] }
@@ -318,25 +318,34 @@ export const getCachedPublicAuthorProfiles = (userIds: string[]) => {
         const supabase = createPublicClient()
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, display_name, profile_slug, avatar_url')
+          .select('id, display_name, profile_slug, avatar_url, profile_hidden, account_suspended, withdrawn_at')
           .in('id', ids)
-          .eq('profile_hidden', false)
-          .eq('account_suspended', false)
-          .is('withdrawn_at', null)
 
         if (error) return {}
 
         return Object.fromEntries(
           (data ?? [])
             .filter(profile => profile.profile_slug && profile.display_name)
+            .filter(profile => {
+              if (profile.account_suspended === true) return false
+              if (profile.withdrawn_at) return true
+              return profile.profile_hidden !== true
+            })
             .map(profile => [
               String(profile.id),
-              {
-                id: String(profile.id),
-                display_name: String(profile.display_name),
-                profile_slug: String(profile.profile_slug),
-                avatar_url: typeof profile.avatar_url === 'string' ? profile.avatar_url : null,
-              },
+              profile.withdrawn_at
+                ? {
+                    id: String(profile.id),
+                    display_name: '退会済みユーザー',
+                    profile_slug: '',
+                    avatar_url: null,
+                  }
+                : {
+                    id: String(profile.id),
+                    display_name: String(profile.display_name),
+                    profile_slug: String(profile.profile_slug),
+                    avatar_url: typeof profile.avatar_url === 'string' ? profile.avatar_url : null,
+                  },
             ])
         )
       } catch {
