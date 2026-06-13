@@ -8,7 +8,6 @@ const InlineNewThread = dynamic(
 )
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { SortTabs } from '@/components/SortTabs'
-import { BottomNav } from '@/components/ThreadSortPage'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { seededShuffle } from '@/lib/stable-shuffle'
 import { Thread, Category } from '@/types'
@@ -433,8 +432,6 @@ export default async function Home({
         <Suspense fallback={null}>
           <BotNoticesServer />
         </Suspense>
-
-        <BottomNav />
 
         {/* スレ作成フォーム: 遅延ロードで可視領域外のレンダリングコストを下げる */}
         <Suspense fallback={null}>
