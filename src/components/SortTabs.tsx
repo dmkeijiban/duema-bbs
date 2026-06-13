@@ -32,21 +32,23 @@ export function SortTabs({ currentSort, currentCategory, categories, basePath }:
   }
 
   return (
-    <div className="max-w-screen-xl mx-auto px-2">
-      <ul className="flex mb-3 mt-2" role="tablist" style={{ borderBottom: '1px solid #dee2e6' }}>
+    <div className="mx-auto max-w-screen-xl px-2">
+      <ul
+        className="mb-3 mt-2 flex flex-wrap items-center gap-1.5 border-b border-gray-200 pb-1.5"
+        role="tablist"
+      >
         {TABS.map((tab) => {
           const active = currentSort === tab.sort
           return (
-            <li key={tab.sort} className="flex-1 min-w-0" role="presentation">
+            <li key={tab.sort} className="shrink-0" role="presentation">
               <Link
                 href={getTabHref(tab.sort)}
                 role="tab"
                 aria-selected={active}
-                className="w-full text-center py-2 font-medium border border-transparent select-none overflow-hidden text-xs md:text-sm flex items-center justify-center gap-0.5"
-                style={
+                className={
                   active
-                    ? { background: '#2563eb', color: '#fff', borderColor: '#2563eb', borderRadius: '4px 4px 0 0', marginBottom: -1, display: 'flex' }
-                    : { color: '#2563eb', display: 'flex' }
+                    ? 'flex min-h-9 items-center justify-center gap-1 rounded border border-blue-600 bg-blue-600 px-2.5 text-xs font-bold text-white shadow-sm md:px-3 md:text-sm'
+                    : 'flex min-h-9 items-center justify-center gap-1 rounded border border-blue-100 bg-white px-2.5 text-xs font-medium text-blue-700 hover:bg-blue-50 md:px-3 md:text-sm'
                 }
               >
                 <span className="opacity-80">{tab.icon}</span>
