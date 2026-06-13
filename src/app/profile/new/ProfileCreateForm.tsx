@@ -86,13 +86,15 @@ export function ProfileCreateForm() {
     centerY: number
   } | null>(null)
 
+  const cropImageUrl = cropImage?.url
+
   useEffect(() => {
     return () => {
-      if (cropImage?.url.startsWith('blob:')) {
-        URL.revokeObjectURL(cropImage.url)
+      if (cropImageUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(cropImageUrl)
       }
     }
-  }, [cropImage])
+  }, [cropImageUrl])
 
   const createCroppedAvatarFile = async () => {
     if (!cropImage) return null
