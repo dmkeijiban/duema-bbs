@@ -239,6 +239,7 @@ export async function ThreadSortPage({ sort, title, icon, page = 1 }: Props) {
         <Suspense fallback={<SkeletonList />}>
           <ThreadList sort={sort} page={page} />
         </Suspense>
+        <BottomNav current={sort === 'recent' ? '/update' : sort === 'new' ? '/new' : sort === 'random' ? '/random' : undefined} />
         <div className="mb-6" />
       </div>
     </div>
