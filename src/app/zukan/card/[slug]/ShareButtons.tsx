@@ -31,21 +31,21 @@ export default function ShareButtons({ cardName }: { cardName: string }) {
     <div className="flex flex-wrap gap-2">
       <button
         onClick={shareX}
-        className="rounded border border-black bg-black px-3 py-1.5 text-xs font-bold text-white transition-all duration-100 hover:bg-gray-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+        className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-gray-800 transition-all duration-100 hover:bg-gray-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
         type="button"
       >
-        Xでシェア
+        Xで共有
       </button>
       <button
         onClick={shareLine}
-        className="rounded border border-[#06c755] bg-[#06c755] px-3 py-1.5 text-xs font-bold text-white transition-all duration-100 hover:bg-[#05b84f] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+        className="rounded border border-green-200 bg-white px-3 py-1.5 text-xs font-bold text-green-700 transition-all duration-100 hover:bg-green-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400"
         type="button"
       >
-        LINEでシェア
+        LINEで共有
       </button>
       <button
         onClick={copyUrl}
-        className="rounded border border-blue-500 bg-blue-600 px-3 py-1.5 text-xs font-bold text-white transition-all duration-100 hover:bg-blue-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+        className="rounded border border-blue-200 bg-white px-3 py-1.5 text-xs font-bold text-blue-700 transition-all duration-100 hover:bg-blue-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
         type="button"
       >
         {copied ? 'コピーしました！' : 'URLをコピー'}

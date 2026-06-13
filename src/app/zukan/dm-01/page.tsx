@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { fetchPack, fetchCardsByPack, fetchCardsBySlugs, fetchPackReviews } from '@/lib/zukan'
 import type { ZukanPack, ZukanCard } from '@/lib/zukan'
 import { normalizeZukanDisplayName } from '@/lib/zukan-display'
-import { ProfileAvatar } from '@/components/ProfileAvatar'
+import { ZukanReviewAuthor } from '@/components/ZukanReviewAuthor'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import PackShareButtons from './PackShareButtons'
 import PackReviewForm from './PackReviewForm'
@@ -123,6 +123,50 @@ function cardHref(card: ZukanCard): string {
   return card.id ? `/zukan/card/${card.slug}` : '#'
 }
 
+function CardListPager({
+  page,
+  totalPages,
+  hasNextPage,
+  compact = false,
+}: {
+  page: number
+  totalPages: number | null
+  hasNextPage: boolean
+  compact?: boolean
+}) {
+  if (page <= 1 && !hasNextPage) return null
+
+  return (
+    <div className={`flex flex-wrap items-center justify-between gap-2 border border-gray-200 bg-gray-50 px-3 ${compact ? 'py-1.5' : 'py-2'}`}>
+      <div>
+        {page > 1 ? (
+          <Link href={`/zukan/dm-01?page=${page - 1}`} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-600 cursor-pointer transition-all duration-100 hover:bg-blue-50 hover:border-blue-400 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
+            ← 前の60件
+          </Link>
+        ) : (
+          <span className="rounded border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-400">
+            ← 前の60件
+          </span>
+        )}
+      </div>
+      {totalPages && (
+        <span className="font-mono text-xs text-gray-500">{page} / {totalPages}</span>
+      )}
+      <div>
+        {hasNextPage ? (
+          <Link href={`/zukan/dm-01?page=${page + 1}`} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-600 cursor-pointer transition-all duration-100 hover:bg-blue-50 hover:border-blue-400 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
+            次の60件 →
+          </Link>
+        ) : (
+          <span className="rounded border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-400">
+            次の60件 →
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default async function ZukanDm01Page({
   searchParams,
 }: {
@@ -137,7 +181,7 @@ export default async function ZukanDm01Page({
   const [dbCards, packReviews, dbRepCards] = dbPack
     ? await Promise.all([
         fetchCardsByPack(dbPack.id, page),
-        page === 1 ? fetchPackReviews(dbPack.id) : Promise.resolve(null),
+        fetchPackReviews(dbPack.id),
         page === 1 ? fetchCardsBySlugs(dbPack.id, REP_CARDS.map(r => r.slug)) : Promise.resolve(null),
       ])
     : [null, null, null]
@@ -271,6 +315,11 @@ export default async function ZukanDm01Page({
             <span className="font-mono text-xs text-gray-500">{page} / {totalPages} ページ</span>
           )}
         </div>
+        {cards.length > 0 && (
+          <div className="mb-2">
+            <CardListPager page={page} totalPages={totalPages} hasNextPage={hasNextPage} compact />
+          </div>
+        )}
         {cards.length === 0 ? (
           <p className="px-3 py-4 text-xs text-gray-400">このページにはカードがありません。</p>
         ) : (
@@ -320,83 +369,61 @@ export default async function ZukanDm01Page({
         )}
 
         {/* ページネーション */}
-        {(page > 1 || hasNextPage) && (
-          <div className="mt-3 flex items-center justify-between border border-gray-200 bg-gray-50 px-3 py-2">
-            <div>
-              {page > 1 ? (
-                <Link href={`/zukan/dm-01?page=${page - 1}`} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-600 cursor-pointer transition-all duration-100 hover:bg-blue-50 hover:border-blue-400 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
-                  ← 前の60件
-                </Link>
-              ) : (
-                <span className="rounded border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-400">
-                  ← 前の60件
-                </span>
-              )}
-            </div>
-            {totalPages && (
-              <span className="font-mono text-xs text-gray-500">{page} / {totalPages}</span>
-            )}
-            <div>
-              {hasNextPage ? (
-                <Link href={`/zukan/dm-01?page=${page + 1}`} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-600 cursor-pointer transition-all duration-100 hover:bg-blue-50 hover:border-blue-400 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
-                  次の60件 →
-                </Link>
-              ) : (
-                <span className="rounded border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-400">
-                  次の60件 →
-                </span>
-              )}
-            </div>
-          </div>
-        )}
+        <div className="mt-3">
+          <CardListPager page={page} totalPages={totalPages} hasNextPage={hasNextPage} />
+        </div>
       </section>
 
       {/* このパックの思い出レビュー */}
-      {page === 1 && (
-        <section className="mb-5">
-          <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
-            <h2 className="text-sm font-bold text-gray-800">このパックの思い出レビュー</h2>
+      <section className="mb-5">
+        <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
+          <h2 className="text-sm font-bold text-gray-800">このパックの思い出レビュー</h2>
+        </div>
+        {packReviews && packReviews.length > 0 && (
+          <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
+            {latestPackReviews.map(r => (
+              <article key={r.id} className="px-3 py-2.5">
+                <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                  <ZukanReviewAuthor
+                    displayName={normalizeZukanDisplayName(r.display_name)}
+                    avatarUrl={r.avatar_url}
+                    profileSlug={r.profile_slug}
+                  />
+                  <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
+                </div>
+                <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
+              </article>
+            ))}
+            {morePackReviews.length > 0 && (
+              <details className="border-t border-gray-100">
+                <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-blue-600 transition-colors duration-100 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400">
+                  もっと見る
+                </summary>
+                <div className="divide-y divide-gray-100 border-t border-gray-100">
+                  {morePackReviews.map(r => (
+                    <article key={r.id} className="px-3 py-2.5">
+                      <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                        <ZukanReviewAuthor
+                          displayName={normalizeZukanDisplayName(r.display_name)}
+                          avatarUrl={r.avatar_url}
+                          profileSlug={r.profile_slug}
+                        />
+                        <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
+                      </div>
+                      <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
+                    </article>
+                  ))}
+                </div>
+              </details>
+            )}
           </div>
-          {packReviews && packReviews.length > 0 && (
-            <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
-              {latestPackReviews.map(r => (
-                <article key={r.id} className="px-3 py-2.5">
-                  <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                    <ProfileAvatar src={r.avatar_url} alt={`${normalizeZukanDisplayName(r.display_name)}のアイコン`} size="sm" />
-                    <span className="font-bold text-gray-700">{normalizeZukanDisplayName(r.display_name)}</span>
-                    <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
-                  </div>
-                  <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
-                </article>
-              ))}
-              {morePackReviews.length > 0 && (
-                <details className="border-t border-gray-100">
-                  <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-blue-600 transition-colors duration-100 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400">
-                    もっと見る
-                  </summary>
-                  <div className="divide-y divide-gray-100 border-t border-gray-100">
-                    {morePackReviews.map(r => (
-                      <article key={r.id} className="px-3 py-2.5">
-                        <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                          <ProfileAvatar src={r.avatar_url} alt={`${normalizeZukanDisplayName(r.display_name)}のアイコン`} size="sm" />
-                          <span className="font-bold text-gray-700">{normalizeZukanDisplayName(r.display_name)}</span>
-                          <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
-                        </div>
-                        <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
-                      </article>
-                    ))}
-                  </div>
-                </details>
-              )}
-            </div>
-          )}
-          {packReviews !== null && packReviews.length === 0 && (
-            <p className="mb-3 border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">まだ投稿はありません。最初の思い出を書いてみませんか？</p>
-          )}
-          {isDbReady && pack.id && <PackReviewForm packId={pack.id} />}
-          {!isDbReady && <p className="border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">DBが準備中のため投稿できません</p>}
-        </section>
-      )}
+        )}
+        {packReviews !== null && packReviews.length === 0 && (
+          <p className="mb-3 border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">まだ投稿はありません。最初の思い出を書いてみませんか？</p>
+        )}
+        {isDbReady && pack.id && <PackReviewForm packId={pack.id} />}
+        {!isDbReady && <p className="border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">DBが準備中のため投稿できません</p>}
+      </section>
     </div>
   )
 }
