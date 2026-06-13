@@ -23,6 +23,7 @@ interface Props {
   threadId: number
   thread: Thread & { categories: Category | null }
   authorProfiles?: Record<string, PublicAuthorProfile>
+  currentUserId?: string
   isArchived: boolean
   page: number
   totalPages: number
@@ -43,6 +44,15 @@ function ThreadAuthorName({
     return <span className="font-medium text-gray-700">{fallbackName}</span>
   }
 
+  if (!profile.profile_slug) {
+    return (
+      <span className="inline-flex items-center gap-1.5 font-medium text-gray-600">
+        <ProfileAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} size="sm" />
+        <span>{profile.display_name}</span>
+      </span>
+    )
+  }
+
   return (
     <Link
       href={`/u/${profile.profile_slug}`}
@@ -54,9 +64,21 @@ function ThreadAuthorName({
   )
 }
 
-export function ThreadContent({ posts, threadId, thread, authorProfiles = {}, isArchived, page, totalPages, recommendSlot, threadRules }: Props) {
+export function ThreadContent({
+  posts,
+  threadId,
+  thread,
+  authorProfiles = {},
+  currentUserId = '',
+  isArchived,
+  page,
+  totalPages,
+  recommendSlot,
+  threadRules,
+}: Props) {
   const [bodyValue, setBodyValue] = useState('')
   const [sessionId, setSessionId] = useState('')
+  const [viewerUserId, setViewerUserId] = useState(currentUserId)
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
@@ -65,6 +87,7 @@ export function ThreadContent({ posts, threadId, thread, authorProfiles = {}, is
       .then(data => {
         if (cancelled) return
         setSessionId(data.sessionId)
+        setViewerUserId(data.currentUserId)
         setIsAdmin(data.isAdmin)
       })
     return () => {
@@ -133,6 +156,7 @@ export function ThreadContent({ posts, threadId, thread, authorProfiles = {}, is
             onAnchorClick={handleAnchorClick}
             displayNumber={post.displayNumber}
             sessionId={sessionId}
+            currentUserId={viewerUserId}
             threadSessionId={threadSessionId}
             threadId={threadId}
             authorProfile={post.user_id ? authorProfiles[post.user_id] : undefined}

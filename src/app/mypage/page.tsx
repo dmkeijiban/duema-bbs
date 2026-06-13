@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { logout } from '@/app/auth/actions'
 import { ProfileHeaderActionLink, ProfileHeaderCard } from '@/components/ProfileHeaderCard'
+import { WithdrawAccountForm } from '@/components/WithdrawAccountForm'
 import { getCachedUserRankings } from '@/lib/cached-queries'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
@@ -330,6 +331,8 @@ export default async function MyPage() {
               ログアウト
             </button>
           </form>
+
+          <WithdrawAccountForm />
         </div>
       </div>
     </main>

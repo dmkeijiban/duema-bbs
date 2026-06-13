@@ -31,6 +31,7 @@ interface Props {
   onAnchorClick: (displayNum: number) => void
   displayNumber: number
   sessionId: string
+  currentUserId?: string
   threadSessionId: string
   threadId: number
   authorProfile?: PublicAuthorProfile
@@ -295,6 +296,15 @@ function PostAuthorName({
     return <span className="font-medium text-gray-700">{fallbackName}</span>
   }
 
+  if (!profile.profile_slug) {
+    return (
+      <span className="inline-flex items-center gap-1.5 font-medium text-gray-600">
+        <ProfileAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} size="sm" />
+        <span>{profile.display_name}</span>
+      </span>
+    )
+  }
+
   return (
     <Link
       href={`/u/${profile.profile_slug}`}
@@ -306,18 +316,36 @@ function PostAuthorName({
   )
 }
 
-export function PostItem({ post, allPosts, onAnchorClick, displayNumber, sessionId, threadSessionId, threadId, authorProfile }: Props) {
+export function PostItem({
+  post,
+  allPosts,
+  onAnchorClick,
+  displayNumber,
+  sessionId,
+  currentUserId = '',
+  threadSessionId,
+  threadId,
+  authorProfile,
+}: Props) {
   const [deleted, setDeleted] = useState(false)
+  const [locallyDeletedByUser, setLocallyDeletedByUser] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   const postSessionId = (post as Post & { session_id?: string }).session_id ?? ''
-  const canDelete = sessionId && (postSessionId === sessionId || threadSessionId === sessionId)
+  const isDeletedByRegisteredUser =
+    locallyDeletedByUser || (post.is_deleted === true && post.deleted_by === 'registered_user')
+  const canDeleteBySession = Boolean(sessionId && (postSessionId === sessionId || threadSessionId === sessionId))
+  const canDeleteByUser = Boolean(currentUserId && post.user_id === currentUserId)
+  const canDelete = !isDeletedByRegisteredUser && (canDeleteBySession || canDeleteByUser)
 
   const handleDelete = () => {
     if (!confirm('このレスを削除しますか？')) return
     startTransition(async () => {
       const res = await deleteOwnPost(post.id, threadId)
-      if (!res.error) setDeleted(true)
+      if (!res.error) {
+        if (canDeleteByUser) setLocallyDeletedByUser(true)
+        else setDeleted(true)
+      }
     })
   }
 
@@ -338,8 +366,8 @@ export function PostItem({ post, allPosts, onAnchorClick, displayNumber, session
         </button>
         <PostAuthorName fallbackName={post.author_name} profile={authorProfile} />
         <span className="text-gray-400">{formatDateTimeJP(post.created_at)}</span>
-        <PostLikeButton likeKey={`post-${post.id}`} />
-        <ReportButton itemType="post" itemId={post.id} itemBody={post.body} />
+        {!isDeletedByRegisteredUser && <PostLikeButton likeKey={`post-${post.id}`} />}
+        {!isDeletedByRegisteredUser && <ReportButton itemType="post" itemId={post.id} itemBody={post.body} />}
         {canDelete && (
           <button
             type="button"
@@ -354,12 +382,18 @@ export function PostItem({ post, allPosts, onAnchorClick, displayNumber, session
       </div>
 
       {/* 本文（YouTube/X URL は自動埋め込み） */}
-      <div className="px-3 py-3 text-base text-gray-800 break-words leading-relaxed">
-        {renderBody(post.body, allPosts)}
-      </div>
+      {isDeletedByRegisteredUser ? (
+        <div className="px-3 py-3 text-sm text-gray-500 break-words leading-relaxed">
+          このコメントは投稿者によって削除されました
+        </div>
+      ) : (
+        <div className="px-3 py-3 text-base text-gray-800 break-words leading-relaxed">
+          {renderBody(post.body, allPosts)}
+        </div>
+      )}
 
       {/* 添付画像 */}
-      {post.image_url && (
+      {!isDeletedByRegisteredUser && post.image_url && (
         <div className="px-3 pb-2">
           <ImageViewer src={post.image_url} />
         </div>

@@ -32,6 +32,9 @@ export interface Post {
   user_id?: string | null
   image_url: string | null
   created_at: string
+  is_deleted?: boolean | null
+  deleted_by?: string | null
+  deleted_at?: string | null
 }
 
 export interface PublicAuthorProfile {

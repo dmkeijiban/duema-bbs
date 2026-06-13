@@ -61,13 +61,17 @@ export async function deleteOwnPost(postId: number, threadId: number) {
   // 投稿者本人 or スレ主どちらでも削除可
   const { data: post } = await supabase
     .from('posts')
-    .select('session_id')
+    .select('session_id, user_id')
     .eq('id', postId)
+    .eq('thread_id', threadId)
     .single()
 
   if (!post) return { error: 'レスが見つかりません' }
 
+  const { data: userData } = await supabase.auth.getUser()
+  const currentUserId = userData.user?.id ?? null
   const isPostAuthor = post.session_id === sessionId
+  const isRegisteredAuthor = !!currentUserId && post.user_id === currentUserId
 
   // スレ主チェック
   const { data: thread } = await supabase
@@ -77,6 +81,23 @@ export async function deleteOwnPost(postId: number, threadId: number) {
     .single()
 
   const isThreadOwner = thread?.session_id === sessionId
+
+  if (isRegisteredAuthor) {
+    const { error } = await supabase.from('posts').update({
+      is_deleted: true,
+      deleted_at: new Date().toISOString(),
+      deleted_by: 'registered_user',
+    }).eq('id', postId).eq('thread_id', threadId)
+    if (error) return { error: '削除に失敗しました' }
+
+    revalidateTag(`thread-${threadId}`, { expire: 0 })
+    revalidateTag('threads', { expire: 0 })
+    revalidateTag('posts', { expire: 0 })
+    revalidatePath(`/thread/${threadId}`)
+    revalidatePath('/')
+    revalidatePath('/mypage')
+    return { success: true }
+  }
 
   if (!isPostAuthor && !isThreadOwner) return { error: '削除権限がありません' }
 

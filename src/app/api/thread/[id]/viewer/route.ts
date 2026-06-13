@@ -25,10 +25,12 @@ export async function GET(request: NextRequest, { params }: Props) {
   const sessionId = cookieStore.get('bbs_session')?.value ?? ''
   const isAdmin = verifyAdminCookie(cookieStore.get('admin_auth')?.value)
   const shouldCountView = request.nextUrl.searchParams.get('view') === '1' && !isBotRequest(request)
-  const supabase = sessionId || shouldCountView ? await createClient() : null
+  const supabase = await createClient()
+  const { data: userData } = await supabase.auth.getUser()
+  const currentUserId = userData.user?.id ?? ''
 
   let isFavorited = false
-  if (sessionId && supabase) {
+  if (sessionId) {
     const { data } = await supabase
       .from('favorites')
       .select('id')
@@ -38,12 +40,12 @@ export async function GET(request: NextRequest, { params }: Props) {
     isFavorited = !!data
   }
 
-  if (shouldCountView && supabase) {
+  if (shouldCountView) {
     await supabase.rpc('increment_view_count', { thread_id: threadId })
   }
 
   return NextResponse.json(
-    { sessionId, isAdmin, isFavorited },
+    { sessionId, currentUserId, isAdmin, isFavorited },
     { headers: { 'Cache-Control': 'private, no-store' } },
   )
 }

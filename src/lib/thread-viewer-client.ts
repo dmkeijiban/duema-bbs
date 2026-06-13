@@ -4,6 +4,7 @@ import { capturePostHogEvent } from '@/lib/posthog-events'
 
 export interface ThreadViewerState {
   sessionId: string
+  currentUserId: string
   isAdmin: boolean
   isFavorited: boolean
 }
@@ -38,10 +39,11 @@ export function getThreadViewerState(threadId: number) {
     })
     .then(data => ({
       sessionId: typeof data?.sessionId === 'string' ? data.sessionId : '',
+      currentUserId: typeof data?.currentUserId === 'string' ? data.currentUserId : '',
       isAdmin: typeof data?.isAdmin === 'boolean' ? data.isAdmin : false,
       isFavorited: typeof data?.isFavorited === 'boolean' ? data.isFavorited : false,
     }))
-    .catch(() => ({ sessionId: '', isAdmin: false, isFavorited: false }))
+    .catch(() => ({ sessionId: '', currentUserId: '', isAdmin: false, isFavorited: false }))
 
   viewerStateCache.set(threadId, request)
   return request
