@@ -35,6 +35,11 @@ export async function GET(request: Request) {
     return redirectTo(request, '/login?error=session_failed')
   }
 
+  // Password reset flow: skip profile check, session is already established
+  if (next === '/auth/reset-password') {
+    return redirectTo(request, next)
+  }
+
   const admin = createAdminClient()
   const { data: profile, error: profileError } = await admin
     .from('profiles')

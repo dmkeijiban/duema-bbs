@@ -4,6 +4,16 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 
+const X_HOSTS = ['x.com', 'twitter.com']
+const YOUTUBE_HOSTS = ['youtube.com', 'www.youtube.com', 'youtu.be']
+const AVATAR_BUCKET = 'profile-avatars'
+const MAX_AVATAR_SIZE = 500 * 1024
+const AVATAR_TYPES = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+} as const
+
 const RESERVED_SLUGS = new Set([
   'admin',
   'administrator',
@@ -60,6 +70,7 @@ const RESERVED_SLUGS = new Set([
 
 type CreateProfileResult = {
   error?: string
+  redirectTo?: string
 }
 
 function validateSlug(value: string) {
@@ -72,10 +83,30 @@ function validateSlug(value: string) {
   return null
 }
 
+function normalizeUrl(
+  value: string,
+  allowedHosts: string[]
+): { ok: true; value: string | null } | { ok: false } {
+  const trimmed = value.trim()
+  if (!trimmed) return { ok: true, value: null }
+
+  try {
+    const url = new URL(trimmed)
+    if (url.protocol !== 'https:') return { ok: false }
+    if (!allowedHosts.includes(url.hostname)) return { ok: false }
+    return { ok: true, value: url.toString() }
+  } catch {
+    return { ok: false }
+  }
+}
+
 export async function createProfile(formData: FormData): Promise<CreateProfileResult> {
   const displayName = String(formData.get('display_name') ?? '').trim()
   const profileSlug = String(formData.get('profile_slug') ?? '').trim().toLowerCase()
   const bio = String(formData.get('bio') ?? '').trim()
+  const xUrlRaw = String(formData.get('x_url') ?? '')
+  const youtubeUrlRaw = String(formData.get('youtube_url') ?? '')
+  const avatarFile = formData.get('avatar_file')
 
   if (displayName.length < 1 || displayName.length > 20) {
     return { error: '表示名は1〜20文字で入力してください。' }
@@ -86,6 +117,16 @@ export async function createProfile(formData: FormData): Promise<CreateProfileRe
 
   if (bio.length > 300) {
     return { error: '自己紹介は300文字以内で入力してください。' }
+  }
+
+  const xUrl = normalizeUrl(xUrlRaw, X_HOSTS)
+  if (!xUrl.ok) {
+    return { error: 'X（旧Twitter）のURLは https://x.com/... または https://twitter.com/... の形式で入力してください。' }
+  }
+
+  const youtubeUrl = normalizeUrl(youtubeUrlRaw, YOUTUBE_HOSTS)
+  if (!youtubeUrl.ok) {
+    return { error: 'YouTubeのURLは https://youtube.com/... / https://youtu.be/... の形式で入力してください。' }
   }
 
   const supabase = await createClient()
@@ -99,12 +140,12 @@ export async function createProfile(formData: FormData): Promise<CreateProfileRe
   const admin = createAdminClient()
   const { data: existingByUser } = await admin
     .from('profiles')
-    .select('id')
+    .select('profile_slug')
     .eq('id', user.id)
     .maybeSingle()
 
   if (existingByUser) {
-    redirect('/')
+    redirect(existingByUser.profile_slug ? `/u/${existingByUser.profile_slug}` : '/')
   }
 
   const { data: existingSlug } = await admin
@@ -117,17 +158,54 @@ export async function createProfile(formData: FormData): Promise<CreateProfileRe
     return { error: 'このURL IDはすでに使われています。' }
   }
 
+  let avatarUrl: string | null = null
+  let avatarPath: string | null = null
+  const hasAvatarFile = avatarFile instanceof File && avatarFile.size > 0
+
+  if (hasAvatarFile) {
+    const ext = AVATAR_TYPES[avatarFile.type as keyof typeof AVATAR_TYPES]
+    if (!ext) {
+      return { error: 'アイコンは jpg / png / webp の画像を選択してください。' }
+    }
+    if (avatarFile.size > MAX_AVATAR_SIZE) {
+      return { error: 'アイコン画像は500KB以内にしてください。' }
+    }
+
+    const path = `${user.id}/avatar${ext}`
+    avatarPath = path
+    const { error: uploadError } = await admin.storage
+      .from(AVATAR_BUCKET)
+      .upload(path, avatarFile, {
+        contentType: avatarFile.type,
+        upsert: true,
+      })
+
+    if (uploadError) {
+      console.error('Failed to upload avatar on profile create:', uploadError.message)
+      return { error: 'アイコンのアップロードに失敗しました。画像形式と容量を確認してください。' }
+    }
+
+    const { data: publicUrl } = admin.storage.from(AVATAR_BUCKET).getPublicUrl(path)
+    avatarUrl = publicUrl.publicUrl
+  }
+
   const { error } = await admin.from('profiles').insert({
     id: user.id,
     display_name: displayName,
     profile_slug: profileSlug,
     bio: bio || null,
+    x_url: xUrl.value,
+    youtube_url: youtubeUrl.value,
+    avatar_url: avatarUrl,
     ranking_enabled: true,
   })
 
   if (error) {
+    if (avatarPath) {
+      await admin.storage.from(AVATAR_BUCKET).remove([avatarPath])
+    }
     return { error: '投稿者ページの作成に失敗しました。入力内容を確認してください。' }
   }
 
-  redirect('/')
+  return { redirectTo: `/u/${profileSlug}` }
 }

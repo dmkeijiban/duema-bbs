@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 
 type UpdateProfileResult = {
   error?: string
-  success?: boolean
+  redirectTo?: string
 }
 
 const X_HOSTS = ['x.com', 'twitter.com']
@@ -172,5 +172,5 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
     revalidatePath('/zukan/dm-01')
   }
 
-  return { success: true }
+  return { redirectTo: guardProfile?.profile_slug ? `/u/${guardProfile.profile_slug}` : '/mypage' }
 }

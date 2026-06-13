@@ -90,12 +90,12 @@ export default function ProfileEditForm({
 }: ProfileEditFormProps) {
   const router = useRouter()
   const [error, setError] = useState('')
-  const [saved, setSaved] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(initialAvatarUrl)
   const [cropImage, setCropImage] = useState<CropImageState | null>(null)
   const [deleteAvatar, setDeleteAvatar] = useState(false)
   const [isProcessingAvatar, setIsProcessingAvatar] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const dragRef = useRef<{
     pointerId: number
     startX: number
@@ -104,42 +104,69 @@ export default function ProfileEditForm({
     centerY: number
   } | null>(null)
 
+  const cropImageUrl = cropImage?.url
+
   useEffect(() => {
     return () => {
-      if (cropImage?.url.startsWith('blob:')) {
-        URL.revokeObjectURL(cropImage.url)
+      if (cropImageUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(cropImageUrl)
       }
     }
-  }, [cropImage])
+  }, [cropImageUrl])
 
   const createCroppedAvatarFile = async () => {
     if (!cropImage) return null
 
-    const image = await loadImage(cropImage.url)
+    let image: HTMLImageElement
+    try {
+      image = await loadImage(cropImage.url)
+    } catch {
+      throw new Error('image_load_failed')
+    }
+
     const canvas = document.createElement('canvas')
     canvas.width = OUTPUT_SIZE
     canvas.height = OUTPUT_SIZE
     const context = canvas.getContext('2d')
-    if (!context) throw new Error('canvas unavailable')
+    if (!context) throw new Error('canvas_unavailable')
+
+    // White fill prevents black background on PNG with transparency
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE)
 
     const sourceSize = Math.min(image.naturalWidth, image.naturalHeight) / cropImage.zoom
     const sx = clamp(cropImage.centerX * image.naturalWidth - sourceSize / 2, 0, image.naturalWidth - sourceSize)
     const sy = clamp(cropImage.centerY * image.naturalHeight - sourceSize / 2, 0, image.naturalHeight - sourceSize)
     context.drawImage(image, sx, sy, sourceSize, sourceSize, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE)
 
-    for (const quality of [0.9, 0.82, 0.74, 0.66, 0.58, 0.5, 0.42]) {
+    // Try WebP first; if canvas.toBlob returns null the browser doesn't support WebP output
+    const QUALITIES = [0.9, 0.82, 0.74, 0.66, 0.58, 0.5, 0.42]
+    let webpSupported = false
+    for (const quality of QUALITIES) {
       const blob = await canvasToBlob(canvas, 'image/webp', quality)
-      if (blob && blob.size <= MAX_AVATAR_SIZE) {
+      if (blob === null) break  // browser returned null — WebP output unsupported
+      webpSupported = true
+      if (blob.size <= MAX_AVATAR_SIZE) {
         return new File([blob], 'avatar.webp', { type: 'image/webp' })
       }
     }
 
-    throw new Error('avatar too large')
+    // Fallback to JPEG when WebP is unsupported or all WebP qualities exceed size limit
+    if (!webpSupported) {
+      for (const quality of QUALITIES) {
+        const blob = await canvasToBlob(canvas, 'image/jpeg', quality)
+        if (blob === null) throw new Error('format_unsupported')
+        if (blob.size <= MAX_AVATAR_SIZE) {
+          return new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
+        }
+      }
+    }
+
+    throw new Error('size_exceeded')
   }
 
   const handleSubmit = async (formData: FormData) => {
     setError('')
-    setSaved(false)
     let submitData = formData
 
     if (cropImage && !deleteAvatar) {
@@ -153,8 +180,17 @@ export default function ProfileEditForm({
           })
           submitData.set('avatar_file', croppedFile)
         }
-      } catch {
-        setError('アイコン画像の切り抜きに失敗しました。別の画像で試してください。')
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : ''
+        if (msg === 'image_load_failed') {
+          setError('画像の読み込みに失敗しました。別の画像で試してください。')
+        } else if (msg === 'canvas_unavailable' || msg === 'format_unsupported') {
+          setError('対応していない画像形式です。jpg / png / webp をお試しください。')
+        } else if (msg === 'size_exceeded') {
+          setError('画像の容量を500KB以下にしてください。')
+        } else {
+          setError('画像の切り抜きに失敗しました。別の画像で試してください。')
+        }
         setIsProcessingAvatar(false)
         return
       }
@@ -167,8 +203,11 @@ export default function ProfileEditForm({
         setError(result.error)
         return
       }
-      setSaved(true)
-      router.refresh()
+      if (result?.redirectTo) {
+        router.push(result.redirectTo)
+      } else {
+        router.refresh()
+      }
     })
   }
 
@@ -220,6 +259,8 @@ export default function ProfileEditForm({
       }
       setCropImage({ ...crop, ...clampCropCenter(crop, 0.5, 0.5, 1) })
       setAvatarPreview(nextUrl)
+      // Reset so the same file can be re-selected after cancellation
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
     image.onerror = () => {
       URL.revokeObjectURL(nextUrl)
@@ -233,12 +274,6 @@ export default function ProfileEditForm({
       {error && (
         <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
-        </p>
-      )}
-
-      {saved && (
-        <p className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-          プロフィールを更新しました。投稿者ページへの反映はキャッシュの都合で少し時間がかかる場合があります。
         </p>
       )}
 
@@ -256,6 +291,7 @@ export default function ProfileEditForm({
             )}
           </div>
           <input
+            ref={fileInputRef}
             id="avatar_file"
             name="avatar_file"
             type="file"
@@ -381,6 +417,7 @@ export default function ProfileEditForm({
           rows={5}
           maxLength={300}
           defaultValue={initialBio}
+          placeholder="デュエマ歴や好きなカードなど（任意）"
           className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
         />
         <p className="mt-1 text-xs text-gray-500">300文字以内で入力してください。</p>

@@ -9,6 +9,7 @@ type LoginPageProps = {
     error?: string
     logged_out?: string
     next?: string
+    message?: string
   }>
 }
 
@@ -41,6 +42,15 @@ async function getLoginState() {
   return { user, hasProfile: Boolean(profile) }
 }
 
+function successMessage(code?: string) {
+  switch (code) {
+    case 'password_reset_done':
+      return '新しいパスワードでログインしてください。'
+    default:
+      return null
+  }
+}
+
 function errorMessage(code?: string) {
   switch (code) {
     case 'missing_code':
@@ -60,6 +70,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams
   const { user, hasProfile } = await getLoginState()
   const message = errorMessage(params?.error)
+  const successMsg = successMessage(params?.message)
   const nextPath = safeNextPath(params?.next)
 
   return (
@@ -80,6 +91,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             {message && (
               <p className="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                 {message}
+              </p>
+            )}
+
+            {successMsg && (
+              <p className="mb-4 rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                {successMsg}
               </p>
             )}
 
