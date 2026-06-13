@@ -6,9 +6,14 @@ interface Props {
   threadId: number
 }
 
+type GtagWindow = Window & {
+  gtag?: (event: 'event', name: string, params: Record<string, string | number>) => void
+}
+
 function trackClick(target: string, threadId: number) {
-  if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
-    ;(window as any).gtag('event', 'next_read_click', {
+  const gtag = typeof window !== 'undefined' ? (window as GtagWindow).gtag : undefined
+  if (typeof gtag === 'function') {
+    gtag('event', 'next_read_click', {
       link_target: target,
       thread_id: threadId,
     })
@@ -17,9 +22,8 @@ function trackClick(target: string, threadId: number) {
 
 export function NextReadNav({ threadId }: Props) {
   return (
-    <nav className="mt-3 mb-4" aria-label="次に読む">
-      <p className="text-[11px] text-gray-400 mb-1.5 px-0.5">次に読む</p>
-      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+    <nav className="mt-3 mb-4" aria-label="スレッド下部ナビゲーション">
+      <div className="grid grid-cols-1 gap-1.5 min-[420px]:grid-cols-3">
         <Link
           href="/"
           prefetch={false}
@@ -43,14 +47,6 @@ export function NextReadNav({ threadId }: Props) {
           className="flex items-center justify-center gap-1.5 min-h-[44px] px-2 border border-gray-300 bg-white rounded text-xs text-gray-700 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors"
         >
           <span>📊</span><span>人気スレ一覧</span>
-        </Link>
-        <Link
-          href="/random"
-          prefetch={false}
-          onClick={() => trackClick('/random', threadId)}
-          className="flex items-center justify-center gap-1.5 min-h-[44px] px-2 border border-gray-300 bg-white rounded text-xs text-gray-700 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors"
-        >
-          <span>🎲</span><span>ランダムで読む</span>
         </Link>
       </div>
     </nav>

@@ -2,7 +2,8 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { logout } from '@/app/auth/actions'
-import { ProfileAvatar } from '@/components/ProfileAvatar'
+import { ProfileHeaderActionLink, ProfileHeaderCard } from '@/components/ProfileHeaderCard'
+import { getCachedUserRankings } from '@/lib/cached-queries'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 
@@ -51,6 +52,10 @@ function formatDateTime(value: string | null) {
     minute: '2-digit',
     timeZone: 'Asia/Tokyo',
   }).format(new Date(value))
+}
+
+function formatCount(value: number) {
+  return `${new Intl.NumberFormat('ja-JP').format(value)}件`
 }
 
 function excerpt(value: string | null, max = 80) {
@@ -136,6 +141,35 @@ async function getMyProfile(userId: string): Promise<Profile | null> {
   return data
 }
 
+async function getMyActivityCounts(userId: string) {
+  const admin = createAdminClient()
+  const [threadsResult, postsResult] = await Promise.all([
+    admin
+      .from('threads')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_archived', false),
+    admin
+      .from('posts')
+      .select('id, threads!inner(is_archived)', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_deleted', false)
+      .eq('threads.is_archived', false),
+  ])
+
+  if (threadsResult.error) {
+    console.error('Failed to count my threads:', threadsResult.error.message)
+  }
+  if (postsResult.error) {
+    console.error('Failed to count my posts:', postsResult.error.message)
+  }
+
+  return {
+    threadCount: threadsResult.count ?? 0,
+    postCount: postsResult.count ?? 0,
+  }
+}
+
 export default async function MyPage() {
   let user: User | null = null
 
@@ -157,9 +191,11 @@ export default async function MyPage() {
     redirect('/profile/new')
   }
 
-  const [myThreads, myPosts] = await Promise.all([
+  const [myThreads, myPosts, rankings, activityCounts] = await Promise.all([
     getMyThreads(user.id),
     getMyPosts(user.id),
+    getCachedUserRankings(),
+    getMyActivityCounts(user.id),
   ])
 
   const profilePath = `/u/${profile.profile_slug}`
@@ -169,9 +205,17 @@ export default async function MyPage() {
     'www.youtube.com',
     'youtu.be',
   ])
+  const monthlyRankIndex = rankings.monthly.findIndex(
+    (r) => r.profile_slug === profile.profile_slug
+  )
+  const totalRankIndex = rankings.total.findIndex(
+    (r) => r.profile_slug === profile.profile_slug
+  )
+  const monthlyRank = monthlyRankIndex >= 0 ? monthlyRankIndex + 1 : null
+  const totalRank = totalRankIndex >= 0 ? totalRankIndex + 1 : null
 
   return (
-    <main className="mx-auto w-full max-w-[1100px] px-4 py-8">
+    <main className="mx-auto w-full max-w-[1100px] px-3 py-4">
       <div className="w-full border border-gray-300 bg-white">
         <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
           <h1 className="text-lg font-bold text-gray-900">マイページ</h1>
@@ -185,91 +229,32 @@ export default async function MyPage() {
             ログイン中です。
           </div>
 
-          <section className="rounded border border-gray-200">
-            <div className="border-b border-gray-200 px-4 py-3">
-              <p className="text-xs text-gray-500">投稿者プロフィール</p>
-              <div className="mt-2 flex items-center gap-3">
-                <ProfileAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} size="lg" />
-                <div className="min-w-0">
-                  <h2 className="text-xl font-bold text-gray-900 break-words">
-                    {profile.display_name}
-                  </h2>
-                  <p className="mt-1 text-sm text-gray-600">
-                    URL ID: <span className="font-mono">{profile.profile_slug}</span>
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4 px-4 py-4">
-              <div>
-                <h3 className="mb-2 text-sm font-bold text-gray-800">自己紹介</h3>
-                {profile.bio ? (
-                  <p className="text-sm leading-6 text-gray-800 whitespace-pre-wrap">
-                    {profile.bio}
-                  </p>
-                ) : (
-                  <p className="text-sm text-gray-500">自己紹介はまだありません。</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-                <div className="border border-gray-200 bg-gray-50 px-3 py-2">
-                  <p className="text-xs text-gray-500">作成日</p>
-                  <p className="font-medium">{formatDate(profile.created_at)}</p>
-                </div>
-                <div className="border border-gray-200 bg-gray-50 px-3 py-2">
-                  <p className="text-xs text-gray-500">SNS</p>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    {xUrl && (
-                      <a
-                        href={xUrl}
-                        target="_blank"
-                        rel="nofollow noopener noreferrer"
-                        className="text-blue-600 hover:underline"
-                      >
-                        X
-                      </a>
-                    )}
-                    {youtubeUrl && (
-                      <a
-                        href={youtubeUrl}
-                        target="_blank"
-                        rel="nofollow noopener noreferrer"
-                        className="text-blue-600 hover:underline"
-                      >
-                        YouTube
-                      </a>
-                    )}
-                    {!xUrl && !youtubeUrl && (
-                      <span className="text-gray-500">登録されていません</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
+          <ProfileHeaderCard
+            displayName={profile.display_name}
+            slug={profile.profile_slug}
+            bio={profile.bio}
+            avatarUrl={profile.avatar_url}
+            xUrl={xUrl}
+            youtubeUrl={youtubeUrl}
+            createdAtLabel={formatDate(profile.created_at)}
+            threadCountLabel={formatCount(activityCounts.threadCount)}
+            postCountLabel={formatCount(activityCounts.postCount)}
+            monthlyRank={monthlyRank}
+            totalRank={totalRank}
+            actions={
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Link
-                  href={profilePath}
-                  className="rounded bg-blue-600 px-4 py-2.5 text-center text-sm font-bold text-white hover:bg-blue-700"
-                >
+                <ProfileHeaderActionLink href={profilePath} variant="primary">
                   投稿者ページを見る
-                </Link>
-                <Link
-                  href="/mypage/edit"
-                  className="rounded border border-blue-300 px-4 py-2.5 text-center text-sm font-bold text-blue-700 hover:bg-blue-50"
-                >
+                </ProfileHeaderActionLink>
+                <ProfileHeaderActionLink href="/mypage/edit">
                   プロフィールを編集
-                </Link>
-                <Link
-                  href="/"
-                  className="rounded border border-gray-300 px-4 py-2.5 text-center text-sm text-gray-700 hover:bg-gray-50"
-                >
+                </ProfileHeaderActionLink>
+                <ProfileHeaderActionLink href="/" variant="neutral">
                   掲示板へ戻る
-                </Link>
+                </ProfileHeaderActionLink>
               </div>
-            </div>
-          </section>
+            }
+          />
 
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="rounded border border-gray-200">
