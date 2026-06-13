@@ -31,6 +31,8 @@ async function restorePost(formData: FormData) {
   await supabase.rpc('recalculate_post_count', { p_thread_id: threadId })
 
   revalidateTag(`thread-${threadId}`, { expire: 0 })
+  revalidateTag('threads', { expire: 0 })
+  revalidateTag('posts', { expire: 0 })
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/admin/deleted-posts')
   redirect('/admin/deleted-posts')
