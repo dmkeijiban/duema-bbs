@@ -21,7 +21,7 @@ export async function sendContact(formData: FormData) {
 
   if (apiKey && toEmail) {
     const resend = new Resend(apiKey)
-    const { data, error } = await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: 'onboarding@resend.dev',
       to: toEmail,
       subject: `【デュエマ掲示板お問い合わせ】${subject}`,
@@ -31,7 +31,6 @@ export async function sendContact(formData: FormData) {
       console.error('Resend error:', error)
       return { error: `メール送信エラー: ${error.message}` }
     }
-    console.log('Resend OK:', data?.id)
   }
 
   return { success: true }

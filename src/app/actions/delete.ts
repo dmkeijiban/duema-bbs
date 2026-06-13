@@ -91,6 +91,8 @@ export async function deleteOwnPost(postId: number, threadId: number) {
   await supabase.rpc('recalculate_post_count', { p_thread_id: threadId })
 
   revalidateTag(`thread-${threadId}`, { expire: 0 })
+  revalidateTag('threads', { expire: 0 })
+  revalidateTag('posts', { expire: 0 })
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/')
   revalidatePath('/settings')

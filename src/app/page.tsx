@@ -28,7 +28,7 @@ import { SITE_URL } from '@/lib/site-config'
 import type { Metadata } from 'next'
 import { AdBanner } from '@/components/AdBanner'
 
-export const revalidate = 300
+export const revalidate = 3600
 
 // ── Step 5: カテゴリフィルター時のメタデータ動的生成
 // ?category=slug でアクセスされたとき、タイトル・descriptionを
