@@ -70,7 +70,7 @@ export function ProfileCreateForm() {
           maxLength={300}
           rows={4}
           className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
-          placeholder="好きなデッキや普段遊んでいるフォーマットなど"
+          placeholder="デュエマ歴や好きなカードなど（任意）"
         />
         <p className="mt-1 text-xs text-gray-500">300文字まで。あとから編集できる想定です。</p>
       </div>

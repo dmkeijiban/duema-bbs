@@ -381,6 +381,7 @@ export default function ProfileEditForm({
           rows={5}
           maxLength={300}
           defaultValue={initialBio}
+          placeholder="デュエマ歴や好きなカードなど（任意）"
           className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
         />
         <p className="mt-1 text-xs text-gray-500">300文字以内で入力してください。</p>
