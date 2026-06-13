@@ -220,7 +220,7 @@ export default async function ZukanTopPage() {
       <header className="mb-4 border border-gray-300 bg-white px-4 py-4">
         <h1 className="text-lg font-bold text-gray-800">デュエマ思い出図鑑</h1>
         <p className="mt-2 text-sm leading-relaxed text-gray-600">
-          パックを開けた記憶、憧れたカード、友達に出されて泣いたカード。みんなの思い出で作る図鑑です。
+          パックを開けた記憶、憧れたカード、対戦で忘れられない一枚。みんなの思い出で作る図鑑です。
         </p>
       </header>
 

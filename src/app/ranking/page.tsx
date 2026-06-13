@@ -5,6 +5,7 @@ import { SortTabs } from '@/components/SortTabs'
 import { SITE_URL } from '@/lib/site-config'
 import { getCachedCategories, getCachedUserRankings, UserRankingRow } from '@/lib/cached-queries'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
+import { BottomNav } from '@/components/ThreadSortPage'
 
 export const revalidate = 3600
 
@@ -348,6 +349,7 @@ export default async function RankingPage({ searchParams }: Props) {
           <UserRankingSection />
         </Suspense>
 
+        <BottomNav current="/ranking" />
         <div className="mb-6" />
       </div>
     </div>
