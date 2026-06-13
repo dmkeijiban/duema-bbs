@@ -2,9 +2,11 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createProfile } from './actions'
 
 export function ProfileCreateForm() {
+  const router = useRouter()
   const [error, setError] = useState('')
   const [slug, setSlug] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -14,6 +16,7 @@ export function ProfileCreateForm() {
     startTransition(async () => {
       const result = await createProfile(formData)
       if (result?.error) setError(result.error)
+      if (result?.redirectTo) router.push(result.redirectTo)
     })
   }
 
@@ -87,7 +90,7 @@ export function ProfileCreateForm() {
           disabled={isPending}
           className="rounded bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isPending ? '作成中...' : '投稿者ページを作る'}
+          {isPending ? '保存中…' : '投稿者ページを作る'}
         </button>
         <Link
           href="/"

@@ -60,6 +60,7 @@ const RESERVED_SLUGS = new Set([
 
 type CreateProfileResult = {
   error?: string
+  redirectTo?: string
 }
 
 function validateSlug(value: string) {
@@ -99,12 +100,12 @@ export async function createProfile(formData: FormData): Promise<CreateProfileRe
   const admin = createAdminClient()
   const { data: existingByUser } = await admin
     .from('profiles')
-    .select('id')
+    .select('profile_slug')
     .eq('id', user.id)
     .maybeSingle()
 
   if (existingByUser) {
-    redirect('/')
+    redirect(existingByUser.profile_slug ? `/u/${existingByUser.profile_slug}` : '/')
   }
 
   const { data: existingSlug } = await admin
@@ -129,5 +130,5 @@ export async function createProfile(formData: FormData): Promise<CreateProfileRe
     return { error: '投稿者ページの作成に失敗しました。入力内容を確認してください。' }
   }
 
-  redirect('/')
+  return { redirectTo: `/u/${profileSlug}` }
 }

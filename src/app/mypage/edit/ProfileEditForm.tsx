@@ -90,7 +90,6 @@ export default function ProfileEditForm({
 }: ProfileEditFormProps) {
   const router = useRouter()
   const [error, setError] = useState('')
-  const [saved, setSaved] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(initialAvatarUrl)
   const [cropImage, setCropImage] = useState<CropImageState | null>(null)
   const [deleteAvatar, setDeleteAvatar] = useState(false)
@@ -139,7 +138,6 @@ export default function ProfileEditForm({
 
   const handleSubmit = async (formData: FormData) => {
     setError('')
-    setSaved(false)
     let submitData = formData
 
     if (cropImage && !deleteAvatar) {
@@ -167,8 +165,9 @@ export default function ProfileEditForm({
         setError(result.error)
         return
       }
-      setSaved(true)
-      router.refresh()
+      if (result?.redirectTo) {
+        router.push(result.redirectTo)
+      }
     })
   }
 
@@ -233,12 +232,6 @@ export default function ProfileEditForm({
       {error && (
         <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
-        </p>
-      )}
-
-      {saved && (
-        <p className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-          プロフィールを更新しました。投稿者ページへの反映はキャッシュの都合で少し時間がかかる場合があります。
         </p>
       )}
 
