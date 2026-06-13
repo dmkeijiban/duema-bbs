@@ -336,7 +336,7 @@ export async function renderThreadPage(threadId: number, page: number) {
         </Suspense>
       )}
 
-      {/* ── 1C: 次に読む ナビゲーション ──────────────────────────────
+      {/* ── 1C: スレッド下部ナビゲーション ──────────────────────────────
           スレ読了後に「次の行動」を迷わせないための底面固定ナビ。
           モバイルタップ最適化（min-h-[44px]）。全ページに表示。
           GA4 next_read_click イベント計測 + prefetch={true} 付き。 */}
