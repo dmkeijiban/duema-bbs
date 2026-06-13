@@ -137,6 +137,7 @@ export type PackReview = {
   user_id: string | null
   display_name: string
   avatar_url: string | null
+  profile_slug: string | null
   body: string
   created_at: string
 }
@@ -147,6 +148,7 @@ export type CardReview = {
   user_id: string | null
   display_name: string
   avatar_url: string | null
+  profile_slug: string | null
   body: string
   created_at: string
 }
@@ -202,30 +204,50 @@ export type CardRatingSummary = {
 
 async function attachReviewAvatars<T extends { user_id: string | null }>(
   rows: T[]
-): Promise<(T & { avatar_url: string | null })[]> {
+): Promise<(T & { avatar_url: string | null; profile_slug: string | null })[]> {
   const userIds = Array.from(new Set(rows.map(row => row.user_id).filter((id): id is string => !!id)))
   if (userIds.length === 0) {
-    return rows.map(row => ({ ...row, avatar_url: null }))
+    return rows.map(row => ({ ...row, avatar_url: null, profile_slug: null }))
   }
 
   try {
     const supabase = createPublicClient()
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, avatar_url')
+      .select('id, avatar_url, profile_slug, profile_hidden, account_suspended, withdrawn_at')
       .in('id', userIds)
 
     if (error) {
-      return rows.map(row => ({ ...row, avatar_url: null }))
+      return rows.map(row => ({ ...row, avatar_url: null, profile_slug: null }))
     }
 
-    const avatarMap = new Map((data ?? []).map(profile => [
-      String(profile.id),
-      typeof profile.avatar_url === 'string' ? profile.avatar_url : null,
-    ]))
-    return rows.map(row => ({ ...row, avatar_url: row.user_id ? avatarMap.get(row.user_id) ?? null : null }))
+    const profileMap = new Map((data ?? []).map(profile => {
+      const isPublic =
+        profile.profile_hidden !== true &&
+        profile.account_suspended !== true &&
+        profile.withdrawn_at === null &&
+        typeof profile.profile_slug === 'string' &&
+        profile.profile_slug.length > 0
+
+      return [
+        String(profile.id),
+        {
+          avatarUrl: isPublic && typeof profile.avatar_url === 'string' ? profile.avatar_url : null,
+          profileSlug: isPublic ? profile.profile_slug as string : null,
+        },
+      ]
+    }))
+
+    return rows.map(row => {
+      const profile = row.user_id ? profileMap.get(row.user_id) : null
+      return {
+        ...row,
+        avatar_url: profile?.avatarUrl ?? null,
+        profile_slug: profile?.profileSlug ?? null,
+      }
+    })
   } catch {
-    return rows.map(row => ({ ...row, avatar_url: null }))
+    return rows.map(row => ({ ...row, avatar_url: null, profile_slug: null }))
   }
 }
 
@@ -244,7 +266,7 @@ export async function fetchPackReviews(packId: string): Promise<PackReview[] | n
       if (isTableMissing(error)) return []
       return null
     }
-    return attachReviewAvatars(data as Omit<PackReview, 'avatar_url'>[])
+    return attachReviewAvatars(data as Omit<PackReview, 'avatar_url' | 'profile_slug'>[])
   } catch {
     return null
   }
@@ -265,7 +287,7 @@ export async function fetchCardReviews(cardId: string): Promise<CardReview[] | n
       if (isTableMissing(error)) return []
       return null
     }
-    return attachReviewAvatars(data as Omit<CardReview, 'avatar_url'>[])
+    return attachReviewAvatars(data as Omit<CardReview, 'avatar_url' | 'profile_slug'>[])
   } catch {
     return null
   }
