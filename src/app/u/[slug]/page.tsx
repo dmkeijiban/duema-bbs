@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ProfileAvatar } from '@/components/ProfileAvatar'
+import { ProfileHeaderCard } from '@/components/ProfileHeaderCard'
 import { createPublicClient } from '@/lib/supabase-public'
 import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings } from '@/lib/cached-queries'
 
@@ -119,32 +119,6 @@ async function getUserActivityCounts(userId: string) {
   }
 }
 
-function XIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-    </svg>
-  )
-}
-
-function YouTubeIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-    </svg>
-  )
-}
-
-function DefaultAvatarIcon({ size }: { size: string }) {
-  return (
-    <div className={`${size} rounded-full bg-gray-200 border border-gray-300 flex items-center justify-center shrink-0`}>
-      <svg className="text-gray-400" style={{ width: '45%', height: '45%' }} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-      </svg>
-    </div>
-  )
-}
-
 export default async function UserProfilePage({
   params,
 }: {
@@ -199,104 +173,19 @@ export default async function UserProfilePage({
         <span>投稿者ページ</span>
       </div>
 
-      {/* Profile card */}
-      <section className="bg-white border border-gray-300 rounded-sm overflow-hidden">
-        {/* Header area */}
-        <div className="px-4 pt-5 pb-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Avatar */}
-            {profile.avatar_url ? (
-              <ProfileAvatar
-                src={profile.avatar_url}
-                alt={`${profile.display_name}のアイコン`}
-                size="xl"
-              />
-            ) : (
-              <DefaultAvatarIcon size="h-20 w-20" />
-            )}
-
-            {/* Name / slug / bio / SNS */}
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-baseline gap-2">
-                <h1 className="text-2xl font-bold text-gray-900 break-words leading-tight">
-                  {profile.display_name}
-                </h1>
-                {(monthlyRank === 1 || totalRank === 1) && (
-                  <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 border border-yellow-300">
-                    🏆 1位
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-gray-500 mt-0.5">@{profile.profile_slug}</p>
-
-              {profile.bio ? (
-                <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6">
-                  {profile.bio}
-                </p>
-              ) : (
-                <p className="text-sm text-gray-400 mt-2 italic">自己紹介はまだありません。</p>
-              )}
-
-              {/* SNS buttons */}
-              {(xUrl || youtubeUrl) && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {xUrl && (
-                    <a
-                      href={xUrl}
-                      target="_blank"
-                      rel="nofollow noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black text-white text-xs font-medium hover:bg-gray-800 transition-colors"
-                    >
-                      <XIcon />
-                      Xを見る
-                    </a>
-                  )}
-                  {youtubeUrl && (
-                    <a
-                      href={youtubeUrl}
-                      target="_blank"
-                      rel="nofollow noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors"
-                    >
-                      <YouTubeIcon />
-                      YouTubeを見る
-                    </a>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Stats row */}
-        <div className="border-t border-gray-200 flex divide-x divide-gray-200 text-center bg-gray-50">
-          <div className="flex-1 px-3 py-3">
-            <p className="text-lg font-bold text-gray-900 leading-none">{threadDisplayCount}</p>
-            <p className="text-xs text-gray-500 mt-1">スレッド</p>
-          </div>
-          <div className="flex-1 px-3 py-3">
-            <p className="text-lg font-bold text-gray-900 leading-none">{postDisplayCount}</p>
-            <p className="text-xs text-gray-500 mt-1">コメント</p>
-          </div>
-          {monthlyRank && (
-            <div className="flex-1 px-3 py-3">
-              <p className="text-lg font-bold text-blue-600 leading-none">{monthlyRank}位</p>
-              <p className="text-xs text-gray-500 mt-1">今月</p>
-            </div>
-          )}
-          {totalRank && (
-            <div className="flex-1 px-3 py-3">
-              <p className="text-lg font-bold text-indigo-600 leading-none">{totalRank}位</p>
-              <p className="text-xs text-gray-500 mt-1">総合</p>
-            </div>
-          )}
-        </div>
-
-        {/* Join date — bottom meta */}
-        <div className="border-t border-gray-100 px-4 py-2 text-xs text-gray-400">
-          {formatDate(profile.created_at)} 登録
-        </div>
-      </section>
+      <ProfileHeaderCard
+        displayName={profile.display_name}
+        slug={profile.profile_slug}
+        bio={profile.bio}
+        avatarUrl={profile.avatar_url}
+        xUrl={xUrl}
+        youtubeUrl={youtubeUrl}
+        createdAtLabel={formatDate(profile.created_at)}
+        threadCountLabel={threadDisplayCount}
+        postCountLabel={postDisplayCount}
+        monthlyRank={monthlyRank}
+        totalRank={totalRank}
+      />
 
       {/* Recent activity */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
