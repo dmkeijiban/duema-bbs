@@ -18,7 +18,7 @@ export const NAV_LINKS = [
   { label: '⏱ 新着一覧',   href: '/new' },
   { label: '📊 ランキング', href: '/ranking' },
   { label: '🎲 ランダム',   href: '/random' },
-  { label: '📁 カテゴリ', href: '/' },
+  { label: '📁 カテゴリ',   href: '/category' },
 ]
 
 interface Props {

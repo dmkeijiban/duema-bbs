@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ProfileHeaderCard } from '@/components/ProfileHeaderCard'
+import { ShareButtons } from '@/components/ShareButtons'
 import { createPublicClient } from '@/lib/supabase-public'
 import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings } from '@/lib/cached-queries'
 
@@ -186,6 +187,8 @@ export default async function UserProfilePage({
         monthlyRank={monthlyRank}
         totalRank={totalRank}
       />
+
+      <ShareButtons slug={profile.profile_slug} displayName={profile.display_name} />
 
       {/* Recent activity */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
