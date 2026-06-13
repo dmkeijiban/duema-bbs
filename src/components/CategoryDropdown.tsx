@@ -23,14 +23,17 @@ export function CategoryDropdown({ currentCategory, categories }: Props) {
   }, [open])
 
   return (
-    <li ref={ref} className="flex-1 min-w-0 relative">
+    <li ref={ref} className="relative shrink-0">
       <button
         onClick={() => setOpen(v => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="カテゴリを選択"
-        className="w-full text-center py-2 font-medium select-none overflow-hidden text-xs md:text-sm"
-        style={{ color: '#2563eb' }}
+        className={
+          currentCategory
+            ? 'flex min-h-9 items-center justify-center rounded border border-blue-600 bg-blue-600 px-2.5 text-xs font-bold text-white shadow-sm md:px-3 md:text-sm'
+            : 'flex min-h-9 items-center justify-center rounded border border-blue-100 bg-white px-2.5 text-xs font-medium text-blue-700 hover:bg-blue-50 md:px-3 md:text-sm'
+        }
       >
         <span className="opacity-80">📂</span>
         <span className="ml-0.5 hidden md:inline">カテゴリ {open ? '▴' : '▾'}</span>
@@ -40,7 +43,7 @@ export function CategoryDropdown({ currentCategory, categories }: Props) {
         <div
           role="listbox"
           aria-label="カテゴリ一覧"
-          className="absolute right-0 top-full bg-white border border-gray-300 shadow-lg z-50 min-w-max text-sm max-h-64 overflow-y-auto"
+          className="absolute right-0 top-full z-50 mt-1 max-h-64 min-w-44 overflow-y-auto rounded border border-gray-300 bg-white text-sm shadow-lg"
         >
           <Link
             href={currentCategory ? '/' : '/'}
