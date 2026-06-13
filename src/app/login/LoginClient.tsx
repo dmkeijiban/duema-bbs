@@ -10,6 +10,7 @@ type LoginClientProps = {
 }
 
 type Mode = 'login' | 'signup'
+type SubmittingMethod = 'email' | 'google' | null
 
 function safeNextPath(value?: string) {
   if (!value) return ''
@@ -44,13 +45,16 @@ export function LoginClient({ nextPath }: LoginClientProps) {
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [submittingMethod, setSubmittingMethod] = useState<SubmittingMethod>(null)
+
+  const emailSubmitting = submittingMethod === 'email'
+  const googleSubmitting = submittingMethod === 'google'
 
   const safeNext = safeNextPath(nextPath)
 
   const handleGoogleLogin = async () => {
     setError('')
-    setIsLoading(true)
+    setSubmittingMethod('google')
     const supabase = createClient()
     const callbackUrl = new URL('/auth/callback', window.location.origin)
     if (safeNext) callbackUrl.searchParams.set('next', safeNext)
@@ -60,14 +64,14 @@ export function LoginClient({ nextPath }: LoginClientProps) {
     })
     if (error) {
       setError('Googleログインを開始できませんでした。Supabase/Google設定を確認してください。')
-      setIsLoading(false)
+      setSubmittingMethod(null)
     }
   }
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    setIsLoading(true)
+    setSubmittingMethod('email')
     const supabase = createClient()
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
@@ -75,7 +79,7 @@ export function LoginClient({ nextPath }: LoginClientProps) {
     })
     if (error) {
       setError(mapAuthError(error.message))
-      setIsLoading(false)
+      setSubmittingMethod(null)
       return
     }
     const { data: profile } = await supabase
@@ -98,7 +102,7 @@ export function LoginClient({ nextPath }: LoginClientProps) {
       setError('パスワードと確認用パスワードが一致しません。')
       return
     }
-    setIsLoading(true)
+    setSubmittingMethod('email')
     const supabase = createClient()
     const callbackUrl = new URL('/auth/callback', window.location.origin)
     if (safeNext) callbackUrl.searchParams.set('next', safeNext)
@@ -109,7 +113,7 @@ export function LoginClient({ nextPath }: LoginClientProps) {
     })
     if (error) {
       setError(mapAuthError(error.message))
-      setIsLoading(false)
+      setSubmittingMethod(null)
       return
     }
     // email confirmation disabled — session returned immediately
@@ -124,7 +128,7 @@ export function LoginClient({ nextPath }: LoginClientProps) {
       return
     }
     setSuccess('確認メールを送信しました。メール内のリンクから登録を完了してください。')
-    setIsLoading(false)
+    setSubmittingMethod(null)
   }
 
   const switchMode = (next: Mode) => {
@@ -194,7 +198,7 @@ export function LoginClient({ nextPath }: LoginClientProps) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            disabled={isLoading}
+            disabled={emailSubmitting}
             placeholder="example@email.com"
             className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none disabled:opacity-60"
           />
@@ -208,7 +212,7 @@ export function LoginClient({ nextPath }: LoginClientProps) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            disabled={isLoading}
+            disabled={emailSubmitting}
             placeholder={mode === 'signup' ? '6文字以上' : ''}
             className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none disabled:opacity-60"
           />
@@ -223,7 +227,7 @@ export function LoginClient({ nextPath }: LoginClientProps) {
               value={passwordConfirm}
               onChange={(e) => setPasswordConfirm(e.target.value)}
               required
-              disabled={isLoading}
+              disabled={emailSubmitting}
               placeholder="もう一度入力"
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none disabled:opacity-60"
             />
@@ -238,10 +242,10 @@ export function LoginClient({ nextPath }: LoginClientProps) {
 
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={emailSubmitting}
           className="w-full rounded bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isLoading
+          {emailSubmitting
             ? mode === 'login'
               ? 'ログイン中...'
               : '登録中...'
@@ -273,13 +277,13 @@ export function LoginClient({ nextPath }: LoginClientProps) {
       <button
         type="button"
         onClick={handleGoogleLogin}
-        disabled={isLoading}
+        disabled={googleSubmitting}
         className="inline-flex w-full items-center justify-center gap-3 rounded border border-gray-300 bg-white px-4 py-3 text-sm font-bold text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white font-bold">
           <span className="text-blue-600">G</span>
         </span>
-        {isLoading
+        {googleSubmitting
           ? 'Googleログインへ移動中...'
           : mode === 'login'
             ? 'Googleでログイン'
