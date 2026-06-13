@@ -6,9 +6,14 @@ interface Props {
   threadId: number
 }
 
+type GtagWindow = Window & {
+  gtag?: (event: 'event', name: string, params: Record<string, string | number>) => void
+}
+
 function trackClick(target: string, threadId: number) {
-  if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
-    ;(window as any).gtag('event', 'next_read_click', {
+  const gtag = typeof window !== 'undefined' ? (window as GtagWindow).gtag : undefined
+  if (typeof gtag === 'function') {
+    gtag('event', 'next_read_click', {
       link_target: target,
       thread_id: threadId,
     })
@@ -17,8 +22,7 @@ function trackClick(target: string, threadId: number) {
 
 export function NextReadNav({ threadId }: Props) {
   return (
-    <nav className="mt-3 mb-4" aria-label="次に読む">
-      <p className="text-[11px] text-gray-400 mb-1.5 px-0.5">次に読む</p>
+    <nav className="mt-3 mb-4" aria-label="スレッド下部ナビゲーション">
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         <Link
           href="/"
