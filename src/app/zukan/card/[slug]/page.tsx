@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { fetchCardBySlug, fetchCardReviews, fetchCardRatings } from '@/lib/zukan'
+import { createAdminClient } from '@/lib/supabase-admin'
+import { getZukanPosterContext } from '@/lib/zukan-server'
 import type { ZukanCardWithPack } from '@/lib/zukan'
 import { normalizeZukanDisplayName } from '@/lib/zukan-display'
 import { ZukanReviewAuthor } from '@/components/ZukanReviewAuthor'
@@ -100,6 +102,27 @@ export default async function ZukanCardPage({
         fetchCardRatings(card.id),
       ])
     : [null, null]
+
+  let alreadyRated = false
+  if (isDbReady) {
+    const poster = await getZukanPosterContext(null)
+    if (!poster.blockedMessage) {
+      const supabase = createAdminClient()
+      let q = supabase
+        .from('zukan_card_ratings')
+        .select('id')
+        .eq('card_id', card.id)
+        .eq('is_deleted', false)
+        .limit(1)
+      if (poster.userId) {
+        q = q.eq('user_id', poster.userId)
+      } else {
+        q = q.eq('anon_key', poster.anonKey).is('user_id', null)
+      }
+      const { data } = await q
+      alreadyRated = (data?.length ?? 0) > 0
+    }
+  }
 
   const pack = card.zukan_packs
   const packHref = pack ? `/zukan/${pack.slug}` : '/zukan'
@@ -225,7 +248,7 @@ export default async function ZukanCardPage({
                 まだ評価はありません
               </p>
             )}
-            {isDbReady && <CardRatingForm cardId={card.id} slug={slug} />}
+            {isDbReady && <CardRatingForm cardId={card.id} slug={slug} alreadyRated={alreadyRated} />}
           </section>
 
           <section>
@@ -241,6 +264,7 @@ export default async function ZukanCardPage({
                         displayName={normalizeZukanDisplayName(r.display_name)}
                         avatarUrl={r.avatar_url}
                         profileSlug={r.profile_slug}
+                        isWithdrawn={r.is_withdrawn}
                       />
                       <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
                     </div>

@@ -53,7 +53,8 @@ export async function submitCardReview(
 
 export type CardRatingFormState =
   | { status: 'idle' }
-  | { status: 'success'; isUpdate: boolean }
+  | { status: 'success' }
+  | { status: 'already_rated' }
   | { status: 'error'; message: string }
 
 export async function submitCardRating(
@@ -114,17 +115,19 @@ export async function submitCardRating(
     display_name: poster.displayName,
   }
 
-  const { error } = existing
-    ? await supabase.from('zukan_card_ratings').update(payload).eq('id', existing.id)
-    : await supabase.from('zukan_card_ratings').insert({
-        card_id: cardId,
-        ...payload,
-      })
+  if (existing) {
+    return { status: 'already_rated' }
+  }
+
+  const { error } = await supabase.from('zukan_card_ratings').insert({
+    card_id: cardId,
+    ...payload,
+  })
 
   if (error) {
     return { status: 'error', message: '評価の送信に失敗しました。しばらくしてから再試行してください。' }
   }
 
   revalidatePath(`/zukan/card/${slug}`)
-  return { status: 'success', isUpdate: Boolean(existing) }
+  return { status: 'success' }
 }

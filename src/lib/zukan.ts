@@ -149,6 +149,7 @@ export type CardReview = {
   display_name: string
   avatar_url: string | null
   profile_slug: string | null
+  is_withdrawn: boolean
   body: string
   created_at: string
 }
@@ -204,10 +205,10 @@ export type CardRatingSummary = {
 
 async function attachReviewAvatars<T extends { user_id: string | null }>(
   rows: T[]
-): Promise<(T & { avatar_url: string | null; profile_slug: string | null })[]> {
+): Promise<(T & { avatar_url: string | null; profile_slug: string | null; is_withdrawn: boolean })[]> {
   const userIds = Array.from(new Set(rows.map(row => row.user_id).filter((id): id is string => !!id)))
   if (userIds.length === 0) {
-    return rows.map(row => ({ ...row, avatar_url: null, profile_slug: null }))
+    return rows.map(row => ({ ...row, avatar_url: null, profile_slug: null, is_withdrawn: false }))
   }
 
   try {
@@ -218,14 +219,15 @@ async function attachReviewAvatars<T extends { user_id: string | null }>(
       .in('id', userIds)
 
     if (error) {
-      return rows.map(row => ({ ...row, avatar_url: null, profile_slug: null }))
+      return rows.map(row => ({ ...row, avatar_url: null, profile_slug: null, is_withdrawn: false }))
     }
 
     const profileMap = new Map((data ?? []).map(profile => {
+      const isWithdrawn = profile.withdrawn_at !== null
       const isPublic =
+        !isWithdrawn &&
         profile.profile_hidden !== true &&
         profile.account_suspended !== true &&
-        profile.withdrawn_at === null &&
         typeof profile.profile_slug === 'string' &&
         profile.profile_slug.length > 0
 
@@ -234,6 +236,7 @@ async function attachReviewAvatars<T extends { user_id: string | null }>(
         {
           avatarUrl: isPublic && typeof profile.avatar_url === 'string' ? profile.avatar_url : null,
           profileSlug: isPublic ? profile.profile_slug as string : null,
+          isWithdrawn,
         },
       ]
     }))
@@ -244,10 +247,11 @@ async function attachReviewAvatars<T extends { user_id: string | null }>(
         ...row,
         avatar_url: profile?.avatarUrl ?? null,
         profile_slug: profile?.profileSlug ?? null,
+        is_withdrawn: profile?.isWithdrawn ?? false,
       }
     })
   } catch {
-    return rows.map(row => ({ ...row, avatar_url: null, profile_slug: null }))
+    return rows.map(row => ({ ...row, avatar_url: null, profile_slug: null, is_withdrawn: false }))
   }
 }
 
@@ -287,7 +291,7 @@ export async function fetchCardReviews(cardId: string): Promise<CardReview[] | n
       if (isTableMissing(error)) return []
       return null
     }
-    return attachReviewAvatars(data as Omit<CardReview, 'avatar_url' | 'profile_slug'>[])
+    return attachReviewAvatars(data as Omit<CardReview, 'avatar_url' | 'profile_slug' | 'is_withdrawn'>[])
   } catch {
     return null
   }

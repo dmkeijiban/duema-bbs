@@ -65,7 +65,7 @@ function StarRow({
   )
 }
 
-export default function CardRatingForm({ cardId, slug }: { cardId: string; slug: string }) {
+export default function CardRatingForm({ cardId, slug, alreadyRated }: { cardId: string; slug: string; alreadyRated?: boolean }) {
   const action = submitCardRating.bind(null, cardId, slug)
   const [state, dispatch, isPending] = useActionState(action, INITIAL)
   const [values, setValues] = useState<Partial<Record<ItemKey, number>>>({})
@@ -74,10 +74,18 @@ export default function CardRatingForm({ cardId, slug }: { cardId: string; slug:
     setValues(prev => ({ ...prev, [key]: v }))
   }
 
+  if (alreadyRated || state.status === 'already_rated') {
+    return (
+      <p className="border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+        このカードは評価済みです。評価ありがとうございました。
+      </p>
+    )
+  }
+
   if (state.status === 'success') {
     return (
       <p className="border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700">
-        {state.isUpdate ? '評価を更新しました！' : '評価を送信しました！'}ありがとうございます。
+        評価を送信しました！ありがとうございます。
       </p>
     )
   }
