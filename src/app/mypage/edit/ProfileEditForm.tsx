@@ -467,9 +467,9 @@ export default function ProfileEditForm({
             className="mt-0.5 h-4 w-4"
           />
           <label htmlFor="profile_hidden" className="text-sm text-gray-700">
-            <span className="font-bold">プロフィール非公開</span>
+            <span className="font-bold">プロフィールを非公開にする</span>
             <span className="mt-0.5 block text-xs text-gray-500">
-              ONにすると投稿者ページが非表示になります。
+              公開投稿者ページを他の人から見えなくします。本人は引き続き投稿者ページとマイページを確認できます。
             </span>
           </label>
         </div>
@@ -483,9 +483,9 @@ export default function ProfileEditForm({
             className="mt-0.5 h-4 w-4"
           />
           <label htmlFor="ranking_enabled" className="text-sm text-gray-700">
-            <span className="font-bold">ランキング参加</span>
+            <span className="font-bold">投稿者ランキングに参加する</span>
             <span className="mt-0.5 block text-xs text-gray-500">
-              OFFにすると投稿者ランキングから外れます。
+              OFFにすると、投稿者ページは公開したままランキングには表示されません。
             </span>
           </label>
         </div>

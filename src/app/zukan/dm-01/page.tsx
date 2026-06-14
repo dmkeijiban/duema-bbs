@@ -388,6 +388,7 @@ export default async function ZukanDm01Page({
                     displayName={normalizeZukanDisplayName(r.display_name)}
                     avatarUrl={r.avatar_url}
                     profileSlug={r.profile_slug}
+                    isWithdrawn={r.is_withdrawn}
                   />
                   <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
                 </div>
@@ -407,6 +408,7 @@ export default async function ZukanDm01Page({
                           displayName={normalizeZukanDisplayName(r.display_name)}
                           avatarUrl={r.avatar_url}
                           profileSlug={r.profile_slug}
+                          isWithdrawn={r.is_withdrawn}
                         />
                         <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
                       </div>
