@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings } from '@/lib/cached-queries'
 
-export const revalidate = 3600
+export const dynamic = 'force-dynamic'
 
 type Profile = {
   id: string
