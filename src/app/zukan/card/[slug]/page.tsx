@@ -1,15 +1,19 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { fetchCardBySlug, fetchCardReviews, fetchCardRatings } from '@/lib/zukan'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getZukanPosterContext } from '@/lib/zukan-server'
 import type { ZukanCardWithPack } from '@/lib/zukan'
 import { normalizeZukanDisplayName } from '@/lib/zukan-display'
+import { verifyAdminCookie, ADMIN_COOKIE } from '@/lib/admin-auth'
 import { ZukanReviewAuthor } from '@/components/ZukanReviewAuthor'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import ShareButtons from './ShareButtons'
 import CardReviewForm from './CardReviewForm'
 import CardRatingForm from './CardRatingForm'
+import AdminReviewControls from './AdminReviewControls'
+import type { ItemKey } from './CardRatingForm'
 
 const MOCK_CARD: ZukanCardWithPack = {
   id: '',
@@ -103,14 +107,19 @@ export default async function ZukanCardPage({
       ])
     : [null, null]
 
+  const cookieStore = await cookies()
+  const isAdmin = verifyAdminCookie(cookieStore.get(ADMIN_COOKIE)?.value)
+
   let alreadyRated = false
+  let ratingInitialValues: Partial<Record<ItemKey, number>> | undefined
   if (isDbReady) {
     const poster = await getZukanPosterContext(null)
     if (!poster.blockedMessage) {
       const supabase = createAdminClient()
+      const SCORE_KEYS = 'id, score_admiration, score_trauma, score_still_like, score_name, score_art'
       let q = supabase
         .from('zukan_card_ratings')
-        .select('id')
+        .select(SCORE_KEYS)
         .eq('card_id', card.id)
         .eq('is_deleted', false)
         .limit(1)
@@ -121,7 +130,31 @@ export default async function ZukanCardPage({
       }
       const { data } = await q
       alreadyRated = (data?.length ?? 0) > 0
+      if (data && data.length > 0) {
+        const row = data[0] as Record<string, number | null>
+        const iv: Partial<Record<ItemKey, number>> = {}
+        const keys: ItemKey[] = ['score_admiration', 'score_trauma', 'score_still_like', 'score_name', 'score_art']
+        for (const k of keys) {
+          if (row[k] != null) iv[k] = row[k] as number
+        }
+        ratingInitialValues = iv
+      }
     }
+  }
+
+  // 管理者は is_hidden 含む全レビューを取得
+  type AdminReview = { id: number; user_id: string | null; display_name: string; body: string; created_at: string; is_hidden: boolean }
+  let adminReviews: AdminReview[] | null = null
+  if (isAdmin && isDbReady) {
+    const supabase = createAdminClient()
+    const { data } = await supabase
+      .from('zukan_card_reviews')
+      .select('id, user_id, display_name, body, created_at, is_hidden')
+      .eq('card_id', card.id)
+      .eq('is_deleted', false)
+      .order('created_at', { ascending: false })
+      .limit(10)
+    adminReviews = (data ?? []) as AdminReview[]
   }
 
   const pack = card.zukan_packs
@@ -248,35 +281,58 @@ export default async function ZukanCardPage({
                 まだ評価はありません
               </p>
             )}
-            {isDbReady && <CardRatingForm cardId={card.id} slug={slug} alreadyRated={alreadyRated} />}
+            {isDbReady && <CardRatingForm cardId={card.id} slug={slug} alreadyRated={alreadyRated} initialValues={ratingInitialValues} />}
           </section>
 
           <section>
             <h3 className="mb-2 text-sm font-bold text-gray-800">
               このカードの思い出レビュー（{reviewCount}件）
             </h3>
-            {cardReviews && cardReviews.length > 0 && (
-              <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
-                {cardReviews.map(r => (
-                  <article key={r.id} className="px-3 py-2.5">
-                    <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                      <ZukanReviewAuthor
-                        displayName={normalizeZukanDisplayName(r.display_name)}
-                        avatarUrl={r.avatar_url}
-                        profileSlug={r.profile_slug}
-                        isWithdrawn={r.is_withdrawn}
-                      />
-                      <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
-                    </div>
-                    <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
-                  </article>
-                ))}
-              </div>
-            )}
-            {cardReviews !== null && cardReviews.length === 0 && (
-              <p className="mb-3 border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">
-                まだ投稿はありません。最初の思い出を書いてみませんか？
-              </p>
+            {isAdmin && adminReviews ? (
+              adminReviews.length > 0 ? (
+                <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
+                  {adminReviews.map(r => (
+                    <article key={r.id} className={`px-3 py-2.5 ${r.is_hidden ? 'bg-orange-50' : ''}`}>
+                      <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                        <span className="font-bold text-gray-700">{normalizeZukanDisplayName(r.display_name)}</span>
+                        <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
+                      </div>
+                      <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
+                      <AdminReviewControls reviewId={r.id} slug={slug} initialBody={r.body} isHidden={r.is_hidden} />
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="mb-3 border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">
+                  まだ投稿はありません。最初の思い出を書いてみませんか？
+                </p>
+              )
+            ) : (
+              <>
+                {cardReviews && cardReviews.length > 0 && (
+                  <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
+                    {cardReviews.map(r => (
+                      <article key={r.id} className="px-3 py-2.5">
+                        <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                          <ZukanReviewAuthor
+                            displayName={normalizeZukanDisplayName(r.display_name)}
+                            avatarUrl={r.avatar_url}
+                            profileSlug={r.profile_slug}
+                            isWithdrawn={r.is_withdrawn}
+                          />
+                          <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
+                        </div>
+                        <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
+                      </article>
+                    ))}
+                  </div>
+                )}
+                {cardReviews !== null && cardReviews.length === 0 && (
+                  <p className="mb-3 border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">
+                    まだ投稿はありません。最初の思い出を書いてみませんか？
+                  </p>
+                )}
+              </>
             )}
             {isDbReady && <CardReviewForm cardId={card.id} slug={slug} />}
           </section>

@@ -1,9 +1,11 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getZukanDailyPostIssue, getZukanPosterContext, hasRecentZukanPost } from '@/lib/zukan-server'
+import { verifyAdminCookie, ADMIN_COOKIE } from '@/lib/admin-auth'
 
 export type CardReviewFormState =
   | { status: 'idle' }
@@ -57,6 +59,33 @@ export async function submitCardReview(
 
   revalidatePath(`/zukan/card/${slug}`)
   return { status: 'success' }
+}
+
+async function requireAdmin(): Promise<boolean> {
+  return verifyAdminCookie((await cookies()).get(ADMIN_COOKIE)?.value)
+}
+
+export async function adminHideReview(reviewId: number, slug: string): Promise<void> {
+  if (!await requireAdmin()) throw new Error('Unauthorized')
+  const supabase = createAdminClient()
+  await supabase.from('zukan_card_reviews').update({ is_hidden: true }).eq('id', reviewId)
+  revalidatePath(`/zukan/card/${slug}`)
+}
+
+export async function adminUnhideReview(reviewId: number, slug: string): Promise<void> {
+  if (!await requireAdmin()) throw new Error('Unauthorized')
+  const supabase = createAdminClient()
+  await supabase.from('zukan_card_reviews').update({ is_hidden: false }).eq('id', reviewId)
+  revalidatePath(`/zukan/card/${slug}`)
+}
+
+export async function adminEditReview(reviewId: number, slug: string, newBody: string): Promise<void> {
+  if (!await requireAdmin()) throw new Error('Unauthorized')
+  const trimmed = newBody.trim()
+  if (trimmed.length < 3 || trimmed.length > 1000) throw new Error('Invalid body length')
+  const supabase = createAdminClient()
+  await supabase.from('zukan_card_reviews').update({ body: trimmed }).eq('id', reviewId)
+  revalidatePath(`/zukan/card/${slug}`)
 }
 
 export type CardRatingFormState =

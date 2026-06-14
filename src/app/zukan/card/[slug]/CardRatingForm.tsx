@@ -13,7 +13,7 @@ const ITEMS = [
   { key: 'score_art',        label: 'イラストのかっこよさ' },
 ] as const
 
-type ItemKey = (typeof ITEMS)[number]['key']
+export type ItemKey = (typeof ITEMS)[number]['key']
 
 function StarRow({
   name,
@@ -65,10 +65,10 @@ function StarRow({
   )
 }
 
-export default function CardRatingForm({ cardId, slug, alreadyRated }: { cardId: string; slug: string; alreadyRated?: boolean }) {
+export default function CardRatingForm({ cardId, slug, alreadyRated, initialValues }: { cardId: string; slug: string; alreadyRated?: boolean; initialValues?: Partial<Record<ItemKey, number>> }) {
   const action = submitCardRating.bind(null, cardId, slug)
   const [state, dispatch, isPending] = useActionState(action, INITIAL)
-  const [values, setValues] = useState<Partial<Record<ItemKey, number>>>({})
+  const [values, setValues] = useState<Partial<Record<ItemKey, number>>>(initialValues ?? {})
 
   const setValue = (key: ItemKey, v: number) => {
     setValues(prev => ({ ...prev, [key]: v }))
@@ -90,7 +90,7 @@ export default function CardRatingForm({ cardId, slug, alreadyRated }: { cardId:
     )
   }
 
-  const allSelected = ITEMS.every(item => values[item.key] !== undefined)
+  const allSelected = (initialValues && ITEMS.every(item => item.key in initialValues)) || ITEMS.every(item => values[item.key] !== undefined)
 
   return (
     <form action={dispatch} className="border border-gray-200 bg-white px-3 py-2">
@@ -112,7 +112,7 @@ export default function CardRatingForm({ cardId, slug, alreadyRated }: { cardId:
           disabled={isPending || !allSelected}
           className="rounded bg-blue-600 px-4 py-1.5 text-xs font-bold text-white transition-all duration-100 hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
         >
-          {isPending ? '送信中…' : '評価を送信する'}
+          {isPending ? '送信中…' : (initialValues && Object.keys(initialValues).length > 0) ? '評価を変更する' : '評価を送信する'}
         </button>
         {!allSelected && (
           <span className="text-xs text-gray-400">全項目を選択してください</span>
