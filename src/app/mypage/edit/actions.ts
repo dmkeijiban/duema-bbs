@@ -172,5 +172,9 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
     revalidatePath('/zukan/dm-01')
   }
 
+  if (profileHidden) {
+    return { redirectTo: '/mypage?profile_hidden=1' }
+  }
+
   return { redirectTo: guardProfile?.profile_slug ? `/u/${guardProfile.profile_slug}` : '/mypage' }
 }

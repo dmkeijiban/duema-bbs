@@ -171,7 +171,12 @@ async function getMyActivityCounts(userId: string) {
   }
 }
 
-export default async function MyPage() {
+export default async function MyPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ profile_hidden?: string }>
+}) {
+  const params = searchParams ? await searchParams : {}
   let user: User | null = null
 
   try {
@@ -229,6 +234,12 @@ export default async function MyPage() {
           <div className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
             ログイン中です。
           </div>
+
+          {params.profile_hidden === '1' && (
+            <div className="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+              プロフィールを非公開にしました。公開投稿者ページは本人にのみ表示されます。
+            </div>
+          )}
 
           <ProfileHeaderCard
             displayName={profile.display_name}

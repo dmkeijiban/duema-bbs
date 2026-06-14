@@ -2,10 +2,11 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ProfileHeaderCard } from '@/components/ProfileHeaderCard'
 import { UserProfileShareButtons } from '@/components/UserProfileShareButtons'
-import { createPublicClient } from '@/lib/supabase-public'
+import { createClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings } from '@/lib/cached-queries'
 
-export const revalidate = 3600
+export const dynamic = 'force-dynamic'
 
 type Profile = {
   id: string
@@ -65,8 +66,8 @@ function safeExternalLink(value: string | null, allowedHosts: string[]) {
 }
 
 async function getProfile(slug: string): Promise<Profile | null> {
-  const supabase = createPublicClient()
-  const { data, error } = await supabase
+  const admin = createAdminClient()
+  const { data, error } = await admin
     .from('profiles')
     .select(
       'id, display_name, profile_slug, bio, x_url, youtube_url, avatar_url, created_at, profile_hidden, account_suspended, withdrawn_at'
@@ -76,7 +77,7 @@ async function getProfile(slug: string): Promise<Profile | null> {
 
   if (error) {
     if (error.message.includes('avatar_url')) {
-      const { data: fallback, error: fallbackError } = await supabase
+      const { data: fallback, error: fallbackError } = await admin
         .from('profiles')
         .select(
           'id, display_name, profile_slug, bio, x_url, youtube_url, created_at, profile_hidden, account_suspended, withdrawn_at'
@@ -98,8 +99,18 @@ async function getProfile(slug: string): Promise<Profile | null> {
   return data
 }
 
+async function getViewerUserId() {
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase.auth.getUser()
+    return data.user?.id ?? null
+  } catch {
+    return null
+  }
+}
+
 async function getUserActivityCounts(userId: string) {
-  const supabase = createPublicClient()
+  const supabase = createAdminClient()
   const [threadsResult, postsResult] = await Promise.all([
     supabase
       .from('threads')
@@ -126,14 +137,22 @@ export default async function UserProfilePage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const profile = await getProfile(slug)
+  const [profile, viewerUserId] = await Promise.all([
+    getProfile(slug),
+    getViewerUserId(),
+  ])
 
   if (
     !profile ||
-    profile.profile_hidden ||
     profile.account_suspended ||
     profile.withdrawn_at
   ) {
+    notFound()
+  }
+
+  const isOwner = viewerUserId === profile.id
+
+  if (profile.profile_hidden && !isOwner) {
     notFound()
   }
 
@@ -187,6 +206,12 @@ export default async function UserProfilePage({
         monthlyRank={monthlyRank}
         totalRank={totalRank}
       />
+
+      {profile.profile_hidden && isOwner && (
+        <div className="mt-3 rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          このプロフィールは非公開です。現在は本人にのみ表示されています。
+        </div>
+      )}
 
       <section className="mt-4 rounded-sm border border-gray-200 bg-white px-4 py-3">
         <h2 className="text-sm font-bold text-gray-800">この投稿者ページを共有</h2>
