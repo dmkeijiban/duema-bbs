@@ -5,13 +5,19 @@ type ZukanReviewAuthorProps = {
   displayName: string
   avatarUrl: string | null
   profileSlug: string | null
+  isWithdrawn?: boolean
 }
 
 export function ZukanReviewAuthor({
   displayName,
   avatarUrl,
   profileSlug,
+  isWithdrawn,
 }: ZukanReviewAuthorProps) {
+  if (isWithdrawn) {
+    return <span className="text-xs text-gray-500">退会済みユーザー</span>
+  }
+
   const avatar = avatarUrl ? (
     <ProfileAvatar src={avatarUrl} alt={`${displayName}のアイコン`} size="sm" />
   ) : null
