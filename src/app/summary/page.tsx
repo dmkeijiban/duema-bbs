@@ -1,11 +1,10 @@
 import { createPublicClient } from '@/lib/supabase-public'
 import { RecommendSection } from '@/components/RecommendSection'
-import { SortTabs } from '@/components/SortTabs'
+import { BottomNav } from '@/components/ThreadSortPage'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { Metadata } from 'next'
 import { SITE_URL } from '@/lib/site-config'
-import { getCachedCategories } from '@/lib/cached-queries'
 
 export const revalidate = 3600
 
@@ -185,8 +184,6 @@ async function SummaryList() {
 }
 
 export default async function SummaryIndexPage() {
-  const categories = await getCachedCategories()
-
   return (
     <div className="w-full px-0 py-0">
       {/* SEO: BreadcrumbList + WebPage 構造化データ */}
@@ -231,15 +228,6 @@ export default async function SummaryIndexPage() {
         </div>
       </div>
 
-      <SortTabs
-        currentSort="popular"
-        categories={categories}
-        recentHref="/update"
-        newHref="/new"
-        rankingHref="/ranking"
-        randomHref="/random"
-      />
-
       <div className="max-w-screen-xl mx-auto px-2">
         <Suspense fallback={
           <div className="border border-gray-300 bg-white animate-pulse divide-y divide-gray-200">
@@ -253,6 +241,7 @@ export default async function SummaryIndexPage() {
         }>
           <SummaryList />
         </Suspense>
+        <BottomNav current="/ranking" />
         <div className="mb-6" />
       </div>
     </div>

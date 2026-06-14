@@ -1,9 +1,8 @@
 import { Suspense } from 'react'
 import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadCard } from '@/components/ThreadCard'
-import { SortTabs } from '@/components/SortTabs'
 import { SITE_URL } from '@/lib/site-config'
-import { getCachedCategories, getCachedUserRankings, UserRankingRow } from '@/lib/cached-queries'
+import { getCachedUserRankings, UserRankingRow } from '@/lib/cached-queries'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { BottomNav } from '@/components/ThreadSortPage'
 
@@ -273,7 +272,6 @@ interface Props {
 export default async function RankingPage({ searchParams }: Props) {
   const { page: pageStr } = await searchParams
   const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
-  const categories = await getCachedCategories()
 
   return (
     <div className="w-full px-0 py-0">
@@ -318,15 +316,6 @@ export default async function RankingPage({ searchParams }: Props) {
           <span className="text-xs text-gray-500">（過去3日間）</span>
         </div>
       </div>
-
-      <SortTabs
-        currentSort="popular"
-        categories={categories}
-        recentHref="/update"
-        newHref="/new"
-        rankingHref="/ranking"
-        randomHref="/random"
-      />
 
       <div className="max-w-screen-xl mx-auto px-2">
         <Suspense fallback={

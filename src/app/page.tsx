@@ -7,7 +7,7 @@ const InlineNewThread = dynamic(
   () => import('@/components/InlineNewThread').then(m => m.InlineNewThread)
 )
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
-import { SortTabs } from '@/components/SortTabs'
+import { BottomNav } from '@/components/ThreadSortPage'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { seededShuffle } from '@/lib/stable-shuffle'
 import { Thread, Category } from '@/types'
@@ -281,25 +281,17 @@ async function BotNoticesServer() {
 }
 
 
-// ── SortTabs（カテゴリ取得後に差し替え）
-// パンくずリストも同じカテゴリデータを使うためここに含める。
-async function SortTabsServer({ params }: { params: SearchParams }) {
+function currentNavFromSort(sort: string) {
+  if (sort === 'new') return '/new'
+  if (sort === 'popular') return '/ranking'
+  if (sort === 'random') return '/random'
+  return '/update'
+}
+
+async function BottomNavServer({ params }: { params: SearchParams }) {
   const categories = await getCachedCategories()
   const sort = params.sort ?? 'recent'
-  return (
-    <>
-      {params.category && (
-        <div className="max-w-screen-xl mx-auto px-2 mb-1">
-          <nav className="text-xs text-gray-600 flex items-center gap-x-1" aria-label="パンくずリスト">
-            <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
-            <span>{'>'}</span>
-            <span>カテゴリ：{categories.find(c => c.slug === params.category)?.name ?? params.category}</span>
-          </nav>
-        </div>
-      )}
-      <SortTabs currentSort={sort} currentCategory={params.category} categories={categories} />
-    </>
-  )
+  return <BottomNav current={currentNavFromSort(sort)} currentCategory={params.category} categories={categories} />
 }
 
 // ── InlineNewThread（カテゴリ＋スレ作成ルール取得後に差し替え）
@@ -338,8 +330,6 @@ export default async function Home({
     process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http') &&
     !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!isConfigured) return <SetupGuide />
-
-  const sort = params.sort ?? 'recent'
 
   return (
     <div className="w-full px-0 py-0">
@@ -411,11 +401,6 @@ export default async function Home({
 
       </div>
 
-      {/* SortTabs: カテゴリ一覧が必要。スケルトンで正確な高さを維持し CLS 防止 */}
-      <Suspense fallback={<SortTabsSkeleton sort={sort} />}>
-        <SortTabsServer params={params} />
-      </Suspense>
-
       <div className="max-w-screen-xl mx-auto px-2">
         <Suspense fallback={null}>
           <MidNoticesServer />
@@ -424,6 +409,10 @@ export default async function Home({
         {/* スレ一覧: Suspense で包み、上位要素（LCP）のストリームを妨げない */}
         <Suspense fallback={<ThreadListSkeleton />}>
           <ThreadList searchParams={params} />
+        </Suspense>
+
+        <Suspense fallback={null}>
+          <BottomNavServer params={params} />
         </Suspense>
 
         {/* AdSense ディスプレイ広告（スレ一覧下） */}
@@ -493,51 +482,6 @@ function ThreadListSkeleton() {
           </div>
         </div>
       ))}
-    </div>
-  )
-}
-
-// SortTabs と同一の高さ・構造を維持し CLS を防ぐスケルトン。
-// カテゴリ一覧が届く前の表示として使う。
-// アクティブタブは sort が既知なので正確に描画できる。
-const SORT_TABS_META = [
-  { sort: 'recent',  short: '更新', label: '更新順一覧', icon: '↺' },
-  { sort: 'new',     short: '新着', label: '新着一覧',   icon: '⏱' },
-  { sort: 'popular', short: '人気', label: 'ランキング', icon: '📊' },
-  { sort: 'random',  short: 'ランダム', label: 'ランダム', icon: '🎲' },
-]
-
-function SortTabsSkeleton({ sort }: { sort: string }) {
-  return (
-    <div className="max-w-screen-xl mx-auto px-2">
-      <ul className="mb-3 mt-2 flex flex-wrap items-center gap-1.5 border-b border-gray-200 pb-1.5" role="tablist">
-        {SORT_TABS_META.map(tab => {
-          const active = sort === tab.sort
-          return (
-            <li key={tab.sort} className="shrink-0" role="presentation">
-              <div
-                className={
-                  active
-                    ? 'flex min-h-9 items-center justify-center gap-1 rounded border border-blue-600 bg-blue-600 px-2.5 text-xs font-bold text-white shadow-sm md:px-3 md:text-sm'
-                    : 'flex min-h-9 items-center justify-center gap-1 rounded border border-blue-100 bg-white px-2.5 text-xs font-medium text-blue-700 md:px-3 md:text-sm'
-                }
-              >
-                <span className="opacity-80">{tab.icon}</span>
-                <span className="hidden md:inline">{tab.label}</span>
-                <span className="md:hidden">{tab.short}</span>
-              </div>
-            </li>
-          )
-        })}
-        {/* CategoryDropdown プレースホルダー */}
-        <li className="shrink-0">
-          <div className="flex min-h-9 items-center justify-center rounded border border-blue-100 bg-white px-2.5 text-xs font-medium text-blue-700 md:px-3 md:text-sm">
-            <span className="opacity-80">📁</span>
-            <span className="ml-0.5 hidden md:inline">カテゴリ</span>
-            <span className="ml-0.5 md:hidden">▾</span>
-          </div>
-        </li>
-      </ul>
     </div>
   )
 }

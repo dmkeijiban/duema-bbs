@@ -8,7 +8,7 @@ const InlineNewThread = dynamic(
   () => import('@/components/InlineNewThread').then(m => m.InlineNewThread)
 )
 import { RecommendSection } from '@/components/RecommendSection'
-import { SortTabs } from '@/components/SortTabs'
+import { BottomNav } from '@/components/ThreadSortPage'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { seededShuffle } from '@/lib/stable-shuffle'
 import { Thread, Category } from '@/types'
@@ -196,7 +196,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   const sort = sortParam ?? 'recent'
   const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
-  const basePath = `/category/${slug}`
 
   const [categories, notices, newThreadRules] = await Promise.all([
     getCachedCategories(),
@@ -269,12 +268,12 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         <h1 className="text-sm font-bold text-gray-900 mt-0.5">{category.name} のスレッド一覧</h1>
       </div>
 
-      <SortTabs currentSort={sort} currentCategory={slug} categories={categories} basePath={basePath} />
-
       <div className="max-w-screen-xl mx-auto px-2">
         {midNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
 
         <CategoryThreadList category={category} sort={sort} page={page} />
+
+        <BottomNav current="/category" currentCategory={slug} categories={categories} />
 
         {botNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
 

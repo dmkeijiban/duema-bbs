@@ -3,7 +3,7 @@ import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadRow } from '@/components/ThreadRow'
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { Pagination } from '@/components/Pagination'
-import { SortTabs } from '@/components/SortTabs'
+import { CategoryDropdown } from '@/components/CategoryDropdown'
 import { getCachedCategories } from '@/lib/cached-queries'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { seededShuffle } from '@/lib/stable-shuffle'
@@ -15,10 +15,9 @@ const PAGE_SIZE = 50
 
 export const NAV_LINKS = [
   { label: '↺ 更新順一覧', href: '/update' },
-  { label: '⏱ 新着一覧',   href: '/new' },
+  { label: '⏱ 新着一覧', href: '/new' },
   { label: '📊 ランキング', href: '/ranking' },
-  { label: '🎲 ランダム',   href: '/random' },
-  { label: '📁 カテゴリ',   href: '/category' },
+  { label: '🎲 ランダム', href: '/random' },
 ]
 
 interface Props {
@@ -176,7 +175,15 @@ function SkeletonList() {
   )
 }
 
-export function BottomNav({ current }: { current?: string }) {
+export function BottomNav({
+  current,
+  categories = [],
+  currentCategory,
+}: {
+  current?: string
+  categories?: Category[]
+  currentCategory?: string
+}) {
   const currentSort =
     current === '/new'
       ? 'new'
@@ -185,23 +192,43 @@ export function BottomNav({ current }: { current?: string }) {
         : current === '/random'
           ? 'random'
           : 'recent'
+  const categoryActive = current === '/category' || Boolean(currentCategory)
 
   return (
-    <div className="mt-3 grid grid-cols-2 gap-1.5 text-sm sm:grid-cols-5">
+    <nav className="mt-3" aria-label="共通スレッド一覧ナビ">
+      <ul className="grid grid-cols-2 gap-1.5 text-sm sm:grid-cols-5">
       {NAV_LINKS.map((btn) => (
-        <Link
-          key={btn.href}
-          href={btn.href}
-          className={
-            current === btn.href || (btn.href === '/update' && currentSort === 'recent')
-              ? 'flex min-h-9 items-center justify-center rounded border border-blue-600 bg-blue-600 px-2 text-center text-xs font-bold text-white shadow-sm md:text-sm'
-              : 'flex min-h-9 items-center justify-center rounded border border-blue-100 bg-white px-2 text-center text-xs font-medium text-blue-700 hover:bg-blue-50 md:text-sm'
-          }
-        >
-          {btn.label}
-        </Link>
+        <li key={btn.href}>
+          <Link
+            href={btn.href}
+            className={
+              current === btn.href || (btn.href === '/update' && currentSort === 'recent' && !categoryActive)
+                ? 'flex min-h-9 items-center justify-center rounded border border-blue-600 bg-blue-600 px-2 text-center text-xs font-bold text-white shadow-sm md:text-sm'
+                : 'flex min-h-9 items-center justify-center rounded border border-blue-100 bg-white px-2 text-center text-xs font-medium text-blue-700 hover:bg-blue-50 md:text-sm'
+            }
+          >
+            {btn.label}
+          </Link>
+        </li>
       ))}
-    </div>
+      {categories.length > 0 ? (
+        <CategoryDropdown currentCategory={currentCategory} categories={categories} />
+      ) : (
+        <li>
+          <Link
+            href="/category"
+            className={
+              categoryActive
+                ? 'flex min-h-9 items-center justify-center rounded border border-blue-600 bg-blue-600 px-2 text-center text-xs font-bold text-white shadow-sm md:text-sm'
+                : 'flex min-h-9 items-center justify-center rounded border border-blue-100 bg-white px-2 text-center text-xs font-medium text-blue-700 hover:bg-blue-50 md:text-sm'
+            }
+          >
+            📁 カテゴリ
+          </Link>
+        </li>
+      )}
+      </ul>
+    </nav>
   )
 }
 
@@ -226,20 +253,14 @@ export async function ThreadSortPage({ sort, title, icon, page = 1 }: Props) {
         </div>
       </div>
 
-      <SortTabs
-        currentSort={sort}
-        categories={categories}
-        recentHref="/update"
-        newHref="/new"
-        rankingHref="/ranking"
-        randomHref="/random"
-      />
-
       <div className="max-w-screen-xl mx-auto px-2">
         <Suspense fallback={<SkeletonList />}>
           <ThreadList sort={sort} page={page} />
         </Suspense>
-        <BottomNav current={sort === 'recent' ? '/update' : sort === 'new' ? '/new' : sort === 'random' ? '/random' : undefined} />
+        <BottomNav
+          current={sort === 'recent' ? '/update' : sort === 'new' ? '/new' : sort === 'random' ? '/random' : undefined}
+          categories={categories}
+        />
         <div className="mb-6" />
       </div>
     </div>
