@@ -13,6 +13,7 @@ import { SummaryActionBar } from '@/components/SummaryActionBar'
 import { SummaryViewPing } from '@/components/SummaryViewPing'
 import { SummaryCommentSection, SummaryComment } from '@/components/SummaryCommentSection'
 import { summaryTextExcerpt, sanitizeSummaryHtml } from '@/lib/summary-content'
+import { getCachedCategories } from '@/lib/cached-queries'
 
 export const revalidate = 3600
 
@@ -192,7 +193,10 @@ async function getSummaryComments(slug: string): Promise<{ comments: SummaryComm
 
 export default async function SummarySlugPage({ params }: Props) {
   const { slug } = await params
-  const summary = await getSummary(slug)
+  const [summary, categories] = await Promise.all([
+    getSummary(slug),
+    getCachedCategories(),
+  ])
 
   if (!summary) notFound()
 
@@ -399,7 +403,7 @@ export default async function SummarySlugPage({ params }: Props) {
           </Link>
         </div>
 
-        <BottomNav current="/" />
+        <BottomNav current="/" categories={categories} />
         <div className="mb-6" />
       </div>
     </div>

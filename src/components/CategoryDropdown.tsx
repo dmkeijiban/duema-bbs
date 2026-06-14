@@ -31,8 +31,8 @@ export function CategoryDropdown({ currentCategory, categories }: Props) {
         aria-label="カテゴリを選択"
         className={
           currentCategory
-            ? 'flex min-h-9 items-center justify-center rounded border border-blue-600 bg-blue-600 px-2.5 text-xs font-bold text-white shadow-sm md:px-3 md:text-sm'
-            : 'flex min-h-9 items-center justify-center rounded border border-blue-100 bg-white px-2.5 text-xs font-medium text-blue-700 hover:bg-blue-50 md:px-3 md:text-sm'
+            ? 'flex min-h-9 w-full items-center justify-center rounded border border-blue-600 bg-blue-600 px-2.5 text-xs font-bold text-white shadow-sm md:px-3 md:text-sm'
+            : 'flex min-h-9 w-full items-center justify-center rounded border border-blue-100 bg-white px-2.5 text-xs font-medium text-blue-700 hover:bg-blue-50 md:px-3 md:text-sm'
         }
       >
         <span className="opacity-80">📁</span>

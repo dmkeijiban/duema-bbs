@@ -1,6 +1,6 @@
 import { createPublicClient } from '@/lib/supabase-public'
 import { RecommendSection } from '@/components/RecommendSection'
-import { SortTabs } from '@/components/SortTabs'
+import { BottomNav } from '@/components/ThreadSortPage'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { Metadata } from 'next'
@@ -231,15 +231,6 @@ export default async function SummaryIndexPage() {
         </div>
       </div>
 
-      <SortTabs
-        currentSort="popular"
-        categories={categories}
-        recentHref="/update"
-        newHref="/new"
-        rankingHref="/ranking"
-        randomHref="/random"
-      />
-
       <div className="max-w-screen-xl mx-auto px-2">
         <Suspense fallback={
           <div className="border border-gray-300 bg-white animate-pulse divide-y divide-gray-200">
@@ -253,6 +244,7 @@ export default async function SummaryIndexPage() {
         }>
           <SummaryList />
         </Suspense>
+        <BottomNav current="/ranking" categories={categories} />
         <div className="mb-6" />
       </div>
     </div>
