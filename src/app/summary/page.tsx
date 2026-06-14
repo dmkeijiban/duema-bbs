@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { Metadata } from 'next'
 import { SITE_URL } from '@/lib/site-config'
+import { getCachedCategories } from '@/lib/cached-queries'
 
 export const revalidate = 3600
 
@@ -184,6 +185,8 @@ async function SummaryList() {
 }
 
 export default async function SummaryIndexPage() {
+  const categories = await getCachedCategories()
+
   return (
     <div className="w-full px-0 py-0">
       {/* SEO: BreadcrumbList + WebPage 構造化データ */}
@@ -241,7 +244,7 @@ export default async function SummaryIndexPage() {
         }>
           <SummaryList />
         </Suspense>
-        <BottomNav current="/ranking" />
+        <BottomNav current="/ranking" categories={categories} />
         <div className="mb-6" />
       </div>
     </div>

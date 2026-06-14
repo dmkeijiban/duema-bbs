@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadCard } from '@/components/ThreadCard'
 import { SITE_URL } from '@/lib/site-config'
-import { getCachedUserRankings, UserRankingRow } from '@/lib/cached-queries'
+import { getCachedCategories, getCachedUserRankings, UserRankingRow } from '@/lib/cached-queries'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { BottomNav } from '@/components/ThreadSortPage'
 
@@ -272,6 +272,7 @@ interface Props {
 export default async function RankingPage({ searchParams }: Props) {
   const { page: pageStr } = await searchParams
   const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
+  const categories = await getCachedCategories()
 
   return (
     <div className="w-full px-0 py-0">
@@ -338,7 +339,7 @@ export default async function RankingPage({ searchParams }: Props) {
           <UserRankingSection />
         </Suspense>
 
-        <BottomNav current="/ranking" />
+        <BottomNav current="/ranking" categories={categories} />
         <div className="mb-6" />
       </div>
     </div>

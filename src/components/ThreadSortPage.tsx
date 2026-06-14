@@ -216,7 +216,7 @@ export function BottomNav({
       ) : (
         <li>
           <Link
-            href="/category"
+            href="/"
             className={
               categoryActive
                 ? 'flex min-h-9 items-center justify-center rounded border border-blue-600 bg-blue-600 px-2 text-center text-xs font-bold text-white shadow-sm md:text-sm'
