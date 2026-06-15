@@ -6,6 +6,7 @@ import { getCachedCategories, getCachedUserRankings, UserRankingRow } from '@/li
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { ThreadListHeader } from '@/components/ThreadListHeader'
+import { ThreadListTopContent } from '@/components/ThreadListTopContent'
 
 export const revalidate = 3600
 
@@ -303,6 +304,8 @@ export default async function RankingPage({ searchParams }: Props) {
           ]),
         }}
       />
+
+      <ThreadListTopContent showPopularThreads={false} />
 
       <ThreadListHeader title="人気スレッドランキング" icon="📊" subtitle="（過去3日間）" />
 

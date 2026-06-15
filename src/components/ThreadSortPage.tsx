@@ -1,7 +1,6 @@
 import { Suspense } from 'react'
 import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadRow } from '@/components/ThreadRow'
-import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { Pagination } from '@/components/Pagination'
 import { CategoryDropdown } from '@/components/CategoryDropdown'
 import { getCachedCategories } from '@/lib/cached-queries'
@@ -11,6 +10,7 @@ import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { SITE_URL } from '@/lib/site-config'
 import { ThreadListHeader } from '@/components/ThreadListHeader'
+import { ThreadListTopContent } from '@/components/ThreadListTopContent'
 
 const PAGE_SIZE = 50
 
@@ -238,11 +238,7 @@ export async function ThreadSortPage({ sort, title, icon, page = 1 }: Props) {
 
   return (
     <div className="w-full px-0 py-0">
-      <div className="max-w-screen-xl mx-auto px-2 pt-2">
-        <Suspense fallback={<RecommendSectionSkeleton />}>
-          <RecommendSection />
-        </Suspense>
-      </div>
+      <ThreadListTopContent showPopularThreads />
 
       <ThreadListHeader title={title} icon={icon} />
 
