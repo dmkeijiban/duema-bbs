@@ -90,12 +90,15 @@ export async function deleteOwnPost(postId: number, threadId: number) {
     }).eq('id', postId).eq('thread_id', threadId)
     if (error) return { error: '削除に失敗しました' }
 
+    await supabase.rpc('recalculate_post_count', { p_thread_id: threadId })
+
     revalidateTag(`thread-${threadId}`, { expire: 0 })
     revalidateTag('threads', { expire: 0 })
     revalidateTag('posts', { expire: 0 })
     revalidatePath(`/thread/${threadId}`)
     revalidatePath('/')
     revalidatePath('/mypage')
+    revalidatePath('/settings')
     return { success: true }
   }
 
