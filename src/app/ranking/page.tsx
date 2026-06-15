@@ -5,6 +5,7 @@ import { SITE_URL } from '@/lib/site-config'
 import { getCachedCategories, getCachedUserRankings, UserRankingRow } from '@/lib/cached-queries'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { BottomNav } from '@/components/ThreadSortPage'
+import { ThreadListHeader } from '@/components/ThreadListHeader'
 
 export const revalidate = 3600
 
@@ -303,20 +304,7 @@ export default async function RankingPage({ searchParams }: Props) {
         }}
       />
 
-      <div className="max-w-screen-xl mx-auto px-2 pt-2">
-        {/* パンくず */}
-        <nav className="text-xs text-gray-500 mb-2 flex items-center gap-x-1">
-          <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
-          <span>{'>'}</span>
-          <span>人気スレッドランキング</span>
-        </nav>
-
-        {/* ランキングヘッダー */}
-        <div className="mb-2 px-3 py-2 border border-gray-300 bg-white flex items-baseline gap-2">
-          <h1 className="font-bold text-sm text-gray-800">📊 人気スレッドランキング</h1>
-          <span className="text-xs text-gray-500">（過去3日間）</span>
-        </div>
-      </div>
+      <ThreadListHeader title="人気スレッドランキング" icon="📊" subtitle="（過去3日間）" />
 
       <div className="max-w-screen-xl mx-auto px-2">
         <Suspense fallback={
