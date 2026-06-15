@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { fetchCardBySlug, fetchCardReviews, fetchCardRatings } from '@/lib/zukan'
+import { cookies } from 'next/headers'
+import { fetchCardBySlug, fetchCardRatings, attachReviewProfiles } from '@/lib/zukan'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getZukanPosterContext } from '@/lib/zukan-server'
+import { verifyAdminCookie, ADMIN_COOKIE } from '@/lib/admin-auth'
 import type { ZukanCardWithPack } from '@/lib/zukan'
 import { normalizeZukanDisplayName } from '@/lib/zukan-display'
 import { ZukanReviewAuthor } from '@/components/ZukanReviewAuthor'
@@ -10,6 +12,8 @@ import ZukanImagePreview from '@/components/ZukanImagePreview'
 import ShareButtons from './ShareButtons'
 import CardReviewForm from './CardReviewForm'
 import CardRatingForm from './CardRatingForm'
+import type { ItemKey } from './CardRatingForm'
+import AdminReviewControls from './AdminReviewControls'
 
 const MOCK_CARD: ZukanCardWithPack = {
   id: '',
@@ -96,21 +100,54 @@ export default async function ZukanCardPage({
     card = MOCK_CARD
   }
 
-  const [cardReviews, ratingsSummary] = isDbReady
-    ? await Promise.all([
-        fetchCardReviews(card.id),
-        fetchCardRatings(card.id),
-      ])
-    : [null, null]
+  const isAdmin = verifyAdminCookie((await cookies()).get(ADMIN_COOKIE)?.value)
 
-  let alreadyRated = false
+  type AdminCardReview = {
+    id: number
+    user_id: string | null
+    display_name: string
+    body: string
+    created_at: string
+    is_hidden: boolean
+    avatar_url: string | null
+    profile_slug: string | null
+    is_withdrawn: boolean
+  }
+
+  let cardReviews: AdminCardReview[] | null = null
+  let ratingsSummary = null
+
+  if (isDbReady) {
+    ratingsSummary = await fetchCardRatings(card.id)
+
+    if (isAdmin) {
+      const adminSupa = createAdminClient()
+      const { data } = await adminSupa
+        .from('zukan_card_reviews')
+        .select('id, card_id, user_id, display_name, body, created_at, is_hidden')
+        .eq('card_id', card.id)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(10)
+      if (data) {
+        const enriched = await attachReviewProfiles(data as { id: number; card_id: string; user_id: string | null; display_name: string; body: string; created_at: string; is_hidden: boolean }[])
+        cardReviews = enriched.map(r => ({ ...r, is_hidden: r.is_hidden }))
+      }
+    } else {
+      const { fetchCardReviews } = await import('@/lib/zukan')
+      const reviews = await fetchCardReviews(card.id)
+      cardReviews = reviews ? reviews.map(r => ({ ...r, is_hidden: false as const })) : null
+    }
+  }
+
+  let initialValues: Partial<Record<ItemKey, number>> | undefined
   if (isDbReady) {
     const poster = await getZukanPosterContext(null)
     if (!poster.blockedMessage) {
       const supabase = createAdminClient()
       let q = supabase
         .from('zukan_card_ratings')
-        .select('id')
+        .select('score_admiration, score_trauma, score_still_like, score_name, score_art')
         .eq('card_id', card.id)
         .eq('is_deleted', false)
         .limit(1)
@@ -120,7 +157,16 @@ export default async function ZukanCardPage({
         q = q.eq('anon_key', poster.anonKey).is('user_id', null)
       }
       const { data } = await q
-      alreadyRated = (data?.length ?? 0) > 0
+      if (data && data.length > 0) {
+        const row = data[0]
+        initialValues = {
+          score_admiration: row.score_admiration ?? undefined,
+          score_trauma: row.score_trauma ?? undefined,
+          score_still_like: row.score_still_like ?? undefined,
+          score_name: row.score_name ?? undefined,
+          score_art: row.score_art ?? undefined,
+        }
+      }
     }
   }
 
@@ -248,7 +294,7 @@ export default async function ZukanCardPage({
                 まだ評価はありません
               </p>
             )}
-            {isDbReady && <CardRatingForm cardId={card.id} slug={slug} alreadyRated={alreadyRated} />}
+            {isDbReady && <CardRatingForm cardId={card.id} slug={slug} initialValues={initialValues} />}
           </section>
 
           <section>
@@ -258,7 +304,7 @@ export default async function ZukanCardPage({
             {cardReviews && cardReviews.length > 0 && (
               <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
                 {cardReviews.map(r => (
-                  <article key={r.id} className="px-3 py-2.5">
+                  <article key={r.id} className={`px-3 py-2.5 ${r.is_hidden ? 'opacity-50 bg-gray-50' : ''}`}>
                     <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
                       <ZukanReviewAuthor
                         displayName={normalizeZukanDisplayName(r.display_name)}
@@ -267,8 +313,17 @@ export default async function ZukanCardPage({
                         isWithdrawn={r.is_withdrawn}
                       />
                       <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
+                      {r.is_hidden && <span className="text-red-500 font-bold">[非表示]</span>}
                     </div>
                     <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
+                    {isAdmin && (
+                      <AdminReviewControls
+                        reviewId={r.id}
+                        slug={slug}
+                        initialBody={r.body}
+                        isHidden={r.is_hidden}
+                      />
+                    )}
                   </article>
                 ))}
               </div>

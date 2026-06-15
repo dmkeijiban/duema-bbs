@@ -1,7 +1,6 @@
 import { Suspense } from 'react'
 import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadRow } from '@/components/ThreadRow'
-import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { Pagination } from '@/components/Pagination'
 import { CategoryDropdown } from '@/components/CategoryDropdown'
 import { getCachedCategories } from '@/lib/cached-queries'
@@ -10,6 +9,8 @@ import { seededShuffle } from '@/lib/stable-shuffle'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { SITE_URL } from '@/lib/site-config'
+import { ThreadListHeader } from '@/components/ThreadListHeader'
+import { ThreadListTopContent } from '@/components/ThreadListTopContent'
 
 const PAGE_SIZE = 50
 
@@ -237,21 +238,9 @@ export async function ThreadSortPage({ sort, title, icon, page = 1 }: Props) {
 
   return (
     <div className="w-full px-0 py-0">
-      <div className="max-w-screen-xl mx-auto px-2 pt-2">
-        <Suspense fallback={<RecommendSectionSkeleton />}>
-          <RecommendSection />
-        </Suspense>
+      <ThreadListTopContent showPopularThreads />
 
-        <nav className="text-xs text-gray-500 mb-2 flex items-center gap-x-1">
-          <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
-          <span>{'>'}</span>
-          <span>{title}</span>
-        </nav>
-
-        <div className="mb-2 px-3 py-1.5 border border-gray-300 bg-white flex items-baseline gap-2">
-          <h1 className="font-bold text-sm text-gray-800">{icon} {title}</h1>
-        </div>
-      </div>
+      <ThreadListHeader title={title} icon={icon} />
 
       <div className="max-w-screen-xl mx-auto px-2">
         <Suspense fallback={<SkeletonList />}>

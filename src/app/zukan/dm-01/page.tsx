@@ -1,11 +1,14 @@
 import Link from 'next/link'
-import { fetchPack, fetchCardsByPack, fetchCardsBySlugs, fetchPackReviews } from '@/lib/zukan'
+import { cookies } from 'next/headers'
+import { fetchPack, fetchCardsByPack, fetchCardsBySlugs, fetchPackReviews, attachReviewProfiles } from '@/lib/zukan'
 import type { ZukanPack, ZukanCard } from '@/lib/zukan'
 import { normalizeZukanDisplayName } from '@/lib/zukan-display'
+import { verifyAdminCookie, ADMIN_COOKIE } from '@/lib/admin-auth'
 import { ZukanReviewAuthor } from '@/components/ZukanReviewAuthor'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import PackShareButtons from './PackShareButtons'
 import PackReviewForm from './PackReviewForm'
+import AdminPackReviewControls from './AdminPackReviewControls'
 
 export const metadata = {
   title: 'DM-01 基本セット | デュエマ思い出図鑑',
@@ -178,15 +181,50 @@ export default async function ZukanDm01Page({
   const dbPack = await fetchPack('dm-01')
   const pack = dbPack ?? MOCK_PACK
 
-  const [dbCards, packReviews, dbRepCards] = dbPack
+  const isAdmin = verifyAdminCookie((await cookies()).get(ADMIN_COOKIE)?.value)
+
+  const [dbCards, dbRepCards] = dbPack
     ? await Promise.all([
         fetchCardsByPack(dbPack.id, page),
-        fetchPackReviews(dbPack.id),
         page === 1 ? fetchCardsBySlugs(dbPack.id, REP_CARDS.map(r => r.slug)) : Promise.resolve(null),
       ])
-    : [null, null, null]
+    : [null, null]
   const cards = dbCards ?? (page === 1 ? MOCK_CARDS : [])
   const isDbReady = dbPack !== null
+
+  type AdminPackReview = {
+    id: number
+    user_id: string | null
+    display_name: string
+    body: string
+    created_at: string
+    is_hidden: boolean
+    avatar_url: string | null
+    profile_slug: string | null
+    is_withdrawn: boolean
+  }
+
+  let packReviews: AdminPackReview[] | null = null
+  if (dbPack) {
+    if (isAdmin) {
+      const { createAdminClient } = await import('@/lib/supabase-admin')
+      const adminSupa = createAdminClient()
+      const { data } = await adminSupa
+        .from('zukan_pack_reviews')
+        .select('id, pack_id, user_id, display_name, body, created_at, is_hidden')
+        .eq('pack_id', dbPack.id)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(10)
+      if (data) {
+        const enriched = await attachReviewProfiles(data as { id: number; pack_id: string; user_id: string | null; display_name: string; body: string; created_at: string; is_hidden: boolean }[])
+        packReviews = enriched.map(r => ({ ...r, is_hidden: r.is_hidden }))
+      }
+    } else {
+      const reviews = await fetchPackReviews(dbPack.id)
+      packReviews = reviews ? reviews.map(r => ({ ...r, is_hidden: false as const })) : null
+    }
+  }
 
   const total = pack.card_count ?? null
   const totalPages = total ? Math.ceil(total / PAGE_SIZE) : null
@@ -247,7 +285,7 @@ export default async function ZukanDm01Page({
           </dl>
           <div className="mt-3 space-y-2 text-sm leading-relaxed text-gray-700">
             {PACK_DESCRIPTION_PARAGRAPHS.map(paragraph => (
-              <p key={paragraph}>{paragraph}</p>
+              <p key={paragraph} className="border-l-2 border-gray-200 pl-3">{paragraph}</p>
             ))}
           </div>
           <div className="mt-auto pt-4">
@@ -382,7 +420,7 @@ export default async function ZukanDm01Page({
         {packReviews && packReviews.length > 0 && (
           <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
             {latestPackReviews.map(r => (
-              <article key={r.id} className="px-3 py-2.5">
+              <article key={r.id} className={`px-3 py-2.5 ${r.is_hidden ? 'opacity-50 bg-gray-50' : ''}`}>
                 <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
                   <ZukanReviewAuthor
                     displayName={normalizeZukanDisplayName(r.display_name)}
@@ -391,8 +429,17 @@ export default async function ZukanDm01Page({
                     isWithdrawn={r.is_withdrawn}
                   />
                   <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
+                  {r.is_hidden && <span className="text-red-500 font-bold">[非表示]</span>}
                 </div>
                 <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
+                {isAdmin && (
+                  <AdminPackReviewControls
+                    reviewId={r.id}
+                    packId={pack.id}
+                    initialBody={r.body}
+                    isHidden={r.is_hidden}
+                  />
+                )}
               </article>
             ))}
             {morePackReviews.length > 0 && (
@@ -402,7 +449,7 @@ export default async function ZukanDm01Page({
                 </summary>
                 <div className="divide-y divide-gray-100 border-t border-gray-100">
                   {morePackReviews.map(r => (
-                    <article key={r.id} className="px-3 py-2.5">
+                    <article key={r.id} className={`px-3 py-2.5 ${r.is_hidden ? 'opacity-50 bg-gray-50' : ''}`}>
                       <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
                         <ZukanReviewAuthor
                           displayName={normalizeZukanDisplayName(r.display_name)}
@@ -411,8 +458,17 @@ export default async function ZukanDm01Page({
                           isWithdrawn={r.is_withdrawn}
                         />
                         <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
+                        {r.is_hidden && <span className="text-red-500 font-bold">[非表示]</span>}
                       </div>
                       <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
+                      {isAdmin && (
+                        <AdminPackReviewControls
+                          reviewId={r.id}
+                          packId={pack.id}
+                          initialBody={r.body}
+                          isHidden={r.is_hidden}
+                        />
+                      )}
                     </article>
                   ))}
                 </div>

@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { logout } from '@/app/auth/actions'
 import { ProfileHeaderActionLink, ProfileHeaderCard } from '@/components/ProfileHeaderCard'
-import { WithdrawAccountForm } from '@/components/WithdrawAccountForm'
 import { getCachedUserRankings } from '@/lib/cached-queries'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
@@ -343,7 +342,12 @@ export default async function MyPage({
             </button>
           </form>
 
-          <WithdrawAccountForm />
+          <Link
+            href="/mypage/withdraw"
+            className="mt-4 inline-block rounded border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+          >
+            退会する
+          </Link>
         </div>
       </div>
     </main>

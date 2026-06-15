@@ -208,7 +208,7 @@ export type CardRatingSummary = {
 const ANONYMOUS_REVIEW_NAME = '名無しのデュエリスト'
 const WITHDRAWN_REVIEW_NAME = '退会済みユーザー'
 
-async function attachReviewProfiles<T extends { user_id: string | null; display_name: string }>(
+export async function attachReviewProfiles<T extends { user_id: string | null; display_name: string }>(
   rows: T[]
 ): Promise<(T & { avatar_url: string | null; profile_slug: string | null; is_withdrawn: boolean })[]> {
   const userIds = Array.from(new Set(rows.map(row => row.user_id).filter((id): id is string => !!id)))
