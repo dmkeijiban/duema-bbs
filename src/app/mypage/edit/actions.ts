@@ -131,7 +131,7 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
     }
 
     const { data: publicUrl } = admin.storage.from(AVATAR_BUCKET).getPublicUrl(path)
-    nextAvatarUrl = publicUrl.publicUrl
+    nextAvatarUrl = `${publicUrl.publicUrl}?v=${Date.now()}`
   }
 
   const updatePayload: {
