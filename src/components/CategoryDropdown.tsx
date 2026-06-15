@@ -23,7 +23,7 @@ export function CategoryDropdown({ currentCategory, categories }: Props) {
   }, [open])
 
   return (
-    <li ref={ref} className="relative shrink-0">
+    <li ref={ref} className="relative shrink-0 col-span-2 sm:col-span-1">
       <button
         onClick={() => setOpen(v => !v)}
         aria-haspopup="listbox"

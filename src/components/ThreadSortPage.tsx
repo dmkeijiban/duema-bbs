@@ -215,7 +215,7 @@ export function BottomNav({
       {categories.length > 0 ? (
         <CategoryDropdown currentCategory={currentCategory} categories={categories} />
       ) : (
-        <li>
+        <li className="col-span-2 sm:col-span-1">
           <Link
             href="/"
             className={
