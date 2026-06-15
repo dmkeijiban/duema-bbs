@@ -14,6 +14,13 @@ export type ZukanPosterContext = {
   blockedMessage?: string
 }
 
+export type ZukanPosterContextReadOnly = {
+  userId: string | null
+  anonKey: string | null
+  displayName: string
+  blockedMessage?: string
+}
+
 export async function getZukanPosterContext(
   rawDisplayName: string | null
 ): Promise<ZukanPosterContext> {
@@ -28,6 +35,49 @@ export async function getZukanPosterContext(
       path: '/',
     })
   }
+
+  const fallbackName = normalizeZukanAnonInput(rawDisplayName)
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { userId: null, anonKey, displayName: fallbackName }
+  }
+
+  const admin = createAdminClient()
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('display_name, profile_hidden, account_suspended, withdrawn_at')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (profile?.account_suspended || profile?.withdrawn_at) {
+    return {
+      userId: null,
+      anonKey,
+      displayName: fallbackName,
+      blockedMessage: 'このアカウントでは投稿できません。',
+    }
+  }
+
+  if (profile && !profile.profile_hidden) {
+    return {
+      userId: user.id,
+      anonKey,
+      displayName: normalizeZukanDisplayName(profile.display_name),
+    }
+  }
+
+  return { userId: null, anonKey, displayName: fallbackName }
+}
+
+export async function getZukanPosterContextReadOnly(
+  rawDisplayName: string | null
+): Promise<ZukanPosterContextReadOnly> {
+  const cookieStore = await cookies()
+  const anonKey = cookieStore.get(ZUKAN_ANON_COOKIE)?.value ?? null
 
   const fallbackName = normalizeZukanAnonInput(rawDisplayName)
   const supabase = await createClient()

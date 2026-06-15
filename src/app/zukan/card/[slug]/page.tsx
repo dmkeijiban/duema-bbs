@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { fetchCardBySlug, fetchCardRatings, attachReviewProfiles } from '@/lib/zukan'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { getZukanPosterContext } from '@/lib/zukan-server'
+import { getZukanPosterContextReadOnly } from '@/lib/zukan-server'
 import { verifyAdminCookie, ADMIN_COOKIE } from '@/lib/admin-auth'
 import type { ZukanCardWithPack } from '@/lib/zukan'
 import { normalizeZukanDisplayName } from '@/lib/zukan-display'
@@ -142,8 +142,8 @@ export default async function ZukanCardPage({
 
   let initialValues: Partial<Record<ItemKey, number>> | undefined
   if (isDbReady) {
-    const poster = await getZukanPosterContext(null)
-    if (!poster.blockedMessage) {
+    const poster = await getZukanPosterContextReadOnly(null)
+    if (!poster.blockedMessage && (poster.userId || poster.anonKey)) {
       const supabase = createAdminClient()
       let q = supabase
         .from('zukan_card_ratings')
@@ -154,7 +154,7 @@ export default async function ZukanCardPage({
       if (poster.userId) {
         q = q.eq('user_id', poster.userId)
       } else {
-        q = q.eq('anon_key', poster.anonKey).is('user_id', null)
+        q = q.eq('anon_key', poster.anonKey!).is('user_id', null)
       }
       const { data } = await q
       if (data && data.length > 0) {
