@@ -239,9 +239,12 @@ export default async function ZukanTopPage() {
       {/* DM-01 のカード */}
       <section className="mb-5">
         <div className="mb-2 flex items-baseline justify-between border border-gray-300 bg-gray-50 px-3 py-2">
-          <h2 className="text-sm font-bold text-gray-800">DM-01 基本セットのカード</h2>
-          <Link href="/zukan/dm-01" className="text-xs text-blue-600 hover:underline">
-            パックページへ
+          <div>
+            <h2 className="text-sm font-bold text-gray-800">DM-01 基本セットの代表カード</h2>
+            <p className="mt-0.5 text-xs text-gray-500">このパックを代表するカードを一部掲載しています。</p>
+          </div>
+          <Link href="/zukan/dm-01" className="text-xs text-blue-600 hover:underline shrink-0">
+            収録カードをもっと見る
           </Link>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">

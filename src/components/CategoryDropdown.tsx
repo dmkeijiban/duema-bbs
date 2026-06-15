@@ -36,8 +36,7 @@ export function CategoryDropdown({ currentCategory, categories }: Props) {
         }
       >
         <span className="opacity-80">📁</span>
-        <span className="ml-0.5 hidden md:inline">カテゴリ {open ? '▴' : '▾'}</span>
-        <span className="ml-0.5 md:hidden">{open ? '▴' : '▾'}</span>
+        <span className="ml-0.5">カテゴリ {open ? '▴' : '▾'}</span>
       </button>
       {open && (
         <div
