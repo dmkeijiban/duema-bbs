@@ -1,10 +1,30 @@
 import Link from 'next/link'
 import { fetchPublishedPacks, fetchCardsBySlugs, fetchCardReviewHighlights } from '@/lib/zukan'
 import type { ZukanPack, ZukanCard, ZukanCardReviewHighlight } from '@/lib/zukan'
+import { SITE_URL } from '@/lib/site-config'
+
+const ZUKAN_TOP_TITLE = 'デュエマ思い出図鑑 | デュエマ掲示板'
+const ZUKAN_TOP_DESCRIPTION = 'デュエル・マスターズの歴代カード・パックを懐かしむ思い出図鑑。ボルシャック・ドラゴンをはじめ往年の名カードを振り返ろう。'
+const ZUKAN_TOP_URL = `${SITE_URL}/zukan`
+const ZUKAN_TOP_IMAGE = `${SITE_URL}/default-thumbnail.jpg`
 
 export const metadata = {
-  title: 'デュエマ思い出図鑑 | デュエマ掲示板',
-  description: 'デュエル・マスターズの歴代カード・パックを懐かしむ思い出図鑑。ボルシャック・ドラゴンをはじめ往年の名カードを振り返ろう。',
+  title: ZUKAN_TOP_TITLE,
+  description: ZUKAN_TOP_DESCRIPTION,
+  alternates: { canonical: ZUKAN_TOP_URL },
+  openGraph: {
+    title: ZUKAN_TOP_TITLE,
+    description: ZUKAN_TOP_DESCRIPTION,
+    url: ZUKAN_TOP_URL,
+    type: 'website' as const,
+    images: [{ url: ZUKAN_TOP_IMAGE, width: 1200, height: 630, alt: 'デュエマ思い出図鑑' }],
+  },
+  twitter: {
+    card: 'summary_large_image' as const,
+    title: ZUKAN_TOP_TITLE,
+    description: ZUKAN_TOP_DESCRIPTION,
+    images: [ZUKAN_TOP_IMAGE],
+  },
 }
 
 // モックフォールバック（DBテーブル未作成時に使用）

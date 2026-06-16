@@ -14,6 +14,7 @@ import CardReviewForm from './CardReviewForm'
 import CardRatingForm from './CardRatingForm'
 import type { ItemKey } from './CardRatingForm'
 import AdminReviewControls from './AdminReviewControls'
+import { SITE_URL } from '@/lib/site-config'
 
 const MOCK_CARD: ZukanCardWithPack = {
   id: '',
@@ -74,8 +75,28 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       : slug === 'bolshack-dragon'
         ? 'ボルシャック・ドラゴン'
         : slug
+  const imageUrl =
+    (result.status === 'found' ? result.card.official_image_url : MOCK_CARD.official_image_url) ??
+    `${SITE_URL}/default-thumbnail.jpg`
+  const description = `${name}の評価や思い出レビューを募集中。デュエマ思い出図鑑で、当時の思い出や今の評価を残せます。`
+  const url = `${SITE_URL}/zukan/card/${slug}`
   return {
     title: `${name} | デュエマ思い出図鑑`,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title: `${name} | デュエマ思い出図鑑`,
+      description,
+      url,
+      type: 'article',
+      images: [{ url: imageUrl, width: 1200, height: 630, alt: `${name} カード画像` }],
+    },
+    twitter: {
+      card: 'summary_large_image' as const,
+      title: `${name} | デュエマ思い出図鑑`,
+      description,
+      images: [imageUrl],
+    },
   }
 }
 
