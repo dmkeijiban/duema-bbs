@@ -382,6 +382,29 @@ export default async function Home({
           <HomeBannerServer />
         </Suspense>
 
+        {/* 投稿者ページ・図鑑への案内リンク（静的・コンパクト・新着スレッドを大きく下げない） */}
+        <div className="mb-2 border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+          <p className="text-xs text-gray-600">
+            投稿者登録すると、自分専用の投稿者ページを作成できます。
+          </p>
+          <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+            <a
+              target="_blank"
+              rel="noopener noreferrer"
+              href="/guide"
+              className="text-blue-600 hover:underline"
+            >
+              スレッドの立て方
+            </a>
+            <Link href="/login" className="text-blue-600 hover:underline">
+              投稿者ページを作る
+            </Link>
+            <Link href="/zukan" className="text-blue-600 hover:underline">
+              思い出図鑑を見る
+            </Link>
+          </div>
+        </div>
+
         <Suspense fallback={null}>
           <TopNoticesServer />
         </Suspense>
