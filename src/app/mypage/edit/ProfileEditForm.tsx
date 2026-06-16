@@ -96,6 +96,7 @@ export default function ProfileEditForm({
   const [isProcessingAvatar, setIsProcessingAvatar] = useState(false)
   const [isPending, startTransition] = useTransition()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cropBoxRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{
     pointerId: number
     startX: number
@@ -214,7 +215,8 @@ export default function ProfileEditForm({
   const updateCropCenter = (dx: number, dy: number) => {
     setCropImage(current => {
       if (!current || !dragRef.current) return current
-      const baseScale = Math.max(CROP_SIZE / current.naturalWidth, CROP_SIZE / current.naturalHeight)
+      const boxSize = cropBoxRef.current?.getBoundingClientRect().width ?? CROP_SIZE
+      const baseScale = Math.max(boxSize / current.naturalWidth, boxSize / current.naturalHeight)
       const renderedWidth = current.naturalWidth * baseScale * current.zoom
       const renderedHeight = current.naturalHeight * baseScale * current.zoom
       const next = clampCropCenter(
@@ -308,8 +310,9 @@ export default function ProfileEditForm({
               <p className="mb-2 text-xs font-bold text-gray-700">正方形に切り抜き</p>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <div
+                  ref={cropBoxRef}
                   className="relative shrink-0 overflow-hidden border border-gray-300 bg-gray-100"
-                  style={{ width: CROP_SIZE, height: CROP_SIZE, touchAction: 'none' }}
+                  style={{ width: CROP_SIZE, height: CROP_SIZE, maxWidth: '100%', touchAction: 'none' }}
                   onPointerDown={(event) => {
                     event.currentTarget.setPointerCapture(event.pointerId)
                     dragRef.current = {
@@ -337,6 +340,14 @@ export default function ProfileEditForm({
                     alt="切り抜き範囲"
                     draggable={false}
                     style={getCropImageStyle(cropImage, CROP_SIZE)}
+                  />
+                  {/* circle guide overlay — shows the actual avatar boundary */}
+                  <div
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                      boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)',
+                      borderRadius: '50%',
+                    }}
                   />
                 </div>
                 <div className="min-w-0 flex-1">
