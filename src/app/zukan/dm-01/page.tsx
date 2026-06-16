@@ -428,7 +428,7 @@ export default async function ZukanDm01Page({
                     profileSlug={r.profile_slug}
                     isWithdrawn={r.is_withdrawn}
                   />
-                  <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
+                  <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}</time>
                   {r.is_hidden && <span className="text-red-500 font-bold">[非表示]</span>}
                 </div>
                 <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
@@ -457,7 +457,7 @@ export default async function ZukanDm01Page({
                           profileSlug={r.profile_slug}
                           isWithdrawn={r.is_withdrawn}
                         />
-                        <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP')}</time>
+                        <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}</time>
                         {r.is_hidden && <span className="text-red-500 font-bold">[非表示]</span>}
                       </div>
                       <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>

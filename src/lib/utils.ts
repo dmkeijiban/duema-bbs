@@ -31,7 +31,7 @@ export function formatRelativeTime(dateStr: string): string {
   if (hours < 24) return `${hours}時間前`
   if (days < 30) return `${days}日前`
 
-  return date.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })
+  return date.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', timeZone: 'Asia/Tokyo' })
 }
 
 export function formatDateTime(dateStr: string): string {
