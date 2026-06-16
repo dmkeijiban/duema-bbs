@@ -220,6 +220,23 @@ export default async function UserProfilePage({
         </div>
       </section>
 
+      {!isOwner && (
+        <section className="mt-4 rounded-sm border border-blue-200 bg-blue-50 px-4 py-3">
+          <h2 className="text-sm font-bold text-gray-800">
+            あなたも自分専用の投稿者ページを作成できます。
+          </h2>
+          <p className="mt-1.5 text-xs leading-relaxed text-gray-600">
+            登録すると、自分のスレッドやコメントの確認、プロフィール設定、X・YouTubeの掲載、投稿者ランキングへの参加ができます。
+          </p>
+          <Link
+            href="/login"
+            className="mt-3 inline-flex items-center justify-center rounded-sm bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700"
+          >
+            自分の投稿者ページを作成する
+          </Link>
+        </section>
+      )}
+
       {/* Recent activity */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {/* Recent threads */}
