@@ -9,10 +9,37 @@ import ZukanImagePreview from '@/components/ZukanImagePreview'
 import PackShareButtons from './PackShareButtons'
 import PackReviewForm from './PackReviewForm'
 import AdminPackReviewControls from './AdminPackReviewControls'
+import { SITE_URL } from '@/lib/site-config'
 
-export const metadata = {
-  title: 'DM-01 基本セット | デュエマ思い出図鑑',
-  description: 'デュエル・マスターズ第1弾「DM-01 基本セット」のカード一覧。ボルシャック・ドラゴンをはじめ、2002年当時の名カードを振り返ろう。',
+export async function generateMetadata() {
+  const pack = await fetchPack('dm-01')
+  const name = pack?.name ?? MOCK_PACK.name
+  const code = pack?.code ?? MOCK_PACK.code
+  const description =
+    pack?.description ??
+    MOCK_PACK.description ??
+    'デュエル・マスターズ第1弾「DM-01 基本セット」のカード一覧。ボルシャック・ドラゴンをはじめ、2002年当時の名カードを振り返ろう。'
+  const imageUrl = (pack?.image_url ?? MOCK_PACK.image_url) ?? `${SITE_URL}/default-thumbnail.jpg`
+  const title = `${code} ${name} | デュエマ思い出図鑑`
+  const url = `${SITE_URL}/zukan/dm-01`
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      type: 'website' as const,
+      images: [{ url: imageUrl, width: 1200, height: 630, alt: `${code} ${name} パック画像` }],
+    },
+    twitter: {
+      card: 'summary_large_image' as const,
+      title,
+      description,
+      images: [imageUrl],
+    },
+  }
 }
 
 const PAGE_SIZE = 60
