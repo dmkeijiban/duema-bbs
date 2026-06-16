@@ -12,6 +12,7 @@ type ViewerState =
   | { status: 'checking' }
   | { status: 'anonymous' }
   | { status: 'profile'; displayName: string; avatarUrl: string | null }
+  | { status: 'profile_hidden'; displayName: string; avatarUrl: string | null }
 
 export default function CardReviewForm({ cardId, slug }: { cardId: string; slug: string }) {
   const action = submitCardReview.bind(null, cardId, slug)
@@ -39,12 +40,14 @@ export default function CardReviewForm({ cardId, slug }: { cardId: string; slug:
         .maybeSingle()
 
       if (!active) return
-      if (profile && !profile.profile_hidden && !profile.account_suspended && !profile.withdrawn_at) {
-        setViewer({
-          status: 'profile',
-          displayName: normalizeZukanDisplayName(profile.display_name),
-          avatarUrl: typeof profile.avatar_url === 'string' ? profile.avatar_url : null,
-        })
+      if (profile && !profile.account_suspended && !profile.withdrawn_at) {
+        const avatarUrl = typeof profile.avatar_url === 'string' ? profile.avatar_url : null
+        const displayName = normalizeZukanDisplayName(profile.display_name)
+        if (profile.profile_hidden) {
+          setViewer({ status: 'profile_hidden', displayName, avatarUrl })
+        } else {
+          setViewer({ status: 'profile', displayName, avatarUrl })
+        }
       } else {
         setViewer({ status: 'anonymous' })
       }
@@ -75,6 +78,14 @@ export default function CardReviewForm({ cardId, slug }: { cardId: string; slug:
         <div className="mb-2 flex items-center gap-2 rounded border border-blue-100 bg-blue-50 px-2 py-1.5 text-xs text-blue-800">
           <ProfileAvatar src={viewer.avatarUrl} alt={`${viewer.displayName}のアイコン`} size="sm" />
           <span>投稿者：<span className="font-bold">{viewer.displayName}</span></span>
+        </div>
+      ) : viewer.status === 'profile_hidden' ? (
+        <div className="mb-2">
+          <div className="flex items-center gap-2 rounded border border-blue-100 bg-blue-50 px-2 py-1.5 text-xs text-blue-800">
+            <ProfileAvatar src={viewer.avatarUrl} alt={`${viewer.displayName}のアイコン`} size="sm" />
+            <span>投稿者：<span className="font-bold">{viewer.displayName}</span></span>
+          </div>
+          <p className="mt-1 text-[10px] text-amber-600">プロフィール非公開中のため、公開画面では匿名表示されます。</p>
         </div>
       ) : (
         <div className="mb-2">
