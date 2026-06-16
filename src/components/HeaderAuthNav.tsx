@@ -16,7 +16,7 @@ interface Props {
 
 /**
  * ログイン状態に応じてヘッダー導線を出し分けるクライアントコンポーネント。
- * - 未ログイン: ログイン（従来通り）
+ * - 未ログイン: マイページ（未登録者向け匿名履歴ページへ誘導）
  * - ログイン済み + profile未作成: プロフィール作成 → /profile/new
  * - ログイン済み + profile作成済み: マイページ（+ 余裕があれば 投稿者ページ）
  *
@@ -73,8 +73,8 @@ export function HeaderAuthNav({ variant, onNavigate }: Props) {
 
   if (state.status === 'anon') {
     return (
-      <Link href="/login" className={className} onClick={onNavigate}>
-        ログイン
+      <Link href="/mypage" className={className} onClick={onNavigate}>
+        マイページ
       </Link>
     )
   }

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { logout } from '@/app/auth/actions'
@@ -141,6 +142,41 @@ async function getMyProfile(userId: string): Promise<Profile | null> {
   return data
 }
 
+async function getAnonThreads(sessionId: string): Promise<MyThreadRow[]> {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('threads')
+    .select('id, title, post_count, created_at')
+    .eq('session_id', sessionId)
+    .eq('is_archived', false)
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  if (error) {
+    console.error('Failed to fetch anon threads:', error.message)
+    return []
+  }
+  return (data ?? []) as MyThreadRow[]
+}
+
+async function getAnonPosts(sessionId: string): Promise<MyPostRow[]> {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('posts')
+    .select('id, thread_id, post_number, body, created_at, threads!inner(title, is_archived)')
+    .eq('session_id', sessionId)
+    .eq('is_deleted', false)
+    .eq('threads.is_archived', false)
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  if (error) {
+    console.error('Failed to fetch anon posts:', error.message)
+    return []
+  }
+  return (data ?? []) as unknown as MyPostRow[]
+}
+
 async function getMyActivityCounts(userId: string) {
   const admin = createAdminClient()
   const [threadsResult, postsResult] = await Promise.all([
@@ -170,6 +206,127 @@ async function getMyActivityCounts(userId: string) {
   }
 }
 
+function SignupBanner() {
+  return (
+    <div className="rounded border border-blue-200 bg-blue-50 px-3 py-3 text-sm text-blue-800">
+      <p>アカウントを作ると、投稿履歴やプロフィールをまとめて管理できます。</p>
+      <Link
+        href="/login"
+        className="mt-2 inline-flex items-center justify-center rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
+      >
+        アカウントを作る
+      </Link>
+    </div>
+  )
+}
+
+async function AnonMyPage() {
+  const cookieStore = await cookies()
+  const sessionId = cookieStore.get('bbs_session')?.value ?? null
+
+  const [anonThreads, anonPosts] = sessionId
+    ? await Promise.all([getAnonThreads(sessionId), getAnonPosts(sessionId)])
+    : [[], []]
+
+  const hasHistory = anonThreads.length > 0 || anonPosts.length > 0
+
+  return (
+    <main className="mx-auto w-full max-w-[1100px] px-3 py-4">
+      <div className="w-full border border-gray-300 bg-white">
+        <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
+          <h1 className="text-lg font-bold text-gray-900">マイページ</h1>
+          <p className="mt-1 text-sm leading-relaxed text-gray-600">
+            このブラウザから投稿したスレッドとコメントを確認できます。
+          </p>
+        </div>
+
+        <div className="space-y-5 p-4">
+          <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            未登録の投稿履歴は、このブラウザのCookieに保存された情報をもとに表示されます。Cookie削除や端末変更後は確認できません。
+          </div>
+
+          <SignupBanner />
+
+          {hasHistory ? (
+            <div className="grid gap-4 lg:grid-cols-2">
+              <section className="rounded border border-gray-200">
+                <div className="border-b border-gray-200 px-4 py-3">
+                  <h2 className="text-sm font-bold text-gray-800">最近のスレッド</h2>
+                </div>
+                {anonThreads.length > 0 ? (
+                  <ul className="divide-y divide-gray-100">
+                    {anonThreads.map((thread) => (
+                      <li key={thread.id} className="px-4 py-3">
+                        <Link
+                          href={`/thread/${thread.id}`}
+                          className="text-sm text-blue-600 hover:underline break-words"
+                        >
+                          {thread.title}
+                        </Link>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {formatDateTime(thread.created_at)}
+                          {typeof thread.post_count === 'number' && (
+                            <span className="ml-2">レス{thread.post_count}</span>
+                          )}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="px-4 py-5 text-sm text-gray-600">
+                    まだスレッドはありません。
+                  </p>
+                )}
+              </section>
+
+              <section className="rounded border border-gray-200">
+                <div className="border-b border-gray-200 px-4 py-3">
+                  <h2 className="text-sm font-bold text-gray-800">最近のコメント</h2>
+                </div>
+                {anonPosts.length > 0 ? (
+                  <ul className="divide-y divide-gray-100">
+                    {anonPosts.map((post) => (
+                      <li key={post.id} className="px-4 py-3">
+                        <Link
+                          href={
+                            post.post_number
+                              ? `/thread/${post.thread_id}#${post.post_number}`
+                              : `/thread/${post.thread_id}`
+                          }
+                          className="text-sm text-gray-800 hover:underline break-words"
+                        >
+                          {excerpt(post.body)}
+                        </Link>
+                        <p className="mt-1 text-xs text-gray-500 break-words">
+                          {post.threads?.title && (
+                            <span className="text-gray-600">{post.threads.title}</span>
+                          )}
+                          <span className="ml-2">{formatDateTime(post.created_at)}</span>
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="px-4 py-5 text-sm text-gray-600">
+                    まだコメントはありません。
+                  </p>
+                )}
+              </section>
+            </div>
+          ) : (
+            <div className="rounded border border-gray-200 px-4 py-8 text-center">
+              <h2 className="text-base font-bold text-gray-800">まだ投稿履歴はありません</h2>
+              <p className="mt-2 text-sm text-gray-600">
+                スレッドやコメントを投稿すると、ここから確認できます。
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </main>
+  )
+}
+
 export default async function MyPage({
   searchParams,
 }: {
@@ -183,11 +340,11 @@ export default async function MyPage({
     const { data } = await supabase.auth.getUser()
     user = data.user
   } catch {
-    redirect('/login?next=/mypage')
+    user = null
   }
 
   if (!user) {
-    redirect('/login?next=/mypage')
+    return <AnonMyPage />
   }
 
   const profile = await getMyProfile(user.id)
