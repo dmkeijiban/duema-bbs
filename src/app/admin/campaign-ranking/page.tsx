@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { verifyAdminCookie } from '@/lib/admin-auth'
-import { saveCampaignRankingAction } from './actions'
+import { saveCampaignRankingAction, clearCampaignRankingAction } from './actions'
 
 const ADMIN_COOKIE = 'admin_auth'
 
@@ -31,7 +31,7 @@ function toDisplayJst(isoJst: string): string {
 export default async function CampaignRankingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string; error?: string }>
+  searchParams: Promise<{ saved?: string; cleared?: string; error?: string }>
 }) {
   await requireAdmin()
   const sp = await searchParams
@@ -83,6 +83,12 @@ export default async function CampaignRankingPage({
       {sp.saved === '1' && (
         <div className="mb-4 border border-green-300 bg-green-50 px-3 py-2 text-xs text-green-800">
           キャンペーン設定を保存しました
+        </div>
+      )}
+
+      {sp.cleared === '1' && (
+        <div className="mb-4 border border-yellow-300 bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
+          キャンペーン設定をクリアしました
         </div>
       )}
 
@@ -197,7 +203,7 @@ export default async function CampaignRankingPage({
             />
           </div>
 
-          <div className="pt-1">
+          <div className="pt-1 flex items-center gap-4">
             <button
               type="submit"
               className="px-4 py-1.5 text-white text-xs font-medium"
@@ -206,6 +212,17 @@ export default async function CampaignRankingPage({
               保存する
             </button>
           </div>
+        </form>
+
+        <form action={clearCampaignRankingAction} className="mt-4 pt-4 border-t border-gray-100">
+          <button
+            type="submit"
+            className="px-3 py-1 text-xs text-red-600 border border-red-300 hover:bg-red-50"
+            onClick={(e) => { if (!confirm('キャンペーン設定をすべてクリアしますか？')) e.preventDefault() }}
+          >
+            設定をクリアする
+          </button>
+          <p className="mt-1 text-xs text-gray-400">ステータスを「下書き」に戻し、すべての項目を空にします</p>
         </form>
       </div>
     </div>

@@ -94,3 +94,35 @@ export async function saveCampaignRankingAction(formData: FormData): Promise<voi
   revalidatePath('/admin/campaign-ranking')
   redirect('/admin/campaign-ranking?saved=1')
 }
+
+export async function clearCampaignRankingAction(): Promise<void> {
+  try {
+    await checkAdmin()
+  } catch {
+    redirect('/admin/campaign-ranking?error=unauthorized')
+  }
+
+  const supabase = createAdminClient()
+  const now = new Date().toISOString()
+
+  const rows = [
+    { key: 'campaign_status', value: 'draft' },
+    { key: 'campaign_title', value: '' },
+    { key: 'campaign_start', value: '' },
+    { key: 'campaign_end', value: '' },
+    { key: 'campaign_prize', value: '' },
+    { key: 'campaign_rules_url', value: '' },
+  ].map(r => ({ ...r, updated_at: now }))
+
+  const { error } = await supabase
+    .from('site_settings')
+    .upsert(rows, { onConflict: 'key' })
+
+  if (error) {
+    console.error('[clearCampaignRankingAction]', error)
+    redirect('/admin/campaign-ranking?error=save_failed')
+  }
+
+  revalidatePath('/admin/campaign-ranking')
+  redirect('/admin/campaign-ranking?cleared=1')
+}
