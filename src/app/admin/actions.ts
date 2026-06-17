@@ -338,7 +338,8 @@ export async function updateSettingAction(formData: FormData) {
   await checkAdmin()
   const key = formData.get('key') as string
   const value = formData.get('value') as string
-  const supabase = await createClient()
+  // site_settings の書き込みはサービスロールクライアント経由（RLS で anon/authenticated の書き込みを禁止するため）
+  const supabase = createAdminClient()
   await supabase
     .from('site_settings')
     .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
