@@ -218,6 +218,7 @@ export default async function AdminPage({
             <span className="text-[10px] text-gray-400 w-14 shrink-0">ユーザー</span>
             <Link href="/admin/users" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">👤 登録ユーザー管理</Link>
             <Link href="/admin/ranking-preview" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">🏆 投稿者ランキングプレビュー</Link>
+            <Link href="/admin/campaign-ranking" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">🎯 キャンペーンランキング設定</Link>
           </div>
         </div>
       </div>
