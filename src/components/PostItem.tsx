@@ -328,6 +328,7 @@ export function PostItem({
   authorProfile,
 }: Props) {
   const [locallyDeletedByUser, setLocallyDeletedByUser] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const [isPending, startTransition] = useTransition()
 
   const postSessionId = (post as Post & { session_id?: string }).session_id ?? ''
@@ -339,9 +340,12 @@ export function PostItem({
 
   const handleDelete = () => {
     if (!confirm('このレスを削除しますか？')) return
+    setDeleteError('')
     startTransition(async () => {
       const res = await deleteOwnPost(post.id, threadId)
-      if (!res.error) {
+      if (res.error) {
+        setDeleteError(res.error)
+      } else {
         setLocallyDeletedByUser(true)
       }
     })
@@ -360,11 +364,11 @@ export function PostItem({
         >
           ▶{displayNumber}
         </button>
-        <PostAuthorName fallbackName={post.author_name} profile={authorProfile} />
-        <span className="text-gray-400">{formatDateTimeJP(post.created_at)}</span>
+        {!isDeletedByRegisteredUser && <PostAuthorName fallbackName={post.author_name} profile={authorProfile} />}
+        {!isDeletedByRegisteredUser && <span className="text-gray-400">{formatDateTimeJP(post.created_at)}</span>}
         {!isDeletedByRegisteredUser && <PostLikeButton likeKey={`post-${post.id}`} />}
         {!isDeletedByRegisteredUser && <ReportButton itemType="post" itemId={post.id} itemBody={post.body} />}
-        {canDelete && (
+        {!isDeletedByRegisteredUser && canDelete && (
           <button
             type="button"
             onClick={handleDelete}
@@ -374,6 +378,9 @@ export function PostItem({
           >
             削除
           </button>
+        )}
+        {!isDeletedByRegisteredUser && deleteError && (
+          <span className="text-[10px] text-red-600 ml-1">{deleteError}</span>
         )}
       </div>
 
