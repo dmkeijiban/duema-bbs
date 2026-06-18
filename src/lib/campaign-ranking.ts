@@ -41,12 +41,75 @@ export type CampaignRankingPublicResult = {
   overflow: boolean
 }
 
+export type CampaignRankingAdminProfile = {
+  id: string
+  display_name: string | null
+  profile_slug: string | null
+  avatar_url: string | null
+  profile_hidden: boolean | null
+  ranking_enabled: boolean | null
+  rank_excluded: boolean | null
+  account_suspended: boolean | null
+  withdrawn_at: string | null
+  x_url: string | null
+}
+
+export type CampaignRankingAdminEntry = {
+  userId: string
+  totalPoints: number
+  threadRawCount: number
+  postRawCount: number
+  cardReviewRawCount: number
+  packReviewRawCount: number
+  ratingRawCount: number
+  threadCount: number
+  postCount: number
+  reviewCount: number
+  ratingDays: number
+  lastActivity: string
+  profile: CampaignRankingAdminProfile | null
+  excludeReasons: string[]
+}
+
+export type CampaignRankingAdminResult = {
+  entries: CampaignRankingAdminEntry[]
+  error: string | null
+  overflow: boolean
+}
+
 type ActivityRow = { user_id: string | null; created_at: string | null }
 
 type PageFetcher = (from: number, to: number) => PromiseLike<{
   data: ActivityRow[] | null
   error: { message: string } | null
 }>
+
+type UserActivity = {
+  threadRawCount: number
+  postRawCount: number
+  cardReviewRawCount: number
+  packReviewRawCount: number
+  ratingRawCount: number
+  threadCount: number
+  postCount: number
+  reviewCount: number
+  ratingDays: number
+  totalPoints: number
+  lastActivity: string
+}
+
+type InternalCampaignEntry = UserActivity & {
+  userId: string
+  profile: CampaignRankingAdminProfile | null
+  excludeReasons: string[]
+  eligible: boolean
+}
+
+type InternalCampaignResult = {
+  entries: InternalCampaignEntry[]
+  error: string | null
+  overflow: boolean
+}
 
 export function toJstDate(utcIso: string): string {
   const jstMs = new Date(utcIso).getTime() + 9 * 60 * 60 * 1000
@@ -97,163 +160,144 @@ export async function fetchCampaignSettings(): Promise<CampaignSettings> {
   }
 }
 
-export async function fetchCampaignRankingPublic(
+async function fetchCampaignRankingInternal(
   startIso: string,
   endIso: string,
-): Promise<CampaignRankingPublicResult> {
+): Promise<InternalCampaignResult> {
   const supabase = createAdminClient()
-
   const [threadRes, postRes, ratingRes, cardRevRes, packRevRes] = await Promise.all([
     fetchAllRows((from, to) =>
-      supabase
-        .from('threads')
-        .select('user_id, created_at')
-        .gte('created_at', startIso)
-        .lte('created_at', endIso)
-        .eq('is_archived', false)
-        .not('user_id', 'is', null)
-        .range(from, to) as PromiseLike<{ data: ActivityRow[] | null; error: { message: string } | null }>
+      supabase.from('threads').select('user_id, created_at').gte('created_at', startIso).lte('created_at', endIso)
+        .eq('is_archived', false).not('user_id', 'is', null).range(from, to) as PromiseLike<{ data: ActivityRow[] | null; error: { message: string } | null }>
     ),
     fetchAllRows((from, to) =>
-      supabase
-        .from('posts')
-        .select('user_id, created_at')
-        .gte('created_at', startIso)
-        .lte('created_at', endIso)
-        .eq('is_deleted', false)
-        .not('user_id', 'is', null)
-        .range(from, to) as PromiseLike<{ data: ActivityRow[] | null; error: { message: string } | null }>
+      supabase.from('posts').select('user_id, created_at').gte('created_at', startIso).lte('created_at', endIso)
+        .eq('is_deleted', false).not('user_id', 'is', null).range(from, to) as PromiseLike<{ data: ActivityRow[] | null; error: { message: string } | null }>
     ),
     fetchAllRows((from, to) =>
-      supabase
-        .from('zukan_card_ratings')
-        .select('user_id, created_at')
-        .gte('created_at', startIso)
-        .lte('created_at', endIso)
-        .eq('is_deleted', false)
-        .not('user_id', 'is', null)
-        .range(from, to) as PromiseLike<{ data: ActivityRow[] | null; error: { message: string } | null }>
+      supabase.from('zukan_card_ratings').select('user_id, created_at').gte('created_at', startIso).lte('created_at', endIso)
+        .eq('is_deleted', false).not('user_id', 'is', null).range(from, to) as PromiseLike<{ data: ActivityRow[] | null; error: { message: string } | null }>
     ),
     fetchAllRows((from, to) =>
-      supabase
-        .from('zukan_card_reviews')
-        .select('user_id, created_at')
-        .gte('created_at', startIso)
-        .lte('created_at', endIso)
-        .eq('is_deleted', false)
-        .eq('is_hidden', false)
-        .not('user_id', 'is', null)
-        .range(from, to) as PromiseLike<{ data: ActivityRow[] | null; error: { message: string } | null }>
+      supabase.from('zukan_card_reviews').select('user_id, created_at').gte('created_at', startIso).lte('created_at', endIso)
+        .eq('is_deleted', false).eq('is_hidden', false).not('user_id', 'is', null).range(from, to) as PromiseLike<{ data: ActivityRow[] | null; error: { message: string } | null }>
     ),
     fetchAllRows((from, to) =>
-      supabase
-        .from('zukan_pack_reviews')
-        .select('user_id, created_at')
-        .gte('created_at', startIso)
-        .lte('created_at', endIso)
-        .eq('is_deleted', false)
-        .eq('is_hidden', false)
-        .not('user_id', 'is', null)
-        .range(from, to) as PromiseLike<{ data: ActivityRow[] | null; error: { message: string } | null }>
+      supabase.from('zukan_pack_reviews').select('user_id, created_at').gte('created_at', startIso).lte('created_at', endIso)
+        .eq('is_deleted', false).eq('is_hidden', false).not('user_id', 'is', null).range(from, to) as PromiseLike<{ data: ActivityRow[] | null; error: { message: string } | null }>
     ),
   ])
 
-  for (const r of [threadRes, postRes, ratingRes, cardRevRes, packRevRes]) {
-    if (r.errorMsg) return { entries: [], error: r.errorMsg, overflow: false }
-  }
-  if ([threadRes, postRes, ratingRes, cardRevRes, packRevRes].some(r => r.overflow)) {
-    return { entries: [], error: '対象データが多すぎるため集計できませんでした', overflow: true }
-  }
-
-  type UserActivity = {
-    threadCount: number
-    postCount: number
-    reviewCount: number
-    ratingDays: number
-    totalPoints: number
-    lastActivity: string
+  const results = [threadRes, postRes, ratingRes, cardRevRes, packRevRes]
+  const fetchError = results.find(result => result.errorMsg)?.errorMsg
+  if (fetchError) return { entries: [], error: fetchError, overflow: false }
+  if (results.some(result => result.overflow)) {
+    return { entries: [], error: '対象データが多すぎるため集計できませんでした（1万件超）', overflow: true }
   }
 
   const activityMap = new Map<string, UserActivity>()
   const getOrCreate = (uid: string): UserActivity => {
-    if (!activityMap.has(uid)) {
-      activityMap.set(uid, { threadCount: 0, postCount: 0, reviewCount: 0, ratingDays: 0, totalPoints: 0, lastActivity: '' })
+    const existing = activityMap.get(uid)
+    if (existing) return existing
+    const created: UserActivity = {
+      threadRawCount: 0,
+      postRawCount: 0,
+      cardReviewRawCount: 0,
+      packReviewRawCount: 0,
+      ratingRawCount: 0,
+      threadCount: 0,
+      postCount: 0,
+      reviewCount: 0,
+      ratingDays: 0,
+      totalPoints: 0,
+      lastActivity: '',
     }
-    return activityMap.get(uid)!
+    activityMap.set(uid, created)
+    return created
   }
-  const updateLast = (a: UserActivity, createdAt: string) => {
-    if (createdAt > a.lastActivity) a.lastActivity = createdAt
+  const updateLast = (activity: UserActivity, createdAt: string) => {
+    if (createdAt > activity.lastActivity) activity.lastActivity = createdAt
   }
 
-  // Threads: earliest first, cap per user per JST day
-  const sortedThreads = threadRes.rows.filter(r => r.user_id && r.created_at).sort((a, b) => a.created_at! < b.created_at! ? -1 : 1)
+  const sortedThreads = threadRes.rows.filter(row => row.user_id && row.created_at)
+    .sort((a, b) => a.created_at! < b.created_at! ? -1 : 1)
   const dailyThreads = new Map<string, number>()
   for (const row of sortedThreads) {
-    const a = getOrCreate(row.user_id!)
+    const activity = getOrCreate(row.user_id!)
+    activity.threadRawCount++
     const key = `${row.user_id}|${toJstDate(row.created_at!)}`
-    const n = (dailyThreads.get(key) ?? 0) + 1
-    dailyThreads.set(key, n)
-    if (n <= CAMPAIGN_THREAD_DAILY_LIMIT) { a.threadCount++; updateLast(a, row.created_at!) }
+    const count = (dailyThreads.get(key) ?? 0) + 1
+    dailyThreads.set(key, count)
+    if (count <= CAMPAIGN_THREAD_DAILY_LIMIT) {
+      activity.threadCount++
+      updateLast(activity, row.created_at!)
+    }
   }
 
-  // Posts
-  const sortedPosts = postRes.rows.filter(r => r.user_id && r.created_at).sort((a, b) => a.created_at! < b.created_at! ? -1 : 1)
+  const sortedPosts = postRes.rows.filter(row => row.user_id && row.created_at)
+    .sort((a, b) => a.created_at! < b.created_at! ? -1 : 1)
   const dailyPosts = new Map<string, number>()
   for (const row of sortedPosts) {
-    const a = getOrCreate(row.user_id!)
+    const activity = getOrCreate(row.user_id!)
+    activity.postRawCount++
     const key = `${row.user_id}|${toJstDate(row.created_at!)}`
-    const n = (dailyPosts.get(key) ?? 0) + 1
-    dailyPosts.set(key, n)
-    if (n <= CAMPAIGN_POST_DAILY_LIMIT) { a.postCount++; updateLast(a, row.created_at!) }
+    const count = (dailyPosts.get(key) ?? 0) + 1
+    dailyPosts.set(key, count)
+    if (count <= CAMPAIGN_POST_DAILY_LIMIT) {
+      activity.postCount++
+      updateLast(activity, row.created_at!)
+    }
   }
 
-  // Reviews: card + pack combined, earliest first
   const allReviews = [
-    ...cardRevRes.rows.filter(r => r.user_id && r.created_at),
-    ...packRevRes.rows.filter(r => r.user_id && r.created_at),
+    ...cardRevRes.rows.filter(row => row.user_id && row.created_at).map(row => ({ ...row, isCard: true })),
+    ...packRevRes.rows.filter(row => row.user_id && row.created_at).map(row => ({ ...row, isCard: false })),
   ].sort((a, b) => a.created_at! < b.created_at! ? -1 : 1)
   const dailyReviews = new Map<string, number>()
   for (const row of allReviews) {
-    const a = getOrCreate(row.user_id!)
+    const activity = getOrCreate(row.user_id!)
+    if (row.isCard) activity.cardReviewRawCount++
+    else activity.packReviewRawCount++
     const key = `${row.user_id}|${toJstDate(row.created_at!)}`
-    const n = (dailyReviews.get(key) ?? 0) + 1
-    dailyReviews.set(key, n)
-    if (n <= CAMPAIGN_REVIEW_DAILY_LIMIT) { a.reviewCount++; updateLast(a, row.created_at!) }
+    const count = (dailyReviews.get(key) ?? 0) + 1
+    dailyReviews.set(key, count)
+    if (count <= CAMPAIGN_REVIEW_DAILY_LIMIT) {
+      activity.reviewCount++
+      updateLast(activity, row.created_at!)
+    }
   }
 
-  // Ratings: ≥ threshold per JST day → 1 pt
   type DayInfo = { count: number; maxAt: string }
   const dailyRatings = new Map<string, DayInfo>()
   for (const row of ratingRes.rows) {
     if (!row.user_id || !row.created_at) continue
-    getOrCreate(row.user_id)
+    getOrCreate(row.user_id).ratingRawCount++
     const key = `${row.user_id}|${toJstDate(row.created_at)}`
     const existing = dailyRatings.get(key)
-    if (!existing) {
-      dailyRatings.set(key, { count: 1, maxAt: row.created_at })
-    } else {
+    if (!existing) dailyRatings.set(key, { count: 1, maxAt: row.created_at })
+    else {
       existing.count++
       if (row.created_at > existing.maxAt) existing.maxAt = row.created_at
     }
   }
   for (const [key, info] of dailyRatings) {
-    if (info.count >= CAMPAIGN_RATING_DAILY_THRESHOLD) {
-      const uid = key.split('|')[0]
-      const a = activityMap.get(uid)
-      if (a) { a.ratingDays++; updateLast(a, info.maxAt) }
+    if (info.count < CAMPAIGN_RATING_DAILY_THRESHOLD) continue
+    const activity = activityMap.get(key.split('|')[0])
+    if (activity) {
+      activity.ratingDays++
+      updateLast(activity, info.maxAt)
     }
   }
 
-  // Calculate total points and sort
-  for (const [, a] of activityMap) {
-    a.totalPoints =
-      a.threadCount * CAMPAIGN_THREAD_POINT +
-      a.postCount * CAMPAIGN_POST_POINT +
-      a.reviewCount * CAMPAIGN_REVIEW_POINT +
-      a.ratingDays * CAMPAIGN_RATING_DAILY_POINT
+  for (const activity of activityMap.values()) {
+    activity.totalPoints =
+      activity.threadCount * CAMPAIGN_THREAD_POINT +
+      activity.postCount * CAMPAIGN_POST_POINT +
+      activity.reviewCount * CAMPAIGN_REVIEW_POINT +
+      activity.ratingDays * CAMPAIGN_RATING_DAILY_POINT
   }
 
-  const sorted = Array.from(activityMap.entries()).sort(([uidA, a], [uidB, b]) => {
+  const sortedActivities = Array.from(activityMap.entries()).sort(([uidA, a], [uidB, b]) => {
     if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints
     if (b.postCount !== a.postCount) return b.postCount - a.postCount
     if (b.reviewCount !== a.reviewCount) return b.reviewCount - a.reviewCount
@@ -262,55 +306,69 @@ export async function fetchCampaignRankingPublic(
     return uidA < uidB ? -1 : 1
   })
 
-  // Fetch profiles (no x_url, no admin-only fields)
-  const userIds = sorted.map(([uid]) => uid)
-  type ProfileRow = {
-    id: string
-    display_name: string | null
-    profile_slug: string | null
-    avatar_url: string | null
-    profile_hidden: boolean | null
-    ranking_enabled: boolean | null
-    rank_excluded: boolean | null
-    account_suspended: boolean | null
-    withdrawn_at: string | null
-  }
-  const profileMap = new Map<string, ProfileRow>()
+  const profileMap = new Map<string, CampaignRankingAdminProfile>()
+  const userIds = sortedActivities.map(([uid]) => uid)
   for (let i = 0; i < userIds.length; i += 500) {
-    const chunk = userIds.slice(i, i + 500)
-    const { data: pRows } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
-      .select('id, display_name, profile_slug, avatar_url, profile_hidden, ranking_enabled, rank_excluded, account_suspended, withdrawn_at')
-      .in('id', chunk)
-    for (const p of pRows ?? []) profileMap.set(p.id, p as ProfileRow)
+      .select('id, display_name, profile_slug, avatar_url, profile_hidden, ranking_enabled, rank_excluded, account_suspended, withdrawn_at, x_url')
+      .in('id', userIds.slice(i, i + 500))
+    if (error) return { entries: [], error: error.message, overflow: false }
+    for (const profile of data ?? []) profileMap.set(profile.id, profile as CampaignRankingAdminProfile)
   }
 
-  // Filter eligible users, assign public ranks, take top 30
-  const entries: PublicCampaignEntry[] = []
-  let rank = 0
-  for (const [uid, a] of sorted) {
-    const p = profileMap.get(uid)
-    if (!p) continue
-    if (!p.profile_slug) continue
-    if (p.withdrawn_at != null) continue
-    if (p.account_suspended) continue
-    if (p.profile_hidden) continue
-    if (!p.ranking_enabled) continue
-    if (p.rank_excluded) continue
-    rank++
-    entries.push({
-      rank,
-      displayName: p.display_name ?? p.profile_slug,
-      profileSlug: p.profile_slug,
-      avatarUrl: p.avatar_url,
-      totalPoints: a.totalPoints,
-      threadCount: a.threadCount,
-      postCount: a.postCount,
-      reviewCount: a.reviewCount,
-      ratingDays: a.ratingDays,
-    })
-    if (rank >= MAX_PUBLIC_DISPLAY) break
-  }
+  const entries = sortedActivities.map(([userId, activity]): InternalCampaignEntry => {
+    const profile = profileMap.get(userId) ?? null
+    const excludeReasons: string[] = []
+    if (!profile) excludeReasons.push('プロフィールなし')
+    else {
+      if (!profile.profile_slug) excludeReasons.push('プロフィールURLなし')
+      if (profile.withdrawn_at != null) excludeReasons.push('退会済み')
+      if (profile.account_suspended) excludeReasons.push('アカウント停止')
+      if (profile.profile_hidden) excludeReasons.push('プロフィール非公開')
+      if (!profile.ranking_enabled) excludeReasons.push('ランキング無効')
+      if (profile.rank_excluded) excludeReasons.push('除外設定')
+    }
+    return { userId, ...activity, profile, excludeReasons, eligible: excludeReasons.length === 0 }
+  })
 
   return { entries, error: null, overflow: false }
+}
+
+export async function fetchCampaignRankingPublic(
+  startIso: string,
+  endIso: string,
+): Promise<CampaignRankingPublicResult> {
+  const result = await fetchCampaignRankingInternal(startIso, endIso)
+  if (result.error) return { entries: [], error: result.error, overflow: result.overflow }
+
+  const entries: PublicCampaignEntry[] = []
+  for (const entry of result.entries) {
+    if (!entry.eligible || !entry.profile?.profile_slug) continue
+    entries.push({
+      rank: entries.length + 1,
+      displayName: entry.profile.display_name ?? entry.profile.profile_slug,
+      profileSlug: entry.profile.profile_slug,
+      avatarUrl: entry.profile.avatar_url,
+      totalPoints: entry.totalPoints,
+      threadCount: entry.threadCount,
+      postCount: entry.postCount,
+      reviewCount: entry.reviewCount,
+      ratingDays: entry.ratingDays,
+    })
+    if (entries.length >= MAX_PUBLIC_DISPLAY) break
+  }
+  return { entries, error: null, overflow: false }
+}
+
+export async function fetchCampaignRankingAdmin(
+  startIso: string,
+  endIso: string,
+): Promise<CampaignRankingAdminResult> {
+  const result = await fetchCampaignRankingInternal(startIso, endIso)
+  return {
+    entries: result.entries.map(({ eligible: _eligible, ...entry }) => entry),
+    error: result.error,
+    overflow: result.overflow,
+  }
 }
