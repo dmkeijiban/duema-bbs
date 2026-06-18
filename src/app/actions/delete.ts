@@ -54,37 +54,29 @@ export async function removeFavorite(threadId: number) {
 }
 
 export async function deleteOwnPost(postId: number, threadId: number) {
-  const sessionId = await getSessionId()
-  if (!sessionId) return { error: 'セッションが見つかりません' }
-
   const supabase = await createClient()
 
-  // 投稿者本人 or スレ主どちらでも削除可
   const { data: post } = await supabase
     .from('posts')
-    .select('session_id, user_id')
+    .select('id, thread_id, user_id, session_id, is_deleted')
     .eq('id', postId)
     .eq('thread_id', threadId)
     .single()
 
   if (!post) return { error: 'レスが見つかりません' }
+  if (post.is_deleted) return { error: 'このコメントはすでに削除されています' }
 
-  const { data: userData } = await supabase.auth.getUser()
-  const currentUserId = userData.user?.id ?? null
-  const isPostAuthor = post.session_id === sessionId
-  const isRegisteredAuthor = !!currentUserId && post.user_id === currentUserId
+  if (post.user_id) {
+    const { data: userData, error: authError } = await supabase.auth.getUser()
+    const authUser = userData.user
 
-  // スレ主チェック
-  const { data: thread } = await supabase
-    .from('threads')
-    .select('session_id')
-    .eq('id', threadId)
-    .single()
+    if (authError || !authUser) {
+      return { error: 'ログイン状態を確認できませんでした。再読み込みしてお試しください' }
+    }
+    if (post.user_id !== authUser.id) {
+      return { error: 'このコメントは削除できません' }
+    }
 
-  const isThreadOwner = thread?.session_id === sessionId
-
-  if (isRegisteredAuthor) {
-    const authUser = userData.user!
     const adminClient = createAdminClient()
     const { data: updated, error: updateError } = await adminClient
       .from('posts')
@@ -93,8 +85,8 @@ export async function deleteOwnPost(postId: number, threadId: number) {
         deleted_at: new Date().toISOString(),
         deleted_by: 'registered_user',
       })
-      .eq('id', postId)
-      .eq('thread_id', threadId)
+      .eq('id', post.id)
+      .eq('thread_id', post.thread_id)
       .eq('user_id', authUser.id)
       .eq('is_deleted', false)
       .select('id')
@@ -120,6 +112,18 @@ export async function deleteOwnPost(postId: number, threadId: number) {
     return { success: true }
   }
 
+  const sessionId = await getSessionId()
+  if (!sessionId) return { error: 'セッションが見つかりません' }
+
+  const isPostAuthor = post.session_id === sessionId
+
+  const { data: thread } = await supabase
+    .from('threads')
+    .select('session_id')
+    .eq('id', threadId)
+    .single()
+
+  const isThreadOwner = thread?.session_id === sessionId
   if (!isPostAuthor && !isThreadOwner) return { error: '削除権限がありません' }
 
   const deletedBy = isPostAuthor ? 'user' : 'thread_owner'
