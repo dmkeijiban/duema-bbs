@@ -3,6 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 
 async function getSessionId(): Promise<string | null> {
   const cookieStore = await cookies()
@@ -53,44 +54,53 @@ export async function removeFavorite(threadId: number) {
 }
 
 export async function deleteOwnPost(postId: number, threadId: number) {
-  const sessionId = await getSessionId()
-  if (!sessionId) return { error: 'セッションが見つかりません' }
-
   const supabase = await createClient()
 
-  // 投稿者本人 or スレ主どちらでも削除可
   const { data: post } = await supabase
     .from('posts')
-    .select('session_id, user_id')
+    .select('id, thread_id, user_id, session_id, is_deleted')
     .eq('id', postId)
     .eq('thread_id', threadId)
     .single()
 
   if (!post) return { error: 'レスが見つかりません' }
+  if (post.is_deleted) return { error: 'このコメントはすでに削除されています' }
 
-  const { data: userData } = await supabase.auth.getUser()
-  const currentUserId = userData.user?.id ?? null
-  const isPostAuthor = post.session_id === sessionId
-  const isRegisteredAuthor = !!currentUserId && post.user_id === currentUserId
+  if (post.user_id) {
+    const { data: userData, error: authError } = await supabase.auth.getUser()
+    const authUser = userData.user
 
-  // スレ主チェック
-  const { data: thread } = await supabase
-    .from('threads')
-    .select('session_id')
-    .eq('id', threadId)
-    .single()
+    if (authError || !authUser) {
+      return { error: 'ログイン状態を確認できませんでした。再読み込みしてお試しください' }
+    }
+    if (post.user_id !== authUser.id) {
+      return { error: 'このコメントは削除できません' }
+    }
 
-  const isThreadOwner = thread?.session_id === sessionId
+    const adminClient = createAdminClient()
+    const { data: updated, error: updateError } = await adminClient
+      .from('posts')
+      .update({
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
+        deleted_by: 'registered_user',
+      })
+      .eq('id', post.id)
+      .eq('thread_id', post.thread_id)
+      .eq('user_id', authUser.id)
+      .eq('is_deleted', false)
+      .select('id')
 
-  if (isRegisteredAuthor) {
-    const { data: updated, error } = await supabase.from('posts').update({
-      is_deleted: true,
-      deleted_at: new Date().toISOString(),
-      deleted_by: 'registered_user',
-    }).eq('id', postId).eq('thread_id', threadId).eq('user_id', currentUserId).select('id')
-    if (error || !updated?.length) return { error: '削除に失敗しました' }
+    if (updateError) {
+      console.error('[deleteOwnPost] update error:', updateError.message)
+      return { error: '削除に失敗しました' }
+    }
+    if (!updated || updated.length !== 1) {
+      console.error('[deleteOwnPost] updated row count:', updated?.length ?? 0)
+      return { error: '削除に失敗しました' }
+    }
 
-    await supabase.rpc('recalculate_post_count', { p_thread_id: threadId })
+    await adminClient.rpc('recalculate_post_count', { p_thread_id: threadId })
 
     revalidateTag(`thread-${threadId}`, { expire: 0 })
     revalidateTag('threads', { expire: 0 })
@@ -102,6 +112,18 @@ export async function deleteOwnPost(postId: number, threadId: number) {
     return { success: true }
   }
 
+  const sessionId = await getSessionId()
+  if (!sessionId) return { error: 'セッションが見つかりません' }
+
+  const isPostAuthor = post.session_id === sessionId
+
+  const { data: thread } = await supabase
+    .from('threads')
+    .select('session_id')
+    .eq('id', threadId)
+    .single()
+
+  const isThreadOwner = thread?.session_id === sessionId
   if (!isPostAuthor && !isThreadOwner) return { error: '削除権限がありません' }
 
   const deletedBy = isPostAuthor ? 'user' : 'thread_owner'

@@ -238,7 +238,6 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
                   <span className="inline-flex items-center gap-1.5 text-sm text-gray-700">
                     <ProfileAvatar src={authState.avatarUrl} alt={`${authState.displayName}のアイコン`} size="sm" />
                     <span className="font-medium">{authState.displayName}</span>
-                    <span className="text-xs text-gray-500">このアカウントでコメントします</span>
                   </span>
                 </td>
               </tr>
