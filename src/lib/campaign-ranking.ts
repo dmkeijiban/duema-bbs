@@ -14,6 +14,8 @@ const PAGE_SIZE = 1000
 const MAX_PAGES = 10
 const MAX_PUBLIC_DISPLAY = 30
 
+// ---- Public types ----
+
 export type CampaignSettings = {
   status: string
   title: string
@@ -40,6 +42,46 @@ export type CampaignRankingPublicResult = {
   error: string | null
   overflow: boolean
 }
+
+// ---- Admin types ----
+
+export type AdminProfileRow = {
+  id: string
+  display_name: string | null
+  profile_slug: string | null
+  avatar_url: string | null
+  profile_hidden: boolean | null
+  ranking_enabled: boolean | null
+  rank_excluded: boolean | null
+  account_suspended: boolean | null
+  withdrawn_at: string | null
+  x_url: string | null
+}
+
+export type AdminCampaignEntry = {
+  userId: string
+  totalPoints: number
+  threadCount: number
+  postCount: number
+  reviewCount: number
+  ratingDays: number
+  threadRawCount: number
+  postRawCount: number
+  cardReviewRawCount: number
+  packReviewRawCount: number
+  ratingRawCount: number
+  lastActivity: string
+  profile: AdminProfileRow | null
+  excludeReasons: string[]
+}
+
+export type CampaignRankingAdminResult = {
+  entries: AdminCampaignEntry[]
+  error: string | null
+  overflow: boolean
+}
+
+// ---- Helpers ----
 
 type ActivityRow = { user_id: string | null; created_at: string | null }
 
@@ -97,12 +139,17 @@ export async function fetchCampaignSettings(): Promise<CampaignSettings> {
   }
 }
 
-export async function fetchCampaignRankingPublic(
+// ---- Core shared calculation (returns all users with full admin data) ----
+
+export async function fetchCampaignRankingFull(
   startIso: string,
   endIso: string,
-): Promise<CampaignRankingPublicResult> {
+): Promise<CampaignRankingAdminResult> {
   const supabase = createAdminClient()
 
+  // zukan_card_ratings has NO is_hidden column — only is_deleted.
+  // DB UNIQUE (card_id, user_id) prevents duplicate logged-in ratings per card.
+  // zukan_pack_ratings does not exist; only zukan_card_ratings is used.
   const [threadRes, postRes, ratingRes, cardRevRes, packRevRes] = await Promise.all([
     fetchAllRows((from, to) =>
       supabase
@@ -161,72 +208,91 @@ export async function fetchCampaignRankingPublic(
   for (const r of [threadRes, postRes, ratingRes, cardRevRes, packRevRes]) {
     if (r.errorMsg) return { entries: [], error: r.errorMsg, overflow: false }
   }
-  if ([threadRes, postRes, ratingRes, cardRevRes, packRevRes].some(r => r.overflow)) {
-    return { entries: [], error: '対象データが多すぎるため集計できませんでした', overflow: true }
+  const overflow = [threadRes, postRes, ratingRes, cardRevRes, packRevRes].some(r => r.overflow)
+  if (overflow) {
+    return { entries: [], error: '対象データが多すぎるため集計できませんでした（1万件超）', overflow: true }
   }
 
-  type UserActivity = {
+  type InternalActivity = {
+    threadRawCount: number
+    postRawCount: number
+    cardReviewRawCount: number
+    packReviewRawCount: number
+    ratingRawCount: number
     threadCount: number
     postCount: number
     reviewCount: number
     ratingDays: number
-    totalPoints: number
     lastActivity: string
   }
 
-  const activityMap = new Map<string, UserActivity>()
-  const getOrCreate = (uid: string): UserActivity => {
+  const activityMap = new Map<string, InternalActivity>()
+  const getOrCreate = (uid: string): InternalActivity => {
     if (!activityMap.has(uid)) {
-      activityMap.set(uid, { threadCount: 0, postCount: 0, reviewCount: 0, ratingDays: 0, totalPoints: 0, lastActivity: '' })
+      activityMap.set(uid, {
+        threadRawCount: 0, postRawCount: 0, cardReviewRawCount: 0,
+        packReviewRawCount: 0, ratingRawCount: 0,
+        threadCount: 0, postCount: 0, reviewCount: 0, ratingDays: 0,
+        lastActivity: '',
+      })
     }
     return activityMap.get(uid)!
   }
-  const updateLast = (a: UserActivity, createdAt: string) => {
+  const updateLast = (a: InternalActivity, createdAt: string) => {
     if (createdAt > a.lastActivity) a.lastActivity = createdAt
   }
 
-  // Threads: earliest first, cap per user per JST day
-  const sortedThreads = threadRes.rows.filter(r => r.user_id && r.created_at).sort((a, b) => a.created_at! < b.created_at! ? -1 : 1)
+  // Threads: 3pt each, max CAMPAIGN_THREAD_DAILY_LIMIT per user per JST day (earliest first)
+  const sortedThreads = threadRes.rows
+    .filter(r => r.user_id && r.created_at)
+    .sort((a, b) => (a.created_at! < b.created_at! ? -1 : 1))
   const dailyThreads = new Map<string, number>()
   for (const row of sortedThreads) {
     const a = getOrCreate(row.user_id!)
+    a.threadRawCount++
     const key = `${row.user_id}|${toJstDate(row.created_at!)}`
     const n = (dailyThreads.get(key) ?? 0) + 1
     dailyThreads.set(key, n)
     if (n <= CAMPAIGN_THREAD_DAILY_LIMIT) { a.threadCount++; updateLast(a, row.created_at!) }
   }
 
-  // Posts
-  const sortedPosts = postRes.rows.filter(r => r.user_id && r.created_at).sort((a, b) => a.created_at! < b.created_at! ? -1 : 1)
+  // Posts: 1pt each, max CAMPAIGN_POST_DAILY_LIMIT per user per JST day (earliest first)
+  const sortedPosts = postRes.rows
+    .filter(r => r.user_id && r.created_at)
+    .sort((a, b) => (a.created_at! < b.created_at! ? -1 : 1))
   const dailyPosts = new Map<string, number>()
   for (const row of sortedPosts) {
     const a = getOrCreate(row.user_id!)
+    a.postRawCount++
     const key = `${row.user_id}|${toJstDate(row.created_at!)}`
     const n = (dailyPosts.get(key) ?? 0) + 1
     dailyPosts.set(key, n)
     if (n <= CAMPAIGN_POST_DAILY_LIMIT) { a.postCount++; updateLast(a, row.created_at!) }
   }
 
-  // Reviews: card + pack combined, earliest first
+  // Reviews: card + pack combined, 3pt each, max CAMPAIGN_REVIEW_DAILY_LIMIT per user per JST day (earliest first)
   const allReviews = [
-    ...cardRevRes.rows.filter(r => r.user_id && r.created_at),
-    ...packRevRes.rows.filter(r => r.user_id && r.created_at),
-  ].sort((a, b) => a.created_at! < b.created_at! ? -1 : 1)
+    ...cardRevRes.rows.filter(r => r.user_id && r.created_at).map(r => ({ ...r, isCard: true })),
+    ...packRevRes.rows.filter(r => r.user_id && r.created_at).map(r => ({ ...r, isCard: false })),
+  ].sort((a, b) => (a.created_at! < b.created_at! ? -1 : 1))
   const dailyReviews = new Map<string, number>()
   for (const row of allReviews) {
     const a = getOrCreate(row.user_id!)
+    if (row.isCard) a.cardReviewRawCount++
+    else a.packReviewRawCount++
     const key = `${row.user_id}|${toJstDate(row.created_at!)}`
     const n = (dailyReviews.get(key) ?? 0) + 1
     dailyReviews.set(key, n)
     if (n <= CAMPAIGN_REVIEW_DAILY_LIMIT) { a.reviewCount++; updateLast(a, row.created_at!) }
   }
 
-  // Ratings: ≥ threshold per JST day → 1 pt
+  // Ratings: ≥ CAMPAIGN_RATING_DAILY_THRESHOLD valid ratings in a JST day → 1pt for that day.
+  // DB UNIQUE (card_id, user_id) ensures no duplicate card per logged-in user — no JS dedup needed.
   type DayInfo = { count: number; maxAt: string }
   const dailyRatings = new Map<string, DayInfo>()
   for (const row of ratingRes.rows) {
     if (!row.user_id || !row.created_at) continue
-    getOrCreate(row.user_id)
+    getOrCreate(row.user_id).ratingRawCount++
     const key = `${row.user_id}|${toJstDate(row.created_at)}`
     const existing = dailyRatings.get(key)
     if (!existing) {
@@ -244,70 +310,84 @@ export async function fetchCampaignRankingPublic(
     }
   }
 
-  // Calculate total points and sort
-  for (const [, a] of activityMap) {
-    a.totalPoints =
-      a.threadCount * CAMPAIGN_THREAD_POINT +
-      a.postCount * CAMPAIGN_POST_POINT +
-      a.reviewCount * CAMPAIGN_REVIEW_POINT +
-      a.ratingDays * CAMPAIGN_RATING_DAILY_POINT
+  // Build entries with total points
+  const entries: AdminCampaignEntry[] = []
+  for (const [userId, activity] of activityMap) {
+    const totalPoints =
+      activity.threadCount * CAMPAIGN_THREAD_POINT +
+      activity.postCount * CAMPAIGN_POST_POINT +
+      activity.reviewCount * CAMPAIGN_REVIEW_POINT +
+      activity.ratingDays * CAMPAIGN_RATING_DAILY_POINT
+    entries.push({ userId, totalPoints, profile: null, excludeReasons: [], ...activity })
   }
 
-  const sorted = Array.from(activityMap.entries()).sort(([uidA, a], [uidB, b]) => {
+  // Fetch profiles in chunks of 500 (includes avatar_url for public use, x_url for admin)
+  const userIds = entries.map(e => e.userId)
+  const profileMap = new Map<string, AdminProfileRow>()
+  for (let i = 0; i < userIds.length; i += 500) {
+    const chunk = userIds.slice(i, i + 500)
+    const { data: pRows } = await supabase
+      .from('profiles')
+      .select('id, display_name, profile_slug, avatar_url, profile_hidden, ranking_enabled, rank_excluded, account_suspended, withdrawn_at, x_url')
+      .in('id', chunk)
+    for (const p of pRows ?? []) profileMap.set(p.id, p as AdminProfileRow)
+  }
+
+  // Attach profile and compute exclude reasons for admin display
+  for (const entry of entries) {
+    const p = profileMap.get(entry.userId) ?? null
+    entry.profile = p
+    const reasons: string[] = []
+    if (!p) {
+      reasons.push('プロフィールなし')
+    } else {
+      if (p.withdrawn_at != null) reasons.push('退会済み')
+      if (p.account_suspended) reasons.push('アカウント停止')
+      if (p.profile_hidden) reasons.push('プロフィール非公開')
+      if (!p.ranking_enabled) reasons.push('ランキング無効')
+      if (p.rank_excluded) reasons.push('除外設定')
+    }
+    entry.excludeReasons = reasons
+  }
+
+  // Sort: totalPoints↓ → postCount↓ → reviewCount↓ → threadCount↓ → lastActivity↑ → userId↑
+  entries.sort((a, b) => {
     if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints
     if (b.postCount !== a.postCount) return b.postCount - a.postCount
     if (b.reviewCount !== a.reviewCount) return b.reviewCount - a.reviewCount
     if (b.threadCount !== a.threadCount) return b.threadCount - a.threadCount
     if (a.lastActivity !== b.lastActivity) return a.lastActivity < b.lastActivity ? -1 : 1
-    return uidA < uidB ? -1 : 1
+    return a.userId < b.userId ? -1 : 1
   })
 
-  // Fetch profiles (no x_url, no admin-only fields)
-  const userIds = sorted.map(([uid]) => uid)
-  type ProfileRow = {
-    id: string
-    display_name: string | null
-    profile_slug: string | null
-    avatar_url: string | null
-    profile_hidden: boolean | null
-    ranking_enabled: boolean | null
-    rank_excluded: boolean | null
-    account_suspended: boolean | null
-    withdrawn_at: string | null
-  }
-  const profileMap = new Map<string, ProfileRow>()
-  for (let i = 0; i < userIds.length; i += 500) {
-    const chunk = userIds.slice(i, i + 500)
-    const { data: pRows } = await supabase
-      .from('profiles')
-      .select('id, display_name, profile_slug, avatar_url, profile_hidden, ranking_enabled, rank_excluded, account_suspended, withdrawn_at')
-      .in('id', chunk)
-    for (const p of pRows ?? []) profileMap.set(p.id, p as ProfileRow)
-  }
+  return { entries, error: null, overflow: false }
+}
 
-  // Filter eligible users, assign public ranks, take top 30
+// ---- Public wrapper (strips admin-only fields, returns eligible users only) ----
+
+export async function fetchCampaignRankingPublic(
+  startIso: string,
+  endIso: string,
+): Promise<CampaignRankingPublicResult> {
+  const full = await fetchCampaignRankingFull(startIso, endIso)
+  if (full.error) return { entries: [], error: full.error, overflow: full.overflow }
+
   const entries: PublicCampaignEntry[] = []
   let rank = 0
-  for (const [uid, a] of sorted) {
-    const p = profileMap.get(uid)
-    if (!p) continue
-    if (!p.profile_slug) continue
-    if (p.withdrawn_at != null) continue
-    if (p.account_suspended) continue
-    if (p.profile_hidden) continue
-    if (!p.ranking_enabled) continue
-    if (p.rank_excluded) continue
+  for (const e of full.entries) {
+    if (e.excludeReasons.length > 0) continue
+    if (!e.profile?.profile_slug) continue
     rank++
     entries.push({
       rank,
-      displayName: p.display_name ?? p.profile_slug,
-      profileSlug: p.profile_slug,
-      avatarUrl: p.avatar_url,
-      totalPoints: a.totalPoints,
-      threadCount: a.threadCount,
-      postCount: a.postCount,
-      reviewCount: a.reviewCount,
-      ratingDays: a.ratingDays,
+      displayName: e.profile.display_name ?? e.profile.profile_slug,
+      profileSlug: e.profile.profile_slug,
+      avatarUrl: e.profile.avatar_url,
+      totalPoints: e.totalPoints,
+      threadCount: e.threadCount,
+      postCount: e.postCount,
+      reviewCount: e.reviewCount,
+      ratingDays: e.ratingDays,
     })
     if (rank >= MAX_PUBLIC_DISPLAY) break
   }
