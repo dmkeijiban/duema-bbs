@@ -326,10 +326,11 @@ export async function fetchCampaignRankingFull(
   const profileMap = new Map<string, AdminProfileRow>()
   for (let i = 0; i < userIds.length; i += 500) {
     const chunk = userIds.slice(i, i + 500)
-    const { data: pRows } = await supabase
+    const { data: pRows, error: pErr } = await supabase
       .from('profiles')
       .select('id, display_name, profile_slug, avatar_url, profile_hidden, ranking_enabled, rank_excluded, account_suspended, withdrawn_at, x_url')
       .in('id', chunk)
+    if (pErr) return { entries: [], error: pErr.message, overflow: false }
     for (const p of pRows ?? []) profileMap.set(p.id, p as AdminProfileRow)
   }
 
