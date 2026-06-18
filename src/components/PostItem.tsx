@@ -327,29 +327,29 @@ export function PostItem({
   threadId,
   authorProfile,
 }: Props) {
-  const [deleted, setDeleted] = useState(false)
   const [locallyDeletedByUser, setLocallyDeletedByUser] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const [isPending, startTransition] = useTransition()
 
   const postSessionId = (post as Post & { session_id?: string }).session_id ?? ''
   const isDeletedByRegisteredUser =
-    locallyDeletedByUser || (post.is_deleted === true && post.deleted_by === 'registered_user')
+    locallyDeletedByUser || post.is_deleted === true
   const canDeleteBySession = Boolean(sessionId && (postSessionId === sessionId || threadSessionId === sessionId))
   const canDeleteByUser = Boolean(currentUserId && post.user_id === currentUserId)
   const canDelete = !isDeletedByRegisteredUser && (canDeleteBySession || canDeleteByUser)
 
   const handleDelete = () => {
     if (!confirm('このレスを削除しますか？')) return
+    setDeleteError('')
     startTransition(async () => {
       const res = await deleteOwnPost(post.id, threadId)
-      if (!res.error) {
-        if (canDeleteByUser) setLocallyDeletedByUser(true)
-        else setDeleted(true)
+      if (res.error) {
+        setDeleteError(res.error)
+      } else {
+        setLocallyDeletedByUser(true)
       }
     })
   }
-
-  if (deleted) return null
 
   return (
     <div id={`post-${displayNumber}`} className="border-b border-gray-200 last:border-b-0">
@@ -364,11 +364,11 @@ export function PostItem({
         >
           ▶{displayNumber}
         </button>
-        <PostAuthorName fallbackName={post.author_name} profile={authorProfile} />
-        <span className="text-gray-400">{formatDateTimeJP(post.created_at)}</span>
+        {!isDeletedByRegisteredUser && <PostAuthorName fallbackName={post.author_name} profile={authorProfile} />}
+        {!isDeletedByRegisteredUser && <span className="text-gray-400">{formatDateTimeJP(post.created_at)}</span>}
         {!isDeletedByRegisteredUser && <PostLikeButton likeKey={`post-${post.id}`} />}
         {!isDeletedByRegisteredUser && <ReportButton itemType="post" itemId={post.id} itemBody={post.body} />}
-        {canDelete && (
+        {!isDeletedByRegisteredUser && canDelete && (
           <button
             type="button"
             onClick={handleDelete}
@@ -379,12 +379,15 @@ export function PostItem({
             削除
           </button>
         )}
+        {!isDeletedByRegisteredUser && deleteError && (
+          <span className="text-[10px] text-red-600 ml-1">{deleteError}</span>
+        )}
       </div>
 
       {/* 本文（YouTube/X URL は自動埋め込み） */}
       {isDeletedByRegisteredUser ? (
         <div className="px-3 py-3 text-sm text-gray-500 break-words leading-relaxed">
-          このコメントは投稿者によって削除されました
+          このコメントは削除されました
         </div>
       ) : (
         <div className="px-3 py-3 text-base text-gray-800 break-words leading-relaxed">

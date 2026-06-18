@@ -8,6 +8,14 @@ import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { SettingEditButton } from './SettingEditButton'
 import { capturePostHogEvent } from '@/lib/posthog-events'
+import { createClient } from '@/lib/supabase'
+import { ProfileAvatar } from './ProfileAvatar'
+
+type AuthState =
+  | { status: 'loading' }
+  | { status: 'anon' }
+  | { status: 'user'; displayName: string; avatarUrl: string | null }
+  | { status: 'profile_missing' }
 
 const PushSubscribeButton = dynamic(
   () => import('./PushSubscribeButton').then(mod => mod.PushSubscribeButton),
@@ -27,6 +35,7 @@ interface Props {
 
 export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, isAdmin }: Props) {
   const [authorName, setAuthorName] = useState('')
+  const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const [scrollTarget, setScrollTarget] = useState<number | null>(null)
@@ -37,6 +46,30 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
 
   useEffect(() => {
     setPushUnsupported(!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window))
+  }, [])
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) {
+        setAuthState({ status: 'anon' })
+        return
+      }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name, avatar_url')
+        .eq('id', data.user.id)
+        .single()
+      if (!profile?.display_name) {
+        setAuthState({ status: 'profile_missing' })
+        return
+      }
+      setAuthState({
+        status: 'user',
+        displayName: profile.display_name,
+        avatarUrl: profile.avatar_url ?? null,
+      })
+    })
   }, [])
 
   // プッシュ通知ボタン：スクロール30% OR 10秒滞在で表示
@@ -170,22 +203,57 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
         <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
         <table className="w-full text-sm border-collapse" style={{ tableLayout: 'fixed' }}>
           <tbody>
-            <tr className="border-b border-gray-200">
-              <td className="py-2 px-3 whitespace-nowrap align-middle text-xs font-medium" style={{ background: '#f5f5f5', width: 72 }}>
-                名前
-              </td>
-              <td className="py-2 px-3">
-                <input
-                  type="text"
-                  value={authorName}
-                  onChange={e => setAuthorName(e.target.value)}
-                  placeholder="名前を入力(15文字以内・空欄可)"
-                  maxLength={15}
-                  className="border border-gray-300 px-2 py-1 text-sm bg-white focus:outline-none focus:border-blue-400"
-                  style={{ width: 240 }}
-                />
-              </td>
-            </tr>
+            {authState.status === 'loading' && (
+              <tr className="border-b border-gray-200">
+                <td className="py-2 px-3 whitespace-nowrap align-middle text-xs font-medium" style={{ background: '#f5f5f5', width: 72 }}>
+                  投稿者
+                </td>
+                <td className="py-2 px-3 text-xs text-gray-400">ログイン状態を確認中…</td>
+              </tr>
+            )}
+            {authState.status === 'anon' && (
+              <tr className="border-b border-gray-200">
+                <td className="py-2 px-3 whitespace-nowrap align-middle text-xs font-medium" style={{ background: '#f5f5f5', width: 72 }}>
+                  名前
+                </td>
+                <td className="py-2 px-3">
+                  <input
+                    type="text"
+                    value={authorName}
+                    onChange={e => setAuthorName(e.target.value)}
+                    placeholder="名前を入力(15文字以内・空欄可)"
+                    maxLength={15}
+                    className="border border-gray-300 px-2 py-1 text-sm bg-white focus:outline-none focus:border-blue-400"
+                    style={{ width: 240 }}
+                  />
+                </td>
+              </tr>
+            )}
+            {authState.status === 'user' && (
+              <tr className="border-b border-gray-200">
+                <td className="py-2 px-3 whitespace-nowrap align-middle text-xs font-medium" style={{ background: '#f5f5f5', width: 72 }}>
+                  投稿者
+                </td>
+                <td className="py-2 px-3">
+                  <span className="inline-flex items-center gap-1.5 text-sm text-gray-700">
+                    <ProfileAvatar src={authState.avatarUrl} alt={`${authState.displayName}のアイコン`} size="sm" />
+                    <span className="font-medium">{authState.displayName}</span>
+                    <span className="text-xs text-gray-500">このアカウントでコメントします</span>
+                  </span>
+                </td>
+              </tr>
+            )}
+            {authState.status === 'profile_missing' && (
+              <tr className="border-b border-gray-200">
+                <td className="py-2 px-3 whitespace-nowrap align-middle text-xs font-medium" style={{ background: '#f5f5f5', width: 72 }}>
+                  投稿者
+                </td>
+                <td className="py-2 px-3 text-xs text-red-600">
+                  コメントするにはプロフィールを設定してください。{' '}
+                  <Link href="/profile/new" className="underline text-blue-600">プロフィール設定</Link>
+                </td>
+              </tr>
+            )}
             <tr className="border-b border-gray-200">
               <td className="py-2 px-3 align-top text-xs font-medium" style={{ background: '#f5f5f5', paddingTop: 10 }}>
                 本文
@@ -241,7 +309,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
         <div className="px-3 py-2.5">
           <button
             type="submit"
-            disabled={isPending}
+            disabled={isPending || authState.status === 'loading' || authState.status === 'profile_missing'}
             className="w-full py-2 text-sm text-white disabled:opacity-60"
             style={{ background: '#0d6efd' }}
           >
