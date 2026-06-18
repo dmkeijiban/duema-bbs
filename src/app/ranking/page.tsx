@@ -7,6 +7,12 @@ import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { ThreadListHeader } from '@/components/ThreadListHeader'
 import { ThreadListTopContent } from '@/components/ThreadListTopContent'
+import {
+  fetchCampaignSettings,
+  fetchCampaignRankingPublic,
+  toDisplayJst,
+  PublicCampaignEntry,
+} from '@/lib/campaign-ranking'
 
 export const revalidate = 3600
 
@@ -160,8 +166,97 @@ function UserRankingList({
   )
 }
 
-async function UserRankingSection() {
-  const rankings = await getCachedUserRankings()
+function CampaignRankingAvatar({ entry, rank }: { entry: PublicCampaignEntry; rank: number }) {
+  if (entry.avatarUrl) {
+    return <ProfileAvatar src={entry.avatarUrl} alt={`${entry.displayName}のアイコン`} size="md" />
+  }
+  const decoration = rankDecoration[rank - 1]
+  const initial = entry.displayName.trim().charAt(0) || '?'
+  return (
+    <span
+      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ring-1 ${
+        decoration?.avatar ?? 'bg-blue-50 text-blue-700 ring-blue-100'
+      }`}
+      aria-hidden="true"
+    >
+      {initial}
+    </span>
+  )
+}
+
+function CampaignRankingList({ entries }: { entries: PublicCampaignEntry[] }) {
+  if (entries.length === 0) {
+    return (
+      <div className="px-3 py-8 text-center text-sm text-gray-500">
+        まだランキング対象の投稿はありません。
+      </div>
+    )
+  }
+  return (
+    <div className="space-y-2 p-2">
+      {entries.map((entry) => {
+        const idx = entry.rank - 1
+        return (
+          <div
+            key={entry.profileSlug}
+            className={`grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md border px-3 py-2 text-sm ${
+              rankDecoration[idx]?.card ?? 'border-gray-200 bg-white'
+            }`}
+          >
+            <div className={`text-center font-mono font-black ${rankDecoration[idx]?.rank ?? 'text-gray-500'}`}>
+              <span className="block text-lg leading-none">{rankDecoration[idx]?.medal ?? entry.rank}</span>
+              {idx < 3 && (
+                <span className="mt-1 block text-[10px] leading-none text-gray-500">{entry.rank}位</span>
+              )}
+            </div>
+            <Link href={`/u/${entry.profileSlug}`} aria-label={`${entry.displayName}の投稿者ページ`}>
+              <CampaignRankingAvatar entry={entry} rank={entry.rank} />
+            </Link>
+            <div className="min-w-0">
+              <Link href={`/u/${entry.profileSlug}`} className="font-bold text-blue-700 hover:underline">
+                {entry.displayName}
+              </Link>
+              {entry.rank === 1 && (
+                <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${rankDecoration[0].badge}`}>
+                  1位
+                </span>
+              )}
+              <div className="mt-0.5 text-xs text-gray-500">
+                <span>スレッド{entry.threadCount}</span>
+                <span className="ml-2">コメント{entry.postCount}</span>
+                <span className="ml-2">レビュー{entry.reviewCount}</span>
+                <span className="ml-2">評価{entry.ratingDays}日</span>
+              </div>
+            </div>
+            <div className="whitespace-nowrap text-right font-mono text-base font-black text-blue-700">
+              {entry.totalPoints}pt
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+async function UserRankingSection({ tab }: { tab: string }) {
+  const [rankings, campaignSettings] = await Promise.all([
+    getCachedUserRankings(),
+    fetchCampaignSettings(),
+  ])
+
+  const { status, title, startIso, endIso, prize, rulesUrl } = campaignSettings
+  const showCampaign = ['active', 'ended', 'finalized'].includes(status) && !!startIso && !!endIso
+
+  const validTabs = showCampaign ? ['campaign', 'monthly', 'total'] : ['monthly', 'total']
+  const activeTab = validTabs.includes(tab) ? tab : (showCampaign ? 'campaign' : 'monthly')
+
+  let campaignResult = null
+  if (activeTab === 'campaign') {
+    campaignResult = await fetchCampaignRankingPublic(startIso, endIso)
+  }
+
+  const tabLabel = (t: string) => t === 'campaign' ? 'キャンペーン' : t === 'monthly' ? '今月' : '総合'
+  const tabHref = (t: string) => t === activeTab ? '#' : `?tab=${t}`
 
   return (
     <section className="mt-4 mb-4">
@@ -171,7 +266,56 @@ async function UserRankingSection() {
           登録後の投稿をもとにした試験運用中のランキングです。集計条件は今後変更される場合があります。
         </p>
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
+
+      {/* Tab bar */}
+      <div className="mb-3 flex gap-1 border-b border-gray-200">
+        {validTabs.map((t) => (
+          <Link
+            key={t}
+            href={tabHref(t)}
+            className={`px-3 py-2 text-xs font-medium leading-none transition-colors ${
+              t === activeTab
+                ? 'border-b-2 border-blue-500 bg-blue-50 text-blue-700'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+            }`}
+            style={{ minHeight: 32 }}
+          >
+            {tabLabel(t)}
+          </Link>
+        ))}
+      </div>
+
+      {activeTab === 'campaign' && (
+        <>
+          {/* Campaign info header */}
+          <div className="mb-3 rounded border border-blue-200 bg-blue-50/60 px-3 py-2 text-xs text-gray-700">
+            {title && <div className="font-bold text-gray-800">{title}</div>}
+            {startIso && endIso && (
+              <div className="mt-1">
+                期間：{toDisplayJst(startIso)} 〜 {toDisplayJst(endIso)}
+              </div>
+            )}
+            {prize && <div className="mt-0.5">賞品：{prize}</div>}
+            {rulesUrl && (
+              <div className="mt-0.5">
+                <a href={rulesUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                  ルール・詳細はこちら
+                </a>
+              </div>
+            )}
+            {status !== 'finalized' && (
+              <div className="mt-1 text-gray-500">※ 順位は暫定です。最終結果は集計後に確定します。</div>
+            )}
+          </div>
+          {campaignResult?.error ? (
+            <div className="px-3 py-6 text-center text-sm text-red-600">集計エラーが発生しました。</div>
+          ) : (
+            <CampaignRankingList entries={campaignResult?.entries ?? []} />
+          )}
+        </>
+      )}
+
+      {activeTab === 'monthly' && (
         <UserRankingList
           title="今月のランキング"
           subtitle="今月よく投稿している登録ユーザー"
@@ -179,6 +323,9 @@ async function UserRankingSection() {
           rows={rankings.monthly}
           variant="monthly"
         />
+      )}
+
+      {activeTab === 'total' && (
         <UserRankingList
           title="歴代ランキング"
           subtitle="登録後の投稿をもとにした総合順位"
@@ -186,7 +333,7 @@ async function UserRankingSection() {
           rows={rankings.total}
           variant="total"
         />
-      </div>
+      )}
     </section>
   )
 }
@@ -268,11 +415,12 @@ async function RankingList({ page }: { page: number }) {
 }
 
 interface Props {
-  searchParams: Promise<{ page?: string }>
+  searchParams: Promise<{ page?: string; tab?: string }>
 }
 
 export default async function RankingPage({ searchParams }: Props) {
-  const { page: pageStr } = await searchParams
+  const { page: pageStr, tab: tabStr } = await searchParams
+  const tab = tabStr ?? ''
   const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
   const categories = await getCachedCategories()
 
@@ -327,7 +475,7 @@ export default async function RankingPage({ searchParams }: Props) {
         </Suspense>
 
         <Suspense fallback={null}>
-          <UserRankingSection />
+          <UserRankingSection tab={tab} />
         </Suspense>
 
         <BottomNav current="/ranking" categories={categories} />
