@@ -327,13 +327,12 @@ export function PostItem({
   threadId,
   authorProfile,
 }: Props) {
-  const [deleted, setDeleted] = useState(false)
   const [locallyDeletedByUser, setLocallyDeletedByUser] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   const postSessionId = (post as Post & { session_id?: string }).session_id ?? ''
   const isDeletedByRegisteredUser =
-    locallyDeletedByUser || (post.is_deleted === true && post.deleted_by === 'registered_user')
+    locallyDeletedByUser || post.is_deleted === true
   const canDeleteBySession = Boolean(sessionId && (postSessionId === sessionId || threadSessionId === sessionId))
   const canDeleteByUser = Boolean(currentUserId && post.user_id === currentUserId)
   const canDelete = !isDeletedByRegisteredUser && (canDeleteBySession || canDeleteByUser)
@@ -343,13 +342,10 @@ export function PostItem({
     startTransition(async () => {
       const res = await deleteOwnPost(post.id, threadId)
       if (!res.error) {
-        if (canDeleteByUser) setLocallyDeletedByUser(true)
-        else setDeleted(true)
+        setLocallyDeletedByUser(true)
       }
     })
   }
-
-  if (deleted) return null
 
   return (
     <div id={`post-${displayNumber}`} className="border-b border-gray-200 last:border-b-0">
@@ -384,7 +380,7 @@ export function PostItem({
       {/* 本文（YouTube/X URL は自動埋め込み） */}
       {isDeletedByRegisteredUser ? (
         <div className="px-3 py-3 text-sm text-gray-500 break-words leading-relaxed">
-          このコメントは投稿者によって削除されました
+          このコメントは削除されました
         </div>
       ) : (
         <div className="px-3 py-3 text-base text-gray-800 break-words leading-relaxed">

@@ -83,12 +83,12 @@ export async function deleteOwnPost(postId: number, threadId: number) {
   const isThreadOwner = thread?.session_id === sessionId
 
   if (isRegisteredAuthor) {
-    const { error } = await supabase.from('posts').update({
+    const { data: updated, error } = await supabase.from('posts').update({
       is_deleted: true,
       deleted_at: new Date().toISOString(),
       deleted_by: 'registered_user',
-    }).eq('id', postId).eq('thread_id', threadId)
-    if (error) return { error: '削除に失敗しました' }
+    }).eq('id', postId).eq('thread_id', threadId).eq('user_id', currentUserId).select('id')
+    if (error || !updated?.length) return { error: '削除に失敗しました' }
 
     await supabase.rpc('recalculate_post_count', { p_thread_id: threadId })
 

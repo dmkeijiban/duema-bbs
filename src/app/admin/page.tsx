@@ -134,11 +134,24 @@ export default async function AdminPage({
     const threadId = parseInt(sp.thread)
     const [{ data: t }, { data: p }] = await Promise.all([
       supabase.from('threads').select('id, title').eq('id', threadId).single(),
-      supabase.from('posts').select('id, post_number, author_name, body, session_id')
+      supabase.from('posts').select('id, post_number, author_name, body, session_id, user_id')
         .eq('thread_id', threadId).order('post_number', { ascending: true }),
     ])
     selectedThread = t
     posts = p
+  }
+
+  // 登録ユーザーのプロフィールをバッチ取得
+  const postAuthorProfiles: Record<string, { display_name: string }> = {}
+  if (posts) {
+    const userIds = [...new Set(posts.map(p => (p as typeof p & { user_id?: string }).user_id).filter(Boolean))] as string[]
+    if (userIds.length > 0) {
+      const { data: profiles } = await adminSupabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', userIds)
+      profiles?.forEach(pr => { postAuthorProfiles[pr.id] = { display_name: pr.display_name } })
+    }
   }
 
   // 編集対象スレ
@@ -507,7 +520,14 @@ export default async function AdminPage({
                 <div key={p.id} className="bg-white border border-gray-200 p-2">
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0">
-                      <span className="font-bold text-[10px] text-gray-500">#{p.post_number + 1} {p.author_name}</span>
+                      <span className="font-bold text-[10px] text-gray-500">
+                        #{p.post_number + 1}{' '}
+                        {(p as typeof p & { user_id?: string }).user_id && postAuthorProfiles[(p as typeof p & { user_id?: string }).user_id!] ? (
+                          <a href={`/admin/users/${(p as typeof p & { user_id?: string }).user_id}`} className="text-blue-600 hover:underline">
+                            {postAuthorProfiles[(p as typeof p & { user_id?: string }).user_id!].display_name}
+                          </a>
+                        ) : p.author_name}
+                      </span>
                       <p className="text-xs text-gray-700 mt-0.5 line-clamp-2 break-all">{p.body}</p>
                     </div>
                     <div className="flex gap-1 shrink-0">
