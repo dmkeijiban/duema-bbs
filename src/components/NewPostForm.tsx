@@ -15,6 +15,7 @@ type AuthState =
   | { status: 'loading' }
   | { status: 'anon' }
   | { status: 'user'; displayName: string; avatarUrl: string | null }
+  | { status: 'profile_missing' }
 
 const PushSubscribeButton = dynamic(
   () => import('./PushSubscribeButton').then(mod => mod.PushSubscribeButton),
@@ -59,10 +60,14 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
         .select('display_name, avatar_url')
         .eq('id', data.user.id)
         .single()
+      if (!profile?.display_name) {
+        setAuthState({ status: 'profile_missing' })
+        return
+      }
       setAuthState({
         status: 'user',
-        displayName: profile?.display_name ?? '登録ユーザー',
-        avatarUrl: profile?.avatar_url ?? null,
+        displayName: profile.display_name,
+        avatarUrl: profile.avatar_url ?? null,
       })
     })
   }, [])
@@ -198,7 +203,15 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
         <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
         <table className="w-full text-sm border-collapse" style={{ tableLayout: 'fixed' }}>
           <tbody>
-            {authState.status !== 'user' && (
+            {authState.status === 'loading' && (
+              <tr className="border-b border-gray-200">
+                <td className="py-2 px-3 whitespace-nowrap align-middle text-xs font-medium" style={{ background: '#f5f5f5', width: 72 }}>
+                  投稿者
+                </td>
+                <td className="py-2 px-3 text-xs text-gray-400">ログイン状態を確認中…</td>
+              </tr>
+            )}
+            {authState.status === 'anon' && (
               <tr className="border-b border-gray-200">
                 <td className="py-2 px-3 whitespace-nowrap align-middle text-xs font-medium" style={{ background: '#f5f5f5', width: 72 }}>
                   名前
@@ -227,6 +240,17 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
                     <span className="font-medium">{authState.displayName}</span>
                     <span className="text-xs text-gray-500">このアカウントでコメントします</span>
                   </span>
+                </td>
+              </tr>
+            )}
+            {authState.status === 'profile_missing' && (
+              <tr className="border-b border-gray-200">
+                <td className="py-2 px-3 whitespace-nowrap align-middle text-xs font-medium" style={{ background: '#f5f5f5', width: 72 }}>
+                  投稿者
+                </td>
+                <td className="py-2 px-3 text-xs text-red-600">
+                  コメントするにはプロフィールを設定してください。{' '}
+                  <Link href="/profile/new" className="underline text-blue-600">プロフィール設定</Link>
                 </td>
               </tr>
             )}
@@ -285,7 +309,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
         <div className="px-3 py-2.5">
           <button
             type="submit"
-            disabled={isPending}
+            disabled={isPending || authState.status === 'loading' || authState.status === 'profile_missing'}
             className="w-full py-2 text-sm text-white disabled:opacity-60"
             style={{ background: '#0d6efd' }}
           >
