@@ -3,6 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 
 async function getSessionId(): Promise<string | null> {
   const cookieStore = await cookies()
@@ -83,14 +84,31 @@ export async function deleteOwnPost(postId: number, threadId: number) {
   const isThreadOwner = thread?.session_id === sessionId
 
   if (isRegisteredAuthor) {
-    const { data: updated, error } = await supabase.from('posts').update({
-      is_deleted: true,
-      deleted_at: new Date().toISOString(),
-      deleted_by: 'registered_user',
-    }).eq('id', postId).eq('thread_id', threadId).eq('user_id', currentUserId).select('id')
-    if (error || !updated?.length) return { error: '削除に失敗しました' }
+    const authUser = userData.user!
+    const adminClient = createAdminClient()
+    const { data: updated, error: updateError } = await adminClient
+      .from('posts')
+      .update({
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
+        deleted_by: 'registered_user',
+      })
+      .eq('id', postId)
+      .eq('thread_id', threadId)
+      .eq('user_id', authUser.id)
+      .eq('is_deleted', false)
+      .select('id')
 
-    await supabase.rpc('recalculate_post_count', { p_thread_id: threadId })
+    if (updateError) {
+      console.error('[deleteOwnPost] update error:', updateError.message)
+      return { error: '削除に失敗しました' }
+    }
+    if (!updated || updated.length !== 1) {
+      console.error('[deleteOwnPost] updated row count:', updated?.length ?? 0)
+      return { error: '削除に失敗しました' }
+    }
+
+    await adminClient.rpc('recalculate_post_count', { p_thread_id: threadId })
 
     revalidateTag(`thread-${threadId}`, { expire: 0 })
     revalidateTag('threads', { expire: 0 })
