@@ -364,10 +364,19 @@ export function PostItem({
         >
           ▶{displayNumber}
         </button>
-        {!isDeletedByRegisteredUser && <PostAuthorName fallbackName={post.author_name} profile={authorProfile} />}
-        {!isDeletedByRegisteredUser && <span className="text-gray-400">{formatDateTimeJP(post.created_at)}</span>}
-        {!isDeletedByRegisteredUser && <PostLikeButton likeKey={`post-${post.id}`} />}
-        {!isDeletedByRegisteredUser && <ReportButton itemType="post" itemId={post.id} itemBody={post.body} />}
+        {isDeletedByRegisteredUser ? (
+          <>
+            <span className="font-medium text-gray-700">名無しのデュエリスト</span>
+            <span className="text-gray-400">{formatDateTimeJP(post.created_at)}</span>
+          </>
+        ) : (
+          <>
+            <PostAuthorName fallbackName={post.author_name} profile={authorProfile} />
+            <span className="text-gray-400">{formatDateTimeJP(post.created_at)}</span>
+            <PostLikeButton likeKey={`post-${post.id}`} />
+            <ReportButton itemType="post" itemId={post.id} itemBody={post.body} />
+          </>
+        )}
         {!isDeletedByRegisteredUser && canDelete && (
           <button
             type="button"
