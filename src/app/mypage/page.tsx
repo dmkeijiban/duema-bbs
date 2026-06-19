@@ -231,7 +231,7 @@ async function AnonMyPage() {
   const hasHistory = anonThreads.length > 0 || anonPosts.length > 0
 
   return (
-    <main className="mx-auto w-full max-w-[1100px] px-3 py-4">
+    <main className="mx-auto w-full max-w-screen-xl px-3 py-4">
       <div className="w-full border border-gray-300 bg-white">
         <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
           <h1 className="text-lg font-bold text-gray-900">マイページ</h1>
@@ -377,7 +377,7 @@ export default async function MyPage({
   const totalRank = totalRankIndex >= 0 ? totalRankIndex + 1 : null
 
   return (
-    <main className="mx-auto w-full max-w-[1100px] px-3 py-4">
+    <main className="mx-auto w-full max-w-screen-xl px-3 py-4">
       <div className="w-full border border-gray-300 bg-white">
         <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
           <h1 className="text-lg font-bold text-gray-900">マイページ</h1>

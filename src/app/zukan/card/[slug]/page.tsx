@@ -198,7 +198,7 @@ export default async function ZukanCardPage({
   const reviewCount = cardReviews?.length ?? 0
 
   return (
-    <div className="mx-auto max-w-[1080px] px-2 pt-2 pb-10">
+    <div className="mx-auto max-w-screen-xl px-2 pt-2 pb-10">
       <nav className="text-xs text-gray-500 mb-2 flex items-center gap-x-1 flex-wrap">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
         <span>{'>'}</span>
