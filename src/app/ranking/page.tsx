@@ -7,22 +7,19 @@ import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { ThreadListHeader } from '@/components/ThreadListHeader'
 import { ThreadListTopContent } from '@/components/ThreadListTopContent'
-import {
-  fetchCampaignSettings,
-  fetchCampaignRankingPublic,
-  toDisplayJst,
-  PublicCampaignEntry,
-} from '@/lib/campaign-ranking'
+import { withFallbackThumbnails } from '@/lib/thumbnail'
+import { Thread, Category } from '@/types'
+import Link from 'next/link'
 
 export const revalidate = 3600
 
 export const metadata = {
   title: '人気スレッドランキング | デュエマ掲示板',
-  description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。直近3日間のレス数が多いスレッドを順位付きで表示します。',
+  description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。今日・今週・総合でレス数が多いスレッドを順位付きで表示します。',
   alternates: { canonical: `${SITE_URL}/ranking` },
   openGraph: {
     title: '人気スレッドランキング | デュエマ掲示板',
-    description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。直近3日間のレス数が多いスレッドを順位付きで表示します。',
+    description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。今日・今週・総合でレス数が多いスレッドを順位付きで表示します。',
     url: `${SITE_URL}/ranking`,
     type: 'website' as const,
     images: [{ url: `${SITE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: '人気スレッドランキング | デュエマ掲示板' }],
@@ -30,15 +27,14 @@ export const metadata = {
   twitter: {
     card: 'summary_large_image' as const,
     title: '人気スレッドランキング | デュエマ掲示板',
-    description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。直近3日間のレス数が多いスレッドを順位付きで表示します。',
+    description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。今日・今週・総合でレス数が多いスレッドを順位付きで表示します。',
     images: [`${SITE_URL}/default-thumbnail.jpg`],
   },
 }
-import { withFallbackThumbnails } from '@/lib/thumbnail'
-import { Thread, Category } from '@/types'
-import Link from 'next/link'
 
-const PAGE_SIZE = 100
+type ThreadPeriod = 'today' | 'week' | 'all'
+
+const PAGE_SIZE = 50
 
 const rankDecoration = [
   {
@@ -86,32 +82,24 @@ function RankingAvatar({ row, rank }: { row: UserRankingRow; rank: number }) {
 
 function UserRankingList({
   title,
-  subtitle,
+  periodLabel,
   topLabel,
   rows,
-  variant,
 }: {
   title: string
-  subtitle: string
+  periodLabel: string
   topLabel: string
   rows: UserRankingRow[]
-  variant: 'monthly' | 'total'
 }) {
-  const sectionAccent =
-    variant === 'monthly'
-      ? 'border-blue-200 bg-blue-50/70 text-blue-800'
-      : 'border-purple-200 bg-purple-50/70 text-purple-800'
-
   return (
     <section className="overflow-hidden border border-gray-300 bg-white">
-      <div className={`border-b px-3 py-2 ${sectionAccent}`}>
+      <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-bold">{title}</h3>
-          <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-bold">
-            {variant === 'monthly' ? '今月' : '総合'}
+          <h3 className="text-sm font-bold text-gray-800">{title}</h3>
+          <span className="rounded-full border border-yellow-300 bg-yellow-50 px-2 py-0.5 text-[11px] font-bold text-yellow-700">
+            {periodLabel}
           </span>
         </div>
-        <p className="mt-1 text-xs text-gray-600">{subtitle}</p>
       </div>
       {rows.length === 0 ? (
         <div className="px-3 py-6 text-center text-sm text-gray-500">
@@ -166,194 +154,128 @@ function UserRankingList({
   )
 }
 
-function CampaignRankingAvatar({ entry, rank }: { entry: PublicCampaignEntry; rank: number }) {
-  if (entry.avatarUrl) {
-    return <ProfileAvatar src={entry.avatarUrl} alt={`${entry.displayName}のアイコン`} size="md" />
-  }
-  const decoration = rankDecoration[rank - 1]
-  const initial = entry.displayName.trim().charAt(0) || '?'
-  return (
-    <span
-      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ring-1 ${
-        decoration?.avatar ?? 'bg-blue-50 text-blue-700 ring-blue-100'
-      }`}
-      aria-hidden="true"
-    >
-      {initial}
-    </span>
-  )
-}
-
-function CampaignRankingList({ entries }: { entries: PublicCampaignEntry[] }) {
-  if (entries.length === 0) {
-    return (
-      <div className="px-3 py-8 text-center text-sm text-gray-500">
-        まだランキング対象の投稿はありません。
-      </div>
-    )
-  }
-  return (
-    <div className="space-y-2 p-2">
-      {entries.map((entry) => {
-        const idx = entry.rank - 1
-        return (
-          <div
-            key={entry.profileSlug}
-            className={`grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-              rankDecoration[idx]?.card ?? 'border-gray-200 bg-white'
-            }`}
-          >
-            <div className={`text-center font-mono font-black ${rankDecoration[idx]?.rank ?? 'text-gray-500'}`}>
-              <span className="block text-lg leading-none">{rankDecoration[idx]?.medal ?? entry.rank}</span>
-              {idx < 3 && (
-                <span className="mt-1 block text-[10px] leading-none text-gray-500">{entry.rank}位</span>
-              )}
-            </div>
-            <Link href={`/u/${entry.profileSlug}`} aria-label={`${entry.displayName}の投稿者ページ`}>
-              <CampaignRankingAvatar entry={entry} rank={entry.rank} />
-            </Link>
-            <div className="min-w-0">
-              <Link href={`/u/${entry.profileSlug}`} className="font-bold text-blue-700 hover:underline">
-                {entry.displayName}
-              </Link>
-              {entry.rank === 1 && (
-                <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${rankDecoration[0].badge}`}>
-                  1位
-                </span>
-              )}
-              <div className="mt-0.5 text-xs text-gray-500">
-                <span>スレッド{entry.threadCount}</span>
-                <span className="ml-2">コメント{entry.postCount}</span>
-                <span className="ml-2">レビュー{entry.reviewCount}</span>
-                <span className="ml-2">評価{entry.ratingDays}日</span>
-              </div>
-            </div>
-            <div className="whitespace-nowrap text-right font-mono text-base font-black text-blue-700">
-              {entry.totalPoints}pt
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-async function UserRankingSection({ period }: { period: string }) {
-  const [rankings, campaignSettings] = await Promise.all([
-    getCachedUserRankings(),
-    fetchCampaignSettings(),
-  ])
-
-  const { status, title, startIso, endIso, prize, rulesUrl } = campaignSettings
-  const showCampaign = ['active', 'ended', 'finalized'].includes(status) && !!startIso && !!endIso
-
-  const validTabs = showCampaign ? ['campaign', 'monthly', 'total'] : ['monthly', 'total']
-  const activeTab = validTabs.includes(period) ? period : (showCampaign ? 'campaign' : 'monthly')
-
-  let campaignResult = null
-  if (activeTab === 'campaign') {
-    campaignResult = await fetchCampaignRankingPublic(startIso, endIso)
-  }
-
-  const tabLabel = (t: string) => t === 'campaign' ? 'キャンペーン' : t === 'monthly' ? '今月' : '総合'
-  const tabHref = (t: string) => t === activeTab ? '#' : `?type=users&period=${t}`
+async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
+  const rankings = await getCachedUserRankings()
+  const rows = period === 'month' ? rankings.monthly : rankings.total
+  const title = period === 'month' ? '今月のランキング' : '総合ランキング'
+  const periodLabel = period === 'month' ? '今月' : '総合'
+  const topLabel = period === 'month' ? '今月1位' : '総合1位'
 
   return (
-    <section className="mt-2 mb-4">
-      <div className="mb-2 border border-gray-200 bg-gray-50 px-3 py-2">
-        <p className="text-xs leading-relaxed text-gray-500">
-          登録後の投稿をもとにした試験運用中のランキングです。集計条件は今後変更される場合があります。
-        </p>
+    <section className="mb-4 mt-4">
+      <div className="mb-3 border border-gray-300 bg-white px-3 py-2">
+        <h2 className="text-sm font-bold text-gray-800">投稿者ランキング</h2>
       </div>
-
-      {/* Sub-tab bar */}
-      <div className="mb-3 flex gap-1 border-b border-gray-200">
-        {validTabs.map((t) => (
-          <Link
-            key={t}
-            href={tabHref(t)}
-            className={`px-3 py-2 text-xs font-medium leading-none transition-colors ${
-              t === activeTab
-                ? 'border-b-2 border-blue-500 bg-blue-50 text-blue-700'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
-            }`}
-            style={{ minHeight: 32 }}
-          >
-            {tabLabel(t)}
-          </Link>
-        ))}
+      {/* 期間サブタブ */}
+      <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
+        <Link
+          href="/ranking?type=author&period=month"
+          className={`flex-1 border-r border-gray-300 py-2 text-center text-sm font-bold transition-colors ${
+            period === 'month'
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          今月
+        </Link>
+        <Link
+          href="/ranking?type=author&period=all"
+          className={`flex-1 py-2 text-center text-sm font-bold transition-colors ${
+            period === 'all'
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          総合
+        </Link>
       </div>
-
-      {activeTab === 'campaign' && (
-        <>
-          {/* Campaign info header */}
-          <div className="mb-3 rounded border border-blue-200 bg-blue-50/60 px-3 py-2 text-xs text-gray-700">
-            {title && <div className="font-bold text-gray-800">{title}</div>}
-            {startIso && endIso && (
-              <div className="mt-1">
-                期間：{toDisplayJst(startIso)} 〜 {toDisplayJst(endIso)}
-              </div>
-            )}
-            {prize && <div className="mt-0.5">賞品：{prize}</div>}
-            {rulesUrl && (
-              <div className="mt-0.5">
-                <a href={rulesUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-                  ルール・詳細はこちら
-                </a>
-              </div>
-            )}
-            {status !== 'finalized' && (
-              <div className="mt-1 text-gray-500">※ 順位は暫定です。最終結果は集計後に確定します。</div>
-            )}
-          </div>
-          {campaignResult?.error ? (
-            <div className="px-3 py-6 text-center text-sm text-red-600">集計エラーが発生しました。</div>
-          ) : (
-            <CampaignRankingList entries={campaignResult?.entries ?? []} />
-          )}
-        </>
-      )}
-
-      {activeTab === 'monthly' && (
-        <UserRankingList
-          title="今月のランキング"
-          subtitle="今月よく投稿している登録ユーザー"
-          topLabel="今月1位"
-          rows={rankings.monthly}
-          variant="monthly"
-        />
-      )}
-
-      {activeTab === 'total' && (
-        <UserRankingList
-          title="歴代ランキング"
-          subtitle="登録後の投稿をもとにした総合順位"
-          topLabel="総合1位"
-          rows={rankings.total}
-          variant="total"
-        />
-      )}
+      <UserRankingList
+        title={title}
+        periodLabel={periodLabel}
+        topLabel={topLabel}
+        rows={rows}
+      />
     </section>
   )
 }
 
-async function RankingList({ page }: { page: number }) {
+type TypedThread = Thread & { categories: Category | null }
+
+function ThreadRankingMobile({ threads, offset }: { threads: TypedThread[]; offset: number }) {
+  const first = threads[0]
+  const top10 = threads.slice(1, 10)
+  const rest = threads.slice(10)
+
+  return (
+    <div className="md:hidden">
+      {/* 1位: 横長特別カード */}
+      {first && (
+        <Link
+          href={`/thread/${first.id}`}
+          className="mb-2 flex items-center gap-3 border border-yellow-300 bg-yellow-50/80 px-4 py-3 shadow-sm"
+        >
+          <div className="shrink-0 text-center">
+            <div className="text-3xl leading-none">🥇</div>
+            <div className="mt-0.5 text-[10px] font-bold text-yellow-700">1位</div>
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="line-clamp-2 text-sm font-bold leading-snug text-gray-900">
+              {first.title}
+            </div>
+            <div className="mt-1 text-xs text-gray-500">レス{first.post_count}</div>
+          </div>
+          {first.image_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={first.image_url}
+              alt=""
+              className="h-14 w-14 shrink-0 object-cover"
+              width={56}
+              height={56}
+            />
+          )}
+        </Link>
+      )}
+
+      {/* 2〜10位: カード表示 */}
+      {top10.length > 0 && (
+        <div className="mb-2 grid grid-cols-3 border-l border-t border-gray-300">
+          {top10.map((thread, i) => (
+            <ThreadCard key={thread.id} thread={thread} rank={offset + i + 2} />
+          ))}
+        </div>
+      )}
+
+      {/* 11〜50位: 軽量リスト */}
+      {rest.length > 0 && (
+        <div className="border border-gray-300 bg-white">
+          {rest.map((thread, i) => (
+            <Link
+              key={thread.id}
+              href={`/thread/${thread.id}`}
+              className="flex items-center gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0 hover:bg-gray-50"
+            >
+              <span className="w-8 shrink-0 text-center font-mono text-xs text-gray-400">
+                {offset + i + 11}
+              </span>
+              <span className="line-clamp-1 min-w-0 flex-1 text-xs text-gray-800">
+                {thread.title}
+              </span>
+              <span className="shrink-0 text-xs text-gray-400">
+                レス{thread.post_count}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+async function RankingList({ page, period }: { page: number; period: ThreadPeriod }) {
   const supabase = createPublicClient()
-  const recentSince = new Date()
-  recentSince.setDate(recentSince.getDate() - 3)
-  const since = recentSince.toISOString()
   const offset = (page - 1) * PAGE_SIZE
 
-  // 過去3日間の件数確認
-  const { count: recentCount } = await supabase
-    .from('threads')
-    .select('*', { count: 'exact', head: true })
-    .eq('is_archived', false)
-    .gte('last_posted_at', since)
-
-  const useRecent = (recentCount ?? 0) >= PAGE_SIZE
-
-  // データ取得
   let dataQuery = supabase
     .from('threads')
     .select('*, categories(id,name,slug,color,description,sort_order)')
@@ -361,38 +283,39 @@ async function RankingList({ page }: { page: number }) {
     .order('post_count', { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1)
 
-  if (useRecent) {
-    dataQuery = dataQuery.gte('last_posted_at', since)
+  if (period !== 'all') {
+    const since = new Date()
+    since.setDate(since.getDate() - (period === 'today' ? 1 : 7))
+    dataQuery = dataQuery.gte('last_posted_at', since.toISOString())
   }
 
   const { data: rawThreads } = await dataQuery
 
-  // 総ページ数
   const withImages = rawThreads && rawThreads.length > 0
     ? await withFallbackThumbnails(supabase, rawThreads)
     : []
 
   if (withImages.length === 0) {
     return (
-      <div className="text-center py-16 text-gray-500 bg-white border border-gray-300">
+      <div className="border border-gray-300 bg-white py-16 text-center text-gray-500">
         <p>スレッドがまだありません</p>
       </div>
     )
   }
 
-  const typedThreads = withImages as (Thread & { categories: Category | null })[]
+  const typedThreads = withImages as TypedThread[]
 
   return (
     <>
-      {/* SEO: ItemList構造化データ — ランキング順リストをGoogleに伝える */}
+      {/* SEO: ItemList構造化データ */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "ItemList",
-            "name": "人気スレッドランキング（過去3日間）",
-            "description": "デュエマ掲示板の過去3日間でレス数が多い人気スレッドランキング",
+            "name": "人気スレッドランキング",
+            "description": "デュエマ掲示板の人気スレッドランキング",
             "url": `${SITE_URL}/ranking`,
             "numberOfItems": typedThreads.length,
             "itemListElement": typedThreads.map((thread, i) => ({
@@ -404,7 +327,12 @@ async function RankingList({ page }: { page: number }) {
           }),
         }}
       />
-      <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
+
+      {/* モバイル: 1位カード + 2-10位グリッド + 11-50位リスト */}
+      <ThreadRankingMobile threads={typedThreads} offset={offset} />
+
+      {/* デスクトップ: グリッド */}
+      <div className="hidden md:grid md:grid-cols-5 border-l border-t border-gray-300">
         {typedThreads.map((thread, i) => (
           <ThreadCard key={thread.id} thread={thread} rank={offset + i + 1} />
         ))}
@@ -414,23 +342,23 @@ async function RankingList({ page }: { page: number }) {
 }
 
 interface Props {
-  searchParams: Promise<{ page?: string; tab?: string; type?: string; period?: string }>
+  searchParams: Promise<{ page?: string; type?: string; period?: string }>
+}
+
+const THREAD_PERIOD_LABELS: Record<ThreadPeriod, string> = {
+  today: '今日',
+  week: '今週',
+  all: '総合',
 }
 
 export default async function RankingPage({ searchParams }: Props) {
-  const { page: pageStr, tab: tabStr, type: typeStr, period: periodStr } = await searchParams
-
-  // backward compat: ?tab=X → type=users, period=X
-  const activeType: 'threads' | 'users' =
-    typeStr === 'users' ? 'users'
-    : typeStr === 'threads' ? 'threads'
-    : tabStr ? 'users'
-    : 'threads'
-
-  // period for user ranking sub-tabs; fall back to ?tab for backward compat
-  const period = periodStr ?? tabStr ?? ''
-
+  const { page: pageStr, type: typeParam, period: periodParam } = await searchParams
   const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
+  const activeTab = typeParam === 'author' ? 'author' : 'thread'
+  const activePeriod = periodParam === 'all' ? 'all' : 'month'
+  // TODO: 投稿数が増えたら today/week も有効化する（内部ロジックは保持済み）
+  const threadPeriod: ThreadPeriod =
+    periodParam === 'today' ? 'today' : periodParam === 'week' ? 'week' : 'all'
   const categories = await getCachedCategories()
 
   return (
@@ -464,58 +392,90 @@ export default async function RankingPage({ searchParams }: Props) {
 
       <ThreadListTopContent showPopularThreads={false} />
 
-      {/* Top-level tab bar */}
-      <div className="border-b border-gray-300 bg-white">
-        <div className="max-w-screen-xl mx-auto px-2 flex">
+      <ThreadListHeader
+        title="人気スレッドランキング"
+        icon="📊"
+      />
+
+      <div className="mx-auto max-w-screen-xl px-2">
+        {/* タブナビゲーション */}
+        <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
           <Link
-            href="?type=threads"
-            className={`px-4 py-3 text-sm font-bold transition-colors ${
-              activeType === 'threads'
-                ? 'border-b-2 border-blue-500 text-blue-700'
-                : 'text-gray-500 hover:text-gray-800'
+            href="/ranking?type=thread"
+            className={`flex flex-1 items-center justify-center gap-1.5 border-r border-gray-300 py-2.5 text-sm font-bold transition-colors ${
+              activeTab === 'thread'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
-            📊 スレッドランキング
+            📋 スレッドランキング
           </Link>
           <Link
-            href="?type=users"
-            className={`px-4 py-3 text-sm font-bold transition-colors ${
-              activeType === 'users'
-                ? 'border-b-2 border-blue-500 text-blue-700'
-                : 'text-gray-500 hover:text-gray-800'
+            href="/ranking?type=author&period=month"
+            className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 text-sm font-bold transition-colors ${
+              activeTab === 'author'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
-            👤 投稿者ランキング
+            👑 投稿者ランキング
           </Link>
         </div>
-      </div>
 
-      {activeType === 'threads' && (
-        <ThreadListHeader title="人気スレッドランキング" icon="📊" subtitle="（過去3日間）" />
-      )}
-
-      <div className="max-w-screen-xl mx-auto px-2">
-        {activeType === 'threads' && (
-          <Suspense fallback={
-            <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300 animate-pulse">
-              {[...Array(15)].map((_, i) => (
-                <div key={i} className="flex border-b border-r border-gray-300 bg-white" style={{ minHeight: 52 }}>
-                  <div className="bg-gray-200 shrink-0" style={{ width: 52, height: 52 }} />
-                  <div className="p-1.5 flex-1 space-y-1.5 pt-2">
-                    <div className="h-2 bg-gray-200 rounded w-full" />
-                    <div className="h-2 bg-gray-200 rounded w-4/5" />
-                  </div>
-                </div>
+        {activeTab === 'thread' ? (
+          <>
+            {/* 期間サブタブ: 投稿数が増えたら有効化する
+            <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
+              {(['today', 'week', 'all'] as const).map((p, i, arr) => (
+                <Link
+                  key={p}
+                  href={`/ranking?type=thread&period=${p}`}
+                  className={`flex-1 py-2 text-center text-sm font-bold transition-colors ${
+                    i < arr.length - 1 ? 'border-r border-gray-300' : ''
+                  } ${
+                    threadPeriod === p
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {THREAD_PERIOD_LABELS[p]}
+                </Link>
               ))}
             </div>
-          }>
-            <RankingList page={page} />
-          </Suspense>
-        )}
-
-        {activeType === 'users' && (
+            */}
+            <Suspense fallback={
+              <div className="animate-pulse">
+                <div className="mb-2 h-20 border border-gray-200 bg-gray-100 md:hidden" />
+                <div className="mb-2 grid grid-cols-3 border-l border-t border-gray-300 md:hidden">
+                  {[...Array(9)].map((_, i) => (
+                    <div key={i} className="flex border-b border-r border-gray-300 bg-white" style={{ minHeight: 52 }}>
+                      <div className="bg-gray-200 shrink-0" style={{ width: 52, height: 52 }} />
+                      <div className="flex-1 space-y-1.5 p-1.5 pt-2">
+                        <div className="h-2 w-full rounded bg-gray-200" />
+                        <div className="h-2 w-4/5 rounded bg-gray-200" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden border-l border-t border-gray-300 md:grid md:grid-cols-5">
+                  {[...Array(15)].map((_, i) => (
+                    <div key={i} className="flex border-b border-r border-gray-300 bg-white" style={{ minHeight: 52 }}>
+                      <div className="bg-gray-200 shrink-0" style={{ width: 52, height: 52 }} />
+                      <div className="flex-1 space-y-1.5 p-1.5 pt-2">
+                        <div className="h-2 w-full rounded bg-gray-200" />
+                        <div className="h-2 w-4/5 rounded bg-gray-200" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            }>
+              <RankingList page={page} period={threadPeriod} />
+            </Suspense>
+          </>
+        ) : (
           <Suspense fallback={null}>
-            <UserRankingSection period={period} />
+            <UserRankingSection period={activePeriod} />
           </Suspense>
         )}
 
