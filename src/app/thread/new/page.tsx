@@ -4,6 +4,7 @@ import { ArrowLeft, PenSquare } from '@/components/Icons'
 import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { verifyAdminCookie } from '@/lib/admin-auth'
+import { createClient } from '@/lib/supabase-server'
 
 /** 管理者専用カテゴリ名（このカテゴリはスレ作成を管理者のみに制限） */
 export const metadata = {
@@ -17,6 +18,9 @@ export default async function NewThreadPage() {
   const allCategories = await getCachedCategories()
   const cookieStore = await cookies()
   const isAdmin = verifyAdminCookie(cookieStore.get('admin_auth')?.value)
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const isLoggedIn = Boolean(user)
   // 管理者でなければ管理者専用カテゴリを非表示にする
   const categories = isAdmin
     ? allCategories
@@ -45,10 +49,18 @@ export default async function NewThreadPage() {
           </p>
         </div>
         {/* 注意書き */}
-        <div className="mx-6 mt-5 px-4 py-3 bg-sky-50 border border-sky-200 rounded text-xs text-sky-800 space-y-1 leading-relaxed">
-          <p>・重複や似たスレッドがないか必ず確認してください。</p>
-          <p>・単発スレは最終更新から一定時間で落ちます。</p>
-          <p>・画像は権利を侵害しない物を添付してください。</p>
+        <div className="mx-6 mt-5 px-4 py-3 bg-sky-50 border border-sky-200 rounded text-xs text-sky-800 leading-relaxed">
+          <p>
+            投稿前に、同じ内容のスレッドがないか確認してください。
+            <Link href="/guide" className="underline ml-1">投稿ルールを確認する</Link>
+          </p>
+          {!isLoggedIn && (
+            <p className="mt-2">
+              アカウントを作成すると、アイコン・プロフィール・投稿一覧を利用できます。
+              <Link href="/login?mode=signup" className="underline ml-1">アカウント作成</Link>
+              <span className="ml-2 text-sky-600">※登録せずに、このまま匿名で投稿することもできます。</span>
+            </p>
+          )}
         </div>
         <NewThreadFormClient categories={categories} />
       </div>

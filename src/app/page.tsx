@@ -385,24 +385,25 @@ export default async function Home({
           <HomeBannerServer />
         </Suspense>
 
-        {/* 投稿者ページ・図鑑への案内リンク（静的・コンパクト・新着スレッドを大きく下げない） */}
-        <div className="mb-2 border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
-          <p className="text-xs text-gray-600">
-            投稿者登録すると、自分専用の投稿者ページを作成できます。
+        {/* 案内カード（静的・コンパクト・新着スレッドを大きく下げない） */}
+        <div className="mb-2 border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+          <p>
+            デュエル・マスターズ専門の掲示板です。デッキ相談・カード評価など何でもどうぞ。初めての方は
+            <Link href="/guide" className="text-blue-600 hover:underline">スレッドの立て方</Link>
+            をご確認ください。アカウントを作成すると、アイコン・プロフィール・投稿一覧を利用できます。
           </p>
-          <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              href="/guide"
-              className="text-blue-600 hover:underline"
+          <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1.5">
+            <Link
+              href="/login?mode=signup"
+              className="inline-block px-3 py-1 text-xs font-medium text-white rounded"
+              style={{ background: '#0d6efd' }}
             >
-              スレッドの立て方
-            </a>
-            <Link href="/login" className="text-blue-600 hover:underline">
-              投稿者ページを作る
+              アカウント作成
             </Link>
-            <Link href="/zukan" className="text-blue-600 hover:underline">
+            <Link
+              href="/zukan"
+              className="inline-block px-3 py-1 text-xs font-medium text-gray-700 border border-gray-300 rounded bg-white hover:bg-gray-50"
+            >
               思い出図鑑を見る
             </Link>
           </div>
