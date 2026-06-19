@@ -51,15 +51,12 @@ export default async function NewThreadPage() {
         {/* 注意書き */}
         <div className="mx-6 mt-5 px-4 py-3 bg-sky-50 border border-sky-200 rounded text-xs text-sky-800 leading-relaxed">
           <p>
-            投稿する前に、同じ内容のスレッドがないか確認し、
-            <Link href="/guide" className="underline mx-1">投稿ルール</Link>
-            をご確認ください。
+            投稿する前に、<Link href="/guide" className="underline">投稿ルール</Link>をご確認ください。
           </p>
           {!isLoggedIn && (
             <p className="mt-2">
-              アカウントを作成すると、プロフィールや投稿一覧を利用できます。
-              <Link href="/login?mode=signup" className="underline ml-1">アカウント作成</Link>
-              <span className="ml-2 text-sky-600">※登録せずに、このまま匿名で投稿することもできます。</span>
+              <Link href="/login?mode=signup" className="underline">アカウントを作成</Link>すると、プロフィールや投稿管理を利用できます。
+              <span className="ml-1">※登録せずに、このまま匿名で投稿することもできます。</span>
             </p>
           )}
         </div>
