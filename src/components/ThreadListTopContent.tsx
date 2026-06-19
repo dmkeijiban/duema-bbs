@@ -1,13 +1,10 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
-import { getCachedSetting } from '@/lib/cached-queries'
-
-const HOME_BANNER_DEFAULT = 'デッキ相談・カード評価・大会情報など、デュエマの話題なら何でもどうぞ。\n初めての方は<a href="/guide" style="text-decoration:underline">スレッドの立て方</a>をご確認ください。'
 
 function BannerButtons() {
   return (
-    <div className="flex flex-wrap gap-2 mt-2">
+    <div className="mt-2 flex shrink-0 flex-wrap gap-2 md:mt-0">
       <Link
         href="/login?mode=signup"
         className="inline-block px-3 py-1 text-xs font-medium rounded border"
@@ -29,10 +26,10 @@ function BannerButtons() {
 function HomeBannerFallback() {
   return (
     <div
-      className="mb-2 px-3 py-2 text-sm border relative setting-content"
+      className="mb-2 flex flex-col gap-2 border px-3 py-2 text-sm md:flex-row md:items-center md:justify-between"
       style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb' }}
     >
-      <div>
+      <div className="leading-relaxed">
         <p>デッキ相談・カード評価・大会情報など、デュエマの話題なら何でもどうぞ。</p>
         <p>初めての方は<Link href="/guide" className="underline">スレッドの立て方</Link>をご確認ください。</p>
       </div>
@@ -41,19 +38,8 @@ function HomeBannerFallback() {
   )
 }
 
-async function HomeBannerServer() {
-  const banner = await getCachedSetting('home_banner', HOME_BANNER_DEFAULT)
-  const text = banner || HOME_BANNER_DEFAULT
-  const isHtml = text.trimStart().startsWith('<')
-  return (
-    <div
-      className="mb-2 px-3 py-2 text-sm border relative setting-content"
-      style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb', whiteSpace: isHtml ? undefined : 'pre-wrap' }}
-    >
-      {isHtml ? <div dangerouslySetInnerHTML={{ __html: text }} /> : text}
-      <BannerButtons />
-    </div>
-  )
+function HomeBannerServer() {
+  return <HomeBannerFallback />
 }
 
 export async function ThreadListTopContent({ showPopularThreads = true }: { showPopularThreads?: boolean }) {
@@ -67,10 +53,10 @@ export async function ThreadListTopContent({ showPopularThreads = true }: { show
       </Suspense>
       {showPopularThreads && (
         <Link
-          href="/summary"
+          href="/ranking"
           className="mb-2 flex items-center justify-between px-3 py-2 border border-blue-200 bg-blue-50 text-sm text-gray-900 hover:bg-blue-100 transition-colors"
         >
-          <span>📊 人気スレッドまとめ（週間・月間ランキング）</span>
+          <span>📊 人気ランキングまとめ（週間・総合）</span>
           <span className="text-xs ml-2 shrink-0">一覧へ</span>
         </Link>
       )}

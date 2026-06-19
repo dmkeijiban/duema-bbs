@@ -1,6 +1,6 @@
 'use client'
 import { useTransition, useState } from 'react'
-import { adminHidePackReview, adminUnhidePackReview, adminEditPackReview } from './actions'
+import { adminHidePackReview, adminEditPackReview } from './actions'
 
 export default function AdminPackReviewControls({
   reviewId,
@@ -19,8 +19,7 @@ export default function AdminPackReviewControls({
 
   const toggle = () => {
     startTransition(async () => {
-      if (isHidden) await adminUnhidePackReview(reviewId, packId)
-      else await adminHidePackReview(reviewId, packId)
+      if (!isHidden) await adminHidePackReview(reviewId, packId)
     })
   }
 
@@ -33,13 +32,12 @@ export default function AdminPackReviewControls({
 
   return (
     <div className="mt-1 flex flex-wrap items-center gap-2 border-t border-dashed border-red-100 pt-1">
-      <span className="text-[10px] font-bold text-red-500">管理</span>
       <button
         onClick={toggle}
-        disabled={pending}
+        disabled={pending || isHidden}
         className="text-[10px] text-gray-500 underline hover:text-red-600 disabled:opacity-50"
       >
-        {isHidden ? '再表示' : '非表示'}
+        削除
       </button>
       <button
         onClick={() => setEditing(v => !v)}
@@ -48,7 +46,6 @@ export default function AdminPackReviewControls({
       >
         編集
       </button>
-      {isHidden && <span className="text-[10px] font-bold text-orange-500">［非表示中］</span>}
       {editing && (
         <div className="mt-1 w-full">
           <textarea

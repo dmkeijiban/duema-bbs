@@ -41,10 +41,10 @@ const PAGE_SIZE = 50
 const rankDecoration = [
   {
     medal: '🥇',
-    card: 'border-yellow-300 bg-yellow-50/80 shadow-sm',
-    rank: 'text-yellow-700',
-    badge: 'bg-yellow-500 text-white',
-    avatar: 'bg-yellow-100 text-yellow-700 ring-yellow-200',
+    card: 'border-gray-300 bg-white',
+    rank: 'text-gray-800',
+    badge: 'bg-gray-800 text-white',
+    avatar: 'bg-gray-100 text-gray-700 ring-gray-200',
   },
   {
     medal: '🥈',
@@ -218,8 +218,8 @@ function ThreadRankingMobile({ threads, offset }: { threads: TypedThread[]; offs
             {firstImgSrc && (
               <SafeThumbnail src={firstImgSrc} alt={first.title} priority />
             )}
-            <span className="absolute left-0 top-0 bg-yellow-500 px-1 text-[10px] font-bold leading-4 text-white">
-              🥇1位
+            <span className="absolute left-0 top-0 bg-gray-900 px-1 text-[10px] font-bold leading-4 text-white">
+              1位
             </span>
             <span className="absolute bottom-0 left-0 right-0 flex items-center gap-0.5 px-1 text-[9px] font-bold leading-[14px] text-white" style={{ background: 'rgba(0,0,0,0.52)' }}>
               💬{first.post_count}
@@ -318,12 +318,6 @@ interface Props {
   searchParams: Promise<{ page?: string; type?: string; period?: string }>
 }
 
-const THREAD_PERIOD_LABELS: Record<ThreadPeriod, string> = {
-  today: '今日',
-  week: '今週',
-  all: '総合',
-}
-
 export default async function RankingPage({ searchParams }: Props) {
   const { page: pageStr, type: typeParam, period: periodParam } = await searchParams
   const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
@@ -366,7 +360,7 @@ export default async function RankingPage({ searchParams }: Props) {
       <ThreadListTopContent showPopularThreads={false} />
 
       <ThreadListHeader
-        title="人気スレッドランキング"
+        title="人気ランキング"
         icon="📊"
       />
 
