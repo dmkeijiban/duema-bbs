@@ -10,6 +10,7 @@ import { SettingEditButton } from './SettingEditButton'
 import { capturePostHogEvent } from '@/lib/posthog-events'
 import { createClient } from '@/lib/supabase'
 import { ProfileAvatar } from './ProfileAvatar'
+import { getDisplayCategory } from '@/lib/categories'
 
 type AuthState =
   | { status: 'loading' }
@@ -43,6 +44,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
   const [pushUnsupported, setPushUnsupported] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+  const displayCategory = getDisplayCategory(thread.categories)
 
   useEffect(() => {
     setPushUnsupported(!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window))
@@ -171,11 +173,11 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
       {/* パンくず */}
       <div className="px-3 py-1.5 text-xs border-b border-gray-200" style={{ background: '#f5f5f5' }}>
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
-        {thread.categories && (
+        {displayCategory && (
           <>
             <span className="mx-1">{'>'}</span>
-            <Link href={`/category/${thread.categories.slug}`} className="text-blue-600 hover:underline">
-              カテゴリ『{thread.categories.name}』
+            <Link href={`/category/${displayCategory.slug}`} className="text-blue-600 hover:underline">
+              カテゴリ『{displayCategory.name}』
             </Link>
           </>
         )}

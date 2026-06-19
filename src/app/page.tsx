@@ -26,6 +26,7 @@ import {
 import { SITE_URL } from '@/lib/site-config'
 import type { Metadata } from 'next'
 import { AdBanner } from '@/components/AdBanner'
+import { getCategoryIdsForSlug } from '@/lib/categories'
 
 export const revalidate = 3600
 
@@ -86,9 +87,7 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
 
   // カテゴリIDはキャッシュ済み一覧から引く
   const cats = await getCachedCategories()
-  const categoryId = searchParams.category
-    ? (cats.find(c => c.slug === searchParams.category)?.id ?? null)
-    : null
+  const categoryIds = searchParams.category ? getCategoryIdsForSlug(searchParams.category, cats) : []
 
   // ── ランダム（キャッシュ不適）
   if (isRandom) {
@@ -97,7 +96,8 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
       .select('id, title, image_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
       .eq('is_archived', false)
       .limit(100)
-    if (categoryId !== null) q = q.eq('category_id', categoryId)
+    if (categoryIds.length === 1) q = q.eq('category_id', categoryIds[0])
+    if (categoryIds.length > 1) q = q.in('category_id', categoryIds)
     const { data: raw } = await q
     const all = seededShuffle(raw ? await withFallbackThumbnails(supabase, raw) : [])
     if (all.length === 0) return <ThreadEmpty searchQ={undefined} />
@@ -123,9 +123,12 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
       .select('id, title, image_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
       .eq('is_archived', isArchived)
       .ilike('title', `%${searchQ}%`)
-    if (categoryId !== null) {
-      countQ = countQ.eq('category_id', categoryId)
-      dataQ = dataQ.eq('category_id', categoryId)
+    if (categoryIds.length === 1) {
+      countQ = countQ.eq('category_id', categoryIds[0])
+      dataQ = dataQ.eq('category_id', categoryIds[0])
+    } else if (categoryIds.length > 1) {
+      countQ = countQ.in('category_id', categoryIds)
+      dataQ = dataQ.in('category_id', categoryIds)
     }
     dataQ = dataQ.order('last_posted_at', { ascending: false }).range(offset, offset + THREAD_PAGE_SIZE - 1)
     const [{ count }, { data: raw }] = await Promise.all([countQ, dataQ])
@@ -150,7 +153,7 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
   }
 
   // ── 標準クエリ（キャッシュ済み・60s）
-  const result = await getCachedThreadList(sort, page, categoryId, isArchived)
+  const result = await getCachedThreadList(sort, page, categoryIds.length > 0 ? categoryIds : null, isArchived)
   const threads = result.threads as unknown as (Thread & { categories: Category | null })[]
 
   if (threads.length === 0) return <ThreadEmpty searchQ={undefined} />

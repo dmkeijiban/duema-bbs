@@ -3,6 +3,7 @@ import { Thread } from '@/types'
 import { resolveImageUrl } from '@/lib/utils'
 import { DEFAULT_THREAD_THUMBNAIL } from '@/lib/thumbnail'
 import { SafeThumbnail } from '@/components/SafeThumbnail'
+import { getDisplayCategory } from '@/lib/categories'
 
 interface Props {
   thread: Thread
@@ -11,7 +12,7 @@ interface Props {
 }
 
 export function ThreadCard({ thread, rank, priority }: Props) {
-  const category = thread.categories
+  const category = getDisplayCategory(thread.categories)
   const imgSrc = resolveImageUrl(thread.image_url) ?? DEFAULT_THREAD_THUMBNAIL
 
   return (

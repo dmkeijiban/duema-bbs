@@ -662,11 +662,12 @@ export interface CachedThreadListResult {
 export function getCachedThreadList(
   sort: string,
   page: number,
-  categoryId: number | null,
+  categoryId: number | number[] | null,
   isArchived: boolean
 ): Promise<CachedThreadListResult> {
   const pageSize = sort === 'popular' ? POPULAR_PAGE_SIZE : THREAD_PAGE_SIZE
-  const cacheKey = `tl-${sort}-ps${pageSize}-p${page}-c${String(categoryId)}-a${String(isArchived)}`
+  const categoryKey = Array.isArray(categoryId) ? categoryId.slice().sort((a, b) => a - b).join('-') : String(categoryId)
+  const cacheKey = `tl-${sort}-ps${pageSize}-p${page}-c${categoryKey}-a${String(isArchived)}`
   return unstable_cache(
     async () => {
       const supabase = createPublicClient()
@@ -682,8 +683,14 @@ export function getCachedThreadList(
         .eq('is_archived', isArchived)
 
       if (categoryId !== null) {
-        countQuery = countQuery.eq('category_id', categoryId)
-        dataQuery = dataQuery.eq('category_id', categoryId)
+        const categoryIds = Array.isArray(categoryId) ? categoryId : [categoryId]
+        if (categoryIds.length === 1) {
+          countQuery = countQuery.eq('category_id', categoryIds[0])
+          dataQuery = dataQuery.eq('category_id', categoryIds[0])
+        } else if (categoryIds.length > 1) {
+          countQuery = countQuery.in('category_id', categoryIds)
+          dataQuery = dataQuery.in('category_id', categoryIds)
+        }
       }
 
       if (sort === 'popular') {
