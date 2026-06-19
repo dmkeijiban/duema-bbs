@@ -45,8 +45,8 @@ export async function generateMetadata() {
 const PAGE_SIZE = 60
 
 const PACK_DESCRIPTION_PARAGRAPHS = [
-  '2002年5月30日に発売された、デュエル・マスターズ最初の弾。',
-  '火・水・自然・光・闇の5文明から全120種を収録し、ボルシャック・ドラゴン、ホーリー・スパーク、デーモン・ハンドなど、シリーズを象徴するカードが多数登場しました。',
+  '2002年5月30日に発売された、デュエル・マスターズ最初の弾。火・水・自然・光・闇の5文明から全120種を収録しています。',
+  'ボルシャック・ドラゴン、アクア・ハルカス、ホーリー・スパーク、デーモン・ハンドなど、シリーズを象徴するカードが多数登場しました。',
   '1パック5枚入り・150円（税抜）。',
 ]
 
@@ -312,7 +312,7 @@ export default async function ZukanDm01Page({
           </dl>
           <div className="mt-3 space-y-2 text-sm leading-relaxed text-gray-700">
             {PACK_DESCRIPTION_PARAGRAPHS.map(paragraph => (
-              <p key={paragraph} className="border-l-2 border-gray-200 pl-3">{paragraph}</p>
+              <p key={paragraph} className="whitespace-pre-line border-l-2 border-gray-200 pl-3">{paragraph}</p>
             ))}
           </div>
           <div className="mt-auto pt-4">
@@ -328,12 +328,12 @@ export default async function ZukanDm01Page({
           <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
             <h2 className="text-sm font-bold text-gray-800">代表カード</h2>
           </div>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+          <div className="flex gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
             {REP_CARDS.map(rep => {
               const dbCard = dbRepCards?.find(c => c.slug === rep.slug) ?? null
               const href = dbCard ? `/zukan/card/${rep.slug}` : '#'
               const isLinked = !!dbCard
-              const cardClass = `border border-gray-300 bg-white ${isLinked ? 'block cursor-pointer transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]' : 'opacity-60'}`
+              const cardClass = `w-[44%] flex-shrink-0 sm:w-auto border border-gray-300 bg-white ${isLinked ? 'block cursor-pointer transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]' : 'opacity-60'}`
               const cardBody = (
                 <>
                   <CardThumb
