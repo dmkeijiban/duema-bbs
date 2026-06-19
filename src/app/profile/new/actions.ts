@@ -204,7 +204,7 @@ export async function createProfile(formData: FormData): Promise<CreateProfileRe
     if (avatarPath) {
       await admin.storage.from(AVATAR_BUCKET).remove([avatarPath])
     }
-    return { error: '投稿者ページの作成に失敗しました。入力内容を確認してください。' }
+    return { error: 'プロフィールの作成に失敗しました。入力内容を確認してください。' }
   }
 
   return { redirectTo: `/u/${profileSlug}` }

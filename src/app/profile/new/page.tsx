@@ -27,12 +27,12 @@ export default async function NewProfilePage() {
     <main className="mx-auto max-w-3xl px-4 py-8">
       <div className="border border-gray-300 bg-white">
         <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
-          <h1 className="text-lg font-bold text-gray-900">投稿者ページを作る</h1>
+          <h1 className="text-lg font-bold text-gray-900">プロフィールを作る</h1>
           <p className="mt-1 text-sm leading-relaxed text-gray-600">
-            表示名とURL IDを設定すると、今後の投稿者ページやランキング参加に使えるようになります。
+            表示名とURL IDを設定すると、プロフィールやランキング参加に使えるようになります。
           </p>
           <p className="mt-1 text-sm leading-relaxed text-gray-600">
-            登録しなくても、これまで通り匿名で掲示板を利用できます。
+            アカウント作成後も、匿名でのスレッド作成・レス投稿はこれまで通り利用できます。
           </p>
         </div>
 

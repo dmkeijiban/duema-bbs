@@ -370,7 +370,7 @@ export function ProfileCreateForm() {
 
       <div>
         <label htmlFor="profile_slug" className="mb-1 block text-sm font-bold text-gray-700">
-          投稿者ページURL ID <span className="text-red-500">*</span>
+          プロフィールURL ID <span className="text-red-500">*</span>
         </label>
         <input
           id="profile_slug"
@@ -452,7 +452,7 @@ export function ProfileCreateForm() {
           disabled={isPending || isProcessingAvatar}
           className="rounded bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isPending || isProcessingAvatar ? '保存中…' : '投稿者ページを作る'}
+          {isPending || isProcessingAvatar ? '保存中…' : 'プロフィールを作る'}
         </button>
         <Link
           href="/"
