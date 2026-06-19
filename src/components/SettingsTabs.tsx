@@ -31,7 +31,7 @@ export function SettingsTabs({ favThreads, myThreads, myPosts, hasSession }: Pro
   ]
 
   const handleDeleteThread = (threadId: number) => {
-    if (!confirm('このスレッドを削除しますか？（レスも全て削除されます）')) return
+    if (!confirm('このスレッドを削除しますか？（コメントも全て削除されます）')) return
     startTransition(async () => {
       const res = await deleteOwnThread(threadId)
       if (res.error) {
@@ -44,14 +44,14 @@ export function SettingsTabs({ favThreads, myThreads, myPosts, hasSession }: Pro
   }
 
   const handleDeletePost = (postId: number, threadId: number) => {
-    if (!confirm('このレスを削除しますか？')) return
+    if (!confirm('このコメントを削除しますか？')) return
     startTransition(async () => {
       const res = await deleteOwnPost(postId, threadId)
       if (res.error) {
         setMsg(res.error)
       } else {
         setDeletedPostIds(prev => new Set(prev).add(postId))
-        setMsg('レスを削除しました')
+        setMsg('コメントを削除しました')
       }
     })
   }
@@ -204,7 +204,7 @@ export function SettingsTabs({ favThreads, myThreads, myPosts, hasSession }: Pro
                       className="text-white text-[10px] font-bold px-1.5 py-0.5 ml-2 shrink-0"
                       style={{ background: '#555' }}
                     >
-                      {group.post_count}レス/{formatRelativeTime(group.last_posted_at)}更新
+                      {group.post_count}コメント/{formatRelativeTime(group.last_posted_at)}更新
                     </span>
                   </div>
 
@@ -249,7 +249,7 @@ export function SettingsTabs({ favThreads, myThreads, myPosts, hasSession }: Pro
               <thead>
                 <tr style={{ background: '#f5f5f5' }}>
                   <th className="px-3 py-2 text-left border-b border-gray-200 font-medium">タイトル</th>
-                  <th className="px-3 py-2 text-left border-b border-gray-200 font-medium w-16">レス数</th>
+                  <th className="px-3 py-2 text-left border-b border-gray-200 font-medium w-16">コメント数</th>
                   <th className="px-3 py-2 text-left border-b border-gray-200 font-medium w-36">最終投稿</th>
                   <th className="px-3 py-2 border-b border-gray-200 w-12"></th>
                 </tr>
