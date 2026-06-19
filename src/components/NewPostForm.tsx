@@ -202,14 +202,12 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
         )}
         <div className={rules ? 'mt-2' : undefined}>
           <p>
-            投稿する前に、
-            <Link href="/guide" className="text-blue-700 hover:underline">投稿ルールをご確認ください</Link>。
+            投稿する前に、<Link href="/guide" className="text-blue-700 hover:underline">投稿ルール</Link>をご確認ください。
           </p>
           {authState.status === 'anon' && (
             <p className="mt-1">
-              アカウントを作成すると、プロフィールや投稿一覧を利用できます。
-              <Link href="/login?mode=signup" className="text-blue-700 hover:underline ml-1">アカウント作成</Link>
-              <span className="text-cyan-800 ml-1">※登録せずに、このまま匿名でコメント投稿することもできます。</span>
+              <Link href="/login?mode=signup" className="text-blue-700 hover:underline">アカウントを作成</Link>すると、プロフィールや投稿管理を利用できます。
+              <span className="ml-1">※登録せずに、このまま匿名でコメント投稿することもできます。</span>
             </p>
           )}
         </div>
