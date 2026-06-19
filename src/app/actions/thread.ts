@@ -30,13 +30,15 @@ async function getOrCreateSessionId(): Promise<string> {
   return newId
 }
 
-async function getActiveProfileUserId(
+async function getPostingUserState(
   supabase: Awaited<ReturnType<typeof createClient>>
-): Promise<string | null> {
+) {
   const { data: userData, error: userError } = await supabase.auth.getUser()
   const user = userData.user
 
-  if (userError || !user) return null
+  if (userError || !user) {
+    return { isLoggedIn: false, userId: null as string | null }
+  }
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
@@ -51,10 +53,10 @@ async function getActiveProfileUserId(
     profile.account_suspended ||
     profile.withdrawn_at
   ) {
-    return null
+    return { isLoggedIn: true, userId: null as string | null }
   }
 
-  return user.id
+  return { isLoggedIn: true, userId: user.id }
 }
 
 export async function createThread(formData: FormData) {
@@ -92,7 +94,7 @@ export async function createThread(formData: FormData) {
   }
 
   const sessionId = await getOrCreateSessionId()
-  const userId = await getActiveProfileUserId(supabase)
+  const { isLoggedIn, userId } = await getPostingUserState(supabase)
   if (await checkSessionBan(supabase, sessionId)) {
     return { error: 'Posting is restricted.' }
   }
@@ -210,7 +212,7 @@ export async function createThread(formData: FormData) {
 
   revalidatePath('/')
   revalidateTag('threads', { expire: 0 })
-  redirect(`/thread/${thread.id}`)
+  redirect(`/thread/${thread.id}?posted=thread&auth=${isLoggedIn ? 'user' : 'anon'}`)
 }
 
 export async function createPost(formData: FormData) {
@@ -231,7 +233,7 @@ export async function createPost(formData: FormData) {
   const supabase = await createClient()
 
   const sessionId = await getOrCreateSessionId()
-  const userId = await getActiveProfileUserId(supabase)
+  const { isLoggedIn, userId } = await getPostingUserState(supabase)
   if (await checkSessionBan(supabase, sessionId)) {
     return { error: 'Posting is restricted.' }
   }
@@ -359,7 +361,7 @@ export async function createPost(formData: FormData) {
   revalidateTag('posts', { expire: 0 })
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/')
-  return { success: true, postNumber: nextPostNumber }
+  return { success: true, postNumber: nextPostNumber, isLoggedIn }
 }
 
 export async function toggleFavorite(threadId: number) {

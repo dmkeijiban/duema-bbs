@@ -38,6 +38,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
   const [authorName, setAuthorName] = useState('')
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState<{ isLoggedIn: boolean } | null>(null)
   const [isPending, startTransition] = useTransition()
   const [scrollTarget, setScrollTarget] = useState<number | null>(null)
   const [showPushButton, setShowPushButton] = useState(false)
@@ -129,6 +130,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setSuccess(null)
 
     const fd = new FormData()
     fd.set('thread_id', String(threadId))
@@ -148,6 +150,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
             category_slug: thread.categories?.slug ?? null,
             has_image: Boolean(file),
           })
+          setSuccess({ isLoggedIn: Boolean(result.isLoggedIn) })
           onBodyChange('')
           setAuthorName('')
           if (fileInputRef.current) fileInputRef.current.value = ''
@@ -265,7 +268,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
                   投稿者
                 </td>
                 <td className="py-2 px-3 text-xs text-red-600">
-                  コメントするにはプロフィールを設定してください。{' '}
+                  レスするにはプロフィールを設定してください。{' '}
                   <Link href="/profile/new" className="underline text-blue-600">プロフィール設定</Link>
                 </td>
               </tr>
@@ -319,6 +322,24 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
         {error && (
           <div className="mx-3 my-1.5 px-2 py-1.5 text-xs" style={{ background: '#f8d7da', color: '#721c24', border: '1px solid #f5c6cb' }}>
             {error}
+          </div>
+        )}
+
+        {success && (
+          <div
+            className="mx-3 my-1.5 px-2 py-1.5 text-xs leading-relaxed"
+            style={{ background: '#d1e7dd', color: '#0f5132', border: '1px solid #badbcc' }}
+          >
+            {success.isLoggedIn ? (
+              <p>投稿しました！ありがとうございます。</p>
+            ) : (
+              <p>
+                投稿しました。アカウントを作成すると、プロフィールや投稿一覧を利用できます。
+                <Link href="/login?mode=signup" className="ml-1 font-bold underline">
+                  アカウント作成
+                </Link>
+              </p>
+            )}
           </div>
         )}
 
