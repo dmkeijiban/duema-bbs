@@ -260,12 +260,6 @@ async function UserRankingSection({ period }: { period: string }) {
 
   return (
     <section className="mt-2 mb-4">
-      <div className="mb-2 border border-gray-200 bg-gray-50 px-3 py-2">
-        <p className="text-xs leading-relaxed text-gray-500">
-          登録後の投稿をもとにした試験運用中のランキングです。集計条件は今後変更される場合があります。
-        </p>
-      </div>
-
       {/* Sub-tab bar */}
       <div className="mb-3 flex gap-1 border-b border-gray-200">
         {validTabs.map((t) => (
