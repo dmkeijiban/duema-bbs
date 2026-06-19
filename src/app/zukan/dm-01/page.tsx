@@ -301,13 +301,15 @@ export default async function ZukanDm01Page({
         <div className="flex min-h-full flex-col">
           <div className="font-mono text-xs font-bold text-blue-700">{pack.code}</div>
           <h1 className="mt-0.5 text-lg font-bold text-gray-800">{pack.code} {pack.name}</h1>
-          <dl className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-600">
-            {pack.released_year && (
-              <div><dt className="inline font-bold">発売：</dt><dd className="inline">{pack.released_year}</dd></div>
-            )}
-            {pack.card_count && (
-              <div><dt className="inline font-bold">収録：</dt><dd className="inline">{pack.card_count}種</dd></div>
-            )}
+          <dl className="mt-2 text-xs text-gray-600 space-y-0.5">
+            <div className="flex flex-wrap gap-x-4">
+              {pack.released_year && (
+                <div><dt className="inline font-bold">発売：</dt><dd className="inline">{pack.released_year}</dd></div>
+              )}
+              {pack.card_count && (
+                <div><dt className="inline font-bold">収録：</dt><dd className="inline">{pack.card_count}種</dd></div>
+              )}
+            </div>
             <div><dt className="inline font-bold">パック内容：</dt><dd className="inline">5枚入り 150円（税抜）</dd></div>
           </dl>
           <div className="mt-3 space-y-2 text-sm leading-relaxed text-gray-700">
@@ -325,8 +327,11 @@ export default async function ZukanDm01Page({
       {/* 代表カード（page=1 のみ） */}
       {page === 1 && (
         <section className="mb-5">
-          <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
-            <h2 className="text-sm font-bold text-gray-800">代表カード</h2>
+          <div className="border border-gray-300 bg-gray-50 px-3 py-2">
+            <h2 className="text-sm font-bold text-gray-800">{pack.code} {pack.name}の代表カード</h2>
+          </div>
+          <div className="mb-2 border-x border-b border-gray-300 bg-white px-3 py-1.5">
+            <Link href="#card-list" className="text-xs text-blue-600 hover:underline">収録カードをもっと見る →</Link>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
             {REP_CARDS.map(rep => {
@@ -368,7 +373,7 @@ export default async function ZukanDm01Page({
       )}
 
       {/* 収録カード */}
-      <section className="mb-5">
+      <section id="card-list" className="mb-5">
         <div className="mb-2 flex items-center justify-between border border-gray-300 bg-gray-50 px-3 py-2">
           <h2 className="text-sm font-bold text-gray-800">
             収録カード
