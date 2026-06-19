@@ -167,7 +167,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
     <div className="border border-gray-300 bg-white">
       {/* ヘッダー */}
       <div className="px-3 py-2 font-bold text-sm text-white" style={{ background: '#888' }}>
-        ✏ レス投稿
+        ✏ コメント投稿
       </div>
 
       {/* パンくず */}
@@ -185,34 +185,34 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
         <span className="text-gray-600">{thread.title}</span>
       </div>
 
-      {/* ルール */}
-      {(rules || isAdmin) && (
-        <div className="px-3 py-2 text-xs relative setting-content"
-          style={{ background: '#d1ecf1', borderBottom: '1px solid #bee5eb', whiteSpace: rules?.trimStart().startsWith('<') ? undefined : 'pre-wrap' }}>
-          {rules?.trimStart().startsWith('<')
-            ? <div dangerouslySetInnerHTML={{ __html: rules }} />
-            : rules}
-          {isAdmin && (
-            <span className="absolute top-1 right-1">
-              <SettingEditButton settingKey="thread_rules" initialValue={rules ?? ''} label="スレッド内ルール" />
-            </span>
+      {/* ルール・投稿案内 */}
+      <div className="px-3 py-2 text-xs relative setting-content"
+        style={{ background: '#d1ecf1', borderBottom: '1px solid #bee5eb', whiteSpace: rules?.trimStart().startsWith('<') ? undefined : 'pre-wrap' }}>
+        {(rules || isAdmin) && (
+          <>
+            {rules?.trimStart().startsWith('<')
+              ? <div dangerouslySetInnerHTML={{ __html: rules }} />
+              : rules}
+            {isAdmin && (
+              <span className="absolute top-1 right-1">
+                <SettingEditButton settingKey="thread_rules" initialValue={rules ?? ''} label="スレッド内ルール" />
+              </span>
+            )}
+          </>
+        )}
+        <div className={rules ? 'mt-2' : undefined}>
+          <p>
+            投稿する前に、
+            <Link href="/guide" className="text-blue-700 hover:underline">投稿ルールをご確認ください</Link>。
+          </p>
+          {authState.status === 'anon' && (
+            <p className="mt-1">
+              アカウントを作成すると、プロフィールや投稿一覧を利用できます。
+              <Link href="/login?mode=signup" className="text-blue-700 hover:underline ml-1">アカウント作成</Link>
+              <span className="text-cyan-800 ml-1">※登録せずに、このまま匿名でコメント投稿することもできます。</span>
+            </p>
           )}
         </div>
-      )}
-
-      {/* 注意書き */}
-      <div className="px-3 py-2 text-xs text-gray-600 border-b border-gray-200" style={{ background: '#f5f5f5' }}>
-        <p>
-          投稿する前に、
-          <Link href="/guide" className="text-blue-600 hover:underline">投稿ルールをご確認ください</Link>。
-        </p>
-        {authState.status === 'anon' && (
-          <p className="mt-1">
-            アカウントを作成すると、プロフィールや投稿一覧を利用できます。
-            <Link href="/login?mode=signup" className="text-blue-600 hover:underline ml-1">アカウント作成</Link>
-            <span className="text-gray-500 ml-1">※登録せずに、このまま匿名で投稿することもできます。</span>
-          </p>
-        )}
       </div>
 
       {/* フォーム */}

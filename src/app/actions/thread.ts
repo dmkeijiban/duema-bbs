@@ -321,7 +321,7 @@ export async function createPost(formData: FormData) {
 
   if (error) {
     console.error('Post insert error:', error)
-    return { error: 'レスの投稿に失敗しました' }
+    return { error: 'コメントの投稿に失敗しました' }
   }
 
   await supabase.rpc('increment_post_count', { p_thread_id: threadId })
