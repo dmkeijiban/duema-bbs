@@ -38,6 +38,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
   const [authorName, setAuthorName] = useState('')
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [isPending, startTransition] = useTransition()
   const [scrollTarget, setScrollTarget] = useState<number | null>(null)
   const [showPushButton, setShowPushButton] = useState(false)
@@ -129,6 +130,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setSuccess('')
 
     const fd = new FormData()
     fd.set('thread_id', String(threadId))
@@ -143,6 +145,10 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
         if (result?.error) {
           setError(result.error)
         } else {
+          setSuccess(authState.status === 'anon'
+            ? 'コメントを投稿しました。アカウントを作成すると、プロフィールや投稿一覧を利用できます。'
+            : 'コメントを投稿しました！ありがとうございます。'
+          )
           capturePostHogEvent('reply_submit_success', {
             thread_id: threadId,
             category_slug: thread.categories?.slug ?? null,
@@ -319,6 +325,17 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
         {error && (
           <div className="mx-3 my-1.5 px-2 py-1.5 text-xs" style={{ background: '#f8d7da', color: '#721c24', border: '1px solid #f5c6cb' }}>
             {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="mx-3 my-1.5 px-2 py-1.5 text-xs" style={{ background: '#d4edda', color: '#155724', border: '1px solid #c3e6cb' }}>
+            <p>{success}</p>
+            {authState.status === 'anon' && (
+              <Link href="/login?mode=signup" className="mt-1 inline-flex font-bold text-green-800 underline">
+                アカウント作成
+              </Link>
+            )}
           </div>
         )}
 
