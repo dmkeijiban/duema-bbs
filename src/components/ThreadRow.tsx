@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { Thread, Category } from '@/types'
 import { formatRelativeTime, resolveImageUrl } from '@/lib/utils'
 import { DEFAULT_THREAD_THUMBNAIL } from '@/lib/thumbnail'
+import { getDisplayCategory } from '@/lib/categories'
 
 interface Props {
   thread: Thread & { categories: Category | null }
@@ -10,7 +11,7 @@ interface Props {
 }
 
 export function ThreadRow({ thread, rank }: Props) {
-  const category = thread.categories
+  const category = getDisplayCategory(thread.categories)
   const imgSrc = resolveImageUrl(thread.image_url) ?? DEFAULT_THREAD_THUMBNAIL
   return (
     <Link

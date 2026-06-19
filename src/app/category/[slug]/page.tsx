@@ -21,6 +21,11 @@ import {
   getCachedThreadList,
   THREAD_PAGE_SIZE,
 } from '@/lib/cached-queries'
+import {
+  CONSOLIDATED_CATEGORIES,
+  getCategoryIdsForSlug,
+  getDisplayCategoryBySlug,
+} from '@/lib/categories'
 
 export const revalidate = 3600
 
@@ -34,13 +39,17 @@ interface Props {
 
 export async function generateStaticParams() {
   const cats = await getCachedCategories()
-  return cats.map(c => ({ slug: c.slug }))
+  const slugs = new Set([
+    ...cats.map(c => c.slug),
+    ...CONSOLIDATED_CATEGORIES.map(c => c.slug),
+  ])
+  return [...slugs].map(slug => ({ slug }))
 }
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
   const cats = await getCachedCategories()
-  const category = cats.find(c => c.slug === slug)
+  const category = getDisplayCategoryBySlug(slug, cats)
   if (!category) return { title: 'カテゴリが見つかりません' }
 
   const desc = category.description
@@ -71,10 +80,12 @@ export async function generateMetadata({ params }: Props) {
 
 async function CategoryThreadList({
   category,
+  categoryIds,
   sort,
   page,
 }: {
   category: { id: number; name: string; slug: string }
+  categoryIds: number[]
   sort: string
   page: number
 }) {
@@ -89,7 +100,7 @@ async function CategoryThreadList({
       .from('threads')
       .select('id, title, image_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
       .eq('is_archived', false)
-      .eq('category_id', category.id)
+      .in('category_id', categoryIds)
       .limit(100)
     const all = seededShuffle(raw ? await withFallbackThumbnails(supabase, raw) : [])
     if (all.length === 0) return <CategoryThreadEmpty />
@@ -103,7 +114,7 @@ async function CategoryThreadList({
   }
 
   // ── 標準クエリ（キャッシュ済み・60s）
-  const result = await getCachedThreadList(sort, page, category.id, isArchived)
+  const result = await getCachedThreadList(sort, page, categoryIds, isArchived)
   const threads = result.threads as unknown as (Thread & { categories: Category | null })[]
 
   if (threads.length === 0) return <CategoryThreadEmpty />
@@ -210,8 +221,9 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 8.不適切と判断した場合は削除・ブロックする事があります。`),
   ])
 
-  const category = categories.find(c => c.slug === slug)
-  if (!category) notFound()
+  const category = getDisplayCategoryBySlug(slug, categories)
+  const categoryIds = getCategoryIdsForSlug(slug, categories)
+  if (!category || categoryIds.length === 0) notFound()
 
   const typedNotices = notices as Notice[]
   const topNotices = typedNotices.filter(n => n.position === 'top')
@@ -271,7 +283,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       <div className="max-w-screen-xl mx-auto px-2">
         {midNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
 
-        <CategoryThreadList category={category} sort={sort} page={page} />
+        <CategoryThreadList category={category} categoryIds={categoryIds} sort={sort} page={page} />
 
         <BottomNav current="/category" currentCategory={slug} categories={categories} />
 

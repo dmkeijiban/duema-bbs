@@ -4,6 +4,7 @@ import { useTransition, useState } from 'react'
 import { createThread } from '@/app/actions/thread'
 import { Category } from '@/types'
 import { SettingEditButton } from './SettingEditButton'
+import { getPostableConsolidatedCategories } from '@/lib/categories'
 
 interface Props {
   categories: Category[]
@@ -14,6 +15,7 @@ interface Props {
 export function InlineNewThread({ categories, newThreadRules, isAdmin }: Props) {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
+  const categoryOptions = getPostableConsolidatedCategories(categories)
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -76,10 +78,7 @@ export function InlineNewThread({ categories, newThreadRules, isAdmin }: Props) 
                   name="category_id"
                   className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400"
                 >
-                  {[
-                    ...categories.filter(c => c.name.includes('雑談')),
-                    ...categories.filter(c => !c.name.includes('雑談')),
-                  ].map(c => (
+                  {categoryOptions.map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>

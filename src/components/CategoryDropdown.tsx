@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Category } from '@/types'
+import { getConsolidatedCategories, getConsolidatedCategoryBySlug } from '@/lib/categories'
 
 interface Props {
   currentCategory?: string
@@ -12,6 +13,8 @@ interface Props {
 export function CategoryDropdown({ currentCategory, categories }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLLIElement>(null)
+  const displayCategories = getConsolidatedCategories(categories)
+  const currentDisplaySlug = getConsolidatedCategoryBySlug(currentCategory)?.slug ?? currentCategory
 
   useEffect(() => {
     if (!open) return
@@ -53,12 +56,12 @@ export function CategoryDropdown({ currentCategory, categories }: Props) {
           >
             すべて
           </Link>
-          {categories.map(c => (
+          {displayCategories.map(c => (
             <Link
               key={c.slug}
               href={`/category/${c.slug}`}
               role="option"
-              aria-selected={currentCategory === c.slug}
+              aria-selected={currentDisplaySlug === c.slug}
               className="block px-4 py-2 hover:bg-gray-100 text-gray-700 border-b border-gray-100 last:border-b-0"
               onClick={() => setOpen(false)}
             >

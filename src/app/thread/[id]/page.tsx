@@ -13,6 +13,7 @@ import { SITE_URL } from '@/lib/site-config'
 import { createPublicClient } from '@/lib/supabase-public'
 import { NextReadNav } from '@/components/NextReadNav'
 import { AdBanner } from '@/components/AdBanner'
+import { getDisplayCategory } from '@/lib/categories'
 
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
@@ -145,6 +146,7 @@ export async function renderThreadPage(threadId: number, page: number) {
 
   const posts = postsResult.data
   const typedThread = thread as unknown as Thread & { categories: Category | null }
+  const displayCategory = getDisplayCategory(typedThread.categories)
   const authorProfiles = await getCachedPublicAuthorProfiles([
     typedThread.user_id ?? '',
     ...(posts ?? []).map(post => (post as Post).user_id ?? ''),
@@ -274,14 +276,14 @@ export async function renderThreadPage(threadId: number, page: number) {
 
       <nav className="text-xs text-gray-500 mb-2 flex items-center flex-wrap gap-x-1">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
-        {typedThread.categories && (
+        {displayCategory && (
           <>
             <span>{'>'}</span>
             <Link
-              href={`/category/${typedThread.categories.slug}`}
+              href={`/category/${displayCategory.slug}`}
               className="text-blue-600 hover:underline"
             >
-              カテゴリ『{typedThread.categories.name}』
+              カテゴリ『{displayCategory.name}』
             </Link>
           </>
         )}

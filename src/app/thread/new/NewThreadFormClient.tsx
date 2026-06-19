@@ -6,11 +6,8 @@ import { createThread } from '@/app/actions/thread'
 import { ImageUploadField } from '@/components/ImageUploadField'
 import { PenSquare } from '@/components/Icons'
 import Link from 'next/link'
-
-interface Category {
-  id: number
-  name: string
-}
+import { getPostableConsolidatedCategories } from '@/lib/categories'
+import type { Category } from '@/types'
 
 interface Props {
   categories: Category[]
@@ -20,6 +17,7 @@ export function NewThreadFormClient({ categories }: Props) {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
+  const categoryOptions = getPostableConsolidatedCategories(categories)
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -56,7 +54,7 @@ export function NewThreadFormClient({ categories }: Props) {
           className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
         >
           <option value="">カテゴリを選択してください</option>
-          {categories.map(cat => (
+          {categoryOptions.map(cat => (
             <option key={cat.id} value={cat.id}>{cat.name}</option>
           ))}
         </select>
