@@ -105,7 +105,7 @@ export default function CardReviewForm({ cardId, slug }: { cardId: string; slug:
       )}
       <div className="mb-2">
         <label className="block text-xs font-bold text-gray-600 mb-1" htmlFor="card-body">
-          レビュー <span className="text-red-500">*</span>
+          思い出 <span className="text-red-500">*</span>
         </label>
         <textarea
           id="card-body"
@@ -126,7 +126,7 @@ export default function CardReviewForm({ cardId, slug }: { cardId: string; slug:
         disabled={isPending}
         className="rounded bg-blue-600 px-4 py-1.5 text-xs font-bold text-white transition-all duration-100 hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
       >
-        {isPending ? '投稿中…' : 'レビューを投稿する'}
+        {isPending ? '投稿中…' : '思い出を投稿する'}
       </button>
     </form>
   )

@@ -320,7 +320,7 @@ export default async function ZukanCardPage({
 
           <section>
             <h3 className="mb-2 text-sm font-bold text-gray-800">
-              このカードの思い出レビュー（{reviewCount}件）
+              このカードの思い出（{reviewCount}件）
             </h3>
             {cardReviews && cardReviews.length > 0 && (
               <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
