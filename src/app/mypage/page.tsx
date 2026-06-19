@@ -333,21 +333,23 @@ export default async function MyPage({
             </section>
           </div>
 
-          <form action={logout}>
-            <button
-              type="submit"
-              className="rounded border border-gray-300 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              ログアウト
-            </button>
-          </form>
+          <div className="flex flex-wrap gap-2">
+            <form action={logout}>
+              <button
+                type="submit"
+                className="rounded border border-gray-300 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                ログアウト
+              </button>
+            </form>
 
-          <Link
-            href="/mypage/withdraw"
-            className="mt-4 inline-block rounded border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-          >
-            退会する
-          </Link>
+            <Link
+              href="/mypage/withdraw"
+              className="inline-block rounded border border-red-300 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"
+            >
+              退会する
+            </Link>
+          </div>
         </div>
       </div>
     </main>
