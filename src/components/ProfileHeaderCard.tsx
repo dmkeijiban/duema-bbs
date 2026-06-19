@@ -137,13 +137,27 @@ export function ProfileHeaderCard({
           <p className="text-lg font-bold text-blue-600 leading-none">
             {monthlyRank ? `${monthlyRank}位` : '—'}
           </p>
-          <p className="text-xs text-gray-500 mt-1">今月</p>
+          <Link
+            href="/ranking?type=author&period=month"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-gray-500 mt-1 hover:underline inline-block"
+          >
+            今月
+          </Link>
         </div>
         <div className="px-3 py-3">
           <p className="text-lg font-bold text-indigo-600 leading-none">
             {totalRank ? `${totalRank}位` : '—'}
           </p>
-          <p className="text-xs text-gray-500 mt-1">総合</p>
+          <Link
+            href="/ranking?type=author&period=all"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-gray-500 mt-1 hover:underline inline-block"
+          >
+            総合
+          </Link>
         </div>
       </div>
 
