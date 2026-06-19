@@ -1,13 +1,15 @@
 import { Suspense } from 'react'
 import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadCard } from '@/components/ThreadCard'
+import { SafeThumbnail } from '@/components/SafeThumbnail'
 import { SITE_URL } from '@/lib/site-config'
 import { getCachedCategories, getCachedUserRankings, UserRankingRow } from '@/lib/cached-queries'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { ThreadListHeader } from '@/components/ThreadListHeader'
 import { ThreadListTopContent } from '@/components/ThreadListTopContent'
-import { withFallbackThumbnails } from '@/lib/thumbnail'
+import { withFallbackThumbnails, DEFAULT_THREAD_THUMBNAIL } from '@/lib/thumbnail'
+import { resolveImageUrl } from '@/lib/utils'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 
@@ -163,9 +165,6 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
 
   return (
     <section className="mb-4 mt-4">
-      <div className="mb-3 border border-gray-300 bg-white px-3 py-2">
-        <h2 className="text-sm font-bold text-gray-800">投稿者ランキング</h2>
-      </div>
       {/* 期間サブタブ */}
       <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
         <Link
@@ -203,68 +202,42 @@ type TypedThread = Thread & { categories: Category | null }
 
 function ThreadRankingMobile({ threads, offset }: { threads: TypedThread[]; offset: number }) {
   const first = threads[0]
-  const top10 = threads.slice(1, 10)
-  const rest = threads.slice(10)
+  const rest = threads.slice(1)
+  const firstImgSrc = first ? (resolveImageUrl(first.image_url) ?? DEFAULT_THREAD_THUMBNAIL) : null
 
   return (
     <div className="md:hidden">
-      {/* 1位: 横長特別カード */}
+      {/* 1位: 横長カード（通常カードと同系統） */}
       {first && (
         <Link
           href={`/thread/${first.id}`}
-          className="mb-2 flex items-center gap-3 border border-yellow-300 bg-yellow-50/80 px-4 py-3 shadow-sm"
+          className="flex border-b border-l border-r border-t border-gray-300 bg-white hover:bg-gray-50"
+          style={{ height: 72 }}
         >
-          <div className="shrink-0 text-center">
-            <div className="text-3xl leading-none">🥇</div>
-            <div className="mt-0.5 text-[10px] font-bold text-yellow-700">1位</div>
+          <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 72, height: 72 }}>
+            {firstImgSrc && (
+              <SafeThumbnail src={firstImgSrc} alt={first.title} priority />
+            )}
+            <span className="absolute left-0 top-0 bg-yellow-500 px-1 text-[10px] font-bold leading-4 text-white">
+              🥇1位
+            </span>
+            <span className="absolute bottom-0 left-0 right-0 flex items-center gap-0.5 px-1 text-[9px] font-bold leading-[14px] text-white" style={{ background: 'rgba(0,0,0,0.52)' }}>
+              💬{first.post_count}
+            </span>
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="line-clamp-2 text-sm font-bold leading-snug text-gray-900">
+          <div className="min-w-0 flex-1 px-2 py-1.5">
+            <p className="line-clamp-3 break-all text-[12px] leading-snug text-gray-800">
               {first.title}
-            </div>
-            <div className="mt-1 text-xs text-gray-500">レス{first.post_count}</div>
+            </p>
           </div>
-          {first.image_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={first.image_url}
-              alt=""
-              className="h-14 w-14 shrink-0 object-cover"
-              width={56}
-              height={56}
-            />
-          )}
         </Link>
       )}
 
-      {/* 2〜10位: カード表示 */}
-      {top10.length > 0 && (
-        <div className="mb-2 grid grid-cols-3 border-l border-t border-gray-300">
-          {top10.map((thread, i) => (
-            <ThreadCard key={thread.id} thread={thread} rank={offset + i + 2} />
-          ))}
-        </div>
-      )}
-
-      {/* 11〜50位: 軽量リスト */}
+      {/* 2〜50位: 同じグリッドカード */}
       {rest.length > 0 && (
-        <div className="border border-gray-300 bg-white">
+        <div className="grid grid-cols-3 border-l border-t border-gray-300">
           {rest.map((thread, i) => (
-            <Link
-              key={thread.id}
-              href={`/thread/${thread.id}`}
-              className="flex items-center gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0 hover:bg-gray-50"
-            >
-              <span className="w-8 shrink-0 text-center font-mono text-xs text-gray-400">
-                {offset + i + 11}
-              </span>
-              <span className="line-clamp-1 min-w-0 flex-1 text-xs text-gray-800">
-                {thread.title}
-              </span>
-              <span className="shrink-0 text-xs text-gray-400">
-                レス{thread.post_count}
-              </span>
-            </Link>
+            <ThreadCard key={thread.id} thread={thread} rank={offset + i + 2} />
           ))}
         </div>
       )}

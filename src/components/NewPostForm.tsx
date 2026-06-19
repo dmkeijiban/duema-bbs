@@ -200,6 +200,21 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
         </div>
       )}
 
+      {/* 注意書き */}
+      <div className="px-3 py-2 text-xs text-gray-600 border-b border-gray-200" style={{ background: '#f5f5f5' }}>
+        <p>
+          投稿する前に、
+          <Link href="/guide" className="text-blue-600 hover:underline">投稿ルールをご確認ください</Link>。
+        </p>
+        {authState.status === 'anon' && (
+          <p className="mt-1">
+            アカウントを作成すると、プロフィールや投稿一覧を利用できます。
+            <Link href="/login?mode=signup" className="text-blue-600 hover:underline ml-1">アカウント作成</Link>
+            <span className="text-gray-500 ml-1">※登録せずに、このまま匿名で投稿することもできます。</span>
+          </p>
+        )}
+      </div>
+
       {/* フォーム */}
       <form onSubmit={handleSubmit}>
         <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
