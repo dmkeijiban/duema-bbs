@@ -13,8 +13,7 @@ export function ShareButtons({ slug, displayName }: Props) {
   const [copyError, setCopyError] = useState('')
 
   const url = `${SITE_URL}/u/${slug}`
-  const xShareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(`${displayName}さんのデュエマ掲示板プロフィール`)}`
-  const lineShareUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(url)}`
+  const xShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`${displayName}のプロフィール\n${url}`)}`
 
   async function handleCopy() {
     setCopyError('')
@@ -39,15 +38,7 @@ export function ShareButtons({ slug, displayName }: Props) {
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 px-3 py-2 rounded border border-gray-300 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
         >
-          <span>𝕏</span><span>Xで共有</span>
-        </a>
-        <a
-          href={lineShareUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded border border-gray-300 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          <span>LINE</span><span>LINEで共有</span>
+          <span>𝕏</span><span>Xでシェア</span>
         </a>
         <button
           type="button"
@@ -55,7 +46,7 @@ export function ShareButtons({ slug, displayName }: Props) {
           className="inline-flex items-center gap-1.5 px-3 py-2 rounded border border-gray-300 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
         >
           <span>{copied ? '✓' : '🔗'}</span>
-          <span>{copied ? 'コピーしました' : 'URLをコピー'}</span>
+          <span>{copied ? 'URLをコピーしました' : 'URLをコピー'}</span>
         </button>
       </div>
       {copyError && <p className="px-4 pb-3 text-xs text-red-600">{copyError}</p>}
