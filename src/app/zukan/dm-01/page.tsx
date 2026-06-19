@@ -444,10 +444,10 @@ export default async function ZukanDm01Page({
         </div>
       </section>
 
-      {/* このパックの思い出レビュー */}
+      {/* このパックの思い出 */}
       <section className="mb-5">
         <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
-          <h2 className="text-sm font-bold text-gray-800">このパックの思い出レビュー</h2>
+          <h2 className="text-sm font-bold text-gray-800">このパックの思い出</h2>
         </div>
         {packReviews && packReviews.length > 0 && (
           <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">

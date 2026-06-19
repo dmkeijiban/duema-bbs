@@ -186,7 +186,7 @@ function ReviewHighlightSection({
                 <div className="truncate text-sm font-bold text-blue-700">{card.name}</div>
                 <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-gray-500">
                   {card.civilization && <span>{card.civilization}</span>}
-                  <span>レビュー{card.review_count}件</span>
+                  <span>思い出{card.review_count}件</span>
                   <span>最新 {formatDate(card.latest_reviewed_at)}</span>
                 </div>
               </div>
@@ -306,13 +306,13 @@ export default async function ZukanTopPage() {
       {/* 下段2カラム */}
       <div className="grid gap-3 md:grid-cols-2">
         <ReviewHighlightSection
-          title="最近レビューされたカード"
-          emptyText="まだレビューされたカードはありません"
+          title="最近思い出が投稿されたカード"
+          emptyText="まだ思い出が投稿されたカードはありません"
           cards={reviewHighlights?.recent ?? []}
         />
         <ReviewHighlightSection
-          title="思い出レビューが多いカード"
-          emptyText="まだ思い出レビューはありません"
+          title="思い出が多いカード"
+          emptyText="まだ思い出は投稿されていません"
           cards={reviewHighlights?.mostReviewed ?? []}
         />
       </div>
