@@ -190,7 +190,7 @@ export default async function UserProfilePage({
           TOP
         </Link>
         <span className="mx-1">/</span>
-        <span>投稿者ページ</span>
+        <span>プロフィール</span>
       </div>
 
       <ProfileHeaderCard
@@ -223,7 +223,7 @@ export default async function UserProfilePage({
       {!isOwner && (
         <section className="mt-4 rounded-sm border border-blue-200 bg-blue-50 px-4 py-3">
           <h2 className="text-sm font-bold text-gray-800">
-            あなたも自分専用の投稿者ページを作成できます。
+            あなたも自分専用のプロフィールを作成できます。
           </h2>
           <p className="mt-1.5 text-xs leading-relaxed text-gray-600">
             登録すると、自分のスレッドやコメントの確認、プロフィール設定、X・YouTubeの掲載、投稿者ランキングへの参加ができます。
@@ -232,7 +232,7 @@ export default async function UserProfilePage({
             href="/login"
             className="mt-3 inline-flex items-center justify-center rounded-sm bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700"
           >
-            自分の投稿者ページを作成する
+            自分のプロフィールを作成する
           </Link>
         </section>
       )}
@@ -259,7 +259,7 @@ export default async function UserProfilePage({
                     {typeof thread.post_count === 'number' && (
                       <span className="inline-flex items-center gap-0.5">
                         <span className="text-gray-300">·</span>
-                        レス {thread.post_count}
+                        コメント {thread.post_count}
                       </span>
                     )}
                   </p>
