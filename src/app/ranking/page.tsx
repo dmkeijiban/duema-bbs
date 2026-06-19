@@ -356,8 +356,9 @@ export default async function RankingPage({ searchParams }: Props) {
   const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
   const activeTab = typeParam === 'author' ? 'author' : 'thread'
   const activePeriod = periodParam === 'all' ? 'all' : 'month'
+  // TODO: 投稿数が増えたら today/week も有効化する（内部ロジックは保持済み）
   const threadPeriod: ThreadPeriod =
-    periodParam === 'today' ? 'today' : periodParam === 'all' ? 'all' : 'week'
+    periodParam === 'today' ? 'today' : periodParam === 'week' ? 'week' : 'all'
   const categories = await getCachedCategories()
 
   return (
@@ -394,14 +395,13 @@ export default async function RankingPage({ searchParams }: Props) {
       <ThreadListHeader
         title="人気スレッドランキング"
         icon="📊"
-        subtitle={activeTab === 'thread' ? `（${THREAD_PERIOD_LABELS[threadPeriod]}）` : undefined}
       />
 
       <div className="mx-auto max-w-screen-xl px-2">
         {/* タブナビゲーション */}
         <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
           <Link
-            href="/ranking?type=thread&period=week"
+            href="/ranking?type=thread"
             className={`flex flex-1 items-center justify-center gap-1.5 border-r border-gray-300 py-2.5 text-sm font-bold transition-colors ${
               activeTab === 'thread'
                 ? 'bg-blue-600 text-white'
@@ -424,7 +424,7 @@ export default async function RankingPage({ searchParams }: Props) {
 
         {activeTab === 'thread' ? (
           <>
-            {/* 期間サブタブ */}
+            {/* 期間サブタブ: 投稿数が増えたら有効化する
             <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
               {(['today', 'week', 'all'] as const).map((p, i, arr) => (
                 <Link
@@ -442,6 +442,7 @@ export default async function RankingPage({ searchParams }: Props) {
                 </Link>
               ))}
             </div>
+            */}
             <Suspense fallback={
               <div className="animate-pulse">
                 <div className="mb-2 h-20 border border-gray-200 bg-gray-100 md:hidden" />
