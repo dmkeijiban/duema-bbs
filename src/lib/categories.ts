@@ -1,13 +1,15 @@
 import type { Category } from '@/types'
 
 export type ConsolidatedCategorySlug =
-  | 'chat-question'
+  | 'chat'
   | 'new-products'
-  | 'deck-meta'
-  | 'rules'
-  | 'market'
-  | 'memory-creation'
-  | 'site-info'
+  | 'deck-rules'
+  | 'tournament-meta'
+  | 'market-premium'
+  | 'duel-pro-special'
+  | 'memory-anime'
+  | 'youtuber-controversy'
+  | 'custom-creation'
 
 type ConsolidatedCategory = {
   name: string
@@ -21,67 +23,85 @@ type ConsolidatedCategory = {
 
 export const CONSOLIDATED_CATEGORIES: ConsolidatedCategory[] = [
   {
-    name: '雑談・質問',
-    slug: 'chat-question',
+    name: '雑談',
+    slug: 'chat',
     color: '#607d8b',
-    description: '雑談、初心者・復帰勢の質問、話題全般',
+    description: '雑談、話題全般',
     sort_order: 1,
     primarySlug: 'chat',
-    aliases: ['chat', 'beginner-returning', 'youtuber', 'controversy'],
+    aliases: ['chat'],
   },
   {
-    name: '新カード・商品',
+    name: '新カード・新商品',
     slug: 'new-products',
     color: '#e74c3c',
-    description: '新カード、新商品、殿堂発表など',
+    description: '新カード、新商品情報',
     sort_order: 2,
     primarySlug: 'new-cards',
     aliases: ['new-cards'],
   },
   {
-    name: 'デッキ・環境',
-    slug: 'deck-meta',
+    name: 'デッキ・ルール相談',
+    slug: 'deck-rules',
     color: '#3498db',
-    description: 'デッキ相談、大会環境、デュエプレ、殿堂環境',
+    description: 'デッキ相談、初心者・復帰勢、ルール・裁定相談',
     sort_order: 3,
     primarySlug: 'deck',
-    aliases: ['deck', 'tournament', 'duel-pro', 'pureden'],
+    aliases: ['deck', 'beginner-returning', 'rules'],
   },
   {
-    name: 'ルール・裁定',
-    slug: 'rules',
-    color: '#00bcd4',
-    description: 'ルール、裁定、特殊ルール',
+    name: '大会・環境',
+    slug: 'tournament-meta',
+    color: '#27ae60',
+    description: '大会、CS、環境関係',
     sort_order: 4,
-    primarySlug: 'rules',
-    aliases: ['rules', 'special-rules'],
+    primarySlug: 'tournament',
+    aliases: ['tournament'],
   },
   {
-    name: '高騰・相場',
-    slug: 'market',
+    name: '高騰・殿堂関連',
+    slug: 'market-premium',
     color: '#f39c12',
-    description: 'カード価格、高騰、下落、相場情報',
+    description: 'カード価格、高騰、下落、殿堂関連',
     sort_order: 5,
     primarySlug: 'price',
     aliases: ['price'],
   },
   {
-    name: '思い出・創作',
-    slug: 'memory-creation',
-    color: '#795548',
-    description: '思い出、背景ストーリー、アニメ・漫画、オリカ',
+    name: 'デュエプレ・特殊ルール',
+    slug: 'duel-pro-special',
+    color: '#9b59b6',
+    description: 'デュエプレ、デュエパ等の特殊ルール、殿堂関連',
     sort_order: 6,
-    primarySlug: 'classic',
-    aliases: ['classic', 'story', 'anime', 'custom-card'],
+    primarySlug: 'duel-pro',
+    aliases: ['duel-pro', 'special-rules', 'pureden'],
   },
   {
-    name: '運営・その他',
-    slug: 'site-info',
-    color: '#6b7280',
-    description: '管理者連絡など、運営・その他の話題',
+    name: '思い出・アニメ・漫画',
+    slug: 'memory-anime',
+    color: '#795548',
+    description: '思い出、背景ストーリー、アニメ・漫画',
     sort_order: 7,
-    primarySlug: 'admin-contact',
-    aliases: ['admin-contact'],
+    primarySlug: 'classic',
+    aliases: ['classic', 'story', 'anime'],
+  },
+  {
+    name: 'デュエチューバー・炎上',
+    slug: 'youtuber-controversy',
+    color: '#e67e22',
+    description: 'デュエチューバー、炎上・物議',
+    sort_order: 8,
+    primarySlug: 'youtuber',
+    aliases: ['youtuber', 'controversy'],
+  },
+  {
+    name: 'オリカ・創作',
+    slug: 'custom-creation',
+    color: '#8b5cf6',
+    description: 'オリカ、創作関連',
+    sort_order: 9,
+    primarySlug: 'custom-card',
+    aliases: ['custom-card'],
   },
 ]
 
@@ -165,5 +185,5 @@ export function getConsolidatedCategories(categories: Category[]): Category[] {
 }
 
 export function getPostableConsolidatedCategories(categories: Category[]): Category[] {
-  return getConsolidatedCategories(categories).filter(category => category.slug !== 'site-info')
+  return getConsolidatedCategories(categories)
 }
