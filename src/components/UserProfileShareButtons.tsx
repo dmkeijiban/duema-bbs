@@ -6,7 +6,7 @@ export function UserProfileShareButtons({ displayName }: { displayName: string }
   const [copied, setCopied] = useState(false)
 
   function shareX() {
-    const text = encodeURIComponent(`${displayName}さんの投稿者ページ | デュエマ掲示板`)
+    const text = encodeURIComponent(`${displayName}さんのプロフィール | デュエマ掲示板`)
     const url = encodeURIComponent(window.location.href)
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank', 'noopener')
   }

@@ -386,7 +386,7 @@ export default async function SummarySlugPage({ params }: Props) {
                     {summary.type !== 'manual' && (
                       <>この期間の投稿数：<span className="font-semibold text-gray-600">{thread.activity}</span>件 ／ </>
                     )}
-                    総レス：{livePostCounts.get(thread.id) ?? thread.post_count}件
+                    総コメント：{livePostCounts.get(thread.id) ?? thread.post_count}件
                   </p>
                 </div>
 

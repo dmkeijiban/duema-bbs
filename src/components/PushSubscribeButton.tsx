@@ -204,7 +204,7 @@ export function PushSubscribeButton({ threadId, hideWhenSubscribed = false, cta 
   if (cta) {
     return (
       <div className="mt-3 border border-gray-300 bg-white px-3 py-2 text-xs text-gray-700 flex flex-wrap items-center gap-2">
-        <span>このスレの新着レスを通知で受け取る</span>
+        <span>このスレの新着コメントを通知で受け取る</span>
         {inner}
       </div>
     )
