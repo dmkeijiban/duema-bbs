@@ -163,9 +163,6 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
 
   return (
     <section className="mb-4 mt-4">
-      <div className="mb-3 border border-gray-300 bg-white px-3 py-2">
-        <h2 className="text-sm font-bold text-gray-800">投稿者ランキング</h2>
-      </div>
       {/* 期間サブタブ */}
       <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
         <Link
