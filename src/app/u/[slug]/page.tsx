@@ -214,7 +214,7 @@ export default async function UserProfilePage({
       )}
 
       <section className="mt-4 rounded-sm border border-gray-200 bg-white px-4 py-3">
-        <h2 className="text-sm font-bold text-gray-800">この投稿者ページを共有</h2>
+        <h2 className="text-sm font-bold text-gray-800">このプロフィールを共有</h2>
         <div className="mt-2">
           <UserProfileShareButtons displayName={profile.display_name} />
         </div>
