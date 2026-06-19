@@ -30,7 +30,7 @@ export function ShareButtons({ slug, displayName }: Props) {
   return (
     <section className="mt-4 bg-white border border-gray-300 rounded-sm overflow-hidden">
       <div className="border-b border-gray-200 px-4 py-2.5 bg-gray-50">
-        <h2 className="font-bold text-sm text-gray-800">この投稿者ページを共有</h2>
+        <h2 className="font-bold text-sm text-gray-800">このプロフィールを共有</h2>
       </div>
       <div className="px-4 py-3 flex flex-wrap gap-2">
         <a

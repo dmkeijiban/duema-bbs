@@ -57,7 +57,7 @@ export function ReportButton({ itemType, itemId, itemBody }: Props) {
               <>
                 <p className="text-sm font-bold mb-1 text-gray-800">通報する</p>
                 <p className="text-xs text-gray-500 mb-2">
-                  {itemType === 'thread' ? 'スレッド' : 'レス'}を管理者に報告します
+                  {itemType === 'thread' ? 'スレッド' : 'コメント'}を管理者に報告します
                 </p>
                 <textarea
                   value={reason}

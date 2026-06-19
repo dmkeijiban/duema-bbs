@@ -339,7 +339,7 @@ export function PostItem({
   const canDelete = !isDeletedByRegisteredUser && (canDeleteBySession || canDeleteByUser)
 
   const handleDelete = () => {
-    if (!confirm('このレスを削除しますか？')) return
+    if (!confirm('このコメントを削除しますか？')) return
     setDeleteError('')
     startTransition(async () => {
       const res = await deleteOwnPost(post.id, threadId)

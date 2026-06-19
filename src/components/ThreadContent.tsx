@@ -216,7 +216,7 @@ export function ThreadContent({
 
       {isArchived && (
         <div className="mt-3 px-4 py-3 text-sm text-center text-gray-500 border border-gray-300 bg-white">
-          このスレッドは過去ログです。レスはできません。
+          このスレッドは過去ログです。コメントはできません。
         </div>
       )}
     </>
