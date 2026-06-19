@@ -20,7 +20,6 @@ import {
   getCachedActiveNotices,
   getCachedSetting,
   getCachedThreadList,
-  THREAD_PAGE_SIZE,
   POPULAR_PAGE_SIZE,
 } from '@/lib/cached-queries'
 import { SITE_URL } from '@/lib/site-config'
@@ -29,6 +28,7 @@ import { AdBanner } from '@/components/AdBanner'
 import { getCategoryIdsForSlug } from '@/lib/categories'
 
 export const revalidate = 3600
+const TOP_THREAD_PAGE_SIZE = 50
 
 // ── Step 5: カテゴリフィルター時のメタデータ動的生成
 // ?category=slug でアクセスされたとき、タイトル・descriptionを
@@ -112,7 +112,7 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
 
   // ── 検索（キャッシュ不適・クエリが多様）
   if (searchQ) {
-    const offset = (page - 1) * THREAD_PAGE_SIZE
+    const offset = (page - 1) * TOP_THREAD_PAGE_SIZE
     let countQ = supabase
       .from('threads')
       .select('id', { count: 'exact', head: true })
@@ -130,11 +130,11 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
       countQ = countQ.in('category_id', categoryIds)
       dataQ = dataQ.in('category_id', categoryIds)
     }
-    dataQ = dataQ.order('last_posted_at', { ascending: false }).range(offset, offset + THREAD_PAGE_SIZE - 1)
+    dataQ = dataQ.order('last_posted_at', { ascending: false }).range(offset, offset + TOP_THREAD_PAGE_SIZE - 1)
     const [{ count }, { data: raw }] = await Promise.all([countQ, dataQ])
     const threads = raw ? await withFallbackThumbnails(supabase, raw) : []
     if (threads.length === 0) return <ThreadEmpty searchQ={searchQ} />
-    const totalPages = Math.max(1, Math.ceil((count ?? 0) / THREAD_PAGE_SIZE))
+    const totalPages = Math.max(1, Math.ceil((count ?? 0) / TOP_THREAD_PAGE_SIZE))
     return (
       <>
         <div className="mb-2 px-3 py-1.5 text-xs border border-gray-300 bg-white text-gray-600">
@@ -153,12 +153,12 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
   }
 
   // ── 標準クエリ（キャッシュ済み・60s）
-  const result = await getCachedThreadList(sort, page, categoryIds.length > 0 ? categoryIds : null, isArchived)
+  const result = await getCachedThreadList(sort, page, categoryIds.length > 0 ? categoryIds : null, isArchived, TOP_THREAD_PAGE_SIZE)
   const threads = result.threads as unknown as (Thread & { categories: Category | null })[]
 
   if (threads.length === 0) return <ThreadEmpty searchQ={undefined} />
 
-  const pageSize = sort === 'popular' ? POPULAR_PAGE_SIZE : THREAD_PAGE_SIZE
+  const pageSize = sort === 'popular' ? POPULAR_PAGE_SIZE : TOP_THREAD_PAGE_SIZE
   const listName = sort === 'popular' ? '人気スレッド' : sort === 'new' ? '新着スレッド' : '最新スレッド一覧'
 
   return (
@@ -232,33 +232,43 @@ function ThreadEmpty({ searchQ }: { searchQ?: string }) {
 // DB 値を変更したらここも合わせて更新する。
 // ──────────────────────────────────────────────────
 function HomeBannerFallback() {
+  return <HomeGuideBanner />
+}
+
+function HomeGuideBanner() {
   return (
     <div
-      className="mb-2 px-3 py-2 text-sm border relative setting-content"
+      className="mb-2 flex flex-col gap-2 border px-3 py-2 text-sm text-green-900 md:flex-row md:items-center md:justify-between"
       style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb' }}
     >
-      <div>
-        <p>デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。初めての方は<a target="_blank" rel="noopener noreferrer" href={`${SITE_URL}/guide`}>スレッドの立て方</a>をご確認ください。</p>
+      <p className="leading-relaxed">
+        デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。初めての方は
+        <Link href="/guide" className="font-bold underline underline-offset-2 hover:opacity-80">
+          スレッドの立て方
+        </Link>
+        をご確認ください。
+      </p>
+      <div className="flex shrink-0 flex-wrap gap-2">
+        <Link
+          href="/login?mode=signup"
+          className="inline-flex items-center justify-center rounded border border-green-700 bg-white px-3 py-1.5 text-xs font-bold text-green-800 transition-colors hover:bg-green-50"
+        >
+          アカウント作成
+        </Link>
+        <Link
+          href="/zukan"
+          className="inline-flex items-center justify-center rounded border border-green-700 bg-white px-3 py-1.5 text-xs font-bold text-green-800 transition-colors hover:bg-green-50"
+        >
+          思い出図鑑を見る
+        </Link>
       </div>
     </div>
   )
 }
 
-// ── 実バナーデータを取得して HomeBannerFallback と置き換える
-const HOME_BANNER_DEFAULT = '<p>デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。初めての方は<a target="_blank" rel="noopener noreferrer" href={`${SITE_URL}/guide`}>スレッドの立て方</a>をご確認ください。</p>'
-
-async function HomeBannerServer() {
-  const banner = await getCachedSetting('home_banner', HOME_BANNER_DEFAULT)
-  const text = banner || HOME_BANNER_DEFAULT
-  const isHtml = text.trimStart().startsWith('<')
-  return (
-    <div
-      className="mb-2 px-3 py-2 text-sm border relative setting-content"
-      style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb', whiteSpace: isHtml ? undefined : 'pre-wrap' }}
-    >
-      {isHtml ? <div dangerouslySetInnerHTML={{ __html: text }} /> : text}
-    </div>
-  )
+// ── 緑帯案内。初期HTMLと差し替え後で同じ内容を保つ。
+function HomeBannerServer() {
+  return <HomeGuideBanner />
 }
 
 // ── お知らせブロック（position 別）
@@ -384,30 +394,6 @@ export default async function Home({
         <Suspense fallback={<HomeBannerFallback />}>
           <HomeBannerServer />
         </Suspense>
-
-        {/* 案内カード（静的・コンパクト・新着スレッドを大きく下げない） */}
-        <div className="mb-2 border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-          <p>
-            デュエル・マスターズ専門の掲示板です。デッキ相談・カード評価など何でもどうぞ。初めての方は
-            <Link href="/guide" className="text-blue-600 hover:underline">スレッドの立て方</Link>
-            をご確認ください。アカウントを作成すると、アイコン・プロフィール・投稿一覧を利用できます。
-          </p>
-          <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1.5">
-            <Link
-              href="/login?mode=signup"
-              className="inline-block px-3 py-1 text-xs font-medium text-white rounded"
-              style={{ background: '#0d6efd' }}
-            >
-              アカウント作成
-            </Link>
-            <Link
-              href="/zukan"
-              className="inline-block px-3 py-1 text-xs font-medium text-gray-700 border border-gray-300 rounded bg-white hover:bg-gray-50"
-            >
-              思い出図鑑を見る
-            </Link>
-          </div>
-        </div>
 
         <Suspense fallback={null}>
           <TopNoticesServer />
