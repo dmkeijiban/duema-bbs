@@ -45,10 +45,11 @@ export async function generateMetadata() {
 const PAGE_SIZE = 60
 
 const PACK_DESCRIPTION_PARAGRAPHS = [
-  '2002年5月30日に発売された、デュエル・マスターズ最初の弾。',
-  '火・水・自然・光・闇の5文明から全120種を収録し、ボルシャック・ドラゴン、ホーリー・スパーク、デーモン・ハンドなど、シリーズを象徴するカードが多数登場しました。',
-  '1パック5枚入り・150円（税抜）。',
+  '2002年5月30日に発売された、デュエル・マスターズ最初の弾。火・水・自然・光・闇の5文明から全120種を収録しています。',
+  'ボルシャック・ドラゴン、アクア・ハルカス、ホーリー・スパーク、デーモン・ハンドなど、シリーズを象徴するカードが多数登場しました。',
+  '1パック5枚入り・150円。',
 ]
+const PACK_DESCRIPTION = PACK_DESCRIPTION_PARAGRAPHS.join('\n\n')
 
 // --- モックフォールバック ---------------------------------------------------
 
@@ -308,13 +309,11 @@ export default async function ZukanDm01Page({
             {pack.card_count && (
               <div><dt className="inline font-bold">収録：</dt><dd className="inline">{pack.card_count}種</dd></div>
             )}
-            <div><dt className="inline font-bold">パック内容：</dt><dd className="inline">5枚入り 150円（税抜）</dd></div>
+            <div><dt className="inline font-bold">パック内容：</dt><dd className="inline">5枚入り 150円</dd></div>
           </dl>
-          <div className="mt-3 space-y-2 text-sm leading-relaxed text-gray-700">
-            {PACK_DESCRIPTION_PARAGRAPHS.map(paragraph => (
-              <p key={paragraph} className="border-l-2 border-gray-200 pl-3">{paragraph}</p>
-            ))}
-          </div>
+          <p className="mt-3 whitespace-pre-line border-l-2 border-gray-200 pl-3 text-sm leading-7 text-gray-700 md:text-[15px]">
+            {PACK_DESCRIPTION}
+          </p>
           <div className="mt-auto pt-4">
             <div className="mb-2 text-xs font-bold text-gray-700">このページをシェア</div>
             <PackShareButtons packName={`${pack.code} ${pack.name}`} />
@@ -328,41 +327,43 @@ export default async function ZukanDm01Page({
           <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
             <h2 className="text-sm font-bold text-gray-800">代表カード</h2>
           </div>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-            {REP_CARDS.map(rep => {
-              const dbCard = dbRepCards?.find(c => c.slug === rep.slug) ?? null
-              const href = dbCard ? `/zukan/card/${rep.slug}` : '#'
-              const isLinked = !!dbCard
-              const cardClass = `border border-gray-300 bg-white ${isLinked ? 'block cursor-pointer transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]' : 'opacity-60'}`
-              const cardBody = (
-                <>
-                  <CardThumb
-                    name={rep.name}
-                    civilization={rep.civilization}
-                    imageUrl={dbCard?.official_image_url}
-                  />
-                  <div className="px-1.5 py-1.5">
-                    <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[rep.civilization] ?? 'bg-gray-100 text-gray-600'}`}>
-                      {rep.civilization}
-                    </span>
-                    <div className={`mt-1 truncate text-xs font-bold ${isLinked ? 'text-blue-700' : 'text-gray-800'}`}>
-                      {rep.name}
+          <div className="-mx-2 overflow-x-auto px-2 pb-2 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0">
+            <div className="flex snap-x gap-2 sm:grid sm:grid-cols-5">
+              {REP_CARDS.map(rep => {
+                const dbCard = dbRepCards?.find(c => c.slug === rep.slug) ?? null
+                const href = dbCard ? `/zukan/card/${rep.slug}` : '#'
+                const isLinked = !!dbCard
+                const cardClass = `min-w-[42%] max-w-[150px] snap-start border border-gray-300 bg-white sm:min-w-0 sm:max-w-none ${isLinked ? 'block cursor-pointer transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]' : 'opacity-60'}`
+                const cardBody = (
+                  <>
+                    <CardThumb
+                      name={rep.name}
+                      civilization={rep.civilization}
+                      imageUrl={dbCard?.official_image_url}
+                    />
+                    <div className="px-1.5 py-1.5">
+                      <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[rep.civilization] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {rep.civilization}
+                      </span>
+                      <div className={`mt-1 truncate text-xs font-bold ${isLinked ? 'text-blue-700' : 'text-gray-800'}`}>
+                        {rep.name}
+                      </div>
+                      {!dbCard && <div className="text-[10px] text-gray-400">詳細準備中</div>}
                     </div>
-                    {!dbCard && <div className="text-[10px] text-gray-400">詳細準備中</div>}
-                  </div>
-                </>
-              )
+                  </>
+                )
 
-              return isLinked ? (
-                <Link key={rep.slug} href={href} className={cardClass}>
-                  {cardBody}
-                </Link>
-              ) : (
-                <div key={rep.slug} className={cardClass}>
-                  {cardBody}
-                </div>
-              )
-            })}
+                return isLinked ? (
+                  <Link key={rep.slug} href={href} className={cardClass}>
+                    {cardBody}
+                  </Link>
+                ) : (
+                  <div key={rep.slug} className={cardClass}>
+                    {cardBody}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </section>
       )}
