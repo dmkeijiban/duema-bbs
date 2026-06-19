@@ -2,9 +2,29 @@ import { Suspense } from 'react'
 import Link from 'next/link'
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { getCachedSetting } from '@/lib/cached-queries'
-import { SITE_URL } from '@/lib/site-config'
 
-const HOME_BANNER_DEFAULT = '<p>デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。初めての方は<a target="_blank" rel="noopener noreferrer" href={`${SITE_URL}/guide`}>スレッドの立て方</a>をご確認ください。</p>'
+const HOME_BANNER_DEFAULT = 'デッキ相談・カード評価・大会情報など、デュエマの話題なら何でもどうぞ。\n初めての方は<a href="/guide" style="text-decoration:underline">スレッドの立て方</a>をご確認ください。'
+
+function BannerButtons() {
+  return (
+    <div className="flex flex-wrap gap-2 mt-2">
+      <Link
+        href="/login?mode=signup"
+        className="inline-block px-3 py-1 text-xs font-medium rounded border"
+        style={{ color: '#155724', borderColor: '#155724', background: 'rgba(255,255,255,0.55)' }}
+      >
+        アカウント作成
+      </Link>
+      <Link
+        href="/zukan"
+        className="inline-block px-3 py-1 text-xs font-medium rounded border"
+        style={{ color: '#155724', borderColor: '#155724', background: 'rgba(255,255,255,0.55)' }}
+      >
+        思い出図鑑を見る
+      </Link>
+    </div>
+  )
+}
 
 function HomeBannerFallback() {
   return (
@@ -13,8 +33,10 @@ function HomeBannerFallback() {
       style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb' }}
     >
       <div>
-        <p>デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。初めての方は<a target="_blank" rel="noopener noreferrer" href={`${SITE_URL}/guide`}>スレッドの立て方</a>をご確認ください。</p>
+        <p>デッキ相談・カード評価・大会情報など、デュエマの話題なら何でもどうぞ。</p>
+        <p>初めての方は<Link href="/guide" className="underline">スレッドの立て方</Link>をご確認ください。</p>
       </div>
+      <BannerButtons />
     </div>
   )
 }
@@ -29,6 +51,7 @@ async function HomeBannerServer() {
       style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb', whiteSpace: isHtml ? undefined : 'pre-wrap' }}
     >
       {isHtml ? <div dangerouslySetInnerHTML={{ __html: text }} /> : text}
+      <BannerButtons />
     </div>
   )
 }
