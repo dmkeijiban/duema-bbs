@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 
 type LoginClientProps = {
   nextPath?: string
+  initialMode?: Mode
 }
 
 type Mode = 'login' | 'signup'
@@ -33,13 +34,13 @@ function mapAuthError(msg: string): string {
   if (m.includes('too many requests') || m.includes('for security purposes'))
     return '送信回数が多すぎます。しばらく時間を空けて再度お試しください。'
   if (m.includes('signup is disabled'))
-    return '現在、新規登録を受け付けていません。'
+    return '現在、アカウント作成を受け付けていません。'
   return 'エラーが発生しました。時間を空けて再度お試しください。'
 }
 
-export function LoginClient({ nextPath }: LoginClientProps) {
+export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProps) {
   const router = useRouter()
-  const [mode, setMode] = useState<Mode>('login')
+  const [mode, setMode] = useState<Mode>(initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
@@ -127,7 +128,7 @@ export function LoginClient({ nextPath }: LoginClientProps) {
       router.refresh()
       return
     }
-    setSuccess('確認メールを送信しました。メール内のリンクから登録を完了してください。')
+    setSuccess('確認メールを送信しました。メール内のリンクからアカウント作成を完了してください。')
     setSubmittingMethod(null)
   }
 
@@ -180,7 +181,7 @@ export function LoginClient({ nextPath }: LoginClientProps) {
               : 'bg-white text-gray-700 hover:bg-gray-50'
           }`}
         >
-          新規登録
+          アカウント作成
         </button>
       </div>
 
@@ -248,10 +249,10 @@ export function LoginClient({ nextPath }: LoginClientProps) {
           {emailSubmitting
             ? mode === 'login'
               ? 'ログイン中...'
-              : '登録中...'
+              : '作成中...'
             : mode === 'login'
               ? 'メールアドレスでログイン'
-              : 'メールアドレスで新規登録'}
+              : 'メールアドレスでアカウント作成'}
         </button>
 
         {mode === 'login' && (
@@ -287,13 +288,13 @@ export function LoginClient({ nextPath }: LoginClientProps) {
           ? 'Googleログインへ移動中...'
           : mode === 'login'
             ? 'Googleでログイン'
-            : 'Googleで新規登録'}
+            : 'Googleでアカウント作成'}
       </button>
 
       <p className="text-xs leading-relaxed text-gray-400">
         {mode === 'login'
           ? '登録時に選んだ方法でログインしてください。'
-          : 'メールアドレス登録またはGoogle登録のどちらか一方を選んでください。'}
+          : 'メールアドレスまたはGoogleアカウントのどちらか一方を選んでください。'}
       </p>
 
       <p className="text-xs leading-relaxed text-gray-500">
