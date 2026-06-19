@@ -15,11 +15,11 @@ export const revalidate = 3600
 
 export const metadata = {
   title: '人気スレッドランキング | デュエマ掲示板',
-  description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。直近3日間のレス数が多いスレッドを順位付きで表示します。',
+  description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。今日・今週・総合でレス数が多いスレッドを順位付きで表示します。',
   alternates: { canonical: `${SITE_URL}/ranking` },
   openGraph: {
     title: '人気スレッドランキング | デュエマ掲示板',
-    description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。直近3日間のレス数が多いスレッドを順位付きで表示します。',
+    description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。今日・今週・総合でレス数が多いスレッドを順位付きで表示します。',
     url: `${SITE_URL}/ranking`,
     type: 'website' as const,
     images: [{ url: `${SITE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: '人気スレッドランキング | デュエマ掲示板' }],
@@ -27,10 +27,12 @@ export const metadata = {
   twitter: {
     card: 'summary_large_image' as const,
     title: '人気スレッドランキング | デュエマ掲示板',
-    description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。直近3日間のレス数が多いスレッドを順位付きで表示します。',
+    description: 'デュエマ（デュエルマスターズ）掲示板の人気スレッドランキング。今日・今週・総合でレス数が多いスレッドを順位付きで表示します。',
     images: [`${SITE_URL}/default-thumbnail.jpg`],
   },
 }
+
+type ThreadPeriod = 'today' | 'week' | 'all'
 
 const PAGE_SIZE = 50
 
@@ -270,20 +272,9 @@ function ThreadRankingMobile({ threads, offset }: { threads: TypedThread[]; offs
   )
 }
 
-async function RankingList({ page }: { page: number }) {
+async function RankingList({ page, period }: { page: number; period: ThreadPeriod }) {
   const supabase = createPublicClient()
-  const recentSince = new Date()
-  recentSince.setDate(recentSince.getDate() - 3)
-  const since = recentSince.toISOString()
   const offset = (page - 1) * PAGE_SIZE
-
-  const { count: recentCount } = await supabase
-    .from('threads')
-    .select('*', { count: 'exact', head: true })
-    .eq('is_archived', false)
-    .gte('last_posted_at', since)
-
-  const useRecent = (recentCount ?? 0) >= PAGE_SIZE
 
   let dataQuery = supabase
     .from('threads')
@@ -292,8 +283,10 @@ async function RankingList({ page }: { page: number }) {
     .order('post_count', { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1)
 
-  if (useRecent) {
-    dataQuery = dataQuery.gte('last_posted_at', since)
+  if (period !== 'all') {
+    const since = new Date()
+    since.setDate(since.getDate() - (period === 'today' ? 1 : 7))
+    dataQuery = dataQuery.gte('last_posted_at', since.toISOString())
   }
 
   const { data: rawThreads } = await dataQuery
@@ -321,8 +314,8 @@ async function RankingList({ page }: { page: number }) {
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "ItemList",
-            "name": "人気スレッドランキング（過去3日間）",
-            "description": "デュエマ掲示板の過去3日間でレス数が多い人気スレッドランキング",
+            "name": "人気スレッドランキング",
+            "description": "デュエマ掲示板の人気スレッドランキング",
             "url": `${SITE_URL}/ranking`,
             "numberOfItems": typedThreads.length,
             "itemListElement": typedThreads.map((thread, i) => ({
@@ -352,11 +345,19 @@ interface Props {
   searchParams: Promise<{ page?: string; type?: string; period?: string }>
 }
 
+const THREAD_PERIOD_LABELS: Record<ThreadPeriod, string> = {
+  today: '今日',
+  week: '今週',
+  all: '総合',
+}
+
 export default async function RankingPage({ searchParams }: Props) {
   const { page: pageStr, type: typeParam, period: periodParam } = await searchParams
   const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
   const activeTab = typeParam === 'author' ? 'author' : 'thread'
   const activePeriod = periodParam === 'all' ? 'all' : 'month'
+  const threadPeriod: ThreadPeriod =
+    periodParam === 'today' ? 'today' : periodParam === 'all' ? 'all' : 'week'
   const categories = await getCachedCategories()
 
   return (
@@ -390,13 +391,17 @@ export default async function RankingPage({ searchParams }: Props) {
 
       <ThreadListTopContent showPopularThreads={false} />
 
-      <ThreadListHeader title="人気スレッドランキング" icon="📊" subtitle="（過去3日間）" />
+      <ThreadListHeader
+        title="人気スレッドランキング"
+        icon="📊"
+        subtitle={activeTab === 'thread' ? `（${THREAD_PERIOD_LABELS[threadPeriod]}）` : undefined}
+      />
 
       <div className="mx-auto max-w-screen-xl px-2">
         {/* タブナビゲーション */}
         <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
           <Link
-            href="/ranking?type=thread"
+            href="/ranking?type=thread&period=week"
             className={`flex flex-1 items-center justify-center gap-1.5 border-r border-gray-300 py-2.5 text-sm font-bold transition-colors ${
               activeTab === 'thread'
                 ? 'bg-blue-600 text-white'
@@ -418,35 +423,55 @@ export default async function RankingPage({ searchParams }: Props) {
         </div>
 
         {activeTab === 'thread' ? (
-          <Suspense fallback={
-            <div className="animate-pulse">
-              <div className="mb-2 h-20 border border-gray-200 bg-gray-100 md:hidden" />
-              <div className="mb-2 grid grid-cols-3 border-l border-t border-gray-300 md:hidden">
-                {[...Array(9)].map((_, i) => (
-                  <div key={i} className="flex border-b border-r border-gray-300 bg-white" style={{ minHeight: 52 }}>
-                    <div className="bg-gray-200 shrink-0" style={{ width: 52, height: 52 }} />
-                    <div className="flex-1 space-y-1.5 p-1.5 pt-2">
-                      <div className="h-2 w-full rounded bg-gray-200" />
-                      <div className="h-2 w-4/5 rounded bg-gray-200" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="hidden border-l border-t border-gray-300 md:grid md:grid-cols-5">
-                {[...Array(15)].map((_, i) => (
-                  <div key={i} className="flex border-b border-r border-gray-300 bg-white" style={{ minHeight: 52 }}>
-                    <div className="bg-gray-200 shrink-0" style={{ width: 52, height: 52 }} />
-                    <div className="flex-1 space-y-1.5 p-1.5 pt-2">
-                      <div className="h-2 w-full rounded bg-gray-200" />
-                      <div className="h-2 w-4/5 rounded bg-gray-200" />
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <>
+            {/* 期間サブタブ */}
+            <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
+              {(['today', 'week', 'all'] as const).map((p, i, arr) => (
+                <Link
+                  key={p}
+                  href={`/ranking?type=thread&period=${p}`}
+                  className={`flex-1 py-2 text-center text-sm font-bold transition-colors ${
+                    i < arr.length - 1 ? 'border-r border-gray-300' : ''
+                  } ${
+                    threadPeriod === p
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {THREAD_PERIOD_LABELS[p]}
+                </Link>
+              ))}
             </div>
-          }>
-            <RankingList page={page} />
-          </Suspense>
+            <Suspense fallback={
+              <div className="animate-pulse">
+                <div className="mb-2 h-20 border border-gray-200 bg-gray-100 md:hidden" />
+                <div className="mb-2 grid grid-cols-3 border-l border-t border-gray-300 md:hidden">
+                  {[...Array(9)].map((_, i) => (
+                    <div key={i} className="flex border-b border-r border-gray-300 bg-white" style={{ minHeight: 52 }}>
+                      <div className="bg-gray-200 shrink-0" style={{ width: 52, height: 52 }} />
+                      <div className="flex-1 space-y-1.5 p-1.5 pt-2">
+                        <div className="h-2 w-full rounded bg-gray-200" />
+                        <div className="h-2 w-4/5 rounded bg-gray-200" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden border-l border-t border-gray-300 md:grid md:grid-cols-5">
+                  {[...Array(15)].map((_, i) => (
+                    <div key={i} className="flex border-b border-r border-gray-300 bg-white" style={{ minHeight: 52 }}>
+                      <div className="bg-gray-200 shrink-0" style={{ width: 52, height: 52 }} />
+                      <div className="flex-1 space-y-1.5 p-1.5 pt-2">
+                        <div className="h-2 w-full rounded bg-gray-200" />
+                        <div className="h-2 w-4/5 rounded bg-gray-200" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            }>
+              <RankingList page={page} period={threadPeriod} />
+            </Suspense>
+          </>
         ) : (
           <Suspense fallback={null}>
             <UserRankingSection period={activePeriod} />
