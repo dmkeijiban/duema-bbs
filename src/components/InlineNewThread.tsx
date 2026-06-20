@@ -1,10 +1,18 @@
 'use client'
 
-import { useTransition, useState } from 'react'
+import { useTransition, useState, useEffect } from 'react'
 import { createThread } from '@/app/actions/thread'
 import { Category } from '@/types'
 import { getPostableConsolidatedCategories } from '@/lib/categories'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase'
+import { ProfileAvatar } from '@/components/ProfileAvatar'
+
+type AuthState =
+  | { status: 'loading' }
+  | { status: 'anon' }
+  | { status: 'user'; displayName: string; avatarUrl: string | null }
+  | { status: 'profile_missing' }
 
 interface Props {
   categories: Category[]
@@ -15,7 +23,32 @@ interface Props {
 export function InlineNewThread({ categories }: Props) {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
+  const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
   const categoryOptions = getPostableConsolidatedCategories(categories)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) {
+        setAuthState({ status: 'anon' })
+        return
+      }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name, avatar_url')
+        .eq('id', data.user.id)
+        .single()
+      if (!profile?.display_name) {
+        setAuthState({ status: 'profile_missing' })
+        return
+      }
+      setAuthState({
+        status: 'user',
+        displayName: profile.display_name,
+        avatarUrl: profile.avatar_url ?? null,
+      })
+    })
+  }, [])
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -81,18 +114,49 @@ export function InlineNewThread({ categories }: Props) {
                   ))}
                 </select>
               </div>
-              {/* 名前 */}
-              <label htmlFor="new-thread-author" className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">名前</label>
-              <div className="py-2 pr-3 min-w-0">
-                <input
-                  id="new-thread-author"
-                  type="text"
-                  name="author_name"
-                  maxLength={15}
-                  placeholder="名前を入力(15文字以内・空欄可)"
-                  className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400"
-                />
-              </div>
+              {/* 名前/投稿者 */}
+              {authState.status === 'loading' && (
+                <>
+                  <div className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">投稿者</div>
+                  <div className="py-2 pr-3 min-w-0 text-xs text-gray-400">ログイン状態を確認中…</div>
+                </>
+              )}
+              {authState.status === 'anon' && (
+                <>
+                  <label htmlFor="new-thread-author" className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">名前</label>
+                  <div className="py-2 pr-3 min-w-0">
+                    <input
+                      id="new-thread-author"
+                      type="text"
+                      name="author_name"
+                      maxLength={15}
+                      placeholder="名前を入力(15文字以内・空欄可)"
+                      className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400"
+                    />
+                  </div>
+                </>
+              )}
+              {authState.status === 'user' && (
+                <>
+                  <div className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">投稿者</div>
+                  <div className="py-2 pr-3 min-w-0">
+                    <input type="hidden" name="author_name" value={authState.displayName} />
+                    <span className="inline-flex items-center gap-1.5 text-sm text-gray-700">
+                      <ProfileAvatar src={authState.avatarUrl} alt={`${authState.displayName}のアイコン`} size="sm" />
+                      <span className="font-medium">{authState.displayName}</span>
+                    </span>
+                  </div>
+                </>
+              )}
+              {authState.status === 'profile_missing' && (
+                <>
+                  <div className="py-2 pr-2 pl-3 text-right text-gray-600 flex items-center justify-end text-xs whitespace-nowrap">投稿者</div>
+                  <div className="py-2 pr-3 min-w-0 text-xs text-red-600">
+                    コメントするにはプロフィールを設定してください。{' '}
+                    <Link href="/profile/new" className="underline text-blue-600">プロフィール設定</Link>
+                  </div>
+                </>
+              )}
               {/* 本文 */}
               <label htmlFor="new-thread-body" className="py-2 pr-2 pl-3 text-right text-gray-600 text-xs whitespace-nowrap pt-3">本文</label>
               <div className="py-2 pr-3 min-w-0">
