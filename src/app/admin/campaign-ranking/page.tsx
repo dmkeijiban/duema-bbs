@@ -55,9 +55,7 @@ export default async function CampaignRankingPage({
 }) {
   // Auth check — redirect errors must propagate to Next.js, not be swallowed
   try {
-    console.log('[campaign-ranking] step:requireAdmin')
     await requireAdmin()
-    console.log('[campaign-ranking] requireAdmin:ok')
   } catch (e) {
     if (isNextInternalError(e)) throw e
     console.error('[campaign-ranking] requireAdmin:error', e)
@@ -73,14 +71,10 @@ export default async function CampaignRankingPage({
   let renderError: string | null = null
 
   try {
-    console.log('[campaign-ranking] step:searchParams')
     sp = await searchParams
-    console.log('[campaign-ranking] searchParams:ok', JSON.stringify(sp))
 
-    console.log('[campaign-ranking] step:fetchCampaignSettings')
     try {
       settings = await fetchCampaignSettings()
-      console.log('[campaign-ranking] fetchCampaignSettings:ok', JSON.stringify(settings))
     } catch (e) {
       console.error('[campaign-ranking] fetchCampaignSettings:error', e)
       settingsError = e instanceof Error ? e.message : 'キャンペーン設定の読み込みに失敗しました'
@@ -88,17 +82,13 @@ export default async function CampaignRankingPage({
     }
 
     if (!settingsError && settings.startIso && settings.endIso) {
-      console.log('[campaign-ranking] step:fetchCampaignRankingFull')
       try {
         rankingResult = await fetchCampaignRankingFull(settings.startIso, settings.endIso)
-        console.log('[campaign-ranking] fetchCampaignRankingFull:ok entries=', rankingResult?.entries?.length)
       } catch (e) {
         console.error('[campaign-ranking] fetchCampaignRankingFull:error', e)
         rankingResult = { entries: [], error: e instanceof Error ? e.message : '集計に失敗しました', overflow: false }
       }
     }
-
-    console.log('[campaign-ranking] step:render')
   } catch (e) {
     if (isNextInternalError(e)) throw e
     console.error('[campaign-ranking] top-level:error', e)
