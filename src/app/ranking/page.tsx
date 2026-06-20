@@ -110,7 +110,7 @@ async function CampaignRankingSection() {
         </div>
       ) : result.entries.length === 0 ? (
         <div className="px-3 py-6 text-center text-sm text-yellow-700">
-          まだランキング対象者はいません（0pt期間中）
+          期間中のポイントはまだありません
         </div>
       ) : (
         <div className="space-y-2 p-2">
