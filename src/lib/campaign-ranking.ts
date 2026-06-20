@@ -25,6 +25,18 @@ export type CampaignSettings = {
   rulesUrl: string
 }
 
+export type CampaignEvent = {
+  id: number
+  title: string
+  status: string
+  start_at: string
+  end_at: string
+  prize: string
+  rules_url: string
+  created_at: string
+  updated_at: string
+}
+
 export type PublicCampaignEntry = {
   rank: number
   displayName: string
@@ -109,6 +121,95 @@ export function isCampaignCurrentlyActive(settings: CampaignSettings): boolean {
   return resolveCampaignState(settings) === 'active'
 }
 
+/** CampaignEvent (UTC from DB) → CampaignSettings (JST-offset ISO for backward compat) */
+export function campaignEventToSettings(event: Pick<CampaignEvent, 'title' | 'status' | 'start_at' | 'end_at' | 'prize' | 'rules_url'>): CampaignSettings {
+  return {
+    status: event.status,
+    title: event.title,
+    startIso: utcToJstIso(event.start_at),
+    endIso: utcToJstIso(event.end_at),
+    prize: event.prize,
+    rulesUrl: event.rules_url,
+  }
+}
+
+/** UTC ISO from DB → CampaignState (uses new Date() which handles UTC correctly) */
+export function resolveCampaignEventState(event: Pick<CampaignEvent, 'status' | 'start_at' | 'end_at'>, now?: Date): CampaignState {
+  return resolveCampaignState({
+    status: event.status, title: '', startIso: event.start_at, endIso: event.end_at, prize: '', rulesUrl: '',
+  }, now)
+}
+
+/** UTC ISO from DB → "YYYY/MM/DD HH:MM" in JST for display */
+export function utcToJstDisplay(utcIso: string): string {
+  if (!utcIso) return ''
+  try {
+    const jstMs = new Date(utcIso).getTime() + 9 * 60 * 60 * 1000
+    const d = new Date(jstMs)
+    const y = d.getUTCFullYear()
+    const mo = String(d.getUTCMonth() + 1).padStart(2, '0')
+    const dd = String(d.getUTCDate()).padStart(2, '0')
+    const h = String(d.getUTCHours()).padStart(2, '0')
+    const mi = String(d.getUTCMinutes()).padStart(2, '0')
+    return `${y}/${mo}/${dd} ${h}:${mi}`
+  } catch {
+    return utcIso
+  }
+}
+
+/** UTC ISO from DB → "YYYY-MM-DDTHH:MM" in JST for datetime-local input */
+export function utcToDatetimeLocalJst(utcIso: string): string {
+  if (!utcIso) return ''
+  try {
+    const jstMs = new Date(utcIso).getTime() + 9 * 60 * 60 * 1000
+    const d = new Date(jstMs)
+    const y = d.getUTCFullYear()
+    const mo = String(d.getUTCMonth() + 1).padStart(2, '0')
+    const dd = String(d.getUTCDate()).padStart(2, '0')
+    const h = String(d.getUTCHours()).padStart(2, '0')
+    const mi = String(d.getUTCMinutes()).padStart(2, '0')
+    return `${y}-${mo}-${dd}T${h}:${mi}`
+  } catch {
+    return ''
+  }
+}
+
+function utcToJstIso(utcIso: string): string {
+  if (!utcIso) return ''
+  const jstMs = new Date(utcIso).getTime() + 9 * 60 * 60 * 1000
+  const d = new Date(jstMs)
+  const y = d.getUTCFullYear()
+  const mo = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(d.getUTCDate()).padStart(2, '0')
+  const h = String(d.getUTCHours()).padStart(2, '0')
+  const mi = String(d.getUTCMinutes()).padStart(2, '0')
+  const ss = String(d.getUTCSeconds()).padStart(2, '0')
+  return `${y}-${mo}-${dd}T${h}:${mi}:${ss}+09:00`
+}
+
+/** Admin: fetch all campaign_events ordered by created_at DESC */
+export async function fetchAllCampaignEvents(): Promise<{ events: CampaignEvent[]; error: string | null }> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('campaign_events')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) return { events: [], error: error.message }
+  return { events: (data ?? []) as CampaignEvent[], error: null }
+}
+
+/** Admin: fetch a single campaign_event by id */
+export async function fetchCampaignEventById(id: number): Promise<CampaignEvent | null> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('campaign_events')
+    .select('*')
+    .eq('id', id)
+    .single()
+  if (error || !data) return null
+  return data as CampaignEvent
+}
+
 // ---- Helpers ----
 
 type ActivityRow = { user_id: string | null; created_at: string | null }
@@ -151,6 +252,32 @@ async function fetchAllRows(fetcher: PageFetcher): Promise<{
 
 export async function fetchCampaignSettings(): Promise<CampaignSettings> {
   const supabase = createAdminClient()
+  const EMPTY: CampaignSettings = { status: 'draft', title: '', startIso: '', endIso: '', prize: '', rulesUrl: '' }
+
+  // Try campaign_events first (new multi-campaign architecture)
+  const { data: events, error: eventsError } = await supabase
+    .from('campaign_events')
+    .select('id, title, status, start_at, end_at, prize, rules_url')
+    .order('end_at', { ascending: false })
+    .limit(50)
+
+  if (!eventsError && events && events.length > 0) {
+    const now = new Date().toISOString()
+    const active = (events as CampaignEvent[]).filter(e => e.status === 'active')
+
+    // Priority 1: currently in-period
+    const inPeriod = active.find(e => e.start_at <= now && now < e.end_at)
+    if (inPeriod) return campaignEventToSettings(inPeriod)
+
+    // Priority 2: most recently ended (events ordered by end_at DESC)
+    const ended = active.find(e => e.end_at <= now)
+    if (ended) return campaignEventToSettings(ended)
+
+    // Only draft/scheduled events exist → no public display
+    return EMPTY
+  }
+
+  // Fallback: site_settings (backward compat before first campaign_events row is created)
   const { data: rows } = await supabase
     .from('site_settings')
     .select('key, value')

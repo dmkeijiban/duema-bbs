@@ -26,95 +26,143 @@ function validateAndNormalizeRulesUrl(raw: string): string | null {
   return null
 }
 
-export async function saveCampaignRankingAction(formData: FormData): Promise<void> {
-  try {
-    await checkAdmin()
-  } catch {
-    redirect('/admin/campaign-ranking?error=unauthorized')
-  }
+type ParsedForm = {
+  status: 'active' | 'draft'
+  title: string
+  start: string
+  end: string
+  prize: string
+  rulesUrl: string
+  error: string | null
+}
 
+function parseCampaignForm(formData: FormData): ParsedForm {
   const enabled = (formData.get('campaign_enabled') as string)?.trim()
-  // ON → active (表示される), OFF → draft (非表示)
   const status = enabled === 'on' ? 'active' : 'draft'
-  const title = (formData.get('campaign_title') as string)?.trim()
-  const startRaw = (formData.get('campaign_start') as string)?.trim()
-  const endRaw = (formData.get('campaign_end') as string)?.trim()
-  const prize = (formData.get('campaign_prize') as string)?.trim()
-  const rulesUrlRaw = (formData.get('campaign_rules_url') as string)?.trim()
+  const title = (formData.get('campaign_title') as string)?.trim() ?? ''
+  const startRaw = (formData.get('campaign_start') as string)?.trim() ?? ''
+  const endRaw = (formData.get('campaign_end') as string)?.trim() ?? ''
+  const prize = (formData.get('campaign_prize') as string)?.trim() ?? ''
+  const rulesUrlRaw = (formData.get('campaign_rules_url') as string)?.trim() ?? ''
 
   if (!title || !startRaw || !endRaw) {
-    redirect('/admin/campaign-ranking?error=required')
+    return { status, title, start: '', end: '', prize, rulesUrl: '', error: 'required' }
+  }
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(startRaw) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(endRaw)) {
+    return { status, title, start: '', end: '', prize, rulesUrl: '', error: 'invalid_datetime' }
   }
 
-  // datetime-local → JST ISO 8601 (append :00+09:00, no UTC conversion)
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(startRaw) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(endRaw)) {
-    redirect('/admin/campaign-ranking?error=invalid_datetime')
-  }
   const start = `${startRaw}:00+09:00`
   const end = `${endRaw}:00+09:00`
 
   if (new Date(end) <= new Date(start)) {
-    redirect('/admin/campaign-ranking?error=invalid_range')
+    return { status, title, start, end, prize, rulesUrl: '', error: 'invalid_range' }
   }
 
-  const normalizedRulesUrl = validateAndNormalizeRulesUrl(rulesUrlRaw)
-  if (normalizedRulesUrl === null) {
-    redirect('/admin/campaign-ranking?error=invalid_rules_url')
+  const rulesUrl = validateAndNormalizeRulesUrl(rulesUrlRaw)
+  if (rulesUrl === null) {
+    return { status, title, start, end, prize, rulesUrl: '', error: 'invalid_rules_url' }
   }
 
-  const supabase = createAdminClient()
-  const now = new Date().toISOString()
-
-  const rows = [
-    { key: 'campaign_status', value: status },
-    { key: 'campaign_title', value: title },
-    { key: 'campaign_start', value: start },
-    { key: 'campaign_end', value: end },
-    { key: 'campaign_prize', value: prize ?? '' },
-    { key: 'campaign_rules_url', value: normalizedRulesUrl },
-  ].map(r => ({ ...r, updated_at: now }))
-
-  const { error } = await supabase
-    .from('site_settings')
-    .upsert(rows, { onConflict: 'key' })
-
-  if (error) {
-    console.error('[saveCampaignRankingAction]', error)
-    redirect('/admin/campaign-ranking?error=save_failed')
-  }
-
-  revalidatePath('/admin/campaign-ranking')
-  redirect('/admin/campaign-ranking?saved=1')
+  return { status, title, start, end, prize, rulesUrl, error: null }
 }
 
-export async function clearCampaignRankingAction(): Promise<void> {
+export async function createCampaignEventAction(formData: FormData): Promise<void> {
   try {
     await checkAdmin()
   } catch {
     redirect('/admin/campaign-ranking?error=unauthorized')
   }
 
+  const parsed = parseCampaignForm(formData)
+  if (parsed.error) {
+    redirect(`/admin/campaign-ranking/new?error=${parsed.error}`)
+  }
+
   const supabase = createAdminClient()
-  const now = new Date().toISOString()
+  const { data: created, error } = await supabase
+    .from('campaign_events')
+    .insert({
+      title: parsed.title,
+      status: parsed.status,
+      start_at: parsed.start,
+      end_at: parsed.end,
+      prize: parsed.prize,
+      rules_url: parsed.rulesUrl,
+    })
+    .select('id')
+    .single()
 
-  const rows = [
-    { key: 'campaign_status', value: 'draft' },
-    { key: 'campaign_title', value: '' },
-    { key: 'campaign_start', value: '' },
-    { key: 'campaign_end', value: '' },
-    { key: 'campaign_prize', value: '' },
-    { key: 'campaign_rules_url', value: '' },
-  ].map(r => ({ ...r, updated_at: now }))
-
-  const { error } = await supabase
-    .from('site_settings')
-    .upsert(rows, { onConflict: 'key' })
-
-  if (error) {
-    console.error('[clearCampaignRankingAction]', error)
-    redirect('/admin/campaign-ranking?error=save_failed')
+  if (error || !created) {
+    console.error('[createCampaignEventAction]', error)
+    redirect('/admin/campaign-ranking/new?error=save_failed')
   }
 
   revalidatePath('/admin/campaign-ranking')
-  redirect('/admin/campaign-ranking?cleared=1')
+  revalidatePath('/ranking')
+  redirect(`/admin/campaign-ranking/${created.id}?created=1`)
+}
+
+export async function updateCampaignEventAction(formData: FormData): Promise<void> {
+  try {
+    await checkAdmin()
+  } catch {
+    redirect('/admin/campaign-ranking?error=unauthorized')
+  }
+
+  const id = Number(formData.get('id'))
+  if (!id || isNaN(id)) redirect('/admin/campaign-ranking?error=invalid_id')
+
+  const parsed = parseCampaignForm(formData)
+  if (parsed.error) {
+    redirect(`/admin/campaign-ranking/${id}?error=${parsed.error}`)
+  }
+
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('campaign_events')
+    .update({
+      title: parsed.title,
+      status: parsed.status,
+      start_at: parsed.start,
+      end_at: parsed.end,
+      prize: parsed.prize,
+      rules_url: parsed.rulesUrl,
+    })
+    .eq('id', id)
+
+  if (error) {
+    console.error('[updateCampaignEventAction]', error)
+    redirect(`/admin/campaign-ranking/${id}?error=save_failed`)
+  }
+
+  revalidatePath('/admin/campaign-ranking')
+  revalidatePath('/ranking')
+  redirect(`/admin/campaign-ranking/${id}?saved=1`)
+}
+
+export async function deleteCampaignEventAction(formData: FormData): Promise<void> {
+  try {
+    await checkAdmin()
+  } catch {
+    redirect('/admin/campaign-ranking?error=unauthorized')
+  }
+
+  const id = Number(formData.get('id'))
+  if (!id || isNaN(id)) redirect('/admin/campaign-ranking?error=invalid_id')
+
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('campaign_events')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('[deleteCampaignEventAction]', error)
+    redirect('/admin/campaign-ranking?error=delete_failed')
+  }
+
+  revalidatePath('/admin/campaign-ranking')
+  revalidatePath('/ranking')
+  redirect('/admin/campaign-ranking?deleted=1')
 }
