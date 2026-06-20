@@ -1,7 +1,13 @@
 import { unstable_cache } from 'next/cache'
 import { createPublicClient } from './supabase-public'
 import { withFallbackThumbnails } from './thumbnail'
-import { USER_RANKING_POST_POINT, USER_RANKING_THREAD_POINT } from './ranking-points'
+import {
+  USER_RANKING_CARD_RATING_POINT,
+  USER_RANKING_CARD_REVIEW_POINT,
+  USER_RANKING_PACK_REVIEW_POINT,
+  USER_RANKING_POST_POINT,
+  USER_RANKING_THREAD_POINT,
+} from './ranking-points'
 import type { NavPage, FixedPage } from '@/types/fixed-pages'
 import { parseBlocks } from '@/types/fixed-pages'
 import type { PublicAuthorProfile } from '@/types'
@@ -445,6 +451,9 @@ export type UserRankingRow = {
   youtube_url: string | null
   thread_count: number
   post_count: number
+  card_rating_count: number
+  card_review_count: number
+  pack_review_count: number
   points: number
 }
 
@@ -481,15 +490,24 @@ function countUserActivity(rows: UserRankingActivity[]) {
 function buildUserRanking(
   profiles: UserRankingProfile[],
   threadRows: UserRankingActivity[],
-  postRows: UserRankingActivity[]
+  postRows: UserRankingActivity[],
+  cardRatingRows: UserRankingActivity[],
+  cardReviewRows: UserRankingActivity[],
+  packReviewRows: UserRankingActivity[]
 ) {
   const threadCounts = countUserActivity(threadRows)
   const postCounts = countUserActivity(postRows)
+  const cardRatingCounts = countUserActivity(cardRatingRows)
+  const cardReviewCounts = countUserActivity(cardReviewRows)
+  const packReviewCounts = countUserActivity(packReviewRows)
 
   return profiles
     .map((profile): UserRankingRow => {
       const threadCount = threadCounts.get(profile.id) ?? 0
       const postCount = postCounts.get(profile.id) ?? 0
+      const cardRatingCount = cardRatingCounts.get(profile.id) ?? 0
+      const cardReviewCount = cardReviewCounts.get(profile.id) ?? 0
+      const packReviewCount = packReviewCounts.get(profile.id) ?? 0
 
       return {
         display_name: profile.display_name || '(未設定)',
@@ -499,9 +517,15 @@ function buildUserRanking(
         youtube_url: profile.youtube_url || null,
         thread_count: threadCount,
         post_count: postCount,
+        card_rating_count: cardRatingCount,
+        card_review_count: cardReviewCount,
+        pack_review_count: packReviewCount,
         points:
           threadCount * USER_RANKING_THREAD_POINT +
-          postCount * USER_RANKING_POST_POINT,
+          postCount * USER_RANKING_POST_POINT +
+          cardRatingCount * USER_RANKING_CARD_RATING_POINT +
+          cardReviewCount * USER_RANKING_CARD_REVIEW_POINT +
+          packReviewCount * USER_RANKING_PACK_REVIEW_POINT,
       }
     })
     .filter(row => !!row.profile_slug)
@@ -536,6 +560,8 @@ export const getCachedUserRankings = unstable_cache(
 
       const [
         monthlyThreads, monthlyPosts, totalThreads, totalPosts,
+        monthlyCardRatings, monthlyCardReviews, monthlyPackReviews,
+        totalCardRatings, totalCardReviews, totalPackReviews,
       ] = await Promise.all([
         supabase
           .from('threads')
@@ -565,18 +591,69 @@ export const getCachedUserRankings = unstable_cache(
           .eq('is_deleted', false)
           .eq('threads.is_archived', false)
           .limit(USER_RANKING_FETCH_LIMIT),
+        supabase
+          .from('zukan_card_ratings')
+          .select('user_id')
+          .in('user_id', userIds)
+          .eq('is_deleted', false)
+          .eq('is_hidden', false)
+          .gte('created_at', monthStartIso)
+          .limit(USER_RANKING_FETCH_LIMIT),
+        supabase
+          .from('zukan_card_reviews')
+          .select('user_id')
+          .in('user_id', userIds)
+          .eq('is_deleted', false)
+          .eq('is_hidden', false)
+          .gte('created_at', monthStartIso)
+          .limit(USER_RANKING_FETCH_LIMIT),
+        supabase
+          .from('zukan_pack_reviews')
+          .select('user_id')
+          .in('user_id', userIds)
+          .eq('is_deleted', false)
+          .eq('is_hidden', false)
+          .gte('created_at', monthStartIso)
+          .limit(USER_RANKING_FETCH_LIMIT),
+        supabase
+          .from('zukan_card_ratings')
+          .select('user_id')
+          .in('user_id', userIds)
+          .eq('is_deleted', false)
+          .eq('is_hidden', false)
+          .limit(USER_RANKING_FETCH_LIMIT),
+        supabase
+          .from('zukan_card_reviews')
+          .select('user_id')
+          .in('user_id', userIds)
+          .eq('is_deleted', false)
+          .eq('is_hidden', false)
+          .limit(USER_RANKING_FETCH_LIMIT),
+        supabase
+          .from('zukan_pack_reviews')
+          .select('user_id')
+          .in('user_id', userIds)
+          .eq('is_deleted', false)
+          .eq('is_hidden', false)
+          .limit(USER_RANKING_FETCH_LIMIT),
       ])
 
       return {
         monthly: buildUserRanking(
           profiles,
           (monthlyThreads.data ?? []) as UserRankingActivity[],
-          (monthlyPosts.data ?? []) as UserRankingActivity[]
+          (monthlyPosts.data ?? []) as UserRankingActivity[],
+          (monthlyCardRatings.data ?? []) as UserRankingActivity[],
+          (monthlyCardReviews.data ?? []) as UserRankingActivity[],
+          (monthlyPackReviews.data ?? []) as UserRankingActivity[]
         ),
         total: buildUserRanking(
           profiles,
           (totalThreads.data ?? []) as UserRankingActivity[],
-          (totalPosts.data ?? []) as UserRankingActivity[]
+          (totalPosts.data ?? []) as UserRankingActivity[],
+          (totalCardRatings.data ?? []) as UserRankingActivity[],
+          (totalCardReviews.data ?? []) as UserRankingActivity[],
+          (totalPackReviews.data ?? []) as UserRankingActivity[]
         ),
       }
     } catch (error) {

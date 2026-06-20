@@ -133,6 +133,30 @@ function RankingSocialLinks({
   )
 }
 
+function CompactActivityBreakdown({
+  threadCount,
+  postCount,
+  ratingCount,
+  reviewCount,
+  slug,
+}: {
+  threadCount: number
+  postCount: number
+  ratingCount: number
+  reviewCount: number
+  slug?: string
+}) {
+  return (
+    <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-gray-500">
+      <span>スレ{threadCount}</span>
+      <span>コメ{postCount}</span>
+      <span>評価{ratingCount}</span>
+      <span>レビュー{reviewCount}</span>
+      {slug && <span className="font-mono text-gray-400">@{slug}</span>}
+    </div>
+  )
+}
+
 async function CampaignRankingSection() {
   const settings = await fetchCampaignSettings()
   const state = resolveCampaignState(settings)
@@ -213,10 +237,12 @@ async function CampaignRankingSection() {
                       {settings.title} 1位
                     </span>
                   )}
-                  <div className="mt-0.5 text-xs text-gray-500">
-                    <span>コメント{entry.postCount}件</span>
-                    <span className="ml-2">スレッド{entry.threadCount}件</span>
-                  </div>
+                  <CompactActivityBreakdown
+                    threadCount={entry.threadCount}
+                    postCount={entry.postCount}
+                    ratingCount={entry.ratingDays}
+                    reviewCount={entry.reviewCount}
+                  />
                 </div>
                 <div className={`whitespace-nowrap text-right font-mono text-base font-black ${isEnded ? 'text-gray-700' : 'text-yellow-700'}`}>
                   {entry.totalPoints}pt
@@ -288,11 +314,13 @@ function UserRankingList({
                     </span>
                   )}
                 </div>
-                <div className="mt-0.5 text-xs text-gray-500">
-                  <span>コメント{row.post_count}件</span>
-                  <span className="ml-2">スレッド{row.thread_count}件</span>
-                  <span className="ml-2 font-mono text-gray-400">@{row.profile_slug}</span>
-                </div>
+                <CompactActivityBreakdown
+                  threadCount={row.thread_count}
+                  postCount={row.post_count}
+                  ratingCount={row.card_rating_count}
+                  reviewCount={row.card_review_count + row.pack_review_count}
+                  slug={row.profile_slug}
+                />
               </div>
               <div className="whitespace-nowrap text-right font-mono text-base font-black text-blue-700">
                 {row.points}pt
@@ -337,6 +365,9 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
           総合
         </Link>
       </div>
+      <p className="mb-3 border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700">
+        投稿者ランキングは、スレッド投稿・コメント・図鑑評価・レビューなどの活動から集計しています。
+      </p>
       <UserRankingList
         title={title}
         periodLabel={periodLabel}
