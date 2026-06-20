@@ -12,7 +12,7 @@ import { withFallbackThumbnails, DEFAULT_THREAD_THUMBNAIL } from '@/lib/thumbnai
 import { resolveImageUrl } from '@/lib/utils'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
-import { fetchCampaignSettings, fetchCampaignRankingPublic, toDisplayJst } from '@/lib/campaign-ranking'
+import { fetchCampaignSettings, fetchCampaignRankingPublic, isCampaignCurrentlyActive, toDisplayJst } from '@/lib/campaign-ranking'
 
 export const revalidate = 3600
 
@@ -85,7 +85,7 @@ function RankingAvatar({ row, rank }: { row: UserRankingRow; rank: number }) {
 
 async function CampaignRankingSection() {
   const settings = await fetchCampaignSettings()
-  if (settings.status !== 'active') return null
+  if (!isCampaignCurrentlyActive(settings)) return null
 
   const result = await fetchCampaignRankingPublic(settings.startIso, settings.endIso)
   const startLabel = toDisplayJst(settings.startIso)

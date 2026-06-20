@@ -5,7 +5,7 @@ import { UserProfileShareButtons } from '@/components/UserProfileShareButtons'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings } from '@/lib/cached-queries'
-import { fetchCampaignSettings, fetchCampaignRankingPublic } from '@/lib/campaign-ranking'
+import { fetchCampaignSettings, fetchCampaignRankingPublic, isCampaignCurrentlyActive } from '@/lib/campaign-ranking'
 
 export const dynamic = 'force-dynamic'
 
@@ -176,7 +176,7 @@ export default async function UserProfilePage({
   let campaignPoints: number | null = null
   let campaignTitle: string | null = null
 
-  if (campaignSettings.status === 'active') {
+  if (isCampaignCurrentlyActive(campaignSettings)) {
     campaignTitle = campaignSettings.title
     const campaignResult = await fetchCampaignRankingPublic(
       campaignSettings.startIso,
