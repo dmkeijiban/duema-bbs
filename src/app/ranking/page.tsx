@@ -3,7 +3,7 @@ import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadCard } from '@/components/ThreadCard'
 import { SafeThumbnail } from '@/components/SafeThumbnail'
 import { SITE_URL } from '@/lib/site-config'
-import { getCachedCategories, getCachedUserRankings, UserRankingRow } from '@/lib/cached-queries'
+import { getCachedCategories, getCachedUserRankings, getCachedCampaignRanking, UserRankingRow } from '@/lib/cached-queries'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { ThreadListHeader } from '@/components/ThreadListHeader'
@@ -13,7 +13,6 @@ import { resolveImageUrl } from '@/lib/utils'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { resolveCampaignState, toDisplayJst } from '@/lib/campaign-ranking'
-import { getCachedCampaignRanking } from '@/lib/cached-queries'
 
 export const revalidate = 3600
 
