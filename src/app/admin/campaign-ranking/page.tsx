@@ -49,7 +49,14 @@ export default async function CampaignRankingPage({
   await requireAdmin()
   const sp = await searchParams
 
-  const settings = await fetchCampaignSettings()
+  let settings: Awaited<ReturnType<typeof fetchCampaignSettings>>
+  let settingsError: string | null = null
+  try {
+    settings = await fetchCampaignSettings()
+  } catch (e) {
+    settingsError = e instanceof Error ? e.message : 'キャンペーン設定の読み込みに失敗しました'
+    settings = { status: 'draft', title: '', startIso: '', endIso: '', prize: '', rulesUrl: '' }
+  }
   const { status, title, startIso, endIso, prize, rulesUrl } = settings
 
   const STATUS_LABELS: Record<string, string> = {
@@ -71,8 +78,12 @@ export default async function CampaignRankingPage({
 
   // Fetch ranking preview only when campaign period is configured
   let rankingResult: CampaignRankingAdminResult | null = null
-  if (startIso && endIso) {
-    rankingResult = await fetchCampaignRankingFull(startIso, endIso)
+  if (!settingsError && startIso && endIso) {
+    try {
+      rankingResult = await fetchCampaignRankingFull(startIso, endIso)
+    } catch (e) {
+      rankingResult = { entries: [], error: e instanceof Error ? e.message : '集計に失敗しました', overflow: false }
+    }
   }
 
   const displayed = rankingResult?.entries.slice(0, MAX_DISPLAY) ?? []
@@ -98,6 +109,11 @@ export default async function CampaignRankingPage({
       {sp.error && (
         <div className="mb-4 border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-800">
           {ERROR_MESSAGES[sp.error] ?? 'キャンペーン設定の保存に失敗しました'}
+        </div>
+      )}
+      {settingsError && (
+        <div className="mb-4 border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-800">
+          設定の読み込みに失敗しました: {settingsError}
         </div>
       )}
 
