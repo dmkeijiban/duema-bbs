@@ -2,7 +2,8 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { verifyAdminCookie } from '@/lib/admin-auth'
-import { saveCampaignRankingAction, clearCampaignRankingAction } from './actions'
+import { saveCampaignRankingAction } from './actions'
+import { ClearButton } from './ClearButton'
 import {
   CAMPAIGN_THREAD_POINT,
   CAMPAIGN_THREAD_DAILY_LIMIT,
@@ -235,16 +236,7 @@ export default async function CampaignRankingPage({
           </div>
         </form>
 
-        <form action={clearCampaignRankingAction} className="mt-4 pt-4 border-t border-gray-100">
-          <button
-            type="submit"
-            className="px-3 py-1 text-xs text-red-600 border border-red-300 hover:bg-red-50"
-            onClick={(e) => { if (!confirm('キャンペーン設定をすべてクリアしますか？')) e.preventDefault() }}
-          >
-            設定をクリアする
-          </button>
-          <p className="mt-1 text-xs text-gray-400">ステータスを「下書き」に戻し、すべての項目を空にします</p>
-        </form>
+        <ClearButton />
       </div>
 
       {/* Ranking preview */}
