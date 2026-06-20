@@ -8,6 +8,13 @@ import {
   USER_RANKING_POST_POINT,
   USER_RANKING_THREAD_POINT,
 } from './ranking-points'
+import {
+  fetchCampaignSettings,
+  fetchCampaignRankingPublic,
+  resolveCampaignState,
+  type CampaignSettings,
+  type CampaignRankingPublicResult,
+} from './campaign-ranking'
 import type { NavPage, FixedPage } from '@/types/fixed-pages'
 import { parseBlocks } from '@/types/fixed-pages'
 import type { PublicAuthorProfile } from '@/types'
@@ -664,6 +671,37 @@ export const getCachedUserRankings = unstable_cache(
   ['user-rankings-public-v6'],
   { revalidate: 21600, tags: ['user-rankings'] }
 )
+
+// --- Campaign Ranking (1-day JST cache) ---
+
+export type CachedCampaignRankingResult = {
+  settings: CampaignSettings
+  ranking: CampaignRankingPublicResult
+  /** JST date this cache was built — 'YYYY-MM-DD'. Used to display "最終更新". */
+  cachedDateJst: string
+}
+
+function getJstDateKey(): string {
+  const jst = new Date(Date.now() + 9 * 60 * 60 * 1000)
+  return jst.toISOString().slice(0, 10)
+}
+
+export function getCachedCampaignRanking(): Promise<CachedCampaignRankingResult> {
+  const dateKey = getJstDateKey()
+  return unstable_cache(
+    async (): Promise<CachedCampaignRankingResult> => {
+      const settings = await fetchCampaignSettings()
+      const state = resolveCampaignState(settings)
+      if (state === 'disabled' || state === 'scheduled') {
+        return { settings, ranking: { entries: [], error: null, overflow: false }, cachedDateJst: getJstDateKey() }
+      }
+      const ranking = await fetchCampaignRankingPublic(settings.startIso, settings.endIso, state === 'active')
+      return { settings, ranking, cachedDateJst: getJstDateKey() }
+    },
+    [`campaign-ranking-public-${dateKey}`],
+    { revalidate: 86400, tags: ['campaign-ranking'] },
+  )()
+}
 
 export interface CachedThreadListResult {
   threads: unknown[]
