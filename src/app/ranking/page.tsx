@@ -144,7 +144,7 @@ function CompactActivityBreakdown({
   reviewCount: number
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 md:text-sm">
+    <div className="min-w-0 flex flex-wrap items-center gap-x-2 text-xs text-gray-500 md:text-sm">
       <span>スレ{threadCount}</span>
       <span className="text-gray-300">/</span>
       <span>コメ{postCount}</span>
@@ -225,7 +225,7 @@ async function CampaignRankingSection() {
             return (
               <div
                 key={entry.profileSlug}
-                className="grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm md:grid-cols-[2.5rem_2.5rem_minmax(12rem,1fr)_minmax(12rem,auto)_auto]"
+                className="grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)] items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm md:grid-cols-[2.5rem_2.5rem_minmax(12rem,1fr)_minmax(14rem,auto)]"
               >
                 <div className="text-center font-mono font-black text-gray-700">
                   <span className="block text-lg leading-none">
@@ -253,14 +253,16 @@ async function CampaignRankingSection() {
                   xUrl={entry.xUrl}
                   youtubeUrl={entry.youtubeUrl}
                 />
-                <CompactActivityBreakdown
-                  threadCount={entry.threadCount}
-                  postCount={entry.postCount}
-                  ratingCount={entry.ratingDays}
-                  reviewCount={entry.reviewCount}
-                />
-                <div className={`whitespace-nowrap text-right font-mono text-xl font-black ${isEnded ? 'text-gray-700' : 'text-yellow-700'}`}>
-                  {entry.totalPoints}pt
+                <div className="col-span-3 flex flex-wrap items-center gap-x-6 gap-y-1 md:col-span-1">
+                  <CompactActivityBreakdown
+                    threadCount={entry.threadCount}
+                    postCount={entry.postCount}
+                    ratingCount={entry.ratingDays}
+                    reviewCount={entry.reviewCount}
+                  />
+                  <div className={`ml-auto shrink-0 whitespace-nowrap font-mono text-xl font-black ${isEnded ? 'text-gray-700' : 'text-yellow-700'}`}>
+                    {entry.totalPoints}pt
+                  </div>
                 </div>
               </div>
             )
@@ -299,7 +301,7 @@ function UserRankingList({
           {rows.map((row, index) => (
             <div
               key={row.profile_slug}
-              className="grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm md:grid-cols-[2.5rem_2.5rem_minmax(12rem,1fr)_minmax(12rem,auto)_auto]"
+              className="grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)] items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm md:grid-cols-[2.5rem_2.5rem_minmax(12rem,1fr)_minmax(14rem,auto)]"
             >
               <div className="text-center font-mono font-black text-gray-700">
                 <span className="block text-lg leading-none">{rankDecoration[index]?.medal ?? index + 1}</span>
@@ -318,14 +320,16 @@ function UserRankingList({
                 xUrl={row.x_url}
                 youtubeUrl={row.youtube_url}
               />
-              <CompactActivityBreakdown
-                threadCount={row.thread_count}
-                postCount={row.post_count}
-                ratingCount={row.card_rating_count}
-                reviewCount={row.card_review_count + row.pack_review_count}
-              />
-              <div className="whitespace-nowrap text-right font-mono text-xl font-black text-blue-700">
-                {row.points}pt
+              <div className="col-span-3 flex flex-wrap items-center gap-x-6 gap-y-1 md:col-span-1">
+                <CompactActivityBreakdown
+                  threadCount={row.thread_count}
+                  postCount={row.post_count}
+                  ratingCount={row.card_rating_count}
+                  reviewCount={row.card_review_count + row.pack_review_count}
+                />
+                <div className="ml-auto shrink-0 whitespace-nowrap font-mono text-xl font-black text-blue-700">
+                  {row.points}pt
+                </div>
               </div>
             </div>
           ))}
