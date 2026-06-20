@@ -42,6 +42,8 @@ export type PublicCampaignEntry = {
   displayName: string
   profileSlug: string
   avatarUrl: string | null
+  xUrl: string | null
+  youtubeUrl: string | null
   totalPoints: number
   threadCount: number
   postCount: number
@@ -68,6 +70,7 @@ export type AdminProfileRow = {
   account_suspended: boolean | null
   withdrawn_at: string | null
   x_url: string | null
+  youtube_url: string | null
 }
 
 export type AdminCampaignEntry = {
@@ -476,14 +479,14 @@ export async function fetchCampaignRankingFull(
     entries.push({ userId, totalPoints, profile: null, excludeReasons: [], ...activity })
   }
 
-  // Fetch profiles in chunks of 500 (includes avatar_url for public use, x_url for admin)
+  // Fetch profiles in chunks of 500 (includes avatar_url and SNS URLs for public display)
   const userIds = entries.map(e => e.userId)
   const profileMap = new Map<string, AdminProfileRow>()
   for (let i = 0; i < userIds.length; i += 500) {
     const chunk = userIds.slice(i, i + 500)
     const { data: pRows, error: pErr } = await supabase
       .from('profiles')
-      .select('id, display_name, profile_slug, avatar_url, profile_hidden, ranking_enabled, rank_excluded, account_suspended, withdrawn_at, x_url')
+      .select('id, display_name, profile_slug, avatar_url, profile_hidden, ranking_enabled, rank_excluded, account_suspended, withdrawn_at, x_url, youtube_url')
       .in('id', chunk)
     if (pErr) return { entries: [], error: pErr.message, overflow: false }
     for (const p of pRows ?? []) profileMap.set(p.id, p as AdminProfileRow)
@@ -543,6 +546,8 @@ export async function fetchCampaignRankingPublic(
       displayName: e.profile.display_name ?? e.profile.profile_slug,
       profileSlug: e.profile.profile_slug,
       avatarUrl: e.profile.avatar_url,
+      xUrl: e.profile.x_url,
+      youtubeUrl: e.profile.youtube_url,
       totalPoints: e.totalPoints,
       threadCount: e.threadCount,
       postCount: e.postCount,
@@ -557,7 +562,7 @@ export async function fetchCampaignRankingPublic(
     const supabase = createAdminClient()
     const { data: zeroPtProfiles } = await supabase
       .from('profiles')
-      .select('id, display_name, profile_slug, avatar_url')
+      .select('id, display_name, profile_slug, avatar_url, x_url, youtube_url')
       .eq('profile_hidden', false)
       .eq('ranking_enabled', true)
       .eq('rank_excluded', false)
@@ -576,6 +581,8 @@ export async function fetchCampaignRankingPublic(
         displayName: p.display_name ?? p.profile_slug,
         profileSlug: p.profile_slug,
         avatarUrl: p.avatar_url,
+        xUrl: p.x_url,
+        youtubeUrl: p.youtube_url,
         totalPoints: 0,
         threadCount: 0,
         postCount: 0,

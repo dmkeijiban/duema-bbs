@@ -241,7 +241,6 @@ function HomeGuideBanner() {
       style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb' }}
     >
       <div className="leading-relaxed">
-        <p>デッキ相談・カード評価・大会情報など、デュエマの話題なら何でもどうぞ。</p>
         <p>
           初めての方は
           <Link href="/guide" className="font-bold underline underline-offset-2 hover:opacity-80">
