@@ -97,6 +97,10 @@ export default async function CampaignRankingListPage({
         </div>
       )}
 
+      <div className="mb-4 border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+        有効 <strong>ON</strong>：開催中または終了結果を /ranking に表示します。有効 <strong>OFF</strong>：管理画面には残りますが /ranking には表示されません。
+      </div>
+
       <div className="mb-5">
         <Link
           href="/admin/campaign-ranking/new"

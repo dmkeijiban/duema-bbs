@@ -95,26 +95,29 @@ export default async function EditCampaignEventPage({
           <form action={updateCampaignEventAction} className="space-y-4 rounded border border-gray-200 bg-white p-4">
             <input type="hidden" name="id" value={String(event.id)} />
 
-            <div className="flex items-center gap-4">
-              <span className="w-28 shrink-0 font-medium text-gray-700">有効</span>
-              <label className="flex items-center gap-1 cursor-pointer">
-                <input
-                  type="radio"
-                  name="campaign_enabled"
-                  value="on"
-                  defaultChecked={event.status === 'active'}
-                />
-                <span>ON（有効）</span>
-              </label>
-              <label className="flex items-center gap-1 cursor-pointer">
-                <input
-                  type="radio"
-                  name="campaign_enabled"
-                  value="off"
-                  defaultChecked={event.status !== 'active'}
-                />
-                <span>OFF（無効）</span>
-              </label>
+            <div>
+              <div className="flex items-center gap-4">
+                <span className="w-28 shrink-0 font-medium text-gray-700">有効</span>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="campaign_enabled"
+                    value="on"
+                    defaultChecked={event.status === 'active'}
+                  />
+                  <span>ON（有効）</span>
+                </label>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="campaign_enabled"
+                    value="off"
+                    defaultChecked={event.status !== 'active'}
+                  />
+                  <span>OFF（無効）</span>
+                </label>
+              </div>
+              <p className="mt-1 pl-28 text-[11px] text-gray-400">OFFにすると掲示板の /ranking には表示されません（終了後も同様）</p>
             </div>
 
             <div className="flex flex-col gap-1">
