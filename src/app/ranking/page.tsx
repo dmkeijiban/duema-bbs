@@ -12,6 +12,7 @@ import { withFallbackThumbnails, DEFAULT_THREAD_THUMBNAIL } from '@/lib/thumbnai
 import { resolveImageUrl } from '@/lib/utils'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
+import { fetchCampaignSettings, fetchCampaignRankingPublic, toDisplayJst } from '@/lib/campaign-ranking'
 
 export const revalidate = 3600
 
@@ -79,6 +80,92 @@ function RankingAvatar({ row, rank }: { row: UserRankingRow; rank: number }) {
     >
       {initial}
     </span>
+  )
+}
+
+async function CampaignRankingSection() {
+  const settings = await fetchCampaignSettings()
+  if (settings.status !== 'active') return null
+
+  const result = await fetchCampaignRankingPublic(settings.startIso, settings.endIso)
+  const startLabel = toDisplayJst(settings.startIso)
+  const endLabel = toDisplayJst(settings.endIso)
+
+  return (
+    <section className="mb-4 overflow-hidden border border-yellow-300 bg-yellow-50">
+      <div className="border-b border-yellow-200 bg-yellow-100 px-3 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-bold text-yellow-900">🏆 {settings.title}</h3>
+          <span className="rounded-full border border-yellow-300 bg-white px-2 py-0.5 text-[11px] font-bold text-yellow-700">
+            開催中
+          </span>
+        </div>
+        <p className="mt-0.5 text-[11px] text-yellow-700">
+          期間：{startLabel} 〜 {endLabel}
+        </p>
+      </div>
+      {result.error ? (
+        <div className="px-3 py-4 text-center text-sm text-red-500">
+          集計データを取得できませんでした
+        </div>
+      ) : result.entries.length === 0 ? (
+        <div className="px-3 py-6 text-center text-sm text-yellow-700">
+          まだランキング対象者はいません（0pt期間中）
+        </div>
+      ) : (
+        <div className="space-y-2 p-2">
+          {result.entries.map((entry) => {
+            const deco = rankDecoration[entry.rank - 1]
+            return (
+              <div
+                key={entry.profileSlug}
+                className={`grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md border px-3 py-2 text-sm ${
+                  deco?.card ?? 'border-gray-200 bg-white'
+                }`}
+              >
+                <div className={`text-center font-mono font-black ${deco?.rank ?? 'text-gray-500'}`}>
+                  <span className="block text-lg leading-none">
+                    {deco?.medal ?? entry.rank}
+                  </span>
+                  {entry.rank <= 3 && (
+                    <span className="mt-1 block text-[10px] leading-none text-gray-500">{entry.rank}位</span>
+                  )}
+                </div>
+                <Link href={`/u/${entry.profileSlug}`} aria-label={`${entry.displayName}の投稿者ページ`}>
+                  {entry.avatarUrl ? (
+                    <ProfileAvatar src={entry.avatarUrl} alt={`${entry.displayName}のアイコン`} size="md" />
+                  ) : (
+                    <span
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ring-1 ${deco?.avatar ?? 'bg-yellow-50 text-yellow-700 ring-yellow-200'}`}
+                      aria-hidden="true"
+                    >
+                      {entry.displayName.trim().charAt(0) || '?'}
+                    </span>
+                  )}
+                </Link>
+                <div className="min-w-0">
+                  <Link href={`/u/${entry.profileSlug}`} className="font-bold text-blue-700 hover:underline">
+                    {entry.displayName}
+                  </Link>
+                  {entry.rank === 1 && (
+                    <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${rankDecoration[0].badge}`}>
+                      {settings.title} 1位
+                    </span>
+                  )}
+                  <div className="mt-0.5 text-xs text-gray-500">
+                    <span>コメント{entry.postCount}件</span>
+                    <span className="ml-2">スレッド{entry.threadCount}件</span>
+                  </div>
+                </div>
+                <div className="whitespace-nowrap text-right font-mono text-base font-black text-yellow-700">
+                  {entry.totalPoints}pt
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -365,6 +452,11 @@ export default async function RankingPage({ searchParams }: Props) {
       />
 
       <div className="mx-auto max-w-screen-xl px-2">
+        {/* キャンペーンランキング（開催中のみ表示） */}
+        <Suspense fallback={null}>
+          <CampaignRankingSection />
+        </Suspense>
+
         {/* タブナビゲーション */}
         <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
           <Link
