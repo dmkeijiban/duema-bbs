@@ -420,7 +420,7 @@ export const getCachedUserPosts = (userId: string): Promise<UserPostRow[]> =>
   )()
 
 const USER_RANKING_PROFILE_LIMIT = 100
-const USER_RANKING_LIMIT = 10
+const USER_RANKING_LIMIT = 30
 const USER_RANKING_FETCH_LIMIT = 10000
 const USER_RANKING_THREAD_POINT = 2
 const USER_RANKING_POST_POINT = 1
@@ -514,7 +514,7 @@ function buildUserRanking(
           packReviewCount * USER_RANKING_PACK_REVIEW_POINT,
       }
     })
-    .filter(row => row.profile_slug && row.points > 0)
+    .filter(row => !!row.profile_slug)
     .sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points
       if (b.thread_count !== a.thread_count) return b.thread_count - a.thread_count
@@ -647,7 +647,7 @@ export const getCachedUserRankings = unstable_cache(
       return { monthly: [], total: [] }
     }
   },
-  ['user-rankings-public-v2'],
+  ['user-rankings-public-v3'],
   { revalidate: 21600, tags: ['user-rankings'] }
 )
 
