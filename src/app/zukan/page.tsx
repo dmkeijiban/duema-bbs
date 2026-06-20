@@ -130,7 +130,7 @@ function PackListCard({ pack }: { pack: ZukanPack }) {
       <div className="flex min-w-0 flex-1 flex-col px-3 py-3">
         <div className="font-mono text-xs font-bold text-blue-700">{pack.code}</div>
         <div className="mt-0.5 text-sm font-bold text-gray-800">{pack.name}</div>
-        <dl className="mt-2 space-y-1 text-xs text-gray-600">
+        <dl className="mt-2 flex flex-wrap gap-x-4 text-xs text-gray-600">
           {pack.released_year && (
             <div><dt className="inline font-bold">発売日：</dt><dd className="inline">{pack.released_year}</dd></div>
           )}
@@ -138,9 +138,6 @@ function PackListCard({ pack }: { pack: ZukanPack }) {
             <div><dt className="inline font-bold">収録：</dt><dd className="inline">全{pack.card_count}種</dd></div>
           )}
         </dl>
-        <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-500">
-          {(pack.description ?? 'パックを開いた思い出や、当時使っていたカードを振り返るページです。').replace('ボルシャック・ドラゴン、ホーリー・スパーク、デーモン・ハンドなど、シリーズを象徴するカードが多数収録された原点のセットです。', '').trim()}
-        </p>
       </div>
     </div>
   )
@@ -258,20 +255,17 @@ export default async function ZukanTopPage() {
 
       {/* DM-01 のカード */}
       <section className="mb-5">
-        <div className="mb-2 flex items-baseline justify-between border border-gray-300 bg-gray-50 px-3 py-2">
-          <div>
-            <h2 className="text-sm font-bold text-gray-800">DM-01 基本セットの代表カード</h2>
-            <p className="mt-0.5 text-xs text-gray-500">このパックを代表するカードを一部掲載しています。</p>
-          </div>
+        <div className="mb-2 flex items-center justify-between border border-gray-300 bg-gray-50 px-3 py-2">
+          <h2 className="text-sm font-bold text-gray-800">DM-01 基本セットの代表カード</h2>
           <Link href="/zukan/dm-01" className="text-xs text-blue-600 hover:underline shrink-0">
             収録カードをもっと見る
           </Link>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
+        <div className="flex gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0 md:grid-cols-5">
           {DM01_PREVIEW_DEFS.map(def => {
             const dbCard = cardMap.get(def.slug) ?? null
             const href = dbCard ? `/zukan/card/${def.slug}` : '#'
-            const cardClass = `border border-gray-300 bg-white ${dbCard ? 'block cursor-pointer transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]' : 'opacity-60'}`
+            const cardClass = `w-[44%] flex-shrink-0 sm:w-auto border border-gray-300 bg-white ${dbCard ? 'block cursor-pointer transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]' : 'opacity-60'}`
             const cardBody = (
               <>
                 <CardThumb
