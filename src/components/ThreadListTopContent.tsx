@@ -30,7 +30,6 @@ function HomeBannerFallback() {
       style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb' }}
     >
       <div className="leading-relaxed">
-        <p>デッキ相談・カード評価・大会情報など、デュエマの話題なら何でもどうぞ。</p>
         <p>初めての方は<Link href="/guide" className="underline">スレッドの立て方</Link>をご確認ください。</p>
       </div>
       <BannerButtons />

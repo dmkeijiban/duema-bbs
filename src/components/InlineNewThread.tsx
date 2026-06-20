@@ -44,12 +44,11 @@ export function InlineNewThread({ categories }: Props) {
             style={{ background: '#d1ecf1', color: '#0c5460' }}
           >
             <p>
-              投稿する前に、<Link href="/guide" className="font-bold underline">投稿ルール</Link>をご確認ください。
+              投稿する前に <Link href="/guide" className="font-bold underline">投稿ルール</Link> をご確認ください。
             </p>
             <p>
-              <Link href="/login?mode=signup" className="font-bold underline">アカウントを作成</Link>すると、プロフィールや投稿管理を利用できます。
+              <Link href="/login?mode=signup" className="font-bold underline">アカウント作成</Link> でプロフィール・投稿管理が使えます。※登録なしでも匿名投稿できます。
             </p>
-            <p>※登録せずに、このまま匿名で投稿することもできます。</p>
           </div>
 
           {/* フォーム */}

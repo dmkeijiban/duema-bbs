@@ -190,16 +190,11 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
         style={{ background: '#d1ecf1', borderBottom: '1px solid #bee5eb' }}
       >
         <p>
-          投稿する前に、<Link href="/guide" className="font-bold text-blue-700 hover:underline">投稿ルール</Link>をご確認ください。
+          投稿する前に <Link href="/guide" className="font-bold text-blue-700 hover:underline">投稿ルール</Link> をご確認ください。
         </p>
-        {authState.status === 'anon' && (
-          <>
-            <p>
-              <Link href="/login?mode=signup" className="font-bold text-blue-700 hover:underline">アカウントを作成</Link>すると、プロフィールや投稿管理を利用できます。
-            </p>
-            <p>※登録せずに、このまま匿名でコメント投稿することもできます。</p>
-          </>
-        )}
+        <p>
+          <Link href="/login?mode=signup" className="font-bold text-blue-700 hover:underline">アカウント作成</Link> でプロフィール・投稿管理が使えます。※登録なしでも匿名投稿できます。
+        </p>
       </div>
 
       {/* フォーム */}
