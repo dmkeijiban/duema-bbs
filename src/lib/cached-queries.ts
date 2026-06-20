@@ -1,6 +1,13 @@
 import { unstable_cache } from 'next/cache'
 import { createPublicClient } from './supabase-public'
 import { withFallbackThumbnails } from './thumbnail'
+import {
+  USER_RANKING_CARD_RATING_POINT,
+  USER_RANKING_CARD_REVIEW_POINT,
+  USER_RANKING_PACK_REVIEW_POINT,
+  USER_RANKING_POST_POINT,
+  USER_RANKING_THREAD_POINT,
+} from './ranking-points'
 import type { NavPage, FixedPage } from '@/types/fixed-pages'
 import { parseBlocks } from '@/types/fixed-pages'
 import type { PublicAuthorProfile } from '@/types'
@@ -422,11 +429,6 @@ export const getCachedUserPosts = (userId: string): Promise<UserPostRow[]> =>
 const USER_RANKING_PROFILE_LIMIT = 100
 const USER_RANKING_LIMIT = 10
 const USER_RANKING_FETCH_LIMIT = 10000
-const USER_RANKING_THREAD_POINT = 2
-const USER_RANKING_POST_POINT = 1
-const USER_RANKING_CARD_RATING_POINT = 1
-const USER_RANKING_CARD_REVIEW_POINT = 3
-const USER_RANKING_PACK_REVIEW_POINT = 3
 
 type UserRankingProfile = {
   id: string
@@ -449,6 +451,9 @@ export type UserRankingRow = {
   youtube_url: string | null
   thread_count: number
   post_count: number
+  card_rating_count: number
+  card_review_count: number
+  pack_review_count: number
   points: number
 }
 
@@ -512,6 +517,9 @@ function buildUserRanking(
         youtube_url: profile.youtube_url || null,
         thread_count: threadCount,
         post_count: postCount,
+        card_rating_count: cardRatingCount,
+        card_review_count: cardReviewCount,
+        pack_review_count: packReviewCount,
         points:
           threadCount * USER_RANKING_THREAD_POINT +
           postCount * USER_RANKING_POST_POINT +
@@ -653,7 +661,7 @@ export const getCachedUserRankings = unstable_cache(
       return { monthly: [], total: [] }
     }
   },
-  ['user-rankings-public-v4'],
+  ['user-rankings-public-v5'],
   { revalidate: 21600, tags: ['user-rankings'] }
 )
 
