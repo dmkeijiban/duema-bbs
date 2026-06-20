@@ -38,7 +38,7 @@ Sentry.init({
 
     // ② CONFIG undefined: pagead2.googlesyndication.com 等の外部スクリプト起因
     //   → 自コードには CONFIG の参照なし（grep確認済み）
-    if (/\bCONFIG\b/.test(message) && /undefined|not defined/i.test(message)) {
+    if (/\bCONFIG\b/.test(message) && /undefined|not defined|can't find variable/i.test(message)) {
       return null
     }
 
