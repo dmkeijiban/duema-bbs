@@ -1,8 +1,5 @@
-export const USER_RANKING_THREAD_POINT = 2
+export const USER_RANKING_THREAD_POINT = 3
 export const USER_RANKING_POST_POINT = 1
-export const USER_RANKING_CARD_RATING_POINT = 1
-export const USER_RANKING_CARD_REVIEW_POINT = 3
-export const USER_RANKING_PACK_REVIEW_POINT = 3
 
 // Campaign-specific constants (do not use for public ranking)
 export const CAMPAIGN_THREAD_POINT = 3
