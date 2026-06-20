@@ -5,6 +5,7 @@ import { UserProfileShareButtons } from '@/components/UserProfileShareButtons'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings } from '@/lib/cached-queries'
+import { fetchCampaignSettings, fetchCampaignRankingPublic } from '@/lib/campaign-ranking'
 
 export const dynamic = 'force-dynamic'
 
@@ -163,12 +164,32 @@ export default async function UserProfilePage({
     'youtu.be',
   ])
 
-  const [recentThreads, recentPosts, rankings, activityCounts] = await Promise.all([
+  const [recentThreads, recentPosts, rankings, activityCounts, campaignSettings] = await Promise.all([
     getCachedUserThreads(profile.id),
     getCachedUserPosts(profile.id),
     getCachedUserRankings(),
     getUserActivityCounts(profile.id),
+    fetchCampaignSettings(),
   ])
+
+  let campaignRank: number | null = null
+  let campaignPoints: number | null = null
+  let campaignTitle: string | null = null
+
+  if (campaignSettings.status === 'active') {
+    campaignTitle = campaignSettings.title
+    const campaignResult = await fetchCampaignRankingPublic(
+      campaignSettings.startIso,
+      campaignSettings.endIso,
+    )
+    const entry = campaignResult.entries.find((e) => e.profileSlug === profile.profile_slug)
+    if (entry) {
+      campaignRank = entry.rank
+      campaignPoints = entry.totalPoints
+    } else {
+      campaignPoints = 0
+    }
+  }
 
   const monthlyRankIndex = rankings.monthly.findIndex(
     (r) => r.profile_slug === profile.profile_slug
@@ -205,6 +226,9 @@ export default async function UserProfilePage({
         postCountLabel={postDisplayCount}
         monthlyRank={monthlyRank}
         totalRank={totalRank}
+        campaignTitle={campaignTitle}
+        campaignRank={campaignRank}
+        campaignPoints={campaignPoints}
       />
 
       {profile.profile_hidden && isOwner && (

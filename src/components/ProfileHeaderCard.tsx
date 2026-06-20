@@ -14,6 +14,9 @@ type ProfileHeaderCardProps = {
   postCountLabel: string
   monthlyRank: number | null
   totalRank: number | null
+  campaignTitle?: string | null
+  campaignRank?: number | null
+  campaignPoints?: number | null
   actions?: ReactNode
 }
 
@@ -61,6 +64,9 @@ export function ProfileHeaderCard({
   postCountLabel,
   monthlyRank,
   totalRank,
+  campaignTitle,
+  campaignRank,
+  campaignPoints,
   actions,
 }: ProfileHeaderCardProps) {
   return (
@@ -81,6 +87,13 @@ export function ProfileHeaderCard({
               {(monthlyRank === 1 || totalRank === 1) && (
                 <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 border border-yellow-300">
                   🏆 1位
+                </span>
+              )}
+              {campaignTitle && (
+                <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-300">
+                  {campaignRank != null
+                    ? `🏆 ${campaignTitle} ${campaignRank}位 / ${campaignPoints}pt`
+                    : `🏆 キャンペーン参加中 / ${campaignPoints ?? 0}pt`}
                 </span>
               )}
             </div>
