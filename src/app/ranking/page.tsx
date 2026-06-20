@@ -144,7 +144,7 @@ function CompactActivityBreakdown({
   reviewCount: number
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-1 text-xs text-gray-500 md:text-sm">
+    <div className="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 md:text-sm">
       <span>スレ{threadCount}</span>
       <span className="text-gray-300">/</span>
       <span>コメ{postCount}</span>
@@ -259,7 +259,7 @@ async function CampaignRankingSection() {
                   ratingCount={entry.ratingDays}
                   reviewCount={entry.reviewCount}
                 />
-                <div className={`whitespace-nowrap text-right font-mono text-base font-black ${isEnded ? 'text-gray-700' : 'text-yellow-700'}`}>
+                <div className={`whitespace-nowrap text-right font-mono text-xl font-black ${isEnded ? 'text-gray-700' : 'text-yellow-700'}`}>
                   {entry.totalPoints}pt
                 </div>
               </div>
@@ -324,7 +324,7 @@ function UserRankingList({
                 ratingCount={row.card_rating_count}
                 reviewCount={row.card_review_count + row.pack_review_count}
               />
-              <div className="whitespace-nowrap text-right font-mono text-base font-black text-blue-700">
+              <div className="whitespace-nowrap text-right font-mono text-xl font-black text-blue-700">
                 {row.points}pt
               </div>
             </div>
