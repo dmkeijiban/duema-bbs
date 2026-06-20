@@ -2,7 +2,8 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { verifyAdminCookie } from '@/lib/admin-auth'
-import { saveCampaignRankingAction, clearCampaignRankingAction } from './actions'
+import { saveCampaignRankingAction } from './actions'
+import { ClearButton } from './ClearButton'
 import {
   CAMPAIGN_THREAD_POINT,
   CAMPAIGN_THREAD_DAILY_LIMIT,
@@ -39,6 +40,12 @@ function toDatetimeLocal(isoJst: string): string {
   return m ? m[1] : ''
 }
 
+// Next.js redirect/not-found errors must not be swallowed
+function isNextInternalError(e: unknown): boolean {
+  const digest = (e as { digest?: string })?.digest ?? ''
+  return digest.startsWith('NEXT_REDIRECT') || digest.startsWith('NEXT_NOT_FOUND')
+}
+
 // ---- Page ----
 
 export default async function CampaignRankingPage({
@@ -46,10 +53,64 @@ export default async function CampaignRankingPage({
 }: {
   searchParams: Promise<{ saved?: string; cleared?: string; error?: string }>
 }) {
-  await requireAdmin()
-  const sp = await searchParams
+  // Auth check — redirect errors must propagate to Next.js, not be swallowed
+  try {
+    await requireAdmin()
+  } catch (e) {
+    if (isNextInternalError(e)) throw e
+    console.error('[campaign-ranking] requireAdmin:error', e)
+    throw e
+  }
 
-  const settings = await fetchCampaignSettings()
+  const SETTINGS_DEFAULT = { status: 'draft', title: '', startIso: '', endIso: '', prize: '', rulesUrl: '' }
+
+  let sp: { saved?: string; cleared?: string; error?: string } = {}
+  let settings = SETTINGS_DEFAULT
+  let settingsError: string | null = null
+  let rankingResult: CampaignRankingAdminResult | null = null
+  let renderError: string | null = null
+
+  try {
+    sp = await searchParams
+
+    try {
+      settings = await fetchCampaignSettings()
+    } catch (e) {
+      console.error('[campaign-ranking] fetchCampaignSettings:error', e)
+      settingsError = e instanceof Error ? e.message : 'キャンペーン設定の読み込みに失敗しました'
+      settings = SETTINGS_DEFAULT
+    }
+
+    if (!settingsError && settings.startIso && settings.endIso) {
+      try {
+        rankingResult = await fetchCampaignRankingFull(settings.startIso, settings.endIso)
+      } catch (e) {
+        console.error('[campaign-ranking] fetchCampaignRankingFull:error', e)
+        rankingResult = { entries: [], error: e instanceof Error ? e.message : '集計に失敗しました', overflow: false }
+      }
+    }
+  } catch (e) {
+    if (isNextInternalError(e)) throw e
+    console.error('[campaign-ranking] top-level:error', e)
+    renderError = e instanceof Error ? `${e.name}: ${e.message}\n${e.stack ?? ''}` : String(e)
+  }
+
+  // Show inline error instead of full-screen crash
+  if (renderError) {
+    return (
+      <div className="max-w-screen-xl mx-auto px-3 py-4 text-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-xl font-bold text-gray-800">🏆 キャンペーンランキング設定</h1>
+          <Link href="/admin" className="text-xs text-blue-600 hover:underline">← 管理画面に戻る</Link>
+        </div>
+        <div className="border border-red-300 bg-red-50 px-4 py-3 text-xs text-red-800">
+          <p className="font-bold mb-1">ページ読み込みエラー（Vercel Function Logs で詳細を確認してください）</p>
+          <pre className="mt-2 font-mono text-[10px] whitespace-pre-wrap break-all">{renderError}</pre>
+        </div>
+      </div>
+    )
+  }
+
   const { status, title, startIso, endIso, prize, rulesUrl } = settings
 
   const STATUS_LABELS: Record<string, string> = {
@@ -70,11 +131,6 @@ export default async function CampaignRankingPage({
   }
 
   // Fetch ranking preview only when campaign period is configured
-  let rankingResult: CampaignRankingAdminResult | null = null
-  if (startIso && endIso) {
-    rankingResult = await fetchCampaignRankingFull(startIso, endIso)
-  }
-
   const displayed = rankingResult?.entries.slice(0, MAX_DISPLAY) ?? []
   const totalEntrants = rankingResult?.entries.length ?? 0
 
@@ -98,6 +154,11 @@ export default async function CampaignRankingPage({
       {sp.error && (
         <div className="mb-4 border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-800">
           {ERROR_MESSAGES[sp.error] ?? 'キャンペーン設定の保存に失敗しました'}
+        </div>
+      )}
+      {settingsError && (
+        <div className="mb-4 border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-800">
+          設定の読み込みに失敗しました: {settingsError}
         </div>
       )}
 
@@ -219,16 +280,7 @@ export default async function CampaignRankingPage({
           </div>
         </form>
 
-        <form action={clearCampaignRankingAction} className="mt-4 pt-4 border-t border-gray-100">
-          <button
-            type="submit"
-            className="px-3 py-1 text-xs text-red-600 border border-red-300 hover:bg-red-50"
-            onClick={(e) => { if (!confirm('キャンペーン設定をすべてクリアしますか？')) e.preventDefault() }}
-          >
-            設定をクリアする
-          </button>
-          <p className="mt-1 text-xs text-gray-400">ステータスを「下書き」に戻し、すべての項目を空にします</p>
-        </form>
+        <ClearButton />
       </div>
 
       {/* Ranking preview */}
@@ -275,7 +327,8 @@ export default async function CampaignRankingPage({
                 </thead>
                 <tbody>
                   {displayed.map((entry: AdminCampaignEntry, idx: number) => {
-                    const isExcluded = entry.excludeReasons.length > 0
+                    const excludeReasons: string[] = Array.isArray(entry.excludeReasons) ? entry.excludeReasons : []
+                    const isExcluded = excludeReasons.length > 0
                     const name = entry.profile?.display_name ?? '（名前なし）'
                     const slug = entry.profile?.profile_slug
                     const lastAt = entry.lastActivity
@@ -337,7 +390,7 @@ export default async function CampaignRankingPage({
                           )()}
                         </td>
                         <td className="border border-gray-200 px-2 py-1 text-[10px] text-red-500">
-                          {entry.excludeReasons.join(' / ')}
+                          {excludeReasons.join(' / ')}
                         </td>
                       </tr>
                     )
