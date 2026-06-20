@@ -12,7 +12,7 @@ import {
 
 const PAGE_SIZE = 1000
 const MAX_PAGES = 10
-const MAX_PUBLIC_DISPLAY = 30
+const MAX_PUBLIC_DISPLAY = 10
 
 // ---- Public types ----
 
