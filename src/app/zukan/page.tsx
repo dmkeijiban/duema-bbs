@@ -139,7 +139,7 @@ function PackListCard({ pack }: { pack: ZukanPack }) {
           )}
         </dl>
         <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-500">
-          {pack.description ?? 'パックを開いた思い出や、当時使っていたカードを振り返るページです。'}
+          {(pack.description ?? 'パックを開いた思い出や、当時使っていたカードを振り返るページです。').replace('ボルシャック・ドラゴン、ホーリー・スパーク、デーモン・ハンドなど、シリーズを象徴するカードが多数収録された原点のセットです。', '').trim()}
         </p>
       </div>
     </div>

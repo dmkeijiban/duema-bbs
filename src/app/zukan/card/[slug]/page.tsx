@@ -259,12 +259,12 @@ export default async function ZukanCardPage({
           </dl>
           {card.ability_text && (
             <p className="mt-3 text-xs leading-relaxed text-gray-700 border-l-2 border-gray-200 pl-2">
-              {card.ability_text}
+              {card.ability_text.replace(/^\s*\|\s*/, '')}
             </p>
           )}
           {card.flavor_text && (
             <p className="mt-2 text-xs leading-relaxed text-gray-400 italic border-l-2 border-gray-100 pl-2">
-              {card.flavor_text}
+              {card.flavor_text.replace(/^\s*\|\s*/, '')}
             </p>
           )}
           {card.official_page_url && (
