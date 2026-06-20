@@ -81,6 +81,34 @@ export type CampaignRankingAdminResult = {
   overflow: boolean
 }
 
+// ---- State resolution ----
+
+export type CampaignState = 'disabled' | 'scheduled' | 'active' | 'ended'
+
+/**
+ * Resolves the effective campaign state from settings + current time.
+ *
+ * disabled  : enabled=OFF (status !== 'active') or missing dates
+ * scheduled : enabled=ON, now < startIso
+ * active    : enabled=ON, startIso <= now < endIso
+ * ended     : enabled=ON, now >= endIso
+ */
+export function resolveCampaignState(settings: CampaignSettings, now?: Date): CampaignState {
+  if (settings.status !== 'active') return 'disabled'
+  if (!settings.startIso || !settings.endIso) return 'disabled'
+  const nowMs = (now ?? new Date()).getTime()
+  const startMs = new Date(settings.startIso).getTime()
+  const endMs = new Date(settings.endIso).getTime()
+  if (nowMs < startMs) return 'scheduled'
+  if (nowMs < endMs) return 'active'
+  return 'ended'
+}
+
+/** Backward-compat wrapper: true only when state === 'active' */
+export function isCampaignCurrentlyActive(settings: CampaignSettings): boolean {
+  return resolveCampaignState(settings) === 'active'
+}
+
 // ---- Helpers ----
 
 type ActivityRow = { user_id: string | null; created_at: string | null }
@@ -93,14 +121,6 @@ type PageFetcher = (from: number, to: number) => PromiseLike<{
 export function toJstDate(utcIso: string): string {
   const jstMs = new Date(utcIso).getTime() + 9 * 60 * 60 * 1000
   return new Date(jstMs).toISOString().slice(0, 10)
-}
-
-// Returns true only when status=active AND current UTC time is within [startIso, endIso]
-export function isCampaignCurrentlyActive(settings: CampaignSettings): boolean {
-  if (settings.status !== 'active') return false
-  if (!settings.startIso || !settings.endIso) return false
-  const now = Date.now()
-  return now >= new Date(settings.startIso).getTime() && now <= new Date(settings.endIso).getTime()
 }
 
 export function toDisplayJst(isoJst: string): string {

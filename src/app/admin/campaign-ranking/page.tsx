@@ -17,6 +17,7 @@ import {
 import {
   fetchCampaignRankingFull,
   fetchCampaignSettings,
+  resolveCampaignState,
   toDisplayJst,
   type AdminCampaignEntry,
   type CampaignRankingAdminResult,
@@ -113,12 +114,15 @@ export default async function CampaignRankingPage({
 
   const { status, title, startIso, endIso, prize, rulesUrl } = settings
 
-  const STATUS_LABELS: Record<string, string> = {
-    draft: '下書き（非公開）',
+  const campaignState = resolveCampaignState(settings)
+  const STATE_LABELS = {
+    disabled: '無効',
+    scheduled: '予約中',
     active: '開催中',
     ended: '終了',
-    finalized: '確定済み',
-  }
+  } as const
+
+  const isEnabled = status === 'active'
 
   const ERROR_MESSAGES: Record<string, string> = {
     unauthorized: '認証エラーです。再ログインしてください',
@@ -163,15 +167,25 @@ export default async function CampaignRankingPage({
       )}
 
       <p className="text-xs text-gray-500 mb-4">
-        投稿者ランキング企画の開催期間や公開状態を設定します。設定を保存しても、公開ランキング機能が実装されるまでは一般画面には表示されません。
+        投稿者ランキング企画の設定。有効ONかつ期間内の場合、<strong>/ranking</strong> にキャンペーンランキングが公開表示されます。終了後も結果として表示されます。
       </p>
 
       {/* Settings display */}
       <div className="bg-white border border-gray-200 p-4 mb-4">
         <h2 className="font-bold text-blue-700 mb-3 text-xs uppercase tracking-wide">現在の設定</h2>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
-          <dt className="text-gray-500 whitespace-nowrap">ステータス</dt>
-          <dd className="text-gray-800 font-medium">{STATUS_LABELS[status] ?? status}</dd>
+          <dt className="text-gray-500 whitespace-nowrap">キャンペーン有効</dt>
+          <dd className={`font-bold ${isEnabled ? 'text-green-700' : 'text-gray-400'}`}>
+            {isEnabled ? 'ON（有効）' : 'OFF（無効）'}
+          </dd>
+          <dt className="text-gray-500 whitespace-nowrap">現在の状態</dt>
+          <dd className={`font-medium ${
+            campaignState === 'active' ? 'text-green-700' :
+            campaignState === 'scheduled' ? 'text-blue-600' :
+            campaignState === 'ended' ? 'text-gray-500' : 'text-gray-400'
+          }`}>
+            {STATE_LABELS[campaignState]}
+          </dd>
           <dt className="text-gray-500 whitespace-nowrap">タイトル</dt>
           <dd className="text-gray-800">{title || '（未設定）'}</dd>
           <dt className="text-gray-500 whitespace-nowrap">開始日時 (JST)</dt>
@@ -190,20 +204,34 @@ export default async function CampaignRankingPage({
         <h2 className="font-bold text-blue-700 mb-3 text-xs uppercase tracking-wide">設定を編集</h2>
         <form action={saveCampaignRankingAction} className="space-y-3">
           <div>
-            <label className="block text-xs text-gray-600 mb-0.5">
-              ステータス <span className="text-red-500">*</span>
+            <label className="block text-xs text-gray-600 mb-1">
+              キャンペーン有効 <span className="text-red-500">*</span>
             </label>
-            <select
-              name="campaign_status"
-              defaultValue={status}
-              className="border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400 w-48"
-              required
-            >
-              <option value="draft">下書き（非公開）</option>
-              <option value="active">開催中</option>
-              <option value="ended">終了</option>
-              <option value="finalized">確定済み</option>
-            </select>
+            <div className="flex gap-4 text-sm">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="campaign_enabled"
+                  value="on"
+                  defaultChecked={isEnabled}
+                  className="accent-green-600"
+                />
+                <span className="font-medium text-green-700">ON（有効）</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="campaign_enabled"
+                  value="off"
+                  defaultChecked={!isEnabled}
+                  className="accent-gray-500"
+                />
+                <span className="text-gray-600">OFF（無効）</span>
+              </label>
+            </div>
+            <p className="mt-1 text-[11px] text-gray-400">
+              実際の公開状態は開始・終了日時から自動判定されます
+            </p>
           </div>
 
           <div>
