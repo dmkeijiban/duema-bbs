@@ -90,7 +90,7 @@ async function CampaignRankingSection() {
   // 未設定・無効・開始前は表示しない
   if (state === 'disabled' || state === 'scheduled') return null
 
-  const result = await fetchCampaignRankingPublic(settings.startIso, settings.endIso)
+  const result = await fetchCampaignRankingPublic(settings.startIso, settings.endIso, state === 'active')
   const startLabel = toDisplayJst(settings.startIso)
   const endLabel = toDisplayJst(settings.endIso)
   const isEnded = state === 'ended'

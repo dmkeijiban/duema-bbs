@@ -397,12 +397,16 @@ export async function fetchCampaignRankingFull(
 export async function fetchCampaignRankingPublic(
   startIso: string,
   endIso: string,
+  includeZeroPt = false,
 ): Promise<CampaignRankingPublicResult> {
   const full = await fetchCampaignRankingFull(startIso, endIso)
   if (full.error) return { entries: [], error: full.error, overflow: full.overflow }
 
   const entries: PublicCampaignEntry[] = []
+  // Track all users from activity data (eligible or not) to avoid double-counting
+  const seenUserIds = new Set<string>(full.entries.map(e => e.userId))
   let rank = 0
+
   for (const e of full.entries) {
     if (e.excludeReasons.length > 0) continue
     if (!e.profile?.profile_slug) continue
@@ -419,6 +423,39 @@ export async function fetchCampaignRankingPublic(
       ratingDays: e.ratingDays,
     })
     if (rank >= MAX_PUBLIC_DISPLAY) break
+  }
+
+  // During active campaign: append eligible users with 0pt (no campaign-period activity)
+  if (includeZeroPt && entries.length < MAX_PUBLIC_DISPLAY) {
+    const supabase = createAdminClient()
+    const { data: zeroPtProfiles } = await supabase
+      .from('profiles')
+      .select('id, display_name, profile_slug, avatar_url')
+      .eq('profile_hidden', false)
+      .eq('ranking_enabled', true)
+      .eq('rank_excluded', false)
+      .eq('account_suspended', false)
+      .is('withdrawn_at', null)
+      .not('profile_slug', 'is', null)
+      .order('created_at', { ascending: true })
+
+    for (const p of zeroPtProfiles ?? []) {
+      if (entries.length >= MAX_PUBLIC_DISPLAY) break
+      if (seenUserIds.has(p.id)) continue
+      if (!p.profile_slug) continue
+      rank++
+      entries.push({
+        rank,
+        displayName: p.display_name ?? p.profile_slug,
+        profileSlug: p.profile_slug,
+        avatarUrl: p.avatar_url,
+        totalPoints: 0,
+        threadCount: 0,
+        postCount: 0,
+        reviewCount: 0,
+        ratingDays: 0,
+      })
+    }
   }
 
   return { entries, error: null, overflow: false }
