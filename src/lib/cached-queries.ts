@@ -661,7 +661,7 @@ export const getCachedUserRankings = unstable_cache(
       return { monthly: [], total: [] }
     }
   },
-  ['user-rankings-public-v5'],
+  ['user-rankings-public-v6'],
   { revalidate: 21600, tags: ['user-rankings'] }
 )
 
