@@ -3,7 +3,7 @@ import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadCard } from '@/components/ThreadCard'
 import { SafeThumbnail } from '@/components/SafeThumbnail'
 import { SITE_URL } from '@/lib/site-config'
-import { getCachedCategories, getCachedUserRankings, UserRankingRow } from '@/lib/cached-queries'
+import { getCachedCategories, getCachedUserRankings, getCachedCampaignRanking, UserRankingRow } from '@/lib/cached-queries'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { ThreadListHeader } from '@/components/ThreadListHeader'
@@ -12,7 +12,7 @@ import { withFallbackThumbnails, DEFAULT_THREAD_THUMBNAIL } from '@/lib/thumbnai
 import { resolveImageUrl } from '@/lib/utils'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
-import { fetchCampaignSettings, fetchCampaignRankingPublic, resolveCampaignState, toDisplayJst } from '@/lib/campaign-ranking'
+import { resolveCampaignState, toDisplayJst } from '@/lib/campaign-ranking'
 
 export const revalidate = 3600
 
@@ -180,16 +180,16 @@ function RankingUserMeta({
 }
 
 async function CampaignRankingSection() {
-  const settings = await fetchCampaignSettings()
+  const { settings, ranking: result, cachedDateJst } = await getCachedCampaignRanking()
   const state = resolveCampaignState(settings)
 
   // 未設定・無効・開始前は表示しない
   if (state === 'disabled' || state === 'scheduled') return null
 
-  const result = await fetchCampaignRankingPublic(settings.startIso, settings.endIso, state === 'active')
   const startLabel = toDisplayJst(settings.startIso)
   const endLabel = toDisplayJst(settings.endIso)
   const isEnded = state === 'ended'
+  const lastUpdatedLabel = cachedDateJst.replace(/-/g, '/') + ' 00:00'
 
   return (
     <section className="mb-4 overflow-hidden border border-yellow-300 bg-yellow-50">
@@ -208,6 +208,9 @@ async function CampaignRankingSection() {
         </div>
         <p className="mt-0.5 text-[11px] text-yellow-700">
           期間：{startLabel} 〜 {endLabel}
+        </p>
+        <p className="mt-0.5 text-[11px] text-yellow-600">
+          ランキングは1日1回更新されます（最終更新：{lastUpdatedLabel}）
         </p>
       </div>
       {result.error ? (

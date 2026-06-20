@@ -4,8 +4,8 @@ import { ProfileHeaderCard } from '@/components/ProfileHeaderCard'
 import { UserProfileShareButtons } from '@/components/UserProfileShareButtons'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings } from '@/lib/cached-queries'
-import { fetchCampaignSettings, fetchCampaignRankingPublic, resolveCampaignState } from '@/lib/campaign-ranking'
+import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings, getCachedCampaignRanking } from '@/lib/cached-queries'
+import { resolveCampaignState } from '@/lib/campaign-ranking'
 
 export const dynamic = 'force-dynamic'
 
@@ -164,13 +164,16 @@ export default async function UserProfilePage({
     'youtu.be',
   ])
 
-  const [recentThreads, recentPosts, rankings, activityCounts, campaignSettings] = await Promise.all([
+  const [recentThreads, recentPosts, rankings, activityCounts, cachedCampaign] = await Promise.all([
     getCachedUserThreads(profile.id),
     getCachedUserPosts(profile.id),
     getCachedUserRankings(),
     getUserActivityCounts(profile.id),
-    fetchCampaignSettings(),
+    getCachedCampaignRanking(),
   ])
+
+  const campaignSettings = cachedCampaign.settings
+  const campaignResult = cachedCampaign.ranking
 
   let campaignRank: number | null = null
   let campaignPoints: number | null = null
@@ -178,10 +181,6 @@ export default async function UserProfilePage({
 
   const campaignState = resolveCampaignState(campaignSettings)
   if (campaignState === 'active' || campaignState === 'ended') {
-    const campaignResult = await fetchCampaignRankingPublic(
-      campaignSettings.startIso,
-      campaignSettings.endIso,
-    )
     const entry = campaignResult.entries.find((e) => e.profileSlug === profile.profile_slug)
     if (campaignState === 'active') {
       // 開催中: 圏外・0pt でも「参加中」バッジを表示

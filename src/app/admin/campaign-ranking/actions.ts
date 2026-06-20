@@ -1,7 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { verifyAdminCookie } from '@/lib/admin-auth'
@@ -100,6 +100,7 @@ export async function createCampaignEventAction(formData: FormData): Promise<voi
 
   revalidatePath('/admin/campaign-ranking')
   revalidatePath('/ranking')
+  revalidateTag('campaign-ranking', { expire: 0 })
   redirect(`/admin/campaign-ranking/${created.id}?created=1`)
 }
 
@@ -138,6 +139,7 @@ export async function updateCampaignEventAction(formData: FormData): Promise<voi
 
   revalidatePath('/admin/campaign-ranking')
   revalidatePath('/ranking')
+  revalidateTag('campaign-ranking', { expire: 0 })
   redirect(`/admin/campaign-ranking/${id}?saved=1`)
 }
 
@@ -164,5 +166,6 @@ export async function deleteCampaignEventAction(formData: FormData): Promise<voi
 
   revalidatePath('/admin/campaign-ranking')
   revalidatePath('/ranking')
+  revalidateTag('campaign-ranking', { expire: 0 })
   redirect('/admin/campaign-ranking?deleted=1')
 }
