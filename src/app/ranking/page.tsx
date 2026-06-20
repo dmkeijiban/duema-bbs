@@ -12,7 +12,7 @@ import { withFallbackThumbnails, DEFAULT_THREAD_THUMBNAIL } from '@/lib/thumbnai
 import { resolveImageUrl } from '@/lib/utils'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
-import { fetchCampaignSettings, fetchCampaignRankingPublic, isCampaignCurrentlyActive, toDisplayJst } from '@/lib/campaign-ranking'
+import { fetchCampaignSettings, fetchCampaignRankingPublic, resolveCampaignState, toDisplayJst } from '@/lib/campaign-ranking'
 
 export const revalidate = 3600
 
@@ -85,21 +85,34 @@ function RankingAvatar({ row, rank }: { row: UserRankingRow; rank: number }) {
 
 async function CampaignRankingSection() {
   const settings = await fetchCampaignSettings()
-  if (!isCampaignCurrentlyActive(settings)) return null
+  const state = resolveCampaignState(settings)
+
+  // 未設定・無効・開始前は表示しない
+  if (state === 'disabled' || state === 'scheduled') return null
 
   const result = await fetchCampaignRankingPublic(settings.startIso, settings.endIso)
   const startLabel = toDisplayJst(settings.startIso)
   const endLabel = toDisplayJst(settings.endIso)
+  const isEnded = state === 'ended'
 
   return (
     <section className="mb-4 overflow-hidden border border-yellow-300 bg-yellow-50">
       <div className="border-b border-yellow-200 bg-yellow-100 px-3 py-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-bold text-yellow-900">🏆 {settings.title}</h3>
-          <span className="rounded-full border border-yellow-300 bg-white px-2 py-0.5 text-[11px] font-bold text-yellow-700">
-            開催中
+          <h3 className="text-sm font-bold text-yellow-900">
+            🏆 {settings.title}{isEnded ? ' 結果' : ''}
+          </h3>
+          <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${
+            isEnded
+              ? 'border-gray-300 bg-white text-gray-600'
+              : 'border-yellow-300 bg-white text-yellow-700'
+          }`}>
+            {isEnded ? '終了' : '開催中'}
           </span>
         </div>
+        {isEnded && (
+          <p className="mt-0.5 text-[11px] text-gray-500">終了しました</p>
+        )}
         <p className="mt-0.5 text-[11px] text-yellow-700">
           期間：{startLabel} 〜 {endLabel}
         </p>
@@ -110,7 +123,7 @@ async function CampaignRankingSection() {
         </div>
       ) : result.entries.length === 0 ? (
         <div className="px-3 py-6 text-center text-sm text-yellow-700">
-          期間中のポイントはまだありません
+          {isEnded ? 'ランキング対象者はいませんでした' : '期間中のポイントはまだありません'}
         </div>
       ) : (
         <div className="space-y-2 p-2">
@@ -157,7 +170,7 @@ async function CampaignRankingSection() {
                     <span className="ml-2">スレッド{entry.threadCount}件</span>
                   </div>
                 </div>
-                <div className="whitespace-nowrap text-right font-mono text-base font-black text-yellow-700">
+                <div className={`whitespace-nowrap text-right font-mono text-base font-black ${isEnded ? 'text-gray-700' : 'text-yellow-700'}`}>
                   {entry.totalPoints}pt
                 </div>
               </div>

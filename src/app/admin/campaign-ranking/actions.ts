@@ -16,13 +16,6 @@ async function checkAdmin() {
   }
 }
 
-const VALID_STATUSES = ['draft', 'active', 'ended', 'finalized'] as const
-type CampaignStatus = (typeof VALID_STATUSES)[number]
-
-function isValidStatus(v: string): v is CampaignStatus {
-  return (VALID_STATUSES as readonly string[]).includes(v)
-}
-
 // Returns normalized "/thread/{id}" or "" (empty = not set), or null if invalid
 function validateAndNormalizeRulesUrl(raw: string): string | null {
   if (!raw) return ''
@@ -40,16 +33,15 @@ export async function saveCampaignRankingAction(formData: FormData): Promise<voi
     redirect('/admin/campaign-ranking?error=unauthorized')
   }
 
-  const status = (formData.get('campaign_status') as string)?.trim()
+  const enabled = (formData.get('campaign_enabled') as string)?.trim()
+  // ON → active (表示される), OFF → draft (非表示)
+  const status = enabled === 'on' ? 'active' : 'draft'
   const title = (formData.get('campaign_title') as string)?.trim()
   const startRaw = (formData.get('campaign_start') as string)?.trim()
   const endRaw = (formData.get('campaign_end') as string)?.trim()
   const prize = (formData.get('campaign_prize') as string)?.trim()
   const rulesUrlRaw = (formData.get('campaign_rules_url') as string)?.trim()
 
-  if (!isValidStatus(status)) {
-    redirect('/admin/campaign-ranking?error=invalid_status')
-  }
   if (!title || !startRaw || !endRaw) {
     redirect('/admin/campaign-ranking?error=required')
   }

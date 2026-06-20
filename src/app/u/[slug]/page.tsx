@@ -5,7 +5,7 @@ import { UserProfileShareButtons } from '@/components/UserProfileShareButtons'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings } from '@/lib/cached-queries'
-import { fetchCampaignSettings, fetchCampaignRankingPublic, isCampaignCurrentlyActive } from '@/lib/campaign-ranking'
+import { fetchCampaignSettings, fetchCampaignRankingPublic, resolveCampaignState } from '@/lib/campaign-ranking'
 
 export const dynamic = 'force-dynamic'
 
@@ -176,18 +176,29 @@ export default async function UserProfilePage({
   let campaignPoints: number | null = null
   let campaignTitle: string | null = null
 
-  if (isCampaignCurrentlyActive(campaignSettings)) {
-    campaignTitle = campaignSettings.title
+  const campaignState = resolveCampaignState(campaignSettings)
+  if (campaignState === 'active' || campaignState === 'ended') {
     const campaignResult = await fetchCampaignRankingPublic(
       campaignSettings.startIso,
       campaignSettings.endIso,
     )
     const entry = campaignResult.entries.find((e) => e.profileSlug === profile.profile_slug)
-    if (entry) {
-      campaignRank = entry.rank
-      campaignPoints = entry.totalPoints
+    if (campaignState === 'active') {
+      // 開催中: 圏外・0pt でも「参加中」バッジを表示
+      campaignTitle = campaignSettings.title
+      if (entry) {
+        campaignRank = entry.rank
+        campaignPoints = entry.totalPoints
+      } else {
+        campaignPoints = 0
+      }
     } else {
-      campaignPoints = 0
+      // 終了後: トップ30入りユーザーのみ最終順位バッジを表示
+      if (entry) {
+        campaignTitle = campaignSettings.title
+        campaignRank = entry.rank
+        campaignPoints = entry.totalPoints
+      }
     }
   }
 
