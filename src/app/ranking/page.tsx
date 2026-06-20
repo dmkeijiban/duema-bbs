@@ -110,9 +110,6 @@ async function CampaignRankingSection() {
             {isEnded ? '終了' : '開催中'}
           </span>
         </div>
-        {isEnded && (
-          <p className="mt-0.5 text-[11px] text-gray-500">終了しました</p>
-        )}
         <p className="mt-0.5 text-[11px] text-yellow-700">
           期間：{startLabel} 〜 {endLabel}
         </p>
@@ -132,11 +129,9 @@ async function CampaignRankingSection() {
             return (
               <div
                 key={entry.profileSlug}
-                className={`grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-                  deco?.card ?? 'border-gray-200 bg-white'
-                }`}
+                className="grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
               >
-                <div className={`text-center font-mono font-black ${deco?.rank ?? 'text-gray-500'}`}>
+                <div className="text-center font-mono font-black text-gray-700">
                   <span className="block text-lg leading-none">
                     {deco?.medal ?? entry.rank}
                   </span>
@@ -149,7 +144,7 @@ async function CampaignRankingSection() {
                     <ProfileAvatar src={entry.avatarUrl} alt={`${entry.displayName}のアイコン`} size="md" />
                   ) : (
                     <span
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ring-1 ${deco?.avatar ?? 'bg-yellow-50 text-yellow-700 ring-yellow-200'}`}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ring-1 bg-yellow-50 text-yellow-700 ring-yellow-200"
                       aria-hidden="true"
                     >
                       {entry.displayName.trim().charAt(0) || '?'}
@@ -212,11 +207,9 @@ function UserRankingList({
           {rows.map((row, index) => (
             <div
               key={row.profile_slug}
-              className={`grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-                rankDecoration[index]?.card ?? 'border-gray-200 bg-white'
-              }`}
+              className="grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
             >
-              <div className={`text-center font-mono font-black ${rankDecoration[index]?.rank ?? 'text-gray-500'}`}>
+              <div className="text-center font-mono font-black text-gray-700">
                 <span className="block text-lg leading-none">{rankDecoration[index]?.medal ?? index + 1}</span>
                 {index < 3 && (
                   <span className="mt-1 block text-[10px] leading-none text-gray-500">

@@ -420,7 +420,7 @@ export const getCachedUserPosts = (userId: string): Promise<UserPostRow[]> =>
   )()
 
 const USER_RANKING_PROFILE_LIMIT = 100
-const USER_RANKING_LIMIT = 30
+const USER_RANKING_LIMIT = 10
 const USER_RANKING_FETCH_LIMIT = 10000
 const USER_RANKING_THREAD_POINT = 2
 const USER_RANKING_POST_POINT = 1
@@ -647,7 +647,7 @@ export const getCachedUserRankings = unstable_cache(
       return { monthly: [], total: [] }
     }
   },
-  ['user-rankings-public-v3'],
+  ['user-rankings-public-v4'],
   { revalidate: 21600, tags: ['user-rankings'] }
 )
 
