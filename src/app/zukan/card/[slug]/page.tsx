@@ -238,7 +238,10 @@ export default async function ZukanCardPage({
               <span className="font-mono text-xs text-gray-400">{card.rarity}</span>
             )}
           </div>
-          <h1 className="mt-1 text-xl font-bold text-gray-800">{card.name}</h1>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-bold text-gray-800">{card.name}</h1>
+            <ShareButtons cardName={card.name} />
+          </div>
           {pack && (
             <div className="mt-1 text-xs text-gray-500">
               収録：<Link href={packHref} className="text-blue-600 hover:underline">{packLabel}</Link>
@@ -276,10 +279,6 @@ export default async function ZukanCardPage({
               </a>
             </div>
           )}
-          <div className="mt-4 border-t border-gray-100 pt-3">
-            <h2 className="mb-2 text-xs font-bold text-gray-700">このカードを共有</h2>
-            <ShareButtons cardName={card.name} />
-          </div>
         </div>
       </header>
 

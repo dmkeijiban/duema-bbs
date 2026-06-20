@@ -6,7 +6,6 @@ import dynamic from 'next/dynamic'
 import { createPost } from '@/app/actions/thread'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
-import { SettingEditButton } from './SettingEditButton'
 import { capturePostHogEvent } from '@/lib/posthog-events'
 import { createClient } from '@/lib/supabase'
 import { ProfileAvatar } from './ProfileAvatar'
@@ -34,7 +33,7 @@ interface Props {
   isAdmin?: boolean
 }
 
-export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, isAdmin }: Props) {
+export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props) {
   const [authorName, setAuthorName] = useState('')
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
   const [error, setError] = useState('')
@@ -186,31 +185,21 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange, rules, 
       </div>
 
       {/* ルール・投稿案内 */}
-      <div className="px-3 py-2 text-xs relative setting-content"
-        style={{ background: '#d1ecf1', borderBottom: '1px solid #bee5eb', whiteSpace: rules?.trimStart().startsWith('<') ? undefined : 'pre-wrap' }}>
-        {(rules || isAdmin) && (
+      <div
+        className="px-3 py-2 text-xs leading-relaxed"
+        style={{ background: '#d1ecf1', borderBottom: '1px solid #bee5eb' }}
+      >
+        <p>
+          投稿する前に、<Link href="/guide" className="font-bold text-blue-700 hover:underline">投稿ルール</Link>をご確認ください。
+        </p>
+        {authState.status === 'anon' && (
           <>
-            {rules?.trimStart().startsWith('<')
-              ? <div dangerouslySetInnerHTML={{ __html: rules }} />
-              : rules}
-            {isAdmin && (
-              <span className="absolute top-1 right-1">
-                <SettingEditButton settingKey="thread_rules" initialValue={rules ?? ''} label="スレッド内ルール" />
-              </span>
-            )}
+            <p>
+              <Link href="/login?mode=signup" className="font-bold text-blue-700 hover:underline">アカウントを作成</Link>すると、プロフィールや投稿管理を利用できます。
+            </p>
+            <p>※登録せずに、このまま匿名でコメント投稿することもできます。</p>
           </>
         )}
-        <div className={rules ? 'mt-2' : undefined}>
-          <p>
-            投稿する前に、<Link href="/guide" className="text-blue-700 hover:underline">投稿ルール</Link>をご確認ください。
-          </p>
-          {authState.status === 'anon' && (
-            <p className="mt-1">
-              <Link href="/login?mode=signup" className="text-blue-700 hover:underline">アカウントを作成</Link>すると、プロフィールや投稿管理を利用できます。
-              <span className="ml-1">※登録せずに、このまま匿名でコメント投稿することもできます。</span>
-            </p>
-          )}
-        </div>
       </div>
 
       {/* フォーム */}

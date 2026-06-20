@@ -3,8 +3,8 @@
 import { useTransition, useState } from 'react'
 import { createThread } from '@/app/actions/thread'
 import { Category } from '@/types'
-import { SettingEditButton } from './SettingEditButton'
 import { getPostableConsolidatedCategories } from '@/lib/categories'
+import Link from 'next/link'
 
 interface Props {
   categories: Category[]
@@ -12,7 +12,7 @@ interface Props {
   isAdmin?: boolean
 }
 
-export function InlineNewThread({ categories, newThreadRules, isAdmin }: Props) {
+export function InlineNewThread({ categories }: Props) {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const categoryOptions = getPostableConsolidatedCategories(categories)
@@ -38,20 +38,19 @@ export function InlineNewThread({ categories, newThreadRules, isAdmin }: Props) 
       </div>
 
       <>
-          {/* ルール */}
-          {(newThreadRules || isAdmin) && (
-            <div className="px-4 py-3 text-xs border-b border-gray-200 leading-relaxed relative setting-content"
-              style={{ background: '#d1ecf1', color: '#0c5460', whiteSpace: newThreadRules?.trimStart().startsWith('<') ? undefined : 'pre-wrap' }}>
-              {newThreadRules?.trimStart().startsWith('<')
-                ? <div dangerouslySetInnerHTML={{ __html: newThreadRules }} />
-                : newThreadRules}
-              {isAdmin && (
-                <span className="absolute top-1 right-1">
-                  <SettingEditButton settingKey="new_thread_rules" initialValue={newThreadRules ?? ''} label="新規スレッド作成ルール" />
-                </span>
-              )}
-            </div>
-          )}
+          {/* 投稿案内 */}
+          <div
+            className="px-4 py-3 text-xs border-b border-gray-200 leading-relaxed"
+            style={{ background: '#d1ecf1', color: '#0c5460' }}
+          >
+            <p>
+              投稿する前に、<Link href="/guide" className="font-bold underline">投稿ルール</Link>をご確認ください。
+            </p>
+            <p>
+              <Link href="/login?mode=signup" className="font-bold underline">アカウントを作成</Link>すると、プロフィールや投稿管理を利用できます。
+            </p>
+            <p>※登録せずに、このまま匿名で投稿することもできます。</p>
+          </div>
 
           {/* フォーム */}
           <form onSubmit={handleSubmit} className="text-sm">

@@ -18,7 +18,6 @@ import { FeaturedSummaries } from '@/components/FeaturedSummaries'
 import {
   getCachedCategories,
   getCachedActiveNotices,
-  getCachedSetting,
   getCachedThreadList,
   POPULAR_PAGE_SIZE,
 } from '@/lib/cached-queries'
@@ -241,13 +240,16 @@ function HomeGuideBanner() {
       className="mb-2 flex flex-col gap-2 border px-3 py-2 text-sm text-green-900 md:flex-row md:items-center md:justify-between"
       style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb' }}
     >
-      <p className="leading-relaxed">
-        デュエルマスターズ専門の掲示板です。デッキ相談・カード評価・大会情報など何でもどうぞ。初めての方は
-        <Link href="/guide" className="font-bold underline underline-offset-2 hover:opacity-80">
-          スレッドの立て方
-        </Link>
-        をご確認ください。
-      </p>
+      <div className="leading-relaxed">
+        <p>デッキ相談・カード評価・大会情報など、デュエマの話題なら何でもどうぞ。</p>
+        <p>
+          初めての方は
+          <Link href="/guide" className="font-bold underline underline-offset-2 hover:opacity-80">
+            スレッドの立て方
+          </Link>
+          をご確認ください。
+        </p>
+      </div>
       <div className="flex shrink-0 flex-wrap gap-2">
         <Link
           href="/login?mode=signup"
@@ -307,23 +309,10 @@ async function BottomNavServer({ params }: { params: SearchParams }) {
   return <BottomNav current={currentNavFromSort(sort)} currentCategory={params.category} categories={categories} />
 }
 
-// ── InlineNewThread（カテゴリ＋スレ作成ルール取得後に差し替え）
+// ── InlineNewThread（カテゴリ取得後に差し替え）
 async function InlineNewThreadServer() {
-  const [categories, newThreadRules] = await Promise.all([
-    getCachedCategories(),
-    getCachedSetting(
-      'new_thread_rules',
-      `1.似たスレッドがないか確認してください。
-2.フライング・リーク情報は禁止です。
-3.タイトルでのネタバレを避けてください。
-4.画像は権利を侵害しない物を添付してください。
-5.ミスで立てたスレは必ず削除を押してください。
-6.他人が不快になるようなタイトルは避けてください。
-7.スレッド作成は承認制とする場合があります。
-8.不適切と判断した場合は削除・ブロックする事があります。`,
-    ),
-  ])
-  return <InlineNewThread categories={categories} newThreadRules={newThreadRules} />
+  const categories = await getCachedCategories()
+  return <InlineNewThread categories={categories} />
 }
 
 // ──────────────────────────────────────────────────
@@ -404,10 +393,10 @@ export default async function Home({
 
         {/* まとめバナー（静的・即座に描画） */}
         <Link
-          href="/summary"
+          href="/ranking"
           className="mb-2 flex items-center justify-between px-3 py-2 border border-blue-200 bg-blue-50 text-sm text-gray-900 hover:bg-blue-100 transition-colors"
         >
-          <span>📊 人気スレッドまとめ（週間・月間ランキング）</span>
+          <span>📊 人気ランキングまとめ（週間・総合）</span>
           <span className="text-xs ml-2 shrink-0">一覧へ</span>
         </Link>
 
