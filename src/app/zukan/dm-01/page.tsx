@@ -46,7 +46,7 @@ const PAGE_SIZE = 60
 
 const PACK_DESCRIPTION_PARAGRAPHS = [
   '2002年5月30日に発売された、デュエル・マスターズ最初の弾。火・水・自然・光・闇の5文明から全120種を収録しています。',
-  '1パック5枚入り・150円（税抜）。',
+  '1パック5枚入り・150円（税込）。',
 ]
 
 // --- モックフォールバック ---------------------------------------------------
@@ -309,7 +309,7 @@ export default async function ZukanDm01Page({
                 <div><dt className="inline font-bold">収録：</dt><dd className="inline">{pack.card_count}種</dd></div>
               )}
             </div>
-            <div><dt className="inline font-bold">パック内容：</dt><dd className="inline">5枚入り 150円（税抜）</dd></div>
+            <div><dt className="inline font-bold">パック内容：</dt><dd className="inline">5枚入り 150円（税込）</dd></div>
           </dl>
           <div className="mt-3 space-y-2 text-sm leading-relaxed text-gray-700">
             {PACK_DESCRIPTION_PARAGRAPHS.map(paragraph => (
@@ -330,12 +330,12 @@ export default async function ZukanDm01Page({
             <h2 className="text-sm font-bold text-gray-800">{pack.code} {pack.name}の代表カード</h2>
             <Link href="#card-list" className="text-xs text-blue-600 hover:underline">収録カードをもっと見る →</Link>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
+          <div className="flex snap-x gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
             {REP_CARDS.map(rep => {
               const dbCard = dbRepCards?.find(c => c.slug === rep.slug) ?? null
               const href = dbCard ? `/zukan/card/${rep.slug}` : '#'
               const isLinked = !!dbCard
-              const cardClass = `w-[44%] flex-shrink-0 sm:w-auto border border-gray-300 bg-white ${isLinked ? 'block cursor-pointer transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]' : 'opacity-60'}`
+              const cardClass = `w-[46%] flex-shrink-0 snap-start sm:w-auto border border-gray-300 bg-white ${isLinked ? 'block cursor-pointer transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]' : 'opacity-60'}`
               const cardBody = (
                 <>
                   <CardThumb
