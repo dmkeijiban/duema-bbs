@@ -433,6 +433,8 @@ type UserRankingProfile = {
   display_name: string | null
   profile_slug: string | null
   avatar_url: string | null
+  x_url: string | null
+  youtube_url: string | null
 }
 
 type UserRankingActivity = {
@@ -443,6 +445,8 @@ export type UserRankingRow = {
   display_name: string
   profile_slug: string
   avatar_url: string | null
+  x_url: string | null
+  youtube_url: string | null
   thread_count: number
   post_count: number
   points: number
@@ -504,6 +508,8 @@ function buildUserRanking(
         display_name: profile.display_name || '(未設定)',
         profile_slug: profile.profile_slug || '',
         avatar_url: profile.avatar_url || null,
+        x_url: profile.x_url || null,
+        youtube_url: profile.youtube_url || null,
         thread_count: threadCount,
         post_count: postCount,
         points:
@@ -531,7 +537,7 @@ export const getCachedUserRankings = unstable_cache(
 
       const { data: profilesData } = await supabase
         .from('profiles')
-        .select('id, display_name, profile_slug, avatar_url')
+        .select('id, display_name, profile_slug, avatar_url, x_url, youtube_url')
         .eq('profile_hidden', false)
         .eq('ranking_enabled', true)
         .eq('rank_excluded', false)

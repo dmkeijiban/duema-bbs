@@ -83,6 +83,56 @@ function RankingAvatar({ row, rank }: { row: UserRankingRow; rank: number }) {
   )
 }
 
+function safeRankingSocialUrl(url: string | null | undefined, allowedHosts: string[]) {
+  if (!url) return null
+  try {
+    const parsed = new URL(url)
+    const host = parsed.hostname.toLowerCase()
+    if (!allowedHosts.some(allowed => host === allowed || host.endsWith(`.${allowed}`))) {
+      return null
+    }
+    return parsed.toString()
+  } catch {
+    return null
+  }
+}
+
+function RankingSocialLinks({
+  xUrl,
+  youtubeUrl,
+}: {
+  xUrl: string | null | undefined
+  youtubeUrl: string | null | undefined
+}) {
+  const safeXUrl = safeRankingSocialUrl(xUrl, ['x.com', 'twitter.com'])
+  const safeYoutubeUrl = safeRankingSocialUrl(youtubeUrl, [
+    'youtube.com',
+    'www.youtube.com',
+    'm.youtube.com',
+    'youtu.be',
+  ])
+
+  if (!safeXUrl && !safeYoutubeUrl) return null
+
+  const linkClass =
+    'inline-flex items-center rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[10px] font-bold leading-none text-gray-600 hover:border-blue-300 hover:text-blue-700'
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1 align-middle">
+      {safeXUrl && (
+        <a href={safeXUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>
+          X
+        </a>
+      )}
+      {safeYoutubeUrl && (
+        <a href={safeYoutubeUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>
+          YouTube
+        </a>
+      )}
+    </span>
+  )
+}
+
 async function CampaignRankingSection() {
   const settings = await fetchCampaignSettings()
   const state = resolveCampaignState(settings)
@@ -152,9 +202,12 @@ async function CampaignRankingSection() {
                   )}
                 </Link>
                 <div className="min-w-0">
-                  <Link href={`/u/${entry.profileSlug}`} className="font-bold text-blue-700 hover:underline">
-                    {entry.displayName}
-                  </Link>
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <Link href={`/u/${entry.profileSlug}`} className="font-bold text-blue-700 hover:underline">
+                      {entry.displayName}
+                    </Link>
+                    <RankingSocialLinks xUrl={entry.xUrl} youtubeUrl={entry.youtubeUrl} />
+                  </div>
                   {entry.rank === 1 && (
                     <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${rankDecoration[0].badge}`}>
                       {settings.title} 1位
@@ -221,17 +274,20 @@ function UserRankingList({
                 <RankingAvatar row={row} rank={index + 1} />
               </Link>
               <div className="min-w-0">
-                <Link
-                  href={`/u/${row.profile_slug}`}
-                  className="font-bold text-blue-700 hover:underline"
-                >
-                  {row.display_name}
-                </Link>
-                {index === 0 && (
-                  <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${rankDecoration[0].badge}`}>
-                    {topLabel}
-                  </span>
-                )}
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  <Link
+                    href={`/u/${row.profile_slug}`}
+                    className="font-bold text-blue-700 hover:underline"
+                  >
+                    {row.display_name}
+                  </Link>
+                  <RankingSocialLinks xUrl={row.x_url} youtubeUrl={row.youtube_url} />
+                  {index === 0 && (
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${rankDecoration[0].badge}`}>
+                      {topLabel}
+                    </span>
+                  )}
+                </div>
                 <div className="mt-0.5 text-xs text-gray-500">
                   <span>コメント{row.post_count}件</span>
                   <span className="ml-2">スレッド{row.thread_count}件</span>
