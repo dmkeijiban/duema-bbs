@@ -114,18 +114,17 @@ function RankingSocialLinks({
 
   if (!safeXUrl && !safeYoutubeUrl) return null
 
-  const linkClass =
-    'inline-flex items-center rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[10px] font-bold leading-none text-gray-600 hover:border-blue-300 hover:text-blue-700'
-
   return (
     <span className="inline-flex flex-wrap items-center gap-1 align-middle">
       {safeXUrl && (
-        <a href={safeXUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>
+        <a href={safeXUrl} target="_blank" rel="noopener noreferrer"
+           className="inline-flex items-center rounded border border-gray-900 bg-gray-900 px-2 py-1 text-xs font-bold leading-none text-white hover:bg-gray-700">
           X
         </a>
       )}
       {safeYoutubeUrl && (
-        <a href={safeYoutubeUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>
+        <a href={safeYoutubeUrl} target="_blank" rel="noopener noreferrer"
+           className="inline-flex items-center rounded border border-red-600 bg-red-600 px-2 py-1 text-xs font-bold leading-none text-white hover:bg-red-700">
           YouTube
         </a>
       )}
@@ -145,10 +144,13 @@ function CompactActivityBreakdown({
   reviewCount: number
 }) {
   return (
-    <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-gray-500 md:justify-center">
+    <div className="flex flex-wrap items-center gap-x-1 text-xs text-gray-500 md:text-sm">
       <span>スレ{threadCount}</span>
+      <span className="text-gray-300">/</span>
       <span>コメ{postCount}</span>
+      <span className="text-gray-300">/</span>
       <span>評価{ratingCount}</span>
+      <span className="text-gray-300">/</span>
       <span>レビュー{reviewCount}</span>
     </div>
   )
@@ -156,29 +158,23 @@ function CompactActivityBreakdown({
 
 function RankingUserMeta({
   name,
-  slug,
   xUrl,
   youtubeUrl,
   href,
-  badge,
 }: {
   name: string
-  slug: string
   xUrl: string | null | undefined
   youtubeUrl: string | null | undefined
   href: string
-  badge?: React.ReactNode
 }) {
   return (
     <div className="min-w-0">
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-        <Link href={href} className="font-bold text-blue-700 hover:underline">
+        <Link href={href} className="text-sm font-bold text-blue-700 hover:underline">
           {name}
         </Link>
         <RankingSocialLinks xUrl={xUrl} youtubeUrl={youtubeUrl} />
-        {badge}
       </div>
-      <div className="mt-0.5 font-mono text-xs text-gray-400">@{slug}</div>
     </div>
   )
 }
@@ -253,15 +249,9 @@ async function CampaignRankingSection() {
                 </Link>
                 <RankingUserMeta
                   name={entry.displayName}
-                  slug={entry.profileSlug}
                   href={`/u/${entry.profileSlug}`}
                   xUrl={entry.xUrl}
                   youtubeUrl={entry.youtubeUrl}
-                  badge={entry.rank === 1 ? (
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${rankDecoration[0].badge}`}>
-                      {settings.title} 1位
-                    </span>
-                  ) : null}
                 />
                 <CompactActivityBreakdown
                   threadCount={entry.threadCount}
@@ -284,12 +274,10 @@ async function CampaignRankingSection() {
 function UserRankingList({
   title,
   periodLabel,
-  topLabel,
   rows,
 }: {
   title: string
   periodLabel: string
-  topLabel: string
   rows: UserRankingRow[]
 }) {
   return (
@@ -326,15 +314,9 @@ function UserRankingList({
               </Link>
               <RankingUserMeta
                 name={row.display_name}
-                slug={row.profile_slug}
                 href={`/u/${row.profile_slug}`}
                 xUrl={row.x_url}
                 youtubeUrl={row.youtube_url}
-                badge={index === 0 ? (
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${rankDecoration[0].badge}`}>
-                    {topLabel}
-                  </span>
-                ) : null}
               />
               <CompactActivityBreakdown
                 threadCount={row.thread_count}
@@ -358,7 +340,6 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
   const rows = period === 'month' ? rankings.monthly : rankings.total
   const title = period === 'month' ? '今月のランキング' : '総合ランキング'
   const periodLabel = period === 'month' ? '今月' : '総合'
-  const topLabel = period === 'month' ? '今月1位' : '総合1位'
 
   return (
     <section className="mb-4 mt-4">
@@ -391,7 +372,6 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
       <UserRankingList
         title={title}
         periodLabel={periodLabel}
-        topLabel={topLabel}
         rows={rows}
       />
     </section>
