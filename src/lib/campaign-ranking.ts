@@ -95,6 +95,14 @@ export function toJstDate(utcIso: string): string {
   return new Date(jstMs).toISOString().slice(0, 10)
 }
 
+// Returns true only when status=active AND current UTC time is within [startIso, endIso]
+export function isCampaignCurrentlyActive(settings: CampaignSettings): boolean {
+  if (settings.status !== 'active') return false
+  if (!settings.startIso || !settings.endIso) return false
+  const now = Date.now()
+  return now >= new Date(settings.startIso).getTime() && now <= new Date(settings.endIso).getTime()
+}
+
 export function toDisplayJst(isoJst: string): string {
   if (!isoJst) return ''
   const m = isoJst.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
