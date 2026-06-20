@@ -100,7 +100,7 @@ export async function createCampaignEventAction(formData: FormData): Promise<voi
 
   revalidatePath('/admin/campaign-ranking')
   revalidatePath('/ranking')
-  revalidateTag('campaign-ranking')
+  revalidateTag('campaign-ranking', { expire: 0 })
   redirect(`/admin/campaign-ranking/${created.id}?created=1`)
 }
 
@@ -139,7 +139,7 @@ export async function updateCampaignEventAction(formData: FormData): Promise<voi
 
   revalidatePath('/admin/campaign-ranking')
   revalidatePath('/ranking')
-  revalidateTag('campaign-ranking')
+  revalidateTag('campaign-ranking', { expire: 0 })
   redirect(`/admin/campaign-ranking/${id}?saved=1`)
 }
 
@@ -166,6 +166,6 @@ export async function deleteCampaignEventAction(formData: FormData): Promise<voi
 
   revalidatePath('/admin/campaign-ranking')
   revalidatePath('/ranking')
-  revalidateTag('campaign-ranking')
+  revalidateTag('campaign-ranking', { expire: 0 })
   redirect('/admin/campaign-ranking?deleted=1')
 }
