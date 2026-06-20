@@ -138,21 +138,47 @@ function CompactActivityBreakdown({
   postCount,
   ratingCount,
   reviewCount,
-  slug,
 }: {
   threadCount: number
   postCount: number
   ratingCount: number
   reviewCount: number
-  slug?: string
 }) {
   return (
-    <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-gray-500">
+    <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-gray-500 md:justify-center">
       <span>スレ{threadCount}</span>
       <span>コメ{postCount}</span>
       <span>評価{ratingCount}</span>
       <span>レビュー{reviewCount}</span>
-      {slug && <span className="font-mono text-gray-400">@{slug}</span>}
+    </div>
+  )
+}
+
+function RankingUserMeta({
+  name,
+  slug,
+  xUrl,
+  youtubeUrl,
+  href,
+  badge,
+}: {
+  name: string
+  slug: string
+  xUrl: string | null | undefined
+  youtubeUrl: string | null | undefined
+  href: string
+  badge?: React.ReactNode
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        <Link href={href} className="font-bold text-blue-700 hover:underline">
+          {name}
+        </Link>
+        <RankingSocialLinks xUrl={xUrl} youtubeUrl={youtubeUrl} />
+        {badge}
+      </div>
+      <div className="mt-0.5 font-mono text-xs text-gray-400">@{slug}</div>
     </div>
   )
 }
@@ -203,7 +229,7 @@ async function CampaignRankingSection() {
             return (
               <div
                 key={entry.profileSlug}
-                className="grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                className="grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm md:grid-cols-[2.5rem_2.5rem_minmax(12rem,1fr)_minmax(12rem,auto)_auto]"
               >
                 <div className="text-center font-mono font-black text-gray-700">
                   <span className="block text-lg leading-none">
@@ -225,25 +251,24 @@ async function CampaignRankingSection() {
                     </span>
                   )}
                 </Link>
-                <div className="min-w-0">
-                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                    <Link href={`/u/${entry.profileSlug}`} className="font-bold text-blue-700 hover:underline">
-                      {entry.displayName}
-                    </Link>
-                    <RankingSocialLinks xUrl={entry.xUrl} youtubeUrl={entry.youtubeUrl} />
-                  </div>
-                  {entry.rank === 1 && (
-                    <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${rankDecoration[0].badge}`}>
+                <RankingUserMeta
+                  name={entry.displayName}
+                  slug={entry.profileSlug}
+                  href={`/u/${entry.profileSlug}`}
+                  xUrl={entry.xUrl}
+                  youtubeUrl={entry.youtubeUrl}
+                  badge={entry.rank === 1 ? (
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${rankDecoration[0].badge}`}>
                       {settings.title} 1位
                     </span>
-                  )}
-                  <CompactActivityBreakdown
-                    threadCount={entry.threadCount}
-                    postCount={entry.postCount}
-                    ratingCount={entry.ratingDays}
-                    reviewCount={entry.reviewCount}
-                  />
-                </div>
+                  ) : null}
+                />
+                <CompactActivityBreakdown
+                  threadCount={entry.threadCount}
+                  postCount={entry.postCount}
+                  ratingCount={entry.ratingDays}
+                  reviewCount={entry.reviewCount}
+                />
                 <div className={`whitespace-nowrap text-right font-mono text-base font-black ${isEnded ? 'text-gray-700' : 'text-yellow-700'}`}>
                   {entry.totalPoints}pt
                 </div>
@@ -286,7 +311,7 @@ function UserRankingList({
           {rows.map((row, index) => (
             <div
               key={row.profile_slug}
-              className="grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+              className="grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm md:grid-cols-[2.5rem_2.5rem_minmax(12rem,1fr)_minmax(12rem,auto)_auto]"
             >
               <div className="text-center font-mono font-black text-gray-700">
                 <span className="block text-lg leading-none">{rankDecoration[index]?.medal ?? index + 1}</span>
@@ -299,29 +324,24 @@ function UserRankingList({
               <Link href={`/u/${row.profile_slug}`} aria-label={`${row.display_name}の投稿者ページ`}>
                 <RankingAvatar row={row} rank={index + 1} />
               </Link>
-              <div className="min-w-0">
-                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                  <Link
-                    href={`/u/${row.profile_slug}`}
-                    className="font-bold text-blue-700 hover:underline"
-                  >
-                    {row.display_name}
-                  </Link>
-                  <RankingSocialLinks xUrl={row.x_url} youtubeUrl={row.youtube_url} />
-                  {index === 0 && (
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${rankDecoration[0].badge}`}>
-                      {topLabel}
-                    </span>
-                  )}
-                </div>
-                <CompactActivityBreakdown
-                  threadCount={row.thread_count}
-                  postCount={row.post_count}
-                  ratingCount={row.card_rating_count}
-                  reviewCount={row.card_review_count + row.pack_review_count}
-                  slug={row.profile_slug}
-                />
-              </div>
+              <RankingUserMeta
+                name={row.display_name}
+                slug={row.profile_slug}
+                href={`/u/${row.profile_slug}`}
+                xUrl={row.x_url}
+                youtubeUrl={row.youtube_url}
+                badge={index === 0 ? (
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${rankDecoration[0].badge}`}>
+                    {topLabel}
+                  </span>
+                ) : null}
+              />
+              <CompactActivityBreakdown
+                threadCount={row.thread_count}
+                postCount={row.post_count}
+                ratingCount={row.card_rating_count}
+                reviewCount={row.card_review_count + row.pack_review_count}
+              />
               <div className="whitespace-nowrap text-right font-mono text-base font-black text-blue-700">
                 {row.points}pt
               </div>
