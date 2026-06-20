@@ -367,7 +367,7 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
         </Link>
       </div>
       <p className="mb-3 border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700">
-        投稿者ランキングは、スレッド投稿・コメント・図鑑評価・レビューなどの活動から集計しています。
+        投稿者ランキングは、スレッド投稿・コメント・思い出図鑑の評価・思い出レビューなどの活動から集計しています。
       </p>
       <UserRankingList
         title={title}
