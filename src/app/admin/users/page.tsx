@@ -67,13 +67,16 @@ export default async function AdminUsersPage() {
   await requireAdmin()
 
   const supabase = createAdminClient()
-  const { data, error } = await supabase
-    .from('profiles')
-    .select(
-      'id, display_name, profile_slug, created_at, last_login_at, profile_hidden, ranking_enabled, rank_excluded, account_suspended, withdrawn_at'
-    )
-    .order('created_at', { ascending: false })
-    .limit(50)
+  const [{ data, error }, { count }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select(
+        'id, display_name, profile_slug, created_at, last_login_at, profile_hidden, ranking_enabled, rank_excluded, account_suspended, withdrawn_at'
+      )
+      .order('created_at', { ascending: false })
+      .limit(50),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }),
+  ])
 
   const profiles = (data ?? []) as AdminProfile[]
 
@@ -96,6 +99,9 @@ export default async function AdminUsersPage() {
       </div>
 
       <div className="mb-4 border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+        <div className="mb-1 font-semibold">
+          登録ユーザー数：{count ?? '-'}人
+        </div>
         最新50件のプロフィールを読み取り専用で表示しています。更新・削除・停止などの操作はこのページからは行いません。
       </div>
 
