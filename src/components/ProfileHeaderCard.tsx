@@ -146,32 +146,28 @@ export function ProfileHeaderCard({
           <p className="text-lg font-bold text-gray-900 leading-none">{postCountLabel}</p>
           <p className="text-xs text-gray-500 mt-1">コメント</p>
         </div>
-        <div className="px-3 py-3">
+        <Link
+          href="/ranking?type=author&period=month"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-3 py-3 hover:bg-blue-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
+        >
           <p className="text-lg font-bold text-blue-600 leading-none">
             {monthlyRank ? `${monthlyRank}位` : '—'}
           </p>
-          <Link
-            href="/ranking?type=author&period=month"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-gray-500 mt-1 hover:underline inline-block"
-          >
-            今月
-          </Link>
-        </div>
-        <div className="px-3 py-3">
+          <p className="text-xs text-gray-500 mt-1">今月</p>
+        </Link>
+        <Link
+          href="/ranking?type=author&period=all"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-3 py-3 hover:bg-indigo-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400"
+        >
           <p className="text-lg font-bold text-indigo-600 leading-none">
             {totalRank ? `${totalRank}位` : '—'}
           </p>
-          <Link
-            href="/ranking?type=author&period=all"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-gray-500 mt-1 hover:underline inline-block"
-          >
-            総合
-          </Link>
-        </div>
+          <p className="text-xs text-gray-500 mt-1">総合</p>
+        </Link>
       </div>
 
       {actions && (
