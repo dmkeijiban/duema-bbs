@@ -12,7 +12,7 @@ import { SITE_URL } from '@/lib/site-config'
 import { ThreadListHeader } from '@/components/ThreadListHeader'
 import { ThreadListTopContent } from '@/components/ThreadListTopContent'
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 60
 
 export const NAV_LINKS = [
   { label: '↺ 更新順一覧', href: '/update' },

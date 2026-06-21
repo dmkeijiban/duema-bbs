@@ -27,7 +27,7 @@ import { AdBanner } from '@/components/AdBanner'
 import { getCategoryIdsForSlug } from '@/lib/categories'
 
 export const revalidate = 3600
-const TOP_THREAD_PAGE_SIZE = 50
+const TOP_THREAD_PAGE_SIZE = 60
 
 // ── Step 5: カテゴリフィルター時のメタデータ動的生成
 // ?category=slug でアクセスされたとき、タイトル・descriptionを
