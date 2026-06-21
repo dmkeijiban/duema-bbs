@@ -49,7 +49,7 @@ function AnchorLink({ num, allPosts }: AnchorProps) {
     <span className="relative inline-block">
       <a
         href={`#post-${num}`}
-        className="font-medium hover:underline"
+        className="underline hover:opacity-75"
         style={{ color: '#0d6efd' }}
         onMouseEnter={() => setShow(true)}
         onMouseLeave={() => setShow(false)}
@@ -410,7 +410,7 @@ export function PostItem({
           このコメントは削除されました
         </div>
       ) : (
-        <div className="px-3 py-3 text-base text-gray-800 break-words leading-relaxed">
+        <div className="px-3 py-2.5 text-sm text-gray-800 break-words leading-relaxed">
           {renderBody(post.body, allPosts)}
         </div>
       )}
