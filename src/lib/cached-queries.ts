@@ -544,8 +544,10 @@ function buildUserRanking(
     .slice(0, USER_RANKING_LIMIT)
 }
 
-export const getCachedUserRankings = unstable_cache(
-  async (): Promise<UserRankingResult> => {
+export function getCachedUserRankings(): Promise<UserRankingResult> {
+  const dateKey = getJstDateKey()
+  return unstable_cache(
+    async (): Promise<UserRankingResult> => {
     try {
       const supabase = createPublicClient()
       const monthStartIso = getJstMonthStartIso()
@@ -603,7 +605,6 @@ export const getCachedUserRankings = unstable_cache(
           .select('user_id')
           .in('user_id', userIds)
           .eq('is_deleted', false)
-          .eq('is_hidden', false)
           .gte('created_at', monthStartIso)
           .limit(USER_RANKING_FETCH_LIMIT),
         supabase
@@ -627,7 +628,6 @@ export const getCachedUserRankings = unstable_cache(
           .select('user_id')
           .in('user_id', userIds)
           .eq('is_deleted', false)
-          .eq('is_hidden', false)
           .limit(USER_RANKING_FETCH_LIMIT),
         supabase
           .from('zukan_card_reviews')
@@ -668,9 +668,10 @@ export const getCachedUserRankings = unstable_cache(
       return { monthly: [], total: [] }
     }
   },
-  ['user-rankings-public-v6'],
-  { revalidate: 21600, tags: ['user-rankings'] }
-)
+    [`user-rankings-public-v7-${dateKey}`],
+    { revalidate: 86400, tags: ['user-rankings'] },
+  )()
+}
 
 // --- Campaign Ranking (1-day JST cache) ---
 

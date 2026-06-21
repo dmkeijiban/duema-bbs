@@ -260,7 +260,7 @@ async function CampaignRankingSection() {
                   <CompactActivityBreakdown
                     threadCount={entry.threadCount}
                     postCount={entry.postCount}
-                    ratingCount={entry.ratingDays}
+                    ratingCount={entry.ratingCount}
                     reviewCount={entry.reviewCount}
                   />
                   <div className={`ml-auto shrink-0 whitespace-nowrap font-mono text-xl font-black ${isEnded ? 'text-gray-700' : 'text-yellow-700'}`}>
@@ -374,7 +374,7 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
         </Link>
       </div>
       <p className="mb-3 border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700">
-        投稿者ランキングは、スレッド投稿・コメント・思い出図鑑の評価・思い出レビューなどの活動から集計しています。
+        投稿者ランキングは、スレッド投稿・コメント・思い出図鑑の評価・思い出レビューなどの活動から集計しています。ランキングは1日1回更新されます。
       </p>
       <UserRankingList
         title={title}
