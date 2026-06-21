@@ -23,13 +23,13 @@ const AVATAR_RING_COLORS = [
 function RankBadge({ rank }: { rank: number }) {
   if (rank <= 3) {
     return (
-      <span className="absolute top-0.5 left-0.5 text-sm md:text-base leading-none" aria-label={`${rank}位`}>
+      <span className="absolute top-0.5 left-0.5 z-10 text-sm md:text-base leading-none" aria-label={`${rank}位`}>
         {MEDALS[rank - 1]}
       </span>
     )
   }
   return (
-    <span className="absolute top-0.5 left-0.5 text-[9px] md:text-[10px] font-bold text-gray-500 bg-gray-100 rounded px-0.5 py-0.5 leading-none">
+    <span className="absolute top-0.5 left-0.5 z-10 text-[9px] md:text-[10px] font-bold text-gray-500 bg-gray-100 rounded px-0.5 py-0.5 leading-none">
       {rank}位
     </span>
   )
@@ -37,7 +37,7 @@ function RankBadge({ rank }: { rank: number }) {
 
 function PtBadge({ points }: { points: number }) {
   return (
-    <span className="absolute top-0.5 right-0.5 text-[8px] md:text-[9px] font-bold text-white bg-gray-700 rounded px-0.5 py-0.5 leading-none whitespace-nowrap">
+    <span className="absolute top-0.5 right-0.5 z-10 text-[8px] md:text-[9px] font-bold text-white bg-gray-700 rounded px-0.5 py-0.5 leading-none whitespace-nowrap">
       {points}pt
     </span>
   )
@@ -52,14 +52,14 @@ function ShowcaseAvatar({ avatarUrl, displayName, rank }: { avatarUrl: string | 
         alt={`${displayName}のアイコン`}
         loading="lazy"
         decoding="async"
-        className="h-10 w-10 md:h-14 md:w-14 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover"
+        className="h-10 w-10 md:h-20 md:w-20 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover"
       />
     )
   }
   const ringColor = AVATAR_RING_COLORS[(rank - 1) % AVATAR_RING_COLORS.length]
   return (
     <span
-      className={`flex h-10 w-10 md:h-14 md:w-14 items-center justify-center rounded-full text-sm md:text-base font-bold ring-1 ${ringColor}`}
+      className={`flex h-10 w-10 md:h-20 md:w-20 items-center justify-center rounded-full text-sm md:text-xl font-bold ring-1 ${ringColor}`}
       aria-hidden="true"
     >
       {displayName.trim().charAt(0) || '?'}
@@ -72,7 +72,7 @@ function RankingCard({ entry }: { entry: ShowcaseEntry }) {
     <Link
       href={`/u/${entry.profileSlug}`}
       title={entry.displayName}
-      className="relative flex flex-col items-center justify-center bg-white px-0.5 py-2 md:px-1 md:py-3 text-center hover:bg-gray-50 transition-colors"
+      className="relative flex flex-col items-center justify-center bg-white px-0.5 py-2 md:px-1 md:py-1 text-center hover:bg-gray-50 transition-colors"
     >
       <RankBadge rank={entry.rank} />
       <PtBadge points={entry.points} />
@@ -178,10 +178,10 @@ export function TopRankingShowcaseSkeleton() {
       </div>
       <div className="grid grid-cols-5 md:grid-cols-10 gap-px bg-gray-200">
         {[...Array(10)].map((_, i) => (
-          <div key={i} className="relative flex flex-col items-center justify-center bg-white px-0.5 py-2 md:px-1 md:py-3">
+          <div key={i} className="relative flex flex-col items-center justify-center bg-white px-0.5 py-2 md:px-1 md:py-1">
             <div className="absolute top-0.5 left-0.5 h-3.5 w-5 bg-gray-200 rounded" />
             <div className="absolute top-0.5 right-0.5 h-3 w-4 md:w-5 bg-gray-200 rounded" />
-            <div className="h-10 w-10 md:h-14 md:w-14 bg-gray-200 rounded-full" />
+            <div className="h-10 w-10 md:h-20 md:w-20 bg-gray-200 rounded-full" />
           </div>
         ))}
       </div>
