@@ -32,7 +32,7 @@ const TOP_THREAD_PAGE_SIZE = 60
 
 // 'ranking': TOP5ランキング表示（現在）
 // 'threads': おすすめスレッド表示（元の動作に戻す場合はここを変更）
-const TOP_RECOMMENDATION_MODE: 'ranking' | 'threads' = 'ranking'
+const HOME_RECOMMENDATION_MODE: 'ranking' | 'threads' = 'ranking'
 
 // ── Step 5: カテゴリフィルター時のメタデータ動的生成
 // ?category=slug でアクセスされたとき、タイトル・descriptionを
@@ -376,7 +376,7 @@ export default async function Home({
       <h1 className="sr-only">デュエマ掲示板 - デュエルマスターズ専門掲示板</h1>
 
       <div className="max-w-screen-xl mx-auto px-2 pt-2">
-        {TOP_RECOMMENDATION_MODE === 'ranking' ? (
+        {HOME_RECOMMENDATION_MODE === 'ranking' ? (
           <Suspense fallback={<TopRankingShowcaseSkeleton />}>
             <TopRankingShowcase />
           </Suspense>
