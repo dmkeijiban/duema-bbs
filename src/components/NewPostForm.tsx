@@ -41,6 +41,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
   const [scrollTarget, setScrollTarget] = useState<number | null>(null)
   const [showPushButton, setShowPushButton] = useState(false)
   const [pushUnsupported, setPushUnsupported] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const displayCategory = getDisplayCategory(thread.categories)
@@ -147,6 +148,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
             category_slug: thread.categories?.slug ?? null,
             has_image: Boolean(file),
           })
+          setSubmitted(true)
           onBodyChange('')
           setAuthorName('')
           if (fileInputRef.current) fileInputRef.current.value = ''
@@ -260,7 +262,10 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
                 <textarea
                   id="reply-textarea"
                   value={bodyValue}
-                  onChange={e => onBodyChange(e.target.value)}
+                  onChange={e => {
+                    if (submitted) setSubmitted(false)
+                    onBodyChange(e.target.value)
+                  }}
                   required
                   rows={5}
                   maxLength={3000}
@@ -315,6 +320,33 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
           </button>
         </div>
       </form>
+
+      {submitted && (authState.status === 'anon' || authState.status === 'user') && (
+        <div className="mx-3 mb-3 border border-green-300 bg-green-50 px-3 py-2.5 text-xs">
+          <p className="font-medium text-green-700">投稿しました。</p>
+          {authState.status === 'anon' ? (
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-gray-600">
+              <span>登録すると、投稿管理・投稿者ページ・ランキング参加が使えて便利です。</span>
+              <Link
+                href="/login?mode=signup"
+                className="inline-block border border-blue-400 px-2 py-0.5 text-xs font-bold text-blue-600 hover:bg-blue-50"
+              >
+                アカウント登録する
+              </Link>
+            </div>
+          ) : (
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-gray-600">
+              <span>投稿した内容はマイページから確認できます。</span>
+              <Link
+                href="/mypage"
+                className="inline-block border border-blue-400 px-2 py-0.5 text-xs font-bold text-blue-600 hover:bg-blue-50"
+              >
+                マイページを見る
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
