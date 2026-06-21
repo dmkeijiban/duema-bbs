@@ -7,6 +7,8 @@ import {
   CAMPAIGN_REVIEW_POINT,
   CAMPAIGN_REVIEW_DAILY_LIMIT,
   CAMPAIGN_RATING_DAILY_LIMIT,
+  CAMPAIGN_THREAD_CONTRIB_POINT,
+  CAMPAIGN_THREAD_CONTRIB_DAILY_LIMIT,
 } from './ranking-points'
 
 const PAGE_SIZE = 1000
@@ -83,6 +85,7 @@ export type AdminCampaignEntry = {
   postCount: number
   reviewCount: number
   ratingCount: number
+  contributionCount: number
   threadRawCount: number
   postRawCount: number
   cardReviewRawCount: number
@@ -256,6 +259,36 @@ async function fetchAllRows(fetcher: PageFetcher): Promise<{
   return { rows, overflow: false, errorMsg: null }
 }
 
+type PostOwnerRow = {
+  user_id: string | null
+  created_at: string | null
+  threads: { user_id: string | null } | null
+}
+
+type PostOwnerFetcher = (from: number, to: number) => PromiseLike<{
+  data: PostOwnerRow[] | null
+  error: { message: string } | null
+}>
+
+async function fetchAllPostOwnerRows(fetcher: PostOwnerFetcher): Promise<{
+  rows: PostOwnerRow[]
+  overflow: boolean
+  errorMsg: string | null
+}> {
+  const rows: PostOwnerRow[] = []
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const from = page * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+    const { data, error } = await fetcher(from, to)
+    if (error) return { rows: [], overflow: false, errorMsg: error.message }
+    const chunk = (data ?? []) as PostOwnerRow[]
+    rows.push(...chunk)
+    if (chunk.length < PAGE_SIZE) break
+    if (page === MAX_PAGES - 1) return { rows, overflow: true, errorMsg: null }
+  }
+  return { rows, overflow: false, errorMsg: null }
+}
+
 export async function fetchCampaignSettings(): Promise<CampaignSettings> {
   const supabase = createAdminClient()
   const EMPTY: CampaignSettings = { status: 'draft', title: '', startIso: '', endIso: '', prize: '', rulesUrl: '' }
@@ -311,7 +344,7 @@ export async function fetchCampaignRankingFull(
   // zukan_card_ratings has NO is_hidden column — only is_deleted.
   // DB UNIQUE (card_id, user_id) prevents duplicate logged-in ratings per card.
   // zukan_pack_ratings does not exist; only zukan_card_ratings is used.
-  const [threadRes, postRes, ratingRes, cardRevRes, packRevRes] = await Promise.all([
+  const [threadRes, postRes, ratingRes, cardRevRes, packRevRes, postOwnerRes] = await Promise.all([
     fetchAllRows((from, to) =>
       supabase
         .from('threads')
@@ -364,12 +397,24 @@ export async function fetchCampaignRankingFull(
         .not('user_id', 'is', null)
         .range(from, to) as PromiseLike<{ data: ActivityRow[] | null; error: { message: string } | null }>
     ),
+    // Posts joined with thread owner — used only for thread contribution pts
+    fetchAllPostOwnerRows((from, to) =>
+      supabase
+        .from('posts')
+        .select('user_id, created_at, threads!inner(user_id)')
+        .gte('created_at', startIso)
+        .lte('created_at', endIso)
+        .eq('is_deleted', false)
+        .eq('threads.is_archived', false)
+        .not('user_id', 'is', null)
+        .range(from, to) as PromiseLike<{ data: PostOwnerRow[] | null; error: { message: string } | null }>
+    ),
   ])
 
-  for (const r of [threadRes, postRes, ratingRes, cardRevRes, packRevRes]) {
+  for (const r of [threadRes, postRes, ratingRes, cardRevRes, packRevRes, postOwnerRes]) {
     if (r.errorMsg) return { entries: [], error: r.errorMsg, overflow: false }
   }
-  const overflow = [threadRes, postRes, ratingRes, cardRevRes, packRevRes].some(r => r.overflow)
+  const overflow = [threadRes, postRes, ratingRes, cardRevRes, packRevRes, postOwnerRes].some(r => r.overflow)
   if (overflow) {
     return { entries: [], error: '対象データが多すぎるため集計できませんでした（1万件超）', overflow: true }
   }
@@ -384,6 +429,7 @@ export async function fetchCampaignRankingFull(
     postCount: number
     reviewCount: number
     ratingCount: number
+    contributionCount: number
     lastActivity: string
   }
 
@@ -394,6 +440,7 @@ export async function fetchCampaignRankingFull(
         threadRawCount: 0, postRawCount: 0, cardReviewRawCount: 0,
         packReviewRawCount: 0, ratingRawCount: 0,
         threadCount: 0, postCount: 0, reviewCount: 0, ratingCount: 0,
+        contributionCount: 0,
         lastActivity: '',
       })
     }
@@ -462,6 +509,30 @@ export async function fetchCampaignRankingFull(
     if (n <= CAMPAIGN_RATING_DAILY_LIMIT) { a.ratingCount++; updateLast(a, row.created_at!) }
   }
 
+  // Thread contribution pts: commenter B posts on thread owned by A (B !== A) → A gets 1pt
+  // Limit: max CAMPAIGN_THREAD_CONTRIB_DAILY_LIMIT per (commenter, thread-owner, JST-day) triple.
+  const sortedContribs = postOwnerRes.rows
+    .filter(r => {
+      if (!r.user_id || !r.created_at) return false
+      const ownerId = r.threads?.user_id
+      if (!ownerId) return false
+      if (ownerId === r.user_id) return false  // exclude self-comments
+      return true
+    })
+    .sort((a, b) => (a.created_at! < b.created_at! ? -1 : 1))
+  const dailyContribs = new Map<string, number>()
+  for (const row of sortedContribs) {
+    const ownerId = row.threads!.user_id!
+    const key = `${row.user_id}|${ownerId}|${toJstDate(row.created_at!)}`
+    const n = (dailyContribs.get(key) ?? 0) + 1
+    dailyContribs.set(key, n)
+    if (n <= CAMPAIGN_THREAD_CONTRIB_DAILY_LIMIT) {
+      const a = getOrCreate(ownerId)
+      a.contributionCount++
+      updateLast(a, row.created_at!)
+    }
+  }
+
   // Build entries with total points
   const entries: AdminCampaignEntry[] = []
   for (const [userId, activity] of activityMap) {
@@ -469,7 +540,8 @@ export async function fetchCampaignRankingFull(
       activity.threadCount * CAMPAIGN_THREAD_POINT +
       activity.postCount * CAMPAIGN_POST_POINT +
       activity.reviewCount * CAMPAIGN_REVIEW_POINT +
-      activity.ratingCount * 1
+      activity.ratingCount * 1 +
+      activity.contributionCount * CAMPAIGN_THREAD_CONTRIB_POINT
     entries.push({ userId, totalPoints, profile: null, excludeReasons: [], ...activity })
   }
 
