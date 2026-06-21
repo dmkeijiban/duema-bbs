@@ -1,6 +1,5 @@
 import { getCachedCampaignRanking, getCachedUserRankings } from '@/lib/cached-queries'
 import { resolveCampaignState } from '@/lib/campaign-ranking'
-import { ProfileAvatar } from '@/components/ProfileAvatar'
 import Link from 'next/link'
 
 const MEDALS = ['🥇', '🥈', '🥉']
@@ -24,13 +23,13 @@ const AVATAR_RING_COLORS = [
 function RankBadge({ rank }: { rank: number }) {
   if (rank <= 3) {
     return (
-      <span className="absolute top-1.5 left-1.5 text-base leading-none" aria-label={`${rank}位`}>
+      <span className="absolute top-1.5 left-1.5 text-lg leading-none" aria-label={`${rank}位`}>
         {MEDALS[rank - 1]}
       </span>
     )
   }
   return (
-    <span className="absolute top-1.5 left-1.5 text-[10px] font-bold text-gray-500 bg-gray-100 rounded px-1 py-0.5 leading-none">
+    <span className="absolute top-1.5 left-1.5 text-xs font-bold text-gray-500 bg-gray-100 rounded px-1.5 py-0.5 leading-none">
       {rank}位
     </span>
   )
@@ -38,12 +37,21 @@ function RankBadge({ rank }: { rank: number }) {
 
 function ShowcaseAvatar({ avatarUrl, displayName, rank }: { avatarUrl: string | null; displayName: string; rank: number }) {
   if (avatarUrl) {
-    return <ProfileAvatar src={avatarUrl} alt={`${displayName}のアイコン`} size="lg" />
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={avatarUrl}
+        alt={`${displayName}のアイコン`}
+        loading="lazy"
+        decoding="async"
+        className="h-16 w-16 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover"
+      />
+    )
   }
   const ringColor = AVATAR_RING_COLORS[(rank - 1) % AVATAR_RING_COLORS.length]
   return (
     <span
-      className={`flex h-14 w-14 items-center justify-center rounded-full text-base font-bold ring-1 ${ringColor}`}
+      className={`flex h-16 w-16 items-center justify-center rounded-full text-lg font-bold ring-1 ${ringColor}`}
       aria-hidden="true"
     >
       {displayName.trim().charAt(0) || '?'}
@@ -55,21 +63,45 @@ function RankingCard({ entry }: { entry: ShowcaseEntry }) {
   return (
     <Link
       href={`/u/${entry.profileSlug}`}
-      className="relative flex flex-1 shrink-0 flex-col items-center gap-2 px-2 pt-7 pb-3 text-center hover:bg-gray-50 transition-colors min-w-[5.5rem]"
+      className="relative flex flex-1 shrink-0 flex-col items-center gap-2.5 px-2 py-5 text-center hover:bg-gray-50 transition-colors min-w-[6.5rem]"
     >
       <RankBadge rank={entry.rank} />
       <ShowcaseAvatar avatarUrl={entry.avatarUrl} displayName={entry.displayName} rank={entry.rank} />
-      <p className="w-full text-xs font-bold text-gray-800 truncate">{entry.displayName}</p>
+      <p className="w-full text-sm font-bold text-gray-800 truncate">{entry.displayName}</p>
     </Link>
   )
 }
 
-function ShowcaseContainer({ title, subtitle, entries }: { title: string; subtitle?: string; entries: ShowcaseEntry[] }) {
+function ShowcaseContainer({
+  title,
+  subtitle,
+  entries,
+  variant = 'monthly',
+}: {
+  title: string
+  subtitle?: string
+  entries: ShowcaseEntry[]
+  variant?: 'campaign' | 'monthly'
+}) {
+  const isCampaign = variant === 'campaign'
   return (
-    <div className="mb-2 border border-gray-300 bg-white">
-      <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-gray-300">
-        <span className="font-bold text-sm" style={{ color: '#004085' }}>{title}</span>
-        {subtitle && <span className="text-xs text-gray-500 font-normal">{subtitle}</span>}
+    <div className={`mb-2 border bg-white ${isCampaign ? 'border-yellow-300' : 'border-gray-300'}`}>
+      <div
+        className={`flex items-center gap-1.5 px-3 py-1.5 border-b ${
+          isCampaign ? 'bg-yellow-50 border-yellow-300' : 'border-gray-300'
+        }`}
+      >
+        <span
+          className="font-bold text-sm"
+          style={{ color: isCampaign ? '#78350f' : '#004085' }}
+        >
+          {title}
+        </span>
+        {subtitle && (
+          <span className={`text-xs font-normal ${isCampaign ? 'text-yellow-700' : 'text-gray-500'}`}>
+            {subtitle}
+          </span>
+        )}
       </div>
       <div className="overflow-x-auto">
         <div className="flex min-w-full divide-x divide-gray-200">
@@ -101,6 +133,7 @@ export async function TopRankingShowcase() {
           title="🏆 キャンペーンランキング TOP5"
           subtitle="（1日1回更新）"
           entries={entries}
+          variant="campaign"
         />
       )
     }
@@ -118,6 +151,7 @@ export async function TopRankingShowcase() {
       <ShowcaseContainer
         title="👑 今月の投稿者ランキング TOP5"
         entries={entries}
+        variant="monthly"
       />
     )
   } catch (error) {
@@ -134,10 +168,10 @@ export function TopRankingShowcaseSkeleton() {
       </div>
       <div className="flex divide-x divide-gray-200">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="relative flex-1 flex flex-col items-center gap-2 px-2 pt-7 pb-3 min-w-[5.5rem]">
-            <div className="absolute top-1.5 left-1.5 h-4 w-4 bg-gray-200 rounded" />
-            <div className="h-14 w-14 bg-gray-200 rounded-full" />
-            <div className="h-3 w-14 bg-gray-200 rounded" />
+          <div key={i} className="relative flex-1 flex flex-col items-center gap-2.5 px-2 py-5 min-w-[6.5rem]">
+            <div className="absolute top-1.5 left-1.5 h-5 w-5 bg-gray-200 rounded" />
+            <div className="h-16 w-16 bg-gray-200 rounded-full" />
+            <div className="h-3.5 w-16 bg-gray-200 rounded" />
           </div>
         ))}
       </div>
