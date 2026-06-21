@@ -240,7 +240,7 @@ export default async function EditCampaignEventPage({
                       <th className="px-2 py-1.5 text-right">スレ</th>
                       <th className="px-2 py-1.5 text-right">投稿</th>
                       <th className="px-2 py-1.5 text-right">レビュー</th>
-                      <th className="px-2 py-1.5 text-right">評価日</th>
+                      <th className="px-2 py-1.5 text-right">評価件</th>
                       <th className="px-2 py-1.5">除外理由</th>
                     </tr>
                   </thead>
@@ -272,7 +272,7 @@ export default async function EditCampaignEventPage({
                           <td className="px-2 py-1 text-right text-gray-600">{entry.threadCount}</td>
                           <td className="px-2 py-1 text-right text-gray-600">{entry.postCount}</td>
                           <td className="px-2 py-1 text-right text-gray-600">{entry.reviewCount}</td>
-                          <td className="px-2 py-1 text-right text-gray-600">{entry.ratingDays}</td>
+                          <td className="px-2 py-1 text-right text-gray-600">{entry.ratingCount}</td>
                           <td className="px-2 py-1 text-[10px] text-red-500">
                             {entry.excludeReasons.join(', ')}
                           </td>

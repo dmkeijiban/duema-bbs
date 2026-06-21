@@ -6,8 +6,7 @@ import {
   CAMPAIGN_POST_DAILY_LIMIT,
   CAMPAIGN_REVIEW_POINT,
   CAMPAIGN_REVIEW_DAILY_LIMIT,
-  CAMPAIGN_RATING_DAILY_THRESHOLD,
-  CAMPAIGN_RATING_DAILY_POINT,
+  CAMPAIGN_RATING_DAILY_LIMIT,
 } from './ranking-points'
 
 const PAGE_SIZE = 1000
@@ -48,7 +47,7 @@ export type PublicCampaignEntry = {
   threadCount: number
   postCount: number
   reviewCount: number
-  ratingDays: number
+  ratingCount: number
 }
 
 export type CampaignRankingPublicResult = {
@@ -79,7 +78,7 @@ export type AdminCampaignEntry = {
   threadCount: number
   postCount: number
   reviewCount: number
-  ratingDays: number
+  ratingCount: number
   threadRawCount: number
   postRawCount: number
   cardReviewRawCount: number
@@ -380,7 +379,7 @@ export async function fetchCampaignRankingFull(
     threadCount: number
     postCount: number
     reviewCount: number
-    ratingDays: number
+    ratingCount: number
     lastActivity: string
   }
 
@@ -390,7 +389,7 @@ export async function fetchCampaignRankingFull(
       activityMap.set(uid, {
         threadRawCount: 0, postRawCount: 0, cardReviewRawCount: 0,
         packReviewRawCount: 0, ratingRawCount: 0,
-        threadCount: 0, postCount: 0, reviewCount: 0, ratingDays: 0,
+        threadCount: 0, postCount: 0, reviewCount: 0, ratingCount: 0,
         lastActivity: '',
       })
     }
@@ -444,28 +443,19 @@ export async function fetchCampaignRankingFull(
     if (n <= CAMPAIGN_REVIEW_DAILY_LIMIT) { a.reviewCount++; updateLast(a, row.created_at!) }
   }
 
-  // Ratings: ≥ CAMPAIGN_RATING_DAILY_THRESHOLD valid ratings in a JST day → 1pt for that day.
+  // Ratings: 1pt each, max CAMPAIGN_RATING_DAILY_LIMIT per user per JST day (earliest first).
   // DB UNIQUE (card_id, user_id) ensures no duplicate card per logged-in user — no JS dedup needed.
-  type DayInfo = { count: number; maxAt: string }
-  const dailyRatings = new Map<string, DayInfo>()
-  for (const row of ratingRes.rows) {
-    if (!row.user_id || !row.created_at) continue
-    getOrCreate(row.user_id).ratingRawCount++
-    const key = `${row.user_id}|${toJstDate(row.created_at)}`
-    const existing = dailyRatings.get(key)
-    if (!existing) {
-      dailyRatings.set(key, { count: 1, maxAt: row.created_at })
-    } else {
-      existing.count++
-      if (row.created_at > existing.maxAt) existing.maxAt = row.created_at
-    }
-  }
-  for (const [key, info] of dailyRatings) {
-    if (info.count >= CAMPAIGN_RATING_DAILY_THRESHOLD) {
-      const uid = key.split('|')[0]
-      const a = activityMap.get(uid)
-      if (a) { a.ratingDays++; updateLast(a, info.maxAt) }
-    }
+  const sortedRatings = ratingRes.rows
+    .filter(r => r.user_id && r.created_at)
+    .sort((a, b) => (a.created_at! < b.created_at! ? -1 : 1))
+  const dailyRatings = new Map<string, number>()
+  for (const row of sortedRatings) {
+    const a = getOrCreate(row.user_id!)
+    a.ratingRawCount++
+    const key = `${row.user_id}|${toJstDate(row.created_at!)}`
+    const n = (dailyRatings.get(key) ?? 0) + 1
+    dailyRatings.set(key, n)
+    if (n <= CAMPAIGN_RATING_DAILY_LIMIT) { a.ratingCount++; updateLast(a, row.created_at!) }
   }
 
   // Build entries with total points
@@ -475,7 +465,7 @@ export async function fetchCampaignRankingFull(
       activity.threadCount * CAMPAIGN_THREAD_POINT +
       activity.postCount * CAMPAIGN_POST_POINT +
       activity.reviewCount * CAMPAIGN_REVIEW_POINT +
-      activity.ratingDays * CAMPAIGN_RATING_DAILY_POINT
+      activity.ratingCount * 1
     entries.push({ userId, totalPoints, profile: null, excludeReasons: [], ...activity })
   }
 
@@ -552,7 +542,7 @@ export async function fetchCampaignRankingPublic(
       threadCount: e.threadCount,
       postCount: e.postCount,
       reviewCount: e.reviewCount,
-      ratingDays: e.ratingDays,
+      ratingCount: e.ratingCount,
     })
     if (rank >= MAX_PUBLIC_DISPLAY) break
   }
@@ -587,7 +577,7 @@ export async function fetchCampaignRankingPublic(
         threadCount: 0,
         postCount: 0,
         reviewCount: 0,
-        ratingDays: 0,
+        ratingCount: 0,
       })
     }
   }
