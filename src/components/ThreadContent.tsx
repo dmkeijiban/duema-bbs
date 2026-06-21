@@ -11,7 +11,6 @@ import { ReportButton } from './ReportButton'
 import { formatDateTimeJP, resolveImageUrl } from '@/lib/utils'
 import { ImageViewer } from './ImageViewer'
 import { getThreadViewerState } from '@/lib/thread-viewer-client'
-import { ProfileAvatar } from './ProfileAvatar'
 
 const InlinePushSubscribeButton = dynamic(
   () => import('./PushSubscribeButton').then(mod => mod.PushSubscribeButton),
@@ -33,6 +32,18 @@ interface Props {
 
 type DisplayPost = Post & { displayNumber: number }
 
+function ThreadAvatar({ src, alt }: { src: string | null | undefined; alt: string }) {
+  if (!src) return null
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt}
+      className="h-4 w-4 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover"
+    />
+  )
+}
+
 function ThreadAuthorName({
   fallbackName,
   profile,
@@ -46,8 +57,8 @@ function ThreadAuthorName({
 
   if (!profile.profile_slug) {
     return (
-      <span className="inline-flex items-center gap-1.5 font-medium text-gray-600">
-        <ProfileAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} size="sm" />
+      <span className="inline-flex items-center gap-1 font-medium text-gray-600">
+        <ThreadAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} />
         <span>{profile.display_name}</span>
       </span>
     )
@@ -56,9 +67,9 @@ function ThreadAuthorName({
   return (
     <Link
       href={`/u/${profile.profile_slug}`}
-      className="inline-flex items-center gap-1.5 font-medium text-blue-700 hover:underline"
+      className="inline-flex items-center gap-1 font-medium text-blue-700 hover:underline"
     >
-      <ProfileAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} size="sm" />
+      <ThreadAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} />
       <span>{profile.display_name}</span>
     </Link>
   )
@@ -122,15 +133,15 @@ export function ThreadContent({
     <>
       <div className="border border-gray-300 bg-white">
         <div id="post-1" className="border-b border-gray-200 last:border-b-0">
-          <div className="px-2 py-1 text-xs flex items-center gap-1 flex-wrap" style={{ background: '#f5f5f5' }}>
+          <div className="px-2 py-1.5 text-xs flex items-center gap-1 flex-wrap" style={{ background: '#f5f5f5' }}>
             <button
               type="button"
               onClick={() => handleAnchorClick(1)}
-              className="font-bold hover:underline cursor-pointer mr-0.5"
+              className="inline-flex items-center px-1.5 py-0.5 font-bold cursor-pointer border border-blue-300 bg-white hover:bg-blue-50 leading-none shrink-0 mr-1.5"
               style={{ color: '#0d6efd' }}
               title=">>1を本文に挿入"
             >
-              &gt;&gt;1
+              ▶1
             </button>
             <span className="inline-block px-0.5 text-white text-[10px] leading-4" style={{ background: '#dc3545' }}>スレ主</span>
             <ThreadAuthorName fallbackName={thread.author_name} profile={threadAuthorProfile} />
@@ -138,7 +149,7 @@ export function ThreadContent({
             <PostLikeButton likeKey={`thread-${thread.id}`} />
             <ReportButton itemType="thread" itemId={thread.id} itemBody={thread.body} />
           </div>
-          <div className="px-3 py-3 text-base text-gray-800 break-words leading-relaxed">
+          <div className="px-3 pt-2 pb-5 text-base text-gray-800 break-words leading-relaxed">
             {renderBody(thread.body, displayPosts as Post[])}
           </div>
           {thread.image_url && (

@@ -280,7 +280,7 @@ export function renderBody(body: string, allPosts: Post[]): React.ReactNode[] {
     if (trimmed !== '' && /^(>>\d+\s*)+$/.test(trimmed)) {
       flushText()
       elements.push(
-        <span key={key++} className="block" style={{ marginBottom: 4, whiteSpace: 'pre-wrap' }}>
+        <span key={key++} className="block" style={{ marginBottom: 6, whiteSpace: 'pre-wrap' }}>
           {renderWithAnchors(line, allPosts)}
         </span>
       )
@@ -420,7 +420,7 @@ export function PostItem({
           このコメントは削除されました
         </div>
       ) : (
-        <div className="px-3 pt-3 pb-4 text-base text-gray-800 break-words leading-relaxed">
+        <div className="px-3 pt-2 pb-5 text-base text-gray-800 break-words leading-relaxed">
           {renderBody(post.body, allPosts)}
         </div>
       )}
