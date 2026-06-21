@@ -554,46 +554,42 @@ export default async function AdminPage({
                         <td className="px-2 py-2 text-right text-gray-600 whitespace-nowrap">{t.post_count}</td>
                         <td className="px-2 py-2 text-right text-gray-400 whitespace-nowrap hidden md:table-cell text-[10px]">{dateStr}</td>
                         <td className="px-2 py-2 whitespace-nowrap">
-                          <div className="flex flex-col items-end gap-1">
-                            <div className="flex items-center gap-1.5">
-                              <a href={`/admin?thread=${t.id}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}`}
-                                className="px-2 py-1 text-[10px] text-blue-600 border border-blue-300 hover:bg-blue-50 rounded leading-none">
-                                レス
-                              </a>
-                              <a href={`/admin?editThread=${t.id}&threadPage=${threadPage}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}`}
-                                className="px-2 py-1 text-[10px] text-green-700 border border-green-400 hover:bg-green-50 rounded leading-none">
-                                編集
-                              </a>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              {t.session_id && (
-                                <form action={adminBanSession} className="inline-flex">
-                                  <input type="hidden" name="sessionId" value={t.session_id} />
-                                  <input type="hidden" name="reason" value={`thread:${t.id}`} />
-                                  <input type="hidden" name="threadPage" value={threadPage} />
-                                  <AdminSubmitButton
-                                    pendingText="BAN中..."
-                                    confirmMessage="この投稿者をBANしますか？&#10;今後の投稿が制限されます。"
-                                    className="px-2 py-1 text-[10px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
-                                    style={{ background: '#111827' }}
-                                  >
-                                    BAN
-                                  </AdminSubmitButton>
-                                </form>
-                              )}
-                              <form action={adminDeleteThread} className="inline-flex">
-                                <input type="hidden" name="threadId" value={t.id} />
+                          <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1.5">
+                            <a href={`/admin?thread=${t.id}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}`}
+                              className="px-2 py-1 text-[10px] text-blue-600 border border-blue-300 hover:bg-blue-50 rounded leading-none">
+                              レス
+                            </a>
+                            <a href={`/admin?editThread=${t.id}&threadPage=${threadPage}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}`}
+                              className="px-2 py-1 text-[10px] text-green-700 border border-green-400 hover:bg-green-50 rounded leading-none">
+                              編集
+                            </a>
+                            {t.session_id && (
+                              <form action={adminBanSession} className="inline-flex">
+                                <input type="hidden" name="sessionId" value={t.session_id} />
+                                <input type="hidden" name="reason" value={`thread:${t.id}`} />
                                 <input type="hidden" name="threadPage" value={threadPage} />
                                 <AdminSubmitButton
-                                  pendingText="削除中..."
-                                  confirmMessage="このスレッドを削除しますか？&#10;掲示板上には表示されなくなります。"
+                                  pendingText="BAN中..."
+                                  confirmMessage="この投稿者をBANしますか？&#10;今後の投稿が制限されます。"
                                   className="px-2 py-1 text-[10px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
-                                  style={{ background: '#dc3545' }}
+                                  style={{ background: '#111827' }}
                                 >
-                                  削除
+                                  BAN
                                 </AdminSubmitButton>
                               </form>
-                            </div>
+                            )}
+                            <form action={adminDeleteThread} className="inline-flex">
+                              <input type="hidden" name="threadId" value={t.id} />
+                              <input type="hidden" name="threadPage" value={threadPage} />
+                              <AdminSubmitButton
+                                pendingText="削除中..."
+                                confirmMessage="このスレッドを削除しますか？&#10;掲示板上には表示されなくなります。"
+                                className="px-2 py-1 text-[10px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
+                                style={{ background: '#dc3545' }}
+                              >
+                                削除
+                              </AdminSubmitButton>
+                            </form>
                           </div>
                         </td>
                       </tr>
@@ -660,42 +656,38 @@ export default async function AdminPage({
                       </span>
                       <p className="text-xs text-gray-700 mt-0.5 line-clamp-2 break-all">{p.body}</p>
                     </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <div className="flex items-center gap-1.5">
-                        <a href={`/admin?thread=${selectedThread.id}&editPost=${p.id}`}
-                          className="px-2 py-0.5 text-[10px] text-green-700 border border-green-400 hover:bg-green-50 rounded">
-                          編集
-                        </a>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <form action={adminDeletePost} className="inline-flex">
-                          <input type="hidden" name="postId" value={p.id} />
-                          <input type="hidden" name="threadId" value={selectedThread.id} />
+                    <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1.5 shrink-0">
+                      <a href={`/admin?thread=${selectedThread.id}&editPost=${p.id}`}
+                        className="px-2 py-1 text-[10px] text-green-700 border border-green-400 hover:bg-green-50 rounded leading-none">
+                        編集
+                      </a>
+                      <form action={adminDeletePost} className="inline-flex">
+                        <input type="hidden" name="postId" value={p.id} />
+                        <input type="hidden" name="threadId" value={selectedThread.id} />
+                        <AdminSubmitButton
+                          pendingText="削除中..."
+                          confirmMessage={"このコメントを削除しますか？&#10;掲示板上には表示されなくなります。"}
+                          className="px-2 py-1 text-[10px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
+                          style={{ background: '#dc3545' }}
+                        >
+                          削除
+                        </AdminSubmitButton>
+                      </form>
+                      {p.session_id && (
+                        <form action={adminBanSession} className="inline-flex">
+                          <input type="hidden" name="sessionId" value={p.session_id} />
+                          <input type="hidden" name="reason" value={`post:${p.id}`} />
+                          <input type="hidden" name="returnToThread" value={selectedThread.id} />
                           <AdminSubmitButton
-                            pendingText="削除中..."
-                            confirmMessage={"このコメントを削除しますか？&#10;掲示板上には表示されなくなります。"}
-                            className="px-2 py-0.5 text-[10px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
-                            style={{ background: '#dc3545' }}
+                            pendingText="BAN中..."
+                            confirmMessage={"この投稿者をBANしますか？&#10;今後の投稿が制限されます。"}
+                            className="px-2 py-1 text-[10px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
+                            style={{ background: '#111827' }}
                           >
-                            削除
+                            BAN
                           </AdminSubmitButton>
                         </form>
-                        {p.session_id && (
-                          <form action={adminBanSession} className="inline-flex">
-                            <input type="hidden" name="sessionId" value={p.session_id} />
-                            <input type="hidden" name="reason" value={`post:${p.id}`} />
-                            <input type="hidden" name="returnToThread" value={selectedThread.id} />
-                            <AdminSubmitButton
-                              pendingText="BAN中..."
-                              confirmMessage={"この投稿者をBANしますか？&#10;今後の投稿が制限されます。"}
-                              className="px-2 py-0.5 text-[10px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
-                              style={{ background: '#111827' }}
-                            >
-                              BAN
-                            </AdminSubmitButton>
-                          </form>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
