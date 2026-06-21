@@ -1,15 +1,13 @@
 import { Suspense } from 'react'
 import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadCard } from '@/components/ThreadCard'
-import { SafeThumbnail } from '@/components/SafeThumbnail'
 import { SITE_URL } from '@/lib/site-config'
 import { getCachedCategories, getCachedUserRankings, getCachedCampaignRanking, UserRankingRow } from '@/lib/cached-queries'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { ThreadListHeader } from '@/components/ThreadListHeader'
 import { ThreadListTopContent } from '@/components/ThreadListTopContent'
-import { withFallbackThumbnails, DEFAULT_THREAD_THUMBNAIL } from '@/lib/thumbnail'
-import { resolveImageUrl } from '@/lib/utils'
+import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { resolveCampaignState, toDisplayJst } from '@/lib/campaign-ranking'
@@ -37,7 +35,7 @@ export const metadata = {
 
 type ThreadPeriod = 'today' | 'week' | 'all'
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 60
 
 const rankDecoration = [
   {
@@ -388,46 +386,13 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
 type TypedThread = Thread & { categories: Category | null }
 
 function ThreadRankingMobile({ threads, offset }: { threads: TypedThread[]; offset: number }) {
-  const first = threads[0]
-  const rest = threads.slice(1)
-  const firstImgSrc = first ? (resolveImageUrl(first.image_url) ?? DEFAULT_THREAD_THUMBNAIL) : null
-
   return (
     <div className="md:hidden">
-      {/* 1位: 横長カード（通常カードと同系統） */}
-      {first && (
-        <Link
-          href={`/thread/${first.id}`}
-          className="flex border-b border-l border-r border-t border-gray-300 bg-white hover:bg-gray-50"
-          style={{ height: 72 }}
-        >
-          <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 72, height: 72 }}>
-            {firstImgSrc && (
-              <SafeThumbnail src={firstImgSrc} alt={first.title} priority />
-            )}
-            <span className="absolute left-0 top-0 bg-gray-900 px-1 text-[10px] font-bold leading-4 text-white">
-              1位
-            </span>
-            <span className="absolute bottom-0 left-0 right-0 flex items-center gap-0.5 px-1 text-[9px] font-bold leading-[14px] text-white" style={{ background: 'rgba(0,0,0,0.52)' }}>
-              💬{first.post_count}
-            </span>
-          </div>
-          <div className="min-w-0 flex-1 px-2 py-1.5">
-            <p className="line-clamp-3 break-all text-[12px] leading-snug text-gray-800">
-              {first.title}
-            </p>
-          </div>
-        </Link>
-      )}
-
-      {/* 2〜50位: 同じグリッドカード */}
-      {rest.length > 0 && (
-        <div className="grid grid-cols-3 border-l border-t border-gray-300">
-          {rest.map((thread, i) => (
-            <ThreadCard key={thread.id} thread={thread} rank={offset + i + 2} />
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-3 border-l border-t border-gray-300">
+        {threads.map((thread, i) => (
+          <ThreadCard key={thread.id} thread={thread} rank={offset + i + 1} />
+        ))}
+      </div>
     </div>
   )
 }
@@ -488,7 +453,7 @@ async function RankingList({ page, period }: { page: number; period: ThreadPerio
         }}
       />
 
-      {/* モバイル: 1位カード + 2-10位グリッド + 11-50位リスト */}
+      {/* モバイル: グリッドカード */}
       <ThreadRankingMobile threads={typedThreads} offset={offset} />
 
       {/* デスクトップ: グリッド */}
