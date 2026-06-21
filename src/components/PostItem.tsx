@@ -9,7 +9,6 @@ import { PostLikeButton } from './PostLikeButton'
 import { ReportButton } from './ReportButton'
 import { ImageViewer } from './ImageViewer'
 import { LinkCard } from './LinkCard'
-import { ProfileAvatar } from './ProfileAvatar'
 
 declare global {
   interface Window {
@@ -285,6 +284,18 @@ export function renderBody(body: string, allPosts: Post[]): React.ReactNode[] {
   return elements
 }
 
+function TimelineAvatar({ src, alt }: { src: string | null | undefined; alt: string }) {
+  if (!src) return null
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt}
+      className="h-4 w-4 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover"
+    />
+  )
+}
+
 function PostAuthorName({
   fallbackName,
   profile,
@@ -298,8 +309,8 @@ function PostAuthorName({
 
   if (!profile.profile_slug) {
     return (
-      <span className="inline-flex items-center gap-1.5 font-medium text-gray-600">
-        <ProfileAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} size="sm" />
+      <span className="inline-flex items-center gap-1 font-medium text-gray-600">
+        <TimelineAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} />
         <span>{profile.display_name}</span>
       </span>
     )
@@ -308,9 +319,9 @@ function PostAuthorName({
   return (
     <Link
       href={`/u/${profile.profile_slug}`}
-      className="inline-flex items-center gap-1.5 font-medium text-blue-700 hover:underline"
+      className="inline-flex items-center gap-1 font-medium text-blue-700 hover:underline"
     >
-      <ProfileAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} size="sm" />
+      <TimelineAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} />
       <span>{profile.display_name}</span>
     </Link>
   )
