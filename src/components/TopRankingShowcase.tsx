@@ -23,13 +23,13 @@ const AVATAR_RING_COLORS = [
 function RankBadge({ rank }: { rank: number }) {
   if (rank <= 3) {
     return (
-      <span className="absolute top-1 left-1 md:top-1.5 md:left-1.5 text-base md:text-xl leading-none" aria-label={`${rank}位`}>
+      <span className="absolute top-0.5 left-0.5 text-sm md:text-base leading-none" aria-label={`${rank}位`}>
         {MEDALS[rank - 1]}
       </span>
     )
   }
   return (
-    <span className="absolute top-1 left-1 md:top-1.5 md:left-1.5 text-[10px] md:text-xs font-bold text-gray-500 bg-gray-100 rounded px-1 md:px-1.5 py-0.5 leading-none">
+    <span className="absolute top-0.5 left-0.5 text-[9px] md:text-[10px] font-bold text-gray-500 bg-gray-100 rounded px-0.5 py-0.5 leading-none">
       {rank}位
     </span>
   )
@@ -37,7 +37,7 @@ function RankBadge({ rank }: { rank: number }) {
 
 function PtBadge({ points }: { points: number }) {
   return (
-    <span className="absolute top-1 right-1 md:top-1.5 md:right-1.5 text-[9px] md:text-[10px] font-bold text-white bg-gray-700 rounded px-1 md:px-1.5 py-0.5 leading-none whitespace-nowrap">
+    <span className="absolute top-0.5 right-0.5 text-[8px] md:text-[9px] font-bold text-white bg-gray-700 rounded px-0.5 py-0.5 leading-none whitespace-nowrap">
       {points}pt
     </span>
   )
@@ -52,14 +52,14 @@ function ShowcaseAvatar({ avatarUrl, displayName, rank }: { avatarUrl: string | 
         alt={`${displayName}のアイコン`}
         loading="lazy"
         decoding="async"
-        className="h-10 w-10 md:h-16 md:w-16 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover"
+        className="h-10 w-10 md:h-12 md:w-12 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover"
       />
     )
   }
   const ringColor = AVATAR_RING_COLORS[(rank - 1) % AVATAR_RING_COLORS.length]
   return (
     <span
-      className={`flex h-10 w-10 md:h-16 md:w-16 items-center justify-center rounded-full text-sm md:text-lg font-bold ring-1 ${ringColor}`}
+      className={`flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-full text-sm md:text-base font-bold ring-1 ${ringColor}`}
       aria-hidden="true"
     >
       {displayName.trim().charAt(0) || '?'}
@@ -71,12 +71,12 @@ function RankingCard({ entry }: { entry: ShowcaseEntry }) {
   return (
     <Link
       href={`/u/${entry.profileSlug}`}
-      className="relative flex flex-1 flex-col items-center gap-1.5 md:gap-2 px-1 py-2 md:px-2 md:py-3.5 text-center hover:bg-gray-50 transition-colors"
+      title={entry.displayName}
+      className="relative flex flex-col items-center justify-center bg-white px-0.5 py-2 md:px-1 md:py-3 text-center hover:bg-gray-50 transition-colors"
     >
       <RankBadge rank={entry.rank} />
       <PtBadge points={entry.points} />
       <ShowcaseAvatar avatarUrl={entry.avatarUrl} displayName={entry.displayName} rank={entry.rank} />
-      <p className="w-full text-[10px] md:text-sm font-bold text-gray-800 truncate">{entry.displayName}</p>
     </Link>
   )
 }
@@ -112,7 +112,7 @@ function ShowcaseContainer({
           </span>
         )}
       </div>
-      <div className="flex divide-x divide-gray-200">
+      <div className="grid grid-cols-5 md:grid-cols-10 gap-px bg-gray-200">
         {entries.map(entry => (
           <RankingCard key={entry.profileSlug} entry={entry} />
         ))}
@@ -127,7 +127,7 @@ export async function TopRankingShowcase() {
     const state = resolveCampaignState(settings)
 
     if (state === 'active') {
-      const entries: ShowcaseEntry[] = campaignResult.entries.slice(0, 5).map(e => ({
+      const entries: ShowcaseEntry[] = campaignResult.entries.slice(0, 10).map(e => ({
         rank: e.rank,
         displayName: e.displayName,
         profileSlug: e.profileSlug,
@@ -137,7 +137,7 @@ export async function TopRankingShowcase() {
       if (entries.length === 0) return null
       return (
         <ShowcaseContainer
-          title="🏆 キャンペーンランキング TOP5"
+          title="🏆 キャンペーンランキング TOP10"
           subtitle="（1日1回更新）"
           entries={entries}
           variant="campaign"
@@ -146,7 +146,7 @@ export async function TopRankingShowcase() {
     }
 
     const { monthly } = await getCachedUserRankings()
-    const entries: ShowcaseEntry[] = monthly.slice(0, 5).map((row, i) => ({
+    const entries: ShowcaseEntry[] = monthly.slice(0, 10).map((row, i) => ({
       rank: i + 1,
       displayName: row.display_name,
       profileSlug: row.profile_slug,
@@ -156,7 +156,7 @@ export async function TopRankingShowcase() {
     if (entries.length === 0) return null
     return (
       <ShowcaseContainer
-        title="👑 今月の投稿者ランキング TOP5"
+        title="👑 今月の投稿者ランキング TOP10"
         entries={entries}
         variant="monthly"
       />
@@ -171,15 +171,14 @@ export function TopRankingShowcaseSkeleton() {
   return (
     <div className="mb-2 border border-gray-300 bg-white animate-pulse">
       <div className="px-3 py-1.5 border-b border-gray-300 flex items-center gap-1.5">
-        <div className="h-5 bg-gray-200 rounded w-48" />
+        <div className="h-5 bg-gray-200 rounded w-52" />
       </div>
-      <div className="flex divide-x divide-gray-200">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="relative flex-1 flex flex-col items-center gap-1.5 md:gap-2 px-1 py-2 md:px-2 md:py-3.5">
-            <div className="absolute top-1 left-1 h-4 w-4 md:h-5 md:w-5 bg-gray-200 rounded" />
-            <div className="absolute top-1 right-1 h-3 w-6 md:h-4 md:w-8 bg-gray-200 rounded" />
-            <div className="h-10 w-10 md:h-16 md:w-16 bg-gray-200 rounded-full" />
-            <div className="h-3 w-10 md:h-3.5 md:w-16 bg-gray-200 rounded" />
+      <div className="grid grid-cols-5 md:grid-cols-10 gap-px bg-gray-200">
+        {[...Array(10)].map((_, i) => (
+          <div key={i} className="relative flex flex-col items-center justify-center bg-white px-0.5 py-2 md:px-1 md:py-3">
+            <div className="absolute top-0.5 left-0.5 h-3.5 w-5 bg-gray-200 rounded" />
+            <div className="absolute top-0.5 right-0.5 h-3 w-4 md:w-5 bg-gray-200 rounded" />
+            <div className="h-10 w-10 md:h-12 md:w-12 bg-gray-200 rounded-full" />
           </div>
         ))}
       </div>
