@@ -200,12 +200,36 @@ function extractImageUrlFromHtml(html: string): string | null {
  * ※ あにまんのHTMLはシングルクォート属性で書かれている
  */
 async function fetchAnimanchDuemaThreads(): Promise<AnimanchThread[]> {
-  const res = await fetch(ANIMANCH_CATEGORY, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DuemaBBS/1.0)' },
-    next: { revalidate: 0 },
-  })
-  if (!res.ok) throw new Error(`animanch category fetch failed: ${res.status}`)
+  console.log(`[seed/thread] stage=fetch_animanch_category url=${ANIMANCH_CATEGORY}`)
+  let res: Response
+  try {
+    res = await fetch(ANIMANCH_CATEGORY, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DuemaBBS/1.0)' },
+      next: { revalidate: 0 },
+    })
+  } catch (fetchErr) {
+    const e = fetchErr instanceof Error ? fetchErr : new Error(String(fetchErr))
+    console.error(
+      `[seed/thread] stage=fetch_animanch_category FETCH_THREW` +
+      ` name=${e.name} message=${e.message}` +
+      (e.cause !== undefined ? ` cause=${String(e.cause)}` : ''),
+    )
+    throw e
+  }
+  if (!res.ok) {
+    let bodyPreview = ''
+    try { bodyPreview = (await res.text()).slice(0, 300).replace(/\n/g, ' ') } catch { /* ignore */ }
+    console.error(
+      `[seed/thread] stage=fetch_animanch_category HTTP_ERROR` +
+      ` status=${res.status} statusText="${res.statusText}"` +
+      ` bodyPreview="${bodyPreview}"`,
+    )
+    throw new Error(`animanch category fetch failed: ${res.status} ${res.statusText}`, {
+      cause: { status: res.status, statusText: res.statusText, bodyPreview },
+    })
+  }
   const html = await res.text()
+  console.log(`[seed/thread] stage=parse_animanch_threads html_length=${html.length}`)
 
   // href→class順・class→href順のどちらでも捕捉できる2パターン
   const threadPatternHrefFirst = /href='https:\/\/bbs\.animanch\.com\/board\/(\d+)\/'[^>]*class='card'([\s\S]*?)<p class='threadCount'/g
@@ -615,9 +639,11 @@ export async function GET(req: NextRequest) {
 
   // 6時間単位のインデックス（1日4回で毎回違うスレを選ぶ）
   const sixHourIndex = Math.floor(Date.now() / 21600000)
+  let stage = 'init'
 
   try {
     // 1. あにまん category25 からデュエマスレ一覧を取得
+    stage = 'fetch_animanch_category'
     const animanchThreads = await fetchAnimanchDuemaThreads()
     console.log(`Seed/thread: fetched ${animanchThreads.length} duema threads from animanch`)
 
@@ -627,6 +653,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 2. 直近14日の重複チェック
+    stage = 'dedupe_recent_threads'
     const since = new Date(Date.now() - 14 * 86400000).toISOString()
     const { data: recentThreads } = await supabase
       .from('threads')
@@ -746,9 +773,11 @@ export async function GET(req: NextRequest) {
     )
 
     // 6. 個別スレの詳細取得（本文・画像URL・コメント）
+    stage = 'fetch_animanch_detail'
     const detail = await fetchAnimanchBoard(chosen.boardId)
 
     // 7. コメントを整形・検証（5件必須、ゴミ文字なし）
+    stage = 'validate_comments'
     const validComments = detail.comments
       .map(transformComment)
       .filter(c => c.length >= 10 && c.length <= 300 && !hasGarbageStrings(c))
@@ -821,6 +850,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 9. 画像URL確認（detail で取れない場合は一覧ページの画像URLで代替）
+    stage = 'resolve_image'
     const resolvedImageUrl = detail.imageUrl ?? chosen.listImageUrl
     if (!resolvedImageUrl) {
       const msg =
@@ -832,6 +862,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 10. 画像をSupabase Storageにアップロード（失敗したらスキップ）
+    stage = 'upload_image'
     const imageUrl = await downloadAndUploadImage(resolvedImageUrl, serviceSupabase)
     if (!imageUrl) {
       const msg =
@@ -855,6 +886,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 12. スレ作成
+    stage = 'insert_thread'
     const { data: created, error: threadError } = await supabase
       .from('threads')
       .insert({
@@ -882,6 +914,7 @@ export async function GET(req: NextRequest) {
     console.log(`Seed/thread: created thread ${created.id} "${created.title}"`)
 
     // 13. コメント5件追加（service role でRLS回避）
+    stage = 'insert_posts'
     const commentErrors: string[] = []
     for (let i = 0; i < REQUIRED_COMMENT_COUNT; i++) {
       const commentBody = selectedComments[i]
@@ -924,6 +957,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 15. 成功通知（スレ通知のみ）
+    stage = 'notify_discord'
     const { data: cat } = await supabase.from('categories').select('name').eq('id', categoryId).single()
 
     console.log(`Seed/thread complete: threadId=${created.id} title="${created.title}" comments=${actualCount}`)
@@ -938,10 +972,32 @@ export async function GET(req: NextRequest) {
     })
 
   } catch (err) {
+    const e = err instanceof Error ? err : new Error(String(err))
+    const stackHead = e.stack ? e.stack.split('\n').slice(0, 4).join(' | ') : 'no stack'
+    const causeDetail = e.cause !== undefined
+      ? (typeof e.cause === 'object' ? JSON.stringify(e.cause) : String(e.cause))
+      : 'none'
     const msg =
       `🚨 予期せぬエラー\n` +
-      `- 詳細: ${err instanceof Error ? err.message : String(err)}`
+      `- stage: ${stage}\n` +
+      `- name: ${e.name}\n` +
+      `- message: ${e.message}\n` +
+      `- cause: ${causeDetail}\n` +
+      `- stack: ${stackHead}`
     console.error('Seed/thread: unexpected error:', msg, err)
-    return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) })
+    const fetchMeta = (e.cause && typeof e.cause === 'object')
+      ? e.cause as { status?: number; statusText?: string; bodyPreview?: string }
+      : null
+    return NextResponse.json({
+      ok: false,
+      error: e.message,
+      errorName: e.name,
+      stage,
+      ...(fetchMeta ? {
+        fetch_status: fetchMeta.status,
+        fetch_statusText: fetchMeta.statusText,
+        fetch_body_preview: fetchMeta.bodyPreview,
+      } : {}),
+    })
   }
 }
