@@ -49,7 +49,7 @@ function AnchorLink({ num, allPosts }: AnchorProps) {
     <span className="relative inline-block">
       <a
         href={`#post-${num}`}
-        className="underline hover:opacity-75"
+        className="no-underline hover:underline hover:opacity-75"
         style={{ color: '#0d6efd' }}
         onMouseEnter={() => setShow(true)}
         onMouseLeave={() => setShow(false)}
