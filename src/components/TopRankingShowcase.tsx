@@ -52,14 +52,14 @@ function ShowcaseAvatar({ avatarUrl, displayName, rank }: { avatarUrl: string | 
         alt={`${displayName}のアイコン`}
         loading="lazy"
         decoding="async"
-        className="h-10 w-10 md:h-12 md:w-12 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover"
+        className="h-10 w-10 md:h-14 md:w-14 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover"
       />
     )
   }
   const ringColor = AVATAR_RING_COLORS[(rank - 1) % AVATAR_RING_COLORS.length]
   return (
     <span
-      className={`flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-full text-sm md:text-base font-bold ring-1 ${ringColor}`}
+      className={`flex h-10 w-10 md:h-14 md:w-14 items-center justify-center rounded-full text-sm md:text-base font-bold ring-1 ${ringColor}`}
       aria-hidden="true"
     >
       {displayName.trim().charAt(0) || '?'}
@@ -95,9 +95,12 @@ function ShowcaseContainer({
   const isCampaign = variant === 'campaign'
   return (
     <div className={`mb-2 border bg-white ${isCampaign ? 'border-yellow-300' : 'border-gray-300'}`}>
-      <div
-        className={`flex items-center gap-1.5 px-3 py-1.5 border-b ${
-          isCampaign ? 'bg-yellow-50 border-yellow-300' : 'border-gray-300'
+      <Link
+        href="/ranking"
+        className={`flex items-center gap-1.5 px-3 py-1.5 border-b transition-colors ${
+          isCampaign
+            ? 'bg-yellow-50 border-yellow-300 hover:bg-yellow-100'
+            : 'border-gray-300 hover:bg-gray-50'
         }`}
       >
         <span
@@ -111,7 +114,7 @@ function ShowcaseContainer({
             {subtitle}
           </span>
         )}
-      </div>
+      </Link>
       <div className="grid grid-cols-5 md:grid-cols-10 gap-px bg-gray-200">
         {entries.map(entry => (
           <RankingCard key={entry.profileSlug} entry={entry} />
@@ -178,7 +181,7 @@ export function TopRankingShowcaseSkeleton() {
           <div key={i} className="relative flex flex-col items-center justify-center bg-white px-0.5 py-2 md:px-1 md:py-3">
             <div className="absolute top-0.5 left-0.5 h-3.5 w-5 bg-gray-200 rounded" />
             <div className="absolute top-0.5 right-0.5 h-3 w-4 md:w-5 bg-gray-200 rounded" />
-            <div className="h-10 w-10 md:h-12 md:w-12 bg-gray-200 rounded-full" />
+            <div className="h-10 w-10 md:h-14 md:w-14 bg-gray-200 rounded-full" />
           </div>
         ))}
       </div>
