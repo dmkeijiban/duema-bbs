@@ -17,7 +17,7 @@ import { verifyAdminCookie } from '@/lib/admin-auth'
 import { AdminSubmitButton } from './AdminSubmitButton'
 
 const ADMIN_COOKIE = 'admin_auth'
-const THREADS_PER_PAGE = 60
+const THREADS_PER_PAGE = 30
 
 type ModerationNgWord = {
   id: number
@@ -158,7 +158,7 @@ export default async function AdminPage({
     const [{ data: t }, { data: p }] = await Promise.all([
       supabase.from('threads').select('id, title').eq('id', threadId).single(),
       supabase.from('posts').select('id, post_number, author_name, body, session_id, user_id')
-        .eq('thread_id', threadId).order('post_number', { ascending: true }),
+        .eq('thread_id', threadId).eq('is_deleted', false).order('post_number', { ascending: true }),
     ])
     selectedThread = t
     posts = p
@@ -554,7 +554,15 @@ export default async function AdminPage({
                         <td className="px-2 py-2 text-right text-gray-600 whitespace-nowrap">{t.post_count}</td>
                         <td className="px-2 py-2 text-right text-gray-400 whitespace-nowrap hidden md:table-cell text-[10px]">{dateStr}</td>
                         <td className="px-2 py-2 whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1.5">
+                            <a href={`/admin?thread=${t.id}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}`}
+                              className="px-2 py-1 text-[10px] text-blue-600 border border-blue-300 hover:bg-blue-50 rounded leading-none">
+                              レス
+                            </a>
+                            <a href={`/admin?editThread=${t.id}&threadPage=${threadPage}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}`}
+                              className="px-2 py-1 text-[10px] text-green-700 border border-green-400 hover:bg-green-50 rounded leading-none">
+                              編集
+                            </a>
                             {t.session_id && (
                               <form action={adminBanSession} className="inline-flex">
                                 <input type="hidden" name="sessionId" value={t.session_id} />
@@ -562,27 +570,21 @@ export default async function AdminPage({
                                 <input type="hidden" name="threadPage" value={threadPage} />
                                 <AdminSubmitButton
                                   pendingText="BAN中..."
-                                  className="px-1.5 py-0.5 text-[10px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
+                                  confirmMessage="この投稿者をBANしますか？&#10;今後の投稿が制限されます。"
+                                  className="px-2 py-1 text-[10px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
                                   style={{ background: '#111827' }}
                                 >
                                   BAN
                                 </AdminSubmitButton>
                               </form>
                             )}
-                            <a href={`/admin?thread=${t.id}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}`}
-                              className="px-1.5 py-0.5 text-[10px] text-blue-600 border border-blue-300 hover:bg-blue-50 rounded leading-none">
-                              レス
-                            </a>
-                            <a href={`/admin?editThread=${t.id}&threadPage=${threadPage}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}`}
-                              className="px-1.5 py-0.5 text-[10px] text-green-700 border border-green-400 hover:bg-green-50 rounded leading-none">
-                              編集
-                            </a>
                             <form action={adminDeleteThread} className="inline-flex">
                               <input type="hidden" name="threadId" value={t.id} />
                               <input type="hidden" name="threadPage" value={threadPage} />
                               <AdminSubmitButton
                                 pendingText="削除中..."
-                                className="px-1.5 py-0.5 text-[10px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
+                                confirmMessage="このスレッドを削除しますか？&#10;掲示板上には表示されなくなります。"
+                                className="px-2 py-1 text-[10px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
                                 style={{ background: '#dc3545' }}
                               >
                                 削除
@@ -654,9 +656,9 @@ export default async function AdminPage({
                       </span>
                       <p className="text-xs text-gray-700 mt-0.5 line-clamp-2 break-all">{p.body}</p>
                     </div>
-                    <div className="flex gap-1 shrink-0">
+                    <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1.5 shrink-0">
                       <a href={`/admin?thread=${selectedThread.id}&editPost=${p.id}`}
-                        className="px-2 py-0.5 text-[10px] text-green-700 border border-green-400 hover:bg-green-50 rounded">
+                        className="px-2 py-1 text-[10px] text-green-700 border border-green-400 hover:bg-green-50 rounded leading-none">
                         編集
                       </a>
                       <form action={adminDeletePost} className="inline-flex">
@@ -664,7 +666,8 @@ export default async function AdminPage({
                         <input type="hidden" name="threadId" value={selectedThread.id} />
                         <AdminSubmitButton
                           pendingText="削除中..."
-                          className="px-2 py-0.5 text-[10px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
+                          confirmMessage={"このコメントを削除しますか？&#10;掲示板上には表示されなくなります。"}
+                          className="px-2 py-1 text-[10px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
                           style={{ background: '#dc3545' }}
                         >
                           削除
@@ -677,7 +680,8 @@ export default async function AdminPage({
                           <input type="hidden" name="returnToThread" value={selectedThread.id} />
                           <AdminSubmitButton
                             pendingText="BAN中..."
-                            className="px-2 py-0.5 text-[10px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
+                            confirmMessage={"この投稿者をBANしますか？&#10;今後の投稿が制限されます。"}
+                            className="px-2 py-1 text-[10px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
                             style={{ background: '#111827' }}
                           >
                             BAN
