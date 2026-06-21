@@ -23,7 +23,7 @@ const AVATAR_RING_COLORS = [
 function RankBadge({ rank }: { rank: number }) {
   if (rank <= 3) {
     return (
-      <span className="absolute top-1.5 left-1.5 text-lg leading-none" aria-label={`${rank}位`}>
+      <span className="absolute top-1.5 left-1.5 text-xl leading-none" aria-label={`${rank}位`}>
         {MEDALS[rank - 1]}
       </span>
     )
@@ -31,6 +31,14 @@ function RankBadge({ rank }: { rank: number }) {
   return (
     <span className="absolute top-1.5 left-1.5 text-xs font-bold text-gray-500 bg-gray-100 rounded px-1.5 py-0.5 leading-none">
       {rank}位
+    </span>
+  )
+}
+
+function PtBadge({ points }: { points: number }) {
+  return (
+    <span className="absolute top-1.5 right-1.5 text-[10px] font-bold text-white bg-gray-700 rounded px-1.5 py-0.5 leading-none whitespace-nowrap">
+      {points}pt
     </span>
   )
 }
@@ -63,9 +71,10 @@ function RankingCard({ entry }: { entry: ShowcaseEntry }) {
   return (
     <Link
       href={`/u/${entry.profileSlug}`}
-      className="relative flex flex-1 shrink-0 flex-col items-center gap-2.5 px-2 py-5 text-center hover:bg-gray-50 transition-colors min-w-[6.5rem]"
+      className="relative flex flex-1 shrink-0 flex-col items-center gap-2 px-2 py-3.5 text-center hover:bg-gray-50 transition-colors min-w-[6.5rem]"
     >
       <RankBadge rank={entry.rank} />
+      <PtBadge points={entry.points} />
       <ShowcaseAvatar avatarUrl={entry.avatarUrl} displayName={entry.displayName} rank={entry.rank} />
       <p className="w-full text-sm font-bold text-gray-800 truncate">{entry.displayName}</p>
     </Link>
@@ -168,8 +177,9 @@ export function TopRankingShowcaseSkeleton() {
       </div>
       <div className="flex divide-x divide-gray-200">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="relative flex-1 flex flex-col items-center gap-2.5 px-2 py-5 min-w-[6.5rem]">
+          <div key={i} className="relative flex-1 flex flex-col items-center gap-2 px-2 py-3.5 min-w-[6.5rem]">
             <div className="absolute top-1.5 left-1.5 h-5 w-5 bg-gray-200 rounded" />
+            <div className="absolute top-1.5 right-1.5 h-4 w-8 bg-gray-200 rounded" />
             <div className="h-16 w-16 bg-gray-200 rounded-full" />
             <div className="h-3.5 w-16 bg-gray-200 rounded" />
           </div>
