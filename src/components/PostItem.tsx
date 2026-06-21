@@ -280,7 +280,7 @@ export function renderBody(body: string, allPosts: Post[]): React.ReactNode[] {
     if (trimmed !== '' && /^(>>\d+\s*)+$/.test(trimmed)) {
       flushText()
       elements.push(
-        <span key={key++} className="block" style={{ marginBottom: 6, whiteSpace: 'pre-wrap' }}>
+        <span key={key++} className="block" style={{ marginBottom: 2, whiteSpace: 'pre-wrap' }}>
           {renderWithAnchors(line, allPosts)}
         </span>
       )
