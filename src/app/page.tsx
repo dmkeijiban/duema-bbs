@@ -7,6 +7,7 @@ const InlineNewThread = dynamic(
   () => import('@/components/InlineNewThread').then(m => m.InlineNewThread)
 )
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
+import { TopRankingShowcase, TopRankingShowcaseSkeleton } from '@/components/TopRankingShowcase'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { seededShuffle } from '@/lib/stable-shuffle'
@@ -28,6 +29,10 @@ import { getCategoryIdsForSlug } from '@/lib/categories'
 
 export const revalidate = 3600
 const TOP_THREAD_PAGE_SIZE = 60
+
+// 'ranking': TOP5ランキング表示（現在）
+// 'threads': おすすめスレッド表示（元の動作に戻す場合はここを変更）
+const HOME_RECOMMENDATION_MODE: 'ranking' | 'threads' = 'ranking'
 
 // ── Step 5: カテゴリフィルター時のメタデータ動的生成
 // ?category=slug でアクセスされたとき、タイトル・descriptionを
@@ -371,9 +376,15 @@ export default async function Home({
       <h1 className="sr-only">デュエマ掲示板 - デュエルマスターズ専門掲示板</h1>
 
       <div className="max-w-screen-xl mx-auto px-2 pt-2">
-        <Suspense fallback={<RecommendSectionSkeleton />}>
-          <RecommendSection />
-        </Suspense>
+        {HOME_RECOMMENDATION_MODE === 'ranking' ? (
+          <Suspense fallback={<TopRankingShowcaseSkeleton />}>
+            <TopRankingShowcase />
+          </Suspense>
+        ) : (
+          <Suspense fallback={<RecommendSectionSkeleton />}>
+            <RecommendSection />
+          </Suspense>
+        )}
 
         {/* ── LCP 対象テキスト ──────────────────────────────────────────
             HomeBannerFallback が初期 HTML シェルに含まれ、CSS のみで
