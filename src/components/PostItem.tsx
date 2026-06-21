@@ -277,6 +277,16 @@ export function renderBody(body: string, allPosts: Post[]): React.ReactNode[] {
       continue
     }
 
+    if (trimmed !== '' && /^(>>\d+\s*)+$/.test(trimmed)) {
+      flushText()
+      elements.push(
+        <span key={key++} className="block" style={{ marginBottom: 4, whiteSpace: 'pre-wrap' }}>
+          {renderWithAnchors(line, allPosts)}
+        </span>
+      )
+      continue
+    }
+
     textBuf.push(line)
   }
 
@@ -369,7 +379,7 @@ export function PostItem({
         <button
           type="button"
           onClick={() => onAnchorClick(displayNumber)}
-          className="font-bold hover:underline cursor-pointer"
+          className="inline-flex items-center px-1.5 py-0.5 font-bold cursor-pointer border border-blue-300 bg-white hover:bg-blue-50 leading-none shrink-0 mr-1.5"
           style={{ color: '#0d6efd' }}
           title={`>>${displayNumber}を本文に挿入`}
         >
@@ -410,7 +420,7 @@ export function PostItem({
           このコメントは削除されました
         </div>
       ) : (
-        <div className="px-3 py-3 text-base text-gray-800 break-words leading-relaxed">
+        <div className="px-3 pt-3 pb-4 text-base text-gray-800 break-words leading-relaxed">
           {renderBody(post.body, allPosts)}
         </div>
       )}
