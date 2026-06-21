@@ -149,7 +149,7 @@ export function ThreadContent({
             <PostLikeButton likeKey={`thread-${thread.id}`} />
             <ReportButton itemType="thread" itemId={thread.id} itemBody={thread.body} />
           </div>
-          <div className="px-3 pt-2 pb-5 text-base text-gray-800 break-words leading-relaxed">
+          <div className="px-3 pt-1.5 pb-7 text-base text-gray-800 break-words leading-relaxed">
             {renderBody(thread.body, displayPosts as Post[])}
           </div>
           {thread.image_url && (

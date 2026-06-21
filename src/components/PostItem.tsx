@@ -420,7 +420,7 @@ export function PostItem({
           このコメントは削除されました
         </div>
       ) : (
-        <div className="px-3 pt-2 pb-5 text-base text-gray-800 break-words leading-relaxed">
+        <div className="px-3 pt-1.5 pb-7 text-base text-gray-800 break-words leading-relaxed">
           {renderBody(post.body, allPosts)}
         </div>
       )}
