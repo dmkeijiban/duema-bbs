@@ -1,6 +1,11 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
+import { TopRankingShowcase, TopRankingShowcaseSkeleton } from '@/components/TopRankingShowcase'
+
+// 'ranking': TOP5ランキング表示（現在）
+// 'threads': おすすめスレッド表示（元の動作に戻す場合はここを変更）
+const TOP_RECOMMENDATION_MODE: 'ranking' | 'threads' = 'ranking'
 
 function BannerButtons() {
   return (
@@ -44,9 +49,15 @@ function HomeBannerServer() {
 export async function ThreadListTopContent({ showPopularThreads = true }: { showPopularThreads?: boolean }) {
   return (
     <div className="max-w-screen-xl mx-auto px-2 pt-2">
-      <Suspense fallback={<RecommendSectionSkeleton />}>
-        <RecommendSection />
-      </Suspense>
+      {TOP_RECOMMENDATION_MODE === 'ranking' ? (
+        <Suspense fallback={<TopRankingShowcaseSkeleton />}>
+          <TopRankingShowcase />
+        </Suspense>
+      ) : (
+        <Suspense fallback={<RecommendSectionSkeleton />}>
+          <RecommendSection />
+        </Suspense>
+      )}
       <Suspense fallback={<HomeBannerFallback />}>
         <HomeBannerServer />
       </Suspense>
