@@ -258,10 +258,10 @@ async function CampaignRankingSection() {
                 />
                 <div className="col-span-3 flex flex-wrap items-center gap-x-6 gap-y-1 md:col-span-1">
                   <CompactActivityBreakdown
-                    threadCount={entry.threadCount}
-                    postCount={entry.postCount}
-                    ratingCount={entry.ratingCount}
-                    reviewCount={entry.reviewCount}
+                    threadCount={entry.rawThreadCount}
+                    postCount={entry.rawPostCount}
+                    ratingCount={entry.rawRatingCount}
+                    reviewCount={entry.rawReviewCount}
                   />
                   <div className={`ml-auto shrink-0 whitespace-nowrap font-mono text-xl font-black ${isEnded ? 'text-gray-700' : 'text-yellow-700'}`}>
                     {entry.totalPoints}pt

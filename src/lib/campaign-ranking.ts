@@ -48,6 +48,10 @@ export type PublicCampaignEntry = {
   postCount: number
   reviewCount: number
   ratingCount: number
+  rawThreadCount: number
+  rawPostCount: number
+  rawReviewCount: number
+  rawRatingCount: number
 }
 
 export type CampaignRankingPublicResult = {
@@ -543,6 +547,10 @@ export async function fetchCampaignRankingPublic(
       postCount: e.postCount,
       reviewCount: e.reviewCount,
       ratingCount: e.ratingCount,
+      rawThreadCount: e.threadRawCount,
+      rawPostCount: e.postRawCount,
+      rawReviewCount: e.cardReviewRawCount + e.packReviewRawCount,
+      rawRatingCount: e.ratingRawCount,
     })
     if (rank >= MAX_PUBLIC_DISPLAY) break
   }
@@ -578,6 +586,10 @@ export async function fetchCampaignRankingPublic(
         postCount: 0,
         reviewCount: 0,
         ratingCount: 0,
+        rawThreadCount: 0,
+        rawPostCount: 0,
+        rawReviewCount: 0,
+        rawRatingCount: 0,
       })
     }
   }
