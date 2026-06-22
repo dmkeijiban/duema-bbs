@@ -224,7 +224,7 @@ async function CampaignRankingSection() {
           {isEnded ? 'ランキング対象者はいませんでした' : '期間中のポイントはまだありません'}
         </div>
       ) : (
-        <div className="space-y-2 p-2">
+        <div className="grid grid-cols-1 gap-2 p-2 xl:grid-cols-2">
           {result.entries.map((entry) => {
             const deco = rankDecoration[entry.rank - 1]
             return (
