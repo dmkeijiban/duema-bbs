@@ -25,7 +25,7 @@ export function ImageViewer({ src, alt = '添付画像', priority = false }: Pro
 
   return (
     <>
-      <div style={{ maxWidth: 500, width: '100%' }}>
+      <div style={{ maxWidth: 500, width: '100%', height: 300, backgroundColor: '#ffffff' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
@@ -37,12 +37,11 @@ export function ImageViewer({ src, alt = '添付画像', priority = false }: Pro
           onClick={() => setOpen(true)}
           style={{
             width: '100%',
-            height: 'auto',
+            height: '100%',
             display: 'block',
             cursor: 'zoom-in',
-            aspectRatio: '4/3',
             objectFit: 'contain',
-            backgroundColor: '#ffffff',
+            objectPosition: 'center',
           }}
           className="hover:opacity-90"
         />
