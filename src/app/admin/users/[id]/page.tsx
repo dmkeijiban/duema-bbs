@@ -39,6 +39,15 @@ type UserPostRow = {
   threads: { title: string | null } | null
 }
 
+// Supabase Auth から取得する管理者向け情報。サーバー側でのみ扱い、
+// 必要な項目だけをページに渡す（Auth 一覧データはクライアントに渡さない）。
+type AdminAuthInfo = {
+  id: string
+  email: string | null
+  createdAt: string | null
+  lastSignInAt: string | null
+}
+
 async function requireAdmin() {
   const cookieStore = await cookies()
   const adminCookie = cookieStore.get('admin_auth')?.value
@@ -95,6 +104,28 @@ async function getProfile(id: string): Promise<AdminUserProfile | null> {
   }
 
   return data as AdminUserProfile | null
+}
+
+// profiles.id（= Supabase Auth の user id）から Auth ユーザー情報を取得する。
+// service role が必要なため admin client 経由。退会済みユーザーでも取得できる。
+async function getAuthInfo(id: string): Promise<AdminAuthInfo | null> {
+  const admin = createAdminClient()
+  const { data, error } = await admin.auth.admin.getUserById(id)
+
+  if (error) {
+    console.error('Failed to fetch admin auth user:', error.message)
+    return null
+  }
+
+  const user = data.user
+  if (!user) return null
+
+  return {
+    id: user.id,
+    email: user.email ?? null,
+    createdAt: user.created_at ?? null,
+    lastSignInAt: user.last_sign_in_at ?? null,
+  }
 }
 
 async function getUserThreads(id: string): Promise<UserThreadRow[]> {
@@ -167,9 +198,10 @@ export default async function AdminUserDetailPage({
     notFound()
   }
 
-  const [threads, posts] = await Promise.all([
+  const [threads, posts, authInfo] = await Promise.all([
     getUserThreads(profile.id),
     getUserPosts(profile.id),
+    getAuthInfo(profile.id),
   ])
 
   const slug = profile.profile_slug ?? ''
@@ -290,6 +322,45 @@ export default async function AdminUserDetailPage({
             id: <span className="font-mono">{profile.id}</span>
           </p>
         </div>
+      </section>
+
+      <section className="mb-4 border border-amber-300 bg-white">
+        <div className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+          管理者向け：登録メールアドレス・Auth 情報（管理画面のみ表示）
+        </div>
+        {authInfo ? (
+          <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2">
+            <Field label="登録メールアドレス">
+              {authInfo.email ? (
+                <span className="font-mono break-all">{authInfo.email}</span>
+              ) : (
+                <span className="text-gray-400">(メールアドレスなし)</span>
+              )}
+            </Field>
+            <Field label="Auth user id">
+              <span className="font-mono break-all">{authInfo.id}</span>
+            </Field>
+            <Field label="Auth 作成日時">{formatDateTime(authInfo.createdAt)}</Field>
+            <Field label="最終ログイン (last_sign_in_at)">
+              {formatDateTime(authInfo.lastSignInAt)}
+            </Field>
+            <Field label="profiles.id との一致">
+              {authInfo.id === profile.id ? (
+                <span className="inline-flex items-center border border-green-300 bg-green-50 px-2 py-0.5 text-[11px] text-green-700">
+                  一致
+                </span>
+              ) : (
+                <span className="inline-flex items-center border border-red-300 bg-red-50 px-2 py-0.5 text-[11px] text-red-700">
+                  不一致
+                </span>
+              )}
+            </Field>
+          </div>
+        ) : (
+          <p className="px-3 py-5 text-center text-sm text-gray-500">
+            Auth ユーザー情報を取得できませんでした。
+          </p>
+        )}
       </section>
 
       <section className="mb-4 border border-red-200 bg-white">
