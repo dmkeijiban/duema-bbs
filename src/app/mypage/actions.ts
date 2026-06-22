@@ -63,11 +63,6 @@ export async function withdrawAccount(formData: FormData): Promise<WithdrawAccou
   const { error: updateError } = await admin
     .from('profiles')
     .update({
-      display_name: '退会済みユーザー',
-      bio: null,
-      x_url: null,
-      youtube_url: null,
-      avatar_url: null,
       profile_hidden: true,
       ranking_enabled: false,
       rank_excluded: true,

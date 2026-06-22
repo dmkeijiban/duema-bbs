@@ -131,7 +131,7 @@ export default async function MyPageEdit({
           {justReactivated && (
             <div className="mb-4 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-sm leading-relaxed text-blue-800">
               アカウントを再開しました。退会前のスレッド・コメント・ランキングポイントは復元されません。
-              表示名やアイコンなどのプロフィール情報をここで設定し直してください。
+              プロフィール情報はそのまま引き継がれています。必要に応じて内容を編集してください。
             </div>
           )}
           <ProfileEditForm
