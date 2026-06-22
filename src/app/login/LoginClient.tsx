@@ -19,6 +19,19 @@ function safeNextPath(value?: string) {
   return value
 }
 
+// ログイン後の遷移先を決める。
+// - プロフィール未作成 → 新規作成
+// - 退会済み → アカウント再開フロー
+// - 通常 → next（無ければトップ）
+function resolvePostLoginPath(
+  profile: { id: string; withdrawn_at: string | null } | null,
+  safeNext: string,
+) {
+  if (!profile) return '/profile/new'
+  if (profile.withdrawn_at) return '/account/reactivate'
+  return safeNext || '/'
+}
+
 function mapAuthError(msg: string): string {
   const m = msg.toLowerCase()
   if (m.includes('invalid login credentials'))
@@ -85,10 +98,10 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
     }
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id')
+      .select('id, withdrawn_at')
       .eq('id', data.user.id)
       .maybeSingle()
-    router.push(profile ? (safeNext || '/') : '/profile/new')
+    router.push(resolvePostLoginPath(profile, safeNext))
     router.refresh()
   }
 
@@ -121,10 +134,10 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
     if (data.session) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, withdrawn_at')
         .eq('id', data.user!.id)
         .maybeSingle()
-      router.push(profile ? (safeNext || '/') : '/profile/new')
+      router.push(resolvePostLoginPath(profile, safeNext))
       router.refresh()
       return
     }

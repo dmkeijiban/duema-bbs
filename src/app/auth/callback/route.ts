@@ -43,7 +43,7 @@ export async function GET(request: Request) {
   const admin = createAdminClient()
   const { data: profile, error: profileError } = await admin
     .from('profiles')
-    .select('id')
+    .select('id, withdrawn_at')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -53,6 +53,11 @@ export async function GET(request: Request) {
 
   if (!profile) {
     return redirectTo(request, '/profile/new')
+  }
+
+  // 退会済みアカウントでログインした場合は再開フローへ案内する。
+  if (profile.withdrawn_at) {
+    return redirectTo(request, '/account/reactivate')
   }
 
   return redirectTo(request, next)

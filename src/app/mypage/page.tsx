@@ -16,6 +16,7 @@ type Profile = {
   youtube_url: string | null
   avatar_url: string | null
   created_at: string
+  withdrawn_at: string | null
 }
 
 type MyThreadRow = {
@@ -116,7 +117,7 @@ async function getMyProfile(userId: string): Promise<Profile | null> {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('profiles')
-    .select('display_name, profile_slug, bio, x_url, youtube_url, avatar_url, created_at')
+    .select('display_name, profile_slug, bio, x_url, youtube_url, avatar_url, created_at, withdrawn_at')
     .eq('id', userId)
     .maybeSingle()
 
@@ -124,7 +125,7 @@ async function getMyProfile(userId: string): Promise<Profile | null> {
     if (error.message.includes('avatar_url')) {
       const { data: fallback, error: fallbackError } = await admin
         .from('profiles')
-        .select('display_name, profile_slug, bio, x_url, youtube_url, created_at')
+        .select('display_name, profile_slug, bio, x_url, youtube_url, created_at, withdrawn_at')
         .eq('id', userId)
         .maybeSingle()
 
@@ -351,6 +352,11 @@ export default async function MyPage({
 
   if (!profile) {
     redirect('/profile/new')
+  }
+
+  // 退会済みアカウントはマイページに過去投稿を表示せず、再開フローへ案内する。
+  if (profile.withdrawn_at) {
+    redirect('/account/reactivate')
   }
 
   const [myThreads, myPosts, rankings, activityCounts] = await Promise.all([

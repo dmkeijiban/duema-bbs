@@ -47,7 +47,13 @@ async function getMyProfile(userId: string): Promise<EditableProfile | null> {
   return data
 }
 
-export default async function MyPageEdit() {
+export default async function MyPageEdit({
+  searchParams,
+}: {
+  searchParams?: Promise<{ reactivated?: string }>
+}) {
+  const params = searchParams ? await searchParams : {}
+  const justReactivated = params.reactivated === '1'
   let user: User | null = null
 
   try {
@@ -122,6 +128,12 @@ export default async function MyPageEdit() {
         </div>
 
         <div className="p-4">
+          {justReactivated && (
+            <div className="mb-4 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-sm leading-relaxed text-blue-800">
+              アカウントを再開しました。退会前のスレッド・コメント・ランキングポイントは復元されません。
+              表示名やアイコンなどのプロフィール情報をここで設定し直してください。
+            </div>
+          )}
           <ProfileEditForm
             initialDisplayName={profile.display_name ?? ''}
             initialBio={profile.bio ?? ''}
