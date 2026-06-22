@@ -90,7 +90,6 @@ export default function ProfileEditForm({
 }: ProfileEditFormProps) {
   const router = useRouter()
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [avatarPreview, setAvatarPreview] = useState<string | null>(initialAvatarUrl)
   const [cropImage, setCropImage] = useState<CropImageState | null>(null)
   const [deleteAvatar, setDeleteAvatar] = useState(false)
@@ -167,7 +166,6 @@ export default function ProfileEditForm({
 
   const handleSubmit = async (formData: FormData) => {
     setError('')
-    setSuccess('')
     let submitData = formData
 
     if (cropImage && !deleteAvatar) {
@@ -208,15 +206,6 @@ export default function ProfileEditForm({
         window.location.assign(result.redirectTo)
         return
       }
-      // 保存成功：編集画面に留まり、続けて編集できるようにする。
-      setSuccess('プロフィールを保存しました。')
-      // アイコン編集中の状態をリセットし、保存後のアイコンを反映する。
-      setCropImage(null)
-      setDeleteAvatar(false)
-      if (result?.avatarUrl !== undefined) {
-        setAvatarPreview(result.avatarUrl)
-      }
-      // サーバー側の最新プロフィールを再取得（/mypage・/u/[slug] にも反映済み）。
       router.refresh()
     })
   }
@@ -291,12 +280,6 @@ export default function ProfileEditForm({
       {error && (
         <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
-        </p>
-      )}
-
-      {success && (
-        <p className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
-          {success}
         </p>
       )}
 

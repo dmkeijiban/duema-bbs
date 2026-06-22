@@ -7,8 +7,6 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 type UpdateProfileResult = {
   error?: string
   redirectTo?: string
-  success?: boolean
-  avatarUrl?: string | null
 }
 
 const X_HOSTS = ['x.com', 'twitter.com']
@@ -175,7 +173,6 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
     revalidatePath('/zukan/dm-01')
   }
 
-  // 保存後は投稿者ページへ自動遷移せず編集画面に留まる。
-  // 続けて編集しやすいよう、成功フラグと更新後アイコンURLを返す。
-  return { success: true, avatarUrl: nextAvatarUrl }
+  // 保存成功後はマイページで反映内容を確認できるよう /mypage へ遷移する。
+  return { redirectTo: '/mypage' }
 }
