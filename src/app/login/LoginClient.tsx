@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { getSessionProfileStatus } from '@/app/auth/actions'
 
 type LoginClientProps = {
   nextPath?: string
@@ -39,7 +40,7 @@ function mapAuthError(msg: string): string {
   if (m.includes('email not confirmed'))
     return 'メールアドレスの確認が完了していません。登録時のメールをご確認ください。'
   if (m.includes('user already registered'))
-    return 'このメールアドレスはすでに登録されています。Googleログインをお試しいただくか、別のメールアドレスをお使いください。'
+    return 'このメールアドレスは既に登録済みの可能性があります。退会済みアカウントを再開する場合は、新規作成ではなくログインしてください。パスワードを忘れた場合は、パスワード再設定をご利用ください。'
   if (m.includes('password should be at least') || m.includes('password too short'))
     return 'パスワードは6文字以上で入力してください。'
   if (m.includes('rate limit') || m.includes('email rate'))
@@ -96,11 +97,7 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
       setSubmittingMethod(null)
       return
     }
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id, withdrawn_at')
-      .eq('id', data.user.id)
-      .maybeSingle()
+    const profile = await getSessionProfileStatus()
     router.push(resolvePostLoginPath(profile, safeNext))
     router.refresh()
   }
@@ -132,11 +129,7 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
     }
     // email confirmation disabled — session returned immediately
     if (data.session) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, withdrawn_at')
-        .eq('id', data.user!.id)
-        .maybeSingle()
+      const profile = await getSessionProfileStatus()
       router.push(resolvePostLoginPath(profile, safeNext))
       router.refresh()
       return
@@ -158,7 +151,11 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
           {success}
         </p>
         <p className="text-xs text-gray-500">
-          メールが届かない場合は、迷惑メールフォルダをご確認ください。
+          メールが届かない場合は、迷惑メールフォルダをご確認ください。すでに登録済みのメールアドレスの場合、新規作成メールは届かないことがあります。その場合は
+          <Link href="/login" className="text-blue-600 hover:underline">ログイン</Link>
+          または
+          <Link href="/auth/forgot-password" className="text-blue-600 hover:underline">パスワード再設定</Link>
+          をお試しください。
         </p>
         <Link
           href="/"
