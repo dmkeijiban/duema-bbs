@@ -87,19 +87,32 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
     e.preventDefault()
     setError('')
     setSubmittingMethod('email')
-    const supabase = createClient()
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    })
-    if (error) {
-      setError(mapAuthError(error.message))
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      })
+      if (error) {
+        setError(mapAuthError(error.message))
+        return
+      }
+      let dest: string
+      try {
+        const profile = await getSessionProfileStatus()
+        // null はセッション未確立など不明状態 → /mypage でサーバー側に委ねる
+        dest = profile !== null ? resolvePostLoginPath(profile, safeNext) : '/mypage'
+      } catch {
+        // server action 失敗 → /mypage がno-profile/withdrawnを安全にルーティング
+        dest = '/mypage'
+      }
+      router.push(dest)
+      router.refresh()
+    } catch {
+      setError('ログインに失敗しました。時間を空けて再度お試しください。')
+    } finally {
       setSubmittingMethod(null)
-      return
     }
-    const profile = await getSessionProfileStatus()
-    router.push(resolvePostLoginPath(profile, safeNext))
-    router.refresh()
   }
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -114,28 +127,38 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
       return
     }
     setSubmittingMethod('email')
-    const supabase = createClient()
-    const callbackUrl = new URL('/auth/callback', window.location.origin)
-    if (safeNext) callbackUrl.searchParams.set('next', safeNext)
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: { emailRedirectTo: callbackUrl.toString() },
-    })
-    if (error) {
-      setError(mapAuthError(error.message))
+    try {
+      const supabase = createClient()
+      const callbackUrl = new URL('/auth/callback', window.location.origin)
+      if (safeNext) callbackUrl.searchParams.set('next', safeNext)
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { emailRedirectTo: callbackUrl.toString() },
+      })
+      if (error) {
+        setError(mapAuthError(error.message))
+        return
+      }
+      // email confirmation disabled — session returned immediately
+      if (data.session) {
+        let dest: string
+        try {
+          const profile = await getSessionProfileStatus()
+          dest = profile !== null ? resolvePostLoginPath(profile, safeNext) : '/mypage'
+        } catch {
+          dest = '/mypage'
+        }
+        router.push(dest)
+        router.refresh()
+        return
+      }
+      setSuccess('確認メールを送信しました。メール内のリンクからアカウント作成を完了してください。')
+    } catch {
+      setError('アカウント作成に失敗しました。時間を空けて再度お試しください。')
+    } finally {
       setSubmittingMethod(null)
-      return
     }
-    // email confirmation disabled — session returned immediately
-    if (data.session) {
-      const profile = await getSessionProfileStatus()
-      router.push(resolvePostLoginPath(profile, safeNext))
-      router.refresh()
-      return
-    }
-    setSuccess('確認メールを送信しました。メール内のリンクからアカウント作成を完了してください。')
-    setSubmittingMethod(null)
   }
 
   const switchMode = (next: Mode) => {
