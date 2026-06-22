@@ -35,7 +35,7 @@ function resolvePostLoginPath(
 function mapAuthError(msg: string): string {
   const m = msg.toLowerCase()
   if (m.includes('invalid login credentials'))
-    return 'メールアドレスまたはパスワードが違います。'
+    return 'メールアドレスまたはパスワードが違います。退会済みアカウントを再開したい場合も、まずはログインが必要です。パスワードが分からない場合は「パスワードを忘れた方」から再設定してください。'
   if (m.includes('email not confirmed'))
     return 'メールアドレスの確認が完了していません。登録時のメールをご確認ください。'
   if (m.includes('user already registered'))
@@ -59,6 +59,7 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [submittingMethod, setSubmittingMethod] = useState<SubmittingMethod>(null)
+  const [showPasswordResetHint, setShowPasswordResetHint] = useState(false)
 
   const emailSubmitting = submittingMethod === 'email'
   const googleSubmitting = submittingMethod === 'google'
@@ -67,6 +68,7 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
 
   const handleGoogleLogin = async () => {
     setError('')
+    setShowPasswordResetHint(false)
     setSubmittingMethod('google')
     const supabase = createClient()
     const callbackUrl = new URL('/auth/callback', window.location.origin)
@@ -84,6 +86,7 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setShowPasswordResetHint(false)
     setSubmittingMethod('email')
     try {
       const supabase = createClient()
@@ -92,7 +95,11 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
         password,
       })
       if (error) {
+        console.warn('signInWithPassword failed', { code: (error as { code?: string }).code, message: error.message, status: error.status })
         setError(mapAuthError(error.message))
+        if (error.message.toLowerCase().includes('invalid login credentials')) {
+          setShowPasswordResetHint(true)
+        }
         return
       }
       let dest: string
@@ -115,6 +122,7 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setShowPasswordResetHint(false)
     if (password.length < 6) {
       setError('パスワードは6文字以上で入力してください。')
       return
@@ -161,6 +169,7 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
     setMode(next)
     setError('')
     setSuccess('')
+    setShowPasswordResetHint(false)
   }
 
   if (success) {
@@ -265,9 +274,16 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
         )}
 
         {error && (
-          <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-            {error}
-          </p>
+          <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            <p>{error}</p>
+            {showPasswordResetHint && (
+              <p className="mt-2">
+                <Link href="/auth/forgot-password" className="font-bold underline">
+                  パスワードを忘れた方はこちら →
+                </Link>
+              </p>
+            )}
+          </div>
         )}
 
         <button
