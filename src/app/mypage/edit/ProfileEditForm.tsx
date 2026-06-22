@@ -205,7 +205,7 @@ export default function ProfileEditForm({
         return
       }
       if (result?.redirectTo) {
-        router.push(result.redirectTo)
+        window.location.assign(result.redirectTo)
       } else {
         router.refresh()
       }
