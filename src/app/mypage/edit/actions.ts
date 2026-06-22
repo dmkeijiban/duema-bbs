@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 type UpdateProfileResult = {
   error?: string
@@ -165,9 +165,10 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
     return { error: 'プロフィールの更新に失敗しました。入力内容を確認してください。' }
   }
 
+  revalidateTag('profiles', { expire: 0 })
+  revalidatePath('/mypage')
+  revalidatePath('/mypage/edit')
   if (guardProfile?.profile_slug) {
-    revalidatePath('/mypage')
-    revalidatePath('/mypage/edit')
     revalidatePath(`/u/${guardProfile.profile_slug}`)
     revalidatePath('/zukan/dm-01')
   }
