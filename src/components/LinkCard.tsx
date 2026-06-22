@@ -31,17 +31,35 @@ function getYouTubeVideoId(rawUrl: string): string | null {
   }
 }
 
-// 「- YouTube」「YouTube」など実質空のタイトルは使わない
+// 「- YouTube」「YouTube」「www.youtube.com」など実質空のタイトルは使わない
 function isUsableTitle(title: string | null | undefined): title is string {
   if (!title) return false
   const t = title.trim()
-  return t !== '' && t !== '- YouTube' && t !== 'YouTube'
+  if (t === '') return false
+  const unusable = ['- YouTube', 'YouTube', 'www.youtube.com', 'youtube.com']
+  if (unusable.includes(t)) return false
+  // URL そのものをタイトルに使っていたら除外
+  if (/^https?:\/\//.test(t)) return false
+  return true
 }
 
 // YouTube 専用カード。OGP/oEmbed が失敗・未取得でも videoId から静的サムネで表示する。
-// サムネは img.youtube.com/i.ytimg.com のホットリンク可能URLを直接使い、プロキシも next/image も使わない。
-function YouTubeCard({ url, videoId, title }: { url: string; videoId: string; title: string | null }) {
-  const displayTitle = isUsableTitle(title) ? title : 'YouTube動画'
+// サムネは i.ytimg.com のホットリンク可能URLを直接使い、プロキシも next/image も使わない。
+// loading=true のとき、右側はスケルトン表示にしてチラつきを抑える。
+function YouTubeCard({
+  url,
+  videoId,
+  title,
+  channelName,
+  loading,
+}: {
+  url: string
+  videoId: string
+  title: string | null
+  channelName: string | null
+  loading: boolean
+}) {
+  const displayTitle = isUsableTitle(title) ? title : loading ? null : 'YouTube動画'
   return (
     <a
       href={url}
@@ -59,6 +77,7 @@ function YouTubeCard({ url, videoId, title }: { url: string; videoId: string; ti
       }}
     >
       <div style={{ display: 'flex', height: 112, overflow: 'hidden' }}>
+        {/* サムネイル */}
         <div
           style={{
             position: 'relative',
@@ -76,7 +95,6 @@ function YouTubeCard({ url, videoId, title }: { url: string; videoId: string; ti
             referrerPolicy="no-referrer"
             onError={e => {
               const img = e.target as HTMLImageElement
-              // hqdefault が無い場合は mqdefault にフォールバック
               if (!img.dataset.fallback) {
                 img.dataset.fallback = '1'
                 img.src = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`
@@ -86,6 +104,7 @@ function YouTubeCard({ url, videoId, title }: { url: string; videoId: string; ti
             }}
             style={{ width: '100%', height: '100%', objectFit: 'cover', minHeight: 112, display: 'block' }}
           />
+          {/* 再生マーク */}
           <span
             aria-hidden
             style={{
@@ -114,6 +133,7 @@ function YouTubeCard({ url, videoId, title }: { url: string; videoId: string; ti
             />
           </span>
         </div>
+        {/* テキスト列 */}
         <div
           style={{
             padding: '10px 12px',
@@ -125,21 +145,47 @@ function YouTubeCard({ url, videoId, title }: { url: string; videoId: string; ti
             minHeight: 112,
           }}
         >
-          <p
-            style={{
-              fontSize: 14,
-              fontWeight: 700,
-              color: '#1f2937',
-              lineHeight: 1.4,
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-              margin: 0,
-            }}
-          >
-            {displayTitle}
-          </p>
+          <div>
+            {loading ? (
+              /* スケルトン：タイトル2行 */
+              <>
+                <div style={{ height: 14, background: '#e5e7eb', borderRadius: 4, marginBottom: 6 }} />
+                <div style={{ height: 14, background: '#e5e7eb', borderRadius: 4, width: '70%' }} />
+              </>
+            ) : (
+              <p
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: '#1f2937',
+                  lineHeight: 1.4,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  margin: 0,
+                }}
+              >
+                {displayTitle}
+              </p>
+            )}
+            {!loading && channelName && (
+              <p
+                style={{
+                  fontSize: 12,
+                  color: '#6b7280',
+                  lineHeight: 1.4,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 1,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  margin: '4px 0 0',
+                }}
+              >
+                {channelName}
+              </p>
+            )}
+          </div>
           <p style={{ fontSize: 12, color: '#9ca3af', margin: '4px 0 0' }}>YouTube</p>
         </div>
       </div>
@@ -153,18 +199,34 @@ export function LinkCard({ url }: { url: string }) {
   const youtubeVideoId = getYouTubeVideoId(url)
 
   useEffect(() => {
-    fetch(`/api/ogp?url=${encodeURIComponent(url)}`)
+    // YouTube は &v=yt2 を付けてキャッシュキーを切り替える。
+    // PR #155 以前に古いスクレイプ結果がキャッシュされていた場合でもバイパスできる。
+    const fetchUrl = youtubeVideoId
+      ? `/api/ogp?url=${encodeURIComponent(url)}&v=yt2`
+      : `/api/ogp?url=${encodeURIComponent(url)}`
+    fetch(fetchUrl)
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then((d: OgpData & { error?: string }) => {
         if (d.error) setFailed(true)
         else setData(d)
       })
       .catch(() => setFailed(true))
-  }, [url])
+  }, [url, youtubeVideoId])
 
-  // YouTube は OGP の成否に関わらず専用カードで表示（OGP/oEmbed の title が取れていれば優先）。
+  // data===null かつ failed でなければ oEmbed 取得待ち
+  const loading = data === null && !failed
+
+  // YouTube は OGP の成否に関わらず専用カードで表示（oEmbed の title/author_name が取れていれば優先）。
   if (youtubeVideoId) {
-    return <YouTubeCard url={url} videoId={youtubeVideoId} title={data?.title ?? null} />
+    return (
+      <YouTubeCard
+        url={url}
+        videoId={youtubeVideoId}
+        title={data?.title ?? null}
+        channelName={data?.description ?? null}
+        loading={loading}
+      />
+    )
   }
 
   if (failed) {
