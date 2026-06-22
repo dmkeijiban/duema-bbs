@@ -171,6 +171,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <p>
               ログインしなくても、これまで通り匿名でスレッド作成・レス投稿できます。アカウント機能は、プロフィールやランキングに参加したい方向けの追加機能です。
             </p>
+            <h2 className="mb-2 mt-4 text-sm font-bold">退会済みアカウントの再開</h2>
+            <p>
+              退会済みアカウントを再開する場合は、新規作成ではなく、登録済みメールアドレスでログインしてください。パスワードが分からない場合は、「パスワードを忘れた方」からパスワードを再設定してからログインすると再開できます。
+            </p>
             <h2 className="mb-2 mt-4 text-sm font-bold">スマホでログインできない方へ</h2>
             <p>
               X・LINE・Instagramなどのアプリ内ブラウザでは、Googleログインがうまく動かない場合があります。Safari、Chrome、Edge、Firefoxなどの通常ブラウザで開き直してください。
