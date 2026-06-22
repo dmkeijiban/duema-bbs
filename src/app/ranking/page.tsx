@@ -184,19 +184,29 @@ async function CampaignRankingSection() {
   // 未設定・無効・開始前は表示しない
   if (state === 'disabled' || state === 'scheduled') return null
 
-  const startLabel = toDisplayJst(settings.startIso)
-  const endLabel = toDisplayJst(settings.endIso)
   const isEnded = state === 'ended'
-  const lastUpdatedLabel = cachedDateJst.replace(/-/g, '/') + ' 00:00'
+
+  // "2026/06/21 00:00" → "6/21"
+  const toShortDate = (displayJst: string) => {
+    const m = displayJst.match(/\d{4}\/(\d{2})\/(\d{2})/)
+    return m ? `${parseInt(m[1])}/${parseInt(m[2])}` : displayJst
+  }
+  const shortStartLabel = toShortDate(toDisplayJst(settings.startIso))
+  const shortEndLabel = toShortDate(toDisplayJst(settings.endIso))
+  // "2026-06-22" → "6/22 0:00"
+  const [, cMonth, cDay] = cachedDateJst.split('-')
+  const shortLastUpdatedLabel = `${parseInt(cMonth)}/${parseInt(cDay)} 0:00`
 
   return (
     <section className="mb-4 overflow-hidden border border-yellow-300 bg-yellow-50">
-      <div className="border-b border-yellow-200 bg-yellow-100 px-3 py-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-bold text-yellow-900">
-            🏆 {settings.title}{isEnded ? ' 結果' : ''}
-          </h3>
-          <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${
+      <div className="border-b border-yellow-200 bg-yellow-100 px-3 py-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+          <p className="text-[12px] leading-snug text-yellow-900">
+            <span className="font-bold">🏆 {settings.title}{isEnded ? ' 結果' : ''}</span>
+            <span className="text-yellow-700">｜期間：{shortStartLabel}〜{shortEndLabel}</span>
+            <span className="text-yellow-600">｜最終更新：{shortLastUpdatedLabel}</span>
+          </p>
+          <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold ${
             isEnded
               ? 'border-gray-300 bg-white text-gray-600'
               : 'border-yellow-300 bg-white text-yellow-700'
@@ -204,12 +214,6 @@ async function CampaignRankingSection() {
             {isEnded ? '終了' : '開催中'}
           </span>
         </div>
-        <p className="mt-0.5 text-[11px] text-yellow-700">
-          期間：{startLabel} 〜 {endLabel}
-        </p>
-        <p className="mt-0.5 text-[11px] text-yellow-600">
-          ランキングは1日1回更新されます（最終更新：{lastUpdatedLabel}）
-        </p>
       </div>
       {result.error ? (
         <div className="px-3 py-4 text-center text-sm text-red-500">
