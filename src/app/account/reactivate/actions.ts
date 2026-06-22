@@ -60,7 +60,8 @@ export async function reactivateAccount(): Promise<ReactivateAccountResult> {
   }
 
   // 5〜6. 匿名化が完了してから、退会フラグを解除し再開に必要なフラグを通常状態へ戻す。
-  //        display_name 等は退会時にクリア済みのため、再開後にプロフィール編集で再設定する。
+  //        display_name / avatar_url 等のプロフィール情報は退会時にクリアしておらず内部保持して
+  //        いるため、ここでは触らずそのまま引き継ぐ。戻すのは公開停止・ランキング除外フラグのみ。
   const now = new Date().toISOString()
   const { error: updateError } = await admin
     .from('profiles')
@@ -90,6 +91,7 @@ export async function reactivateAccount(): Promise<ReactivateAccountResult> {
   }
   revalidatePath('/ranking')
 
-  // 7. 再開後はプロフィール編集へ。退会時にクリアした名前・アイコン等をここで再設定できる。
+  // 7. 再開後はプロフィール編集へ。退会前のプロフィール情報はそのまま引き継がれており、
+  //    必要に応じてここで編集できる。
   return { redirectTo: '/mypage/edit?reactivated=1' }
 }
