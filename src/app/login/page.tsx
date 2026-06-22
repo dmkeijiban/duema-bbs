@@ -28,19 +28,23 @@ async function getLoginState() {
     const { data } = await supabase.auth.getUser()
     user = data.user
   } catch {
-    return { user: null, hasProfile: false }
+    return { user: null, hasProfile: false, isWithdrawn: false }
   }
 
-  if (!user) return { user: null, hasProfile: false }
+  if (!user) return { user: null, hasProfile: false, isWithdrawn: false }
 
   const admin = createAdminClient()
   const { data: profile } = await admin
     .from('profiles')
-    .select('id')
+    .select('id, withdrawn_at')
     .eq('id', user.id)
     .maybeSingle()
 
-  return { user, hasProfile: Boolean(profile) }
+  return {
+    user,
+    hasProfile: Boolean(profile),
+    isWithdrawn: Boolean(profile?.withdrawn_at),
+  }
 }
 
 function successMessage(code?: string) {
@@ -69,7 +73,7 @@ function errorMessage(code?: string) {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams
-  const { user, hasProfile } = await getLoginState()
+  const { user, hasProfile, isWithdrawn } = await getLoginState()
   const message = errorMessage(params?.error)
   const successMsg = successMessage(params?.message)
   const nextPath = safeNextPath(params?.next)
@@ -123,7 +127,16 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                   </Link>
                 )}
 
-                {hasProfile && (
+                {hasProfile && isWithdrawn && (
+                  <Link
+                    href="/account/reactivate"
+                    className="block rounded bg-blue-600 px-4 py-2.5 text-center text-sm font-bold text-white hover:bg-blue-700"
+                  >
+                    アカウントを再開する
+                  </Link>
+                )}
+
+                {hasProfile && !isWithdrawn && (
                   <Link
                     href="/mypage"
                     className="block rounded bg-blue-600 px-4 py-2.5 text-center text-sm font-bold text-white hover:bg-blue-700"
