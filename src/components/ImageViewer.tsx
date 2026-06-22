@@ -25,7 +25,7 @@ export function ImageViewer({ src, alt = '添付画像', priority = false }: Pro
 
   return (
     <>
-      <div style={{ maxWidth: 500, width: '100%', textAlign: 'left' }}>
+      <div style={{ maxWidth: 500, width: '100%', textAlign: 'left', marginBottom: '1rem' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
