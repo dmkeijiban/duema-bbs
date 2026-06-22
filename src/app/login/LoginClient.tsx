@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
 import { getSessionProfileStatus } from '@/app/auth/actions'
 
 type LoginClientProps = {
@@ -53,7 +52,6 @@ function mapAuthError(msg: string): string {
 }
 
 export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProps) {
-  const router = useRouter()
   const [mode, setMode] = useState<Mode>(initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -106,8 +104,7 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
         // server action 失敗 → /mypage がno-profile/withdrawnを安全にルーティング
         dest = '/mypage'
       }
-      router.push(dest)
-      router.refresh()
+      window.location.assign(dest)
     } catch {
       setError('ログインに失敗しました。時間を空けて再度お試しください。')
     } finally {
@@ -149,8 +146,7 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
         } catch {
           dest = '/mypage'
         }
-        router.push(dest)
-        router.refresh()
+        window.location.assign(dest)
         return
       }
       setSuccess('確認メールを送信しました。メール内のリンクからアカウント作成を完了してください。')
