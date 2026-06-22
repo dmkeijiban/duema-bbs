@@ -1,3 +1,14 @@
+// あにまんアレンジ自動投稿（/api/seed/thread）について
+// --------------------------------------------------------------------------
+// 外部サイト（あにまん掲示板）への定期 fetch は相手サイトへの負荷・bot 判定の
+// リスクがあるため、現在は Vercel Cron から外して「停止中」。
+// route・あにまん fetch / HTML パース / アレンジ投稿処理は将来の再開に備えて残す。
+//
+// 再開方法: vercel.json の crons に以下を戻すと再開できる。
+//   { "path": "/api/seed/thread", "schedule": "0 8,9,11,12 * * *" }
+//   ※ 以前の schedule は "0 8,9,11,12 * * *"（JST 17/18/20/21時）
+// この GET は CRON_SECRET 認証付きなので、手動実行（Bearer トークン付き）は引き続き可能。
+// --------------------------------------------------------------------------
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { notifyNewThread } from '@/lib/discord'
