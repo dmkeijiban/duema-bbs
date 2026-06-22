@@ -1,12 +1,10 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { reactivateAccount } from '@/app/account/reactivate/actions'
 import { logout } from '@/app/auth/actions'
 
 export function ReactivateAccountForm() {
-  const router = useRouter()
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
 
@@ -18,8 +16,7 @@ export function ReactivateAccountForm() {
         setError(result.error)
         return
       }
-      router.replace(result.redirectTo ?? '/mypage')
-      router.refresh()
+      window.location.assign(result.redirectTo ?? '/mypage')
     })
   }
 

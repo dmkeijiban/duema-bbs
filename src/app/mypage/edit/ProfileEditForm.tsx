@@ -141,7 +141,7 @@ export default function ProfileEditForm({
     context.drawImage(image, sx, sy, sourceSize, sourceSize, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE)
 
     // Try WebP first; if canvas.toBlob returns null the browser doesn't support WebP output
-    const QUALITIES = [0.9, 0.82, 0.74, 0.66, 0.58, 0.5, 0.42]
+    const QUALITIES = [0.9, 0.82, 0.74, 0.66, 0.58, 0.5, 0.42, 0.34, 0.26, 0.18]
     let webpSupported = false
     for (const quality of QUALITIES) {
       const blob = await canvasToBlob(canvas, 'image/webp', quality)
@@ -152,14 +152,12 @@ export default function ProfileEditForm({
       }
     }
 
-    // Fallback to JPEG when WebP is unsupported or all WebP qualities exceed size limit
-    if (!webpSupported) {
-      for (const quality of QUALITIES) {
-        const blob = await canvasToBlob(canvas, 'image/jpeg', quality)
-        if (blob === null) throw new Error('format_unsupported')
-        if (blob.size <= MAX_AVATAR_SIZE) {
-          return new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
-        }
+    // Fallback to JPEG — always try, regardless of whether WebP was supported
+    for (const quality of QUALITIES) {
+      const blob = await canvasToBlob(canvas, 'image/jpeg', quality)
+      if (blob === null) throw new Error('format_unsupported')
+      if (blob.size <= MAX_AVATAR_SIZE) {
+        return new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
       }
     }
 
@@ -188,7 +186,7 @@ export default function ProfileEditForm({
         } else if (msg === 'canvas_unavailable' || msg === 'format_unsupported') {
           setError('対応していない画像形式です。jpg / png / webp をお試しください。')
         } else if (msg === 'size_exceeded') {
-          setError('画像の容量を500KB以下にしてください。')
+          setError('画像の容量を500KB以下にしてください。別の画像を選ぶか、拡大率を下げてお試しください。')
         } else {
           setError('画像の切り抜きに失敗しました。別の画像で試してください。')
         }
@@ -205,7 +203,7 @@ export default function ProfileEditForm({
         return
       }
       if (result?.redirectTo) {
-        router.push(result.redirectTo)
+        window.location.assign(result.redirectTo)
       } else {
         router.refresh()
       }
@@ -272,7 +270,13 @@ export default function ProfileEditForm({
   }
 
   return (
-    <form action={handleSubmit} className="space-y-4">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        handleSubmit(new FormData(e.currentTarget))
+      }}
+      className="space-y-4"
+    >
       {error && (
         <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
