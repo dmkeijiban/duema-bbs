@@ -373,7 +373,7 @@ export function PostItem({
   }
 
   return (
-    <div id={`post-${displayNumber}`} className="border-b border-gray-200 last:border-b-0">
+    <div id={`post-${displayNumber}`} className="border-b border-gray-200 last:border-b-0 scroll-mt-20">
       {/* ヘッダー行 */}
       <div className="px-2 py-1.5 text-xs flex items-center gap-1 flex-wrap" style={{ background: '#f5f5f5' }}>
         <button

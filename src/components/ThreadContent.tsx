@@ -132,7 +132,7 @@ export function ThreadContent({
   return (
     <>
       <div className="border border-gray-300 bg-white">
-        <div id="post-1" className="border-b border-gray-200 last:border-b-0">
+        <div id="post-1" className="border-b border-gray-200 last:border-b-0 scroll-mt-20">
           <div className="px-2 py-1.5 text-xs flex items-center gap-1 flex-wrap" style={{ background: '#f5f5f5' }}>
             <button
               type="button"
@@ -213,7 +213,7 @@ export function ThreadContent({
       )}
 
       {!isArchived && (
-        <div id="reply-form-bottom" className="mt-3">
+        <div id="reply-form-bottom" className="mt-3 scroll-mt-20">
           <NewPostForm
             threadId={threadId}
             thread={thread}
