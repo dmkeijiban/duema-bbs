@@ -233,6 +233,20 @@ export function toJstDate(utcIso: string): string {
   return new Date(jstMs).toISOString().slice(0, 10)
 }
 
+/**
+ * Returns the UTC ISO string for "today JST 00:00:00".
+ * Use as an exclusive upper bound (lt) on created_at to exclude today's
+ * activity from all rankings — rankings are "1日1回更新" (daily update).
+ *
+ * Example: JST 2026-06-22 → '2026-06-21T15:00:00.000Z' (JST midnight in UTC)
+ */
+export function getJstTodayCutoffUtcIso(): string {
+  const jst = new Date(Date.now() + 9 * 60 * 60 * 1000)
+  const dateStr = jst.toISOString().slice(0, 10) // 'YYYY-MM-DD' in JST
+  const utcMs = new Date(`${dateStr}T00:00:00.000Z`).getTime() - 9 * 60 * 60 * 1000
+  return new Date(utcMs).toISOString()
+}
+
 export function toDisplayJst(isoJst: string): string {
   if (!isoJst) return ''
   const m = isoJst.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
@@ -338,7 +352,11 @@ export async function fetchCampaignSettings(): Promise<CampaignSettings> {
 export async function fetchCampaignRankingFull(
   startIso: string,
   endIso: string,
+  cutoffIso?: string,
 ): Promise<CampaignRankingAdminResult> {
+  // Effective end: cap at today's JST midnight (exclusive) to exclude today's activity.
+  // For ended campaigns endIso is already in the past so cutoff has no effect.
+  const effectiveEndIso = cutoffIso && cutoffIso < endIso ? cutoffIso : endIso
   const supabase = createAdminClient()
 
   // zukan_card_ratings has NO is_hidden column — only is_deleted.
@@ -350,7 +368,7 @@ export async function fetchCampaignRankingFull(
         .from('threads')
         .select('user_id, created_at')
         .gte('created_at', startIso)
-        .lte('created_at', endIso)
+        .lt('created_at', effectiveEndIso)
         .eq('is_archived', false)
         .not('user_id', 'is', null)
         .range(from, to) as PromiseLike<{ data: ActivityRow[] | null; error: { message: string } | null }>
@@ -360,7 +378,7 @@ export async function fetchCampaignRankingFull(
         .from('posts')
         .select('user_id, created_at')
         .gte('created_at', startIso)
-        .lte('created_at', endIso)
+        .lt('created_at', effectiveEndIso)
         .eq('is_deleted', false)
         .not('user_id', 'is', null)
         .range(from, to) as PromiseLike<{ data: ActivityRow[] | null; error: { message: string } | null }>
@@ -370,7 +388,7 @@ export async function fetchCampaignRankingFull(
         .from('zukan_card_ratings')
         .select('user_id, created_at')
         .gte('created_at', startIso)
-        .lte('created_at', endIso)
+        .lt('created_at', effectiveEndIso)
         .eq('is_deleted', false)
         .not('user_id', 'is', null)
         .range(from, to) as PromiseLike<{ data: ActivityRow[] | null; error: { message: string } | null }>
@@ -380,7 +398,7 @@ export async function fetchCampaignRankingFull(
         .from('zukan_card_reviews')
         .select('user_id, created_at')
         .gte('created_at', startIso)
-        .lte('created_at', endIso)
+        .lt('created_at', effectiveEndIso)
         .eq('is_deleted', false)
         .eq('is_hidden', false)
         .not('user_id', 'is', null)
@@ -391,7 +409,7 @@ export async function fetchCampaignRankingFull(
         .from('zukan_pack_reviews')
         .select('user_id, created_at')
         .gte('created_at', startIso)
-        .lte('created_at', endIso)
+        .lt('created_at', effectiveEndIso)
         .eq('is_deleted', false)
         .eq('is_hidden', false)
         .not('user_id', 'is', null)
@@ -403,7 +421,7 @@ export async function fetchCampaignRankingFull(
         .from('posts')
         .select('user_id, created_at, threads!inner(user_id)')
         .gte('created_at', startIso)
-        .lte('created_at', endIso)
+        .lt('created_at', effectiveEndIso)
         .eq('is_deleted', false)
         .eq('threads.is_archived', false)
         .not('user_id', 'is', null)
@@ -594,8 +612,9 @@ export async function fetchCampaignRankingPublic(
   startIso: string,
   endIso: string,
   includeZeroPt = false,
+  cutoffIso?: string,
 ): Promise<CampaignRankingPublicResult> {
-  const full = await fetchCampaignRankingFull(startIso, endIso)
+  const full = await fetchCampaignRankingFull(startIso, endIso, cutoffIso)
   if (full.error) return { entries: [], error: full.error, overflow: full.overflow }
 
   const entries: PublicCampaignEntry[] = []
@@ -627,10 +646,13 @@ export async function fetchCampaignRankingPublic(
     if (rank >= MAX_PUBLIC_DISPLAY) break
   }
 
-  // During active campaign: append eligible users with 0pt (no campaign-period activity)
+  // During active campaign: append eligible users with 0pt (no campaign-period activity).
+  // Only include profiles created before today's JST cutoff — new accounts don't appear
+  // in rankings until the next daily update.
   if (includeZeroPt && entries.length < MAX_PUBLIC_DISPLAY) {
     const supabase = createAdminClient()
-    const { data: zeroPtProfiles } = await supabase
+    const effectiveCutoff = cutoffIso ?? getJstTodayCutoffUtcIso()
+    const zeroPtQuery = supabase
       .from('profiles')
       .select('id, display_name, profile_slug, avatar_url, x_url, youtube_url')
       .eq('profile_hidden', false)
@@ -639,7 +661,9 @@ export async function fetchCampaignRankingPublic(
       .eq('account_suspended', false)
       .is('withdrawn_at', null)
       .not('profile_slug', 'is', null)
+      .lt('created_at', effectiveCutoff)
       .order('created_at', { ascending: true })
+    const { data: zeroPtProfiles } = await zeroPtQuery
 
     for (const p of zeroPtProfiles ?? []) {
       if (entries.length >= MAX_PUBLIC_DISPLAY) break

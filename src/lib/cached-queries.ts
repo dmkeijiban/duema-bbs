@@ -12,6 +12,7 @@ import {
   fetchCampaignSettings,
   fetchCampaignRankingPublic,
   resolveCampaignState,
+  getJstTodayCutoffUtcIso,
   type CampaignSettings,
   type CampaignRankingPublicResult,
 } from './campaign-ranking'
@@ -551,6 +552,8 @@ export function getCachedUserRankings(): Promise<UserRankingResult> {
     try {
       const supabase = createPublicClient()
       const monthStartIso = getJstMonthStartIso()
+      // Exclude today's activity — rankings are updated once per day at JST 0:00.
+      const cutoffIso = getJstTodayCutoffUtcIso()
 
       const { data: profilesData } = await supabase
         .from('profiles')
@@ -560,6 +563,7 @@ export function getCachedUserRankings(): Promise<UserRankingResult> {
         .eq('rank_excluded', false)
         .eq('account_suspended', false)
         .is('withdrawn_at', null)
+        .lt('created_at', cutoffIso)
         .order('created_at', { ascending: false })
         .limit(USER_RANKING_PROFILE_LIMIT)
 
@@ -578,6 +582,7 @@ export function getCachedUserRankings(): Promise<UserRankingResult> {
           .in('user_id', userIds)
           .eq('is_archived', false)
           .gte('created_at', monthStartIso)
+          .lt('created_at', cutoffIso)
           .limit(USER_RANKING_FETCH_LIMIT),
         supabase
           .from('posts')
@@ -586,12 +591,14 @@ export function getCachedUserRankings(): Promise<UserRankingResult> {
           .eq('is_deleted', false)
           .eq('threads.is_archived', false)
           .gte('created_at', monthStartIso)
+          .lt('created_at', cutoffIso)
           .limit(USER_RANKING_FETCH_LIMIT),
         supabase
           .from('threads')
           .select('user_id')
           .in('user_id', userIds)
           .eq('is_archived', false)
+          .lt('created_at', cutoffIso)
           .limit(USER_RANKING_FETCH_LIMIT),
         supabase
           .from('posts')
@@ -599,6 +606,7 @@ export function getCachedUserRankings(): Promise<UserRankingResult> {
           .in('user_id', userIds)
           .eq('is_deleted', false)
           .eq('threads.is_archived', false)
+          .lt('created_at', cutoffIso)
           .limit(USER_RANKING_FETCH_LIMIT),
         supabase
           .from('zukan_card_ratings')
@@ -606,6 +614,7 @@ export function getCachedUserRankings(): Promise<UserRankingResult> {
           .in('user_id', userIds)
           .eq('is_deleted', false)
           .gte('created_at', monthStartIso)
+          .lt('created_at', cutoffIso)
           .limit(USER_RANKING_FETCH_LIMIT),
         supabase
           .from('zukan_card_reviews')
@@ -614,6 +623,7 @@ export function getCachedUserRankings(): Promise<UserRankingResult> {
           .eq('is_deleted', false)
           .eq('is_hidden', false)
           .gte('created_at', monthStartIso)
+          .lt('created_at', cutoffIso)
           .limit(USER_RANKING_FETCH_LIMIT),
         supabase
           .from('zukan_pack_reviews')
@@ -622,12 +632,14 @@ export function getCachedUserRankings(): Promise<UserRankingResult> {
           .eq('is_deleted', false)
           .eq('is_hidden', false)
           .gte('created_at', monthStartIso)
+          .lt('created_at', cutoffIso)
           .limit(USER_RANKING_FETCH_LIMIT),
         supabase
           .from('zukan_card_ratings')
           .select('user_id')
           .in('user_id', userIds)
           .eq('is_deleted', false)
+          .lt('created_at', cutoffIso)
           .limit(USER_RANKING_FETCH_LIMIT),
         supabase
           .from('zukan_card_reviews')
@@ -635,6 +647,7 @@ export function getCachedUserRankings(): Promise<UserRankingResult> {
           .in('user_id', userIds)
           .eq('is_deleted', false)
           .eq('is_hidden', false)
+          .lt('created_at', cutoffIso)
           .limit(USER_RANKING_FETCH_LIMIT),
         supabase
           .from('zukan_pack_reviews')
@@ -642,6 +655,7 @@ export function getCachedUserRankings(): Promise<UserRankingResult> {
           .in('user_id', userIds)
           .eq('is_deleted', false)
           .eq('is_hidden', false)
+          .lt('created_at', cutoffIso)
           .limit(USER_RANKING_FETCH_LIMIT),
       ])
 
@@ -668,7 +682,7 @@ export function getCachedUserRankings(): Promise<UserRankingResult> {
       return { monthly: [], total: [] }
     }
   },
-    [`user-rankings-public-v7-${dateKey}`],
+    [`user-rankings-public-v8-${dateKey}`],
     { revalidate: 86400, tags: ['user-rankings'] },
   )()
 }
@@ -696,10 +710,12 @@ export function getCachedCampaignRanking(): Promise<CachedCampaignRankingResult>
       if (state === 'disabled' || state === 'scheduled') {
         return { settings, ranking: { entries: [], error: null, overflow: false }, cachedDateJst: getJstDateKey() }
       }
-      const ranking = await fetchCampaignRankingPublic(settings.startIso, settings.endIso, state === 'active')
+      // Pass cutoffIso so today's activity is excluded (rankings are 1-day updated).
+      const cutoffIso = getJstTodayCutoffUtcIso()
+      const ranking = await fetchCampaignRankingPublic(settings.startIso, settings.endIso, state === 'active', cutoffIso)
       return { settings, ranking, cachedDateJst: getJstDateKey() }
     },
-    [`campaign-ranking-public-${dateKey}`],
+    [`campaign-ranking-public-v2-${dateKey}`],
     { revalidate: 86400, tags: ['campaign-ranking'] },
   )()
 }
