@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 
 import { createAdminClient } from '@/lib/supabase-admin'
-import { getZukanDailyPostIssue, getZukanPosterContext } from '@/lib/zukan-server'
+import { getZukanPosterContext } from '@/lib/zukan-server'
 import { verifyAdminCookie, ADMIN_COOKIE } from '@/lib/admin-auth'
 
 async function requireAdmin(): Promise<boolean> {
@@ -35,10 +35,6 @@ export async function submitCardReview(
   const poster = await getZukanPosterContext(rawDisplayName)
   if (poster.blockedMessage) {
     return { status: 'error', message: poster.blockedMessage }
-  }
-  const dailyIssue = await getZukanDailyPostIssue('zukan_card_reviews', 'card_id', cardId, poster, body)
-  if (dailyIssue === 'duplicate') {
-    return { status: 'error', message: '同じ内容のレビューをすでに投稿しています。' }
   }
 
   const supabase = createAdminClient()
