@@ -1,20 +1,14 @@
+import { Suspense, cache } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { cookies } from 'next/headers'
-import { fetchCardBySlug, fetchCardRatings, attachReviewProfiles } from '@/lib/zukan'
-import { createAdminClient } from '@/lib/supabase-admin'
-import { getZukanPosterContextReadOnly } from '@/lib/zukan-server'
-import { verifyAdminCookie, ADMIN_COOKIE } from '@/lib/admin-auth'
+import { fetchCardBySlug } from '@/lib/zukan'
 import type { ZukanCardWithPack } from '@/lib/zukan'
-import { normalizeZukanDisplayName } from '@/lib/zukan-display'
-import { ZukanReviewAuthor } from '@/components/ZukanReviewAuthor'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import ShareButtons from './ShareButtons'
-import CardReviewForm from './CardReviewForm'
-import CardRatingForm from './CardRatingForm'
-import type { ItemKey } from './CardRatingForm'
-import AdminReviewControls from './AdminReviewControls'
 import { SITE_URL } from '@/lib/site-config'
+import { ZukanCardMemories, ZukanCardMemoriesSkeleton } from './ZukanCardMemories'
+
+const getCardBySlugCached = cache(fetchCardBySlug)
 
 const MOCK_CARD: ZukanCardWithPack = {
   id: '',
@@ -46,14 +40,6 @@ const CIV_BADGE: Record<string, string> = {
   闇: 'bg-gray-200 text-gray-700',
 }
 
-const RATING_LABELS = [
-  ['当時の憧れ度', 'admiration'],
-  ['使われた時のトラウマ度', 'trauma'],
-  ['今見ても好き度', 'stillLike'],
-  ['名前のかっこよさ', 'name'],
-  ['イラストのかっこよさ', 'art'],
-] as const
-
 function CardThumb({ name }: { name: string }) {
   return (
     <div
@@ -68,7 +54,7 @@ function CardThumb({ name }: { name: string }) {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const result = await fetchCardBySlug(slug)
+  const result = await getCardBySlugCached(slug)
   const name =
     result.status === 'found'
       ? result.card.name
@@ -106,7 +92,7 @@ export default async function ZukanCardPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const result = await fetchCardBySlug(slug)
+  const result = await getCardBySlugCached(slug)
 
   let card: ZukanCardWithPack
   let isDbReady = false
@@ -121,81 +107,9 @@ export default async function ZukanCardPage({
     card = MOCK_CARD
   }
 
-  const isAdmin = verifyAdminCookie((await cookies()).get(ADMIN_COOKIE)?.value)
-
-  type AdminCardReview = {
-    id: number
-    user_id: string | null
-    display_name: string
-    body: string
-    created_at: string
-    is_hidden: boolean
-    avatar_url: string | null
-    profile_slug: string | null
-    is_withdrawn: boolean
-  }
-
-  let cardReviews: AdminCardReview[] | null = null
-  let ratingsSummary = null
-
-  if (isDbReady) {
-    ratingsSummary = await fetchCardRatings(card.id)
-
-    if (isAdmin) {
-      const adminSupa = createAdminClient()
-      const { data } = await adminSupa
-        .from('zukan_card_reviews')
-        .select('id, card_id, user_id, display_name, body, created_at, is_hidden')
-        .eq('card_id', card.id)
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false })
-        .limit(10)
-      if (data) {
-        const enriched = await attachReviewProfiles(data as { id: number; card_id: string; user_id: string | null; display_name: string; body: string; created_at: string; is_hidden: boolean }[])
-        cardReviews = enriched.map(r => ({ ...r, is_hidden: r.is_hidden }))
-      }
-    } else {
-      const { fetchCardReviews } = await import('@/lib/zukan')
-      const reviews = await fetchCardReviews(card.id)
-      cardReviews = reviews ? reviews.map(r => ({ ...r, is_hidden: false as const })) : null
-    }
-  }
-
-  let initialValues: Partial<Record<ItemKey, number>> | undefined
-  if (isDbReady) {
-    const poster = await getZukanPosterContextReadOnly(null)
-    if (!poster.blockedMessage && (poster.userId || poster.anonKey)) {
-      const supabase = createAdminClient()
-      let q = supabase
-        .from('zukan_card_ratings')
-        .select('score_admiration, score_trauma, score_still_like, score_name, score_art')
-        .eq('card_id', card.id)
-        .eq('is_deleted', false)
-        .limit(1)
-      if (poster.userId) {
-        q = q.eq('user_id', poster.userId)
-      } else {
-        q = q.eq('anon_key', poster.anonKey!).is('user_id', null)
-      }
-      const { data } = await q
-      if (data && data.length > 0) {
-        const row = data[0]
-        initialValues = {
-          score_admiration: row.score_admiration ?? undefined,
-          score_trauma: row.score_trauma ?? undefined,
-          score_still_like: row.score_still_like ?? undefined,
-          score_name: row.score_name ?? undefined,
-          score_art: row.score_art ?? undefined,
-        }
-      }
-    }
-  }
-
   const pack = card.zukan_packs
   const packHref = pack ? `/zukan/${pack.slug}` : '/zukan'
   const packLabel = pack ? `${pack.code} ${pack.name}` : '図鑑トップ'
-  const ratingCount = ratingsSummary?.totalCount ?? 0
-  const reviewCount = cardReviews?.length ?? 0
 
   return (
     <div className="mx-auto max-w-screen-xl px-2 pt-2 pb-10">
@@ -282,81 +196,11 @@ export default async function ZukanCardPage({
         </div>
       </header>
 
-      <section className="mb-5 border border-gray-300 bg-white">
-        <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
-          <h2 className="text-base font-bold text-gray-800">みんなの思い出</h2>
-        </div>
-        <div className="space-y-5 p-3">
-          <section>
-            <h3 className="mb-2 text-sm font-bold text-gray-800">
-              みんなの思い出評価{ratingCount > 0 ? `（${ratingCount}件）` : ''}
-            </h3>
-            {ratingsSummary ? (
-              <div className="mb-3 border border-gray-200 bg-white divide-y divide-gray-100">
-                {RATING_LABELS.map(([label, key]) => {
-                  const stat = ratingsSummary[key]
-                  const pct = stat.avg ? Math.round((stat.avg / 5) * 100) : 0
-                  return (
-                    <div key={label} className="grid grid-cols-[9rem_1fr_3rem] items-center gap-2 px-3 py-2.5 sm:grid-cols-[11rem_1fr_3rem]">
-                      <span className="text-xs font-bold text-gray-700">{label}</span>
-                      <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-                        {pct > 0 && <div className="h-full rounded-full bg-yellow-400" style={{ width: `${pct}%` }} />}
-                      </div>
-                      <span className="text-right font-mono text-xs text-gray-600">
-                        {stat.avg ? stat.avg.toFixed(1) : '-'}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <p className="mb-3 border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">
-                まだ評価はありません
-              </p>
-            )}
-            {isDbReady && <CardRatingForm cardId={card.id} slug={slug} initialValues={initialValues} />}
-          </section>
-
-          <section>
-            <h3 className="mb-2 text-sm font-bold text-gray-800">
-              このカードの思い出（{reviewCount}件）
-            </h3>
-            {cardReviews && cardReviews.length > 0 && (
-              <div className="mb-3 divide-y divide-gray-100 border border-gray-200 bg-white">
-                {cardReviews.map(r => (
-                  <article key={r.id} className={`px-3 py-2.5 ${r.is_hidden ? 'opacity-50 bg-gray-50' : ''}`}>
-                    <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                      <ZukanReviewAuthor
-                        displayName={normalizeZukanDisplayName(r.display_name)}
-                        avatarUrl={r.avatar_url}
-                        profileSlug={r.profile_slug}
-                        isWithdrawn={r.is_withdrawn}
-                      />
-                      <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}</time>
-                      {r.is_hidden && <span className="text-red-500 font-bold">[非表示]</span>}
-                    </div>
-                    <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
-                    {isAdmin && (
-                      <AdminReviewControls
-                        reviewId={r.id}
-                        slug={slug}
-                        initialBody={r.body}
-                        isHidden={r.is_hidden}
-                      />
-                    )}
-                  </article>
-                ))}
-              </div>
-            )}
-            {cardReviews !== null && cardReviews.length === 0 && (
-              <p className="mb-3 border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">
-                まだ投稿はありません。最初の思い出を書いてみませんか？
-              </p>
-            )}
-            {isDbReady && <CardReviewForm cardId={card.id} slug={slug} />}
-          </section>
-        </div>
-      </section>
+      {isDbReady && (
+        <Suspense fallback={<ZukanCardMemoriesSkeleton />}>
+          <ZukanCardMemories cardId={card.id} slug={slug} />
+        </Suspense>
+      )}
     </div>
   )
 }
