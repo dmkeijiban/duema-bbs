@@ -15,7 +15,7 @@ function BannerButtons() {
         href="/zukan"
         className="inline-flex items-center justify-center rounded border border-green-700 bg-white px-2.5 py-1 text-xs font-bold text-green-800 transition-colors hover:bg-green-50"
       >
-        思い出図鑑
+        思い出図鑑を見る
       </Link>
     </div>
   )
