@@ -34,9 +34,6 @@ const TOP_THREAD_PAGE_SIZE = 60
 // 'threads': おすすめスレッド表示（元の動作に戻す場合はここを変更）
 const HOME_RECOMMENDATION_MODE: 'ranking' | 'threads' = 'ranking'
 
-// ── Step 5: カテゴリフィルター時のメタデータ動的生成
-// ?category=slug でアクセスされたとき、タイトル・descriptionを
-// カテゴリ固有の内容にして検索エンジンへの情報密度を上げる。
 export async function generateMetadata({
   searchParams,
 }: {
@@ -78,9 +75,6 @@ interface SearchParams {
   [key: string]: string | undefined
 }
 
-// ──────────────────────────────────────────────────
-// スレ一覧（非同期・Suspense 内）
-// ──────────────────────────────────────────────────
 async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
   const sort = searchParams.sort ?? 'recent'
   const searchQ = searchParams.q?.trim()
@@ -89,11 +83,9 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
   const page = Math.max(1, parseInt(searchParams.page ?? '1') || 1)
   const supabase = createPublicClient()
 
-  // カテゴリIDはキャッシュ済み一覧から引く
   const cats = await getCachedCategories()
   const categoryIds = searchParams.category ? getCategoryIdsForSlug(searchParams.category, cats) : []
 
-  // ── ランダム（キャッシュ不適）
   if (isRandom) {
     let q = supabase
       .from('threads')
@@ -114,7 +106,6 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
     )
   }
 
-  // ── 検索（キャッシュ不適・クエリが多様）
   if (searchQ) {
     const offset = (page - 1) * TOP_THREAD_PAGE_SIZE
     let countQ = supabase
@@ -156,7 +147,6 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
     )
   }
 
-  // ── 標準クエリ（キャッシュ済み・60s）
   const result = await getCachedThreadList(sort, page, categoryIds.length > 0 ? categoryIds : null, isArchived, TOP_THREAD_PAGE_SIZE)
   const threads = result.threads as unknown as (Thread & { categories: Category | null })[]
 
@@ -167,7 +157,6 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
 
   return (
     <>
-      {/* SEO: ItemList構造化データ — スレッド一覧をGoogleに伝える */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -224,17 +213,6 @@ function ThreadEmpty({ searchQ }: { searchQ?: string }) {
   )
 }
 
-// ──────────────────────────────────────────────────
-// LCP要素のデフォルト表示
-// Home が await を持たないため、このコンポーネントが最初の
-// HTML バイトに含まれ、LCP が即座に確定する。
-//
-// 【重要】DB の home_banner 値と同じ内容・サイズにすること。
-// Chrome は「より大きい要素」に LCP 候補を更新するため、
-// fallback より DB 版が大きいと DB 版（1830ms）が LCP になる。
-// fallback = DB 値 にすることで fallback が LCP 確定（ERD ≈ 0）。
-// DB 値を変更したらここも合わせて更新する。
-// ──────────────────────────────────────────────────
 function HomeBannerFallback() {
   return <HomeGuideBanner />
 }
@@ -242,42 +220,38 @@ function HomeBannerFallback() {
 function HomeGuideBanner() {
   return (
     <div
-      className="mb-2 flex flex-col gap-2 border px-3 py-2 text-sm text-green-900 md:flex-row md:items-center md:justify-between"
+      className="mb-1.5 flex flex-col gap-1.5 border px-3 py-1.5 text-sm text-green-900 md:flex-row md:items-center md:justify-between"
       style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb' }}
     >
-      <div className="leading-relaxed">
-        <p>
-          初めての方は
-          <Link href="/guide" className="font-bold underline underline-offset-2 hover:opacity-80">
-            スレッドの立て方
-          </Link>
-          をご確認ください。
-        </p>
-      </div>
-      <div className="flex shrink-0 flex-wrap gap-2">
+      <p className="font-bold leading-relaxed">
+        初めての方は
+        <Link href="/guide" className="underline underline-offset-2 hover:opacity-80">
+          スレッドの立て方
+        </Link>
+        をご確認ください。
+      </p>
+      <div className="flex shrink-0 flex-wrap gap-1.5">
         <Link
           href="/login?mode=signup"
-          className="inline-flex items-center justify-center rounded border border-green-700 bg-white px-3 py-1.5 text-xs font-bold text-green-800 transition-colors hover:bg-green-50"
+          className="inline-flex items-center justify-center rounded border border-green-700 bg-white px-2.5 py-1 text-xs font-bold text-green-800 transition-colors hover:bg-green-50"
         >
           アカウント作成
         </Link>
         <Link
           href="/zukan"
-          className="inline-flex items-center justify-center rounded border border-green-700 bg-white px-3 py-1.5 text-xs font-bold text-green-800 transition-colors hover:bg-green-50"
+          className="inline-flex items-center justify-center rounded border border-green-700 bg-white px-2.5 py-1 text-xs font-bold text-green-800 transition-colors hover:bg-green-50"
         >
-          思い出図鑑を見る
+          思い出図鑑
         </Link>
       </div>
     </div>
   )
 }
 
-// ── 緑帯案内。初期HTMLと差し替え後で同じ内容を保つ。
 function HomeBannerServer() {
   return <HomeGuideBanner />
 }
 
-// ── お知らせブロック（position 別）
 async function TopNoticesServer() {
   const notices = (await getCachedActiveNotices()) as Notice[]
   const top = notices.filter(n => n.position === 'top')
@@ -299,7 +273,6 @@ async function BotNoticesServer() {
   return <>{bot.map(n => <NoticeBlock key={n.id} notice={n} />)}</>
 }
 
-
 function currentNavFromSort(sort: string) {
   if (sort === 'new') return '/new'
   if (sort === 'popular') return '/ranking'
@@ -313,18 +286,11 @@ async function BottomNavServer({ params }: { params: SearchParams }) {
   return <BottomNav current={currentNavFromSort(sort)} currentCategory={params.category} categories={categories} />
 }
 
-// ── InlineNewThread（カテゴリ取得後に差し替え）
 async function InlineNewThreadServer() {
   const categories = await getCachedCategories()
   return <InlineNewThread categories={categories} />
 }
 
-// ──────────────────────────────────────────────────
-// ページ本体
-// DB await を一切持たないため、最初の HTML バイトが
-// 即座にストリームされ LCP 要素（HomeBannerFallback）が
-// ブラウザに届く。
-// ──────────────────────────────────────────────────
 export default async function Home({
   searchParams,
 }: {
@@ -339,7 +305,6 @@ export default async function Home({
 
   return (
     <div className="w-full px-0 py-0">
-      {/* SEO: DiscussionForum + WebPage 構造化データ — Googleにフォームサイトと認識させ知識グラフに接続 */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -372,7 +337,6 @@ export default async function Home({
           ]),
         }}
       />
-      {/* SEO: スクリーンリーダー・Googleのみ向けH1 */}
       <h1 className="sr-only">デュエマ掲示板 - デュエルマスターズ専門掲示板</h1>
 
       <div className="max-w-screen-xl mx-auto px-2 pt-2">
@@ -386,10 +350,6 @@ export default async function Home({
           </Suspense>
         )}
 
-        {/* ── LCP 対象テキスト ──────────────────────────────────────────
-            HomeBannerFallback が初期 HTML シェルに含まれ、CSS のみで
-            即座に描画される。HomeBannerServer の解決後に実データで置換。
-            どちらもテキストのみ（画像なし）なので、LCP がページ表示直後に確定。 */}
         <Suspense fallback={<HomeBannerFallback />}>
           <HomeBannerServer />
         </Suspense>
@@ -398,19 +358,7 @@ export default async function Home({
           <TopNoticesServer />
         </Suspense>
 
-        {/* 注目まとめ（手動作成まとめのみ・データなければ非表示） — 不要なら下の1行削除で即リバート */}
         <Suspense fallback={null}><FeaturedSummaries /></Suspense>
-
-        {/* まとめバナー（静的・即座に描画） */}
-        <Link
-          href="/ranking"
-          className="mb-2 flex items-center justify-between px-3 py-2 border border-blue-200 bg-blue-50 text-sm text-gray-900 hover:bg-blue-100 transition-colors"
-        >
-          <span>📊 人気ランキングまとめ（週間・総合）</span>
-          <span className="text-xs ml-2 shrink-0">一覧へ</span>
-        </Link>
-
-
       </div>
 
       <div className="max-w-screen-xl mx-auto px-2">
@@ -418,7 +366,6 @@ export default async function Home({
           <MidNoticesServer />
         </Suspense>
 
-        {/* スレ一覧: Suspense で包み、上位要素（LCP）のストリームを妨げない */}
         <Suspense fallback={<ThreadListSkeleton />}>
           <ThreadList searchParams={params} />
         </Suspense>
@@ -427,14 +374,12 @@ export default async function Home({
           <BottomNavServer params={params} />
         </Suspense>
 
-        {/* AdSense ディスプレイ広告（スレ一覧下） */}
         <AdBanner slot="5316786416" format="auto" style={{ margin: '8px 0' }} minHeight={0} />
 
         <Suspense fallback={null}>
           <BotNoticesServer />
         </Suspense>
 
-        {/* スレ作成フォーム: 遅延ロードで可視領域外のレンダリングコストを下げる */}
         <Suspense fallback={null}>
           <InlineNewThreadServer />
         </Suspense>
@@ -447,7 +392,6 @@ export default async function Home({
     </div>
   )
 }
-
 
 function SetupGuide() {
   return (
@@ -467,16 +411,11 @@ function SetupGuide() {
   )
 }
 
-// ──────────────────────────────────────────────────
-// スケルトン
-// ──────────────────────────────────────────────────
-
 function ThreadListSkeleton() {
   return (
     <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300 animate-pulse">
       {[...Array(15)].map((_, i) => (
         <div key={i} className="bg-white border-b border-r border-gray-300 overflow-hidden">
-          {/* モバイル */}
           <div className="md:hidden flex" style={{ height: 52 }}>
             <div className="shrink-0 bg-gray-200" style={{ width: 52, height: 52 }} />
             <div className="px-1.5 py-1 flex-1 flex flex-col gap-1 justify-center">
@@ -484,7 +423,6 @@ function ThreadListSkeleton() {
               <div className="h-2 bg-gray-200 rounded w-3/4" />
             </div>
           </div>
-          {/* PC */}
           <div className="hidden md:flex" style={{ height: 80 }}>
             <div className="shrink-0 bg-gray-200" style={{ width: 80, height: 80 }} />
             <div className="p-1.5 flex-1 flex flex-col gap-1 justify-center">
@@ -497,26 +435,3 @@ function ThreadListSkeleton() {
     </div>
   )
 }
-
-// TopNoticesServer のスケルトン。
-// NoticeBlock は常に height:80 の画像行を持つため、スケルトンも同じ高さに固定する。
-// これにより、ストリーミング SSR でコンテンツが差し込まれても
-// 後続要素が移動せず CLS = 0 になる。
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function TopNoticesSkeleton() {
-  return (
-    <div className="mb-2 animate-pulse">
-      {/* ヘッダー行（text-sm ≈ 20px + mb-1 = 4px → 24px） */}
-      <div className="h-5 bg-gray-100 rounded w-44 mb-1 mx-1" />
-      {/* 画像行（height: 80px 固定 / NoticeBlock と同一） */}
-      <div className="flex gap-1">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} style={{ flex: 1, height: 80 }} className="bg-gray-100" />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-
-// RecommendSectionSkeleton は @/components/RecommendSection からエクスポート済み
