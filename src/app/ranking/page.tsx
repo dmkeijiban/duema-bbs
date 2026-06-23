@@ -7,6 +7,7 @@ import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { ThreadListHeader } from '@/components/ThreadListHeader'
 import { ThreadListTopContent } from '@/components/ThreadListTopContent'
+import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
@@ -603,6 +604,7 @@ export default async function RankingPage({ searchParams }: Props) {
           </Suspense>
         )}
 
+        <SnsCtaCard />
         <BottomNav current="/ranking" categories={categories} />
         <div className="mb-6" />
       </div>
