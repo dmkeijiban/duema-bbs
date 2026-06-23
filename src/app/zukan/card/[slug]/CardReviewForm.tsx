@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { createClient } from '@/lib/supabase'
 import { normalizeZukanDisplayName, ZUKAN_DEFAULT_DISPLAY_NAME, ZUKAN_MAX_ANON_DISPLAY_NAME_LENGTH } from '@/lib/zukan-display'
@@ -18,6 +18,7 @@ export default function CardReviewForm({ cardId, slug }: { cardId: string; slug:
   const action = submitCardReview.bind(null, cardId, slug)
   const [state, dispatch, isPending] = useActionState(action, INITIAL)
   const [viewer, setViewer] = useState<ViewerState>({ status: 'checking' })
+  const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
     let active = true
@@ -60,16 +61,14 @@ export default function CardReviewForm({ cardId, slug }: { cardId: string; slug:
     }
   }, [])
 
-  if (state.status === 'success') {
-    return (
-      <div className="border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700">
-        投稿しました！ありがとうございます。
-      </div>
-    )
-  }
+  useEffect(() => {
+    if (state.status === 'success') {
+      formRef.current?.reset()
+    }
+  }, [state.status])
 
   return (
-    <form action={dispatch} className="border border-gray-200 bg-white p-3">
+    <form ref={formRef} action={dispatch} className="border border-gray-200 bg-white p-3">
       {viewer.status === 'checking' ? (
         <p className="mb-2 rounded border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs text-gray-500">
           投稿者情報を確認中です。
