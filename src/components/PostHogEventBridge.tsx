@@ -3,6 +3,8 @@
 import { useEffect } from 'react'
 import { capturePostHogEvent } from '@/lib/posthog-events'
 
+const RANKING_SCROLL_KEY = 'duema-ranking-scroll-y'
+
 function findAnchor(target: EventTarget | null): HTMLAnchorElement | null {
   if (!(target instanceof Element)) return null
   return target.closest('a')
@@ -11,6 +13,36 @@ function findAnchor(target: EventTarget | null): HTMLAnchorElement | null {
 function findButton(target: EventTarget | null): HTMLButtonElement | null {
   if (!(target instanceof Element)) return null
   return target.closest('button')
+}
+
+function isRankingNavigation(href: string) {
+  return href === '/ranking' || href.startsWith('/ranking?') || href.startsWith('/ranking#')
+}
+
+function rememberRankingScroll(href: string) {
+  if (!isRankingNavigation(href) || window.location.pathname !== '/ranking') return
+  sessionStorage.setItem(RANKING_SCROLL_KEY, String(window.scrollY))
+
+  // App Routerのクライアント遷移後に同じ位置へ戻す。
+  // 通常のリンク挙動は邪魔せず、ランキング内タブ切替だけTOP戻りを防ぐ。
+  const restore = () => {
+    const saved = Number(sessionStorage.getItem(RANKING_SCROLL_KEY))
+    if (!Number.isFinite(saved) || saved <= 0) return
+    window.scrollTo({ top: saved, behavior: 'auto' })
+  }
+  setTimeout(restore, 50)
+  setTimeout(restore, 150)
+  setTimeout(() => sessionStorage.removeItem(RANKING_SCROLL_KEY), 600)
+}
+
+function restoreRankingScrollOnLoad() {
+  if (window.location.pathname !== '/ranking') return
+  const saved = Number(sessionStorage.getItem(RANKING_SCROLL_KEY))
+  if (!Number.isFinite(saved) || saved <= 0) return
+  requestAnimationFrame(() => {
+    window.scrollTo({ top: saved, behavior: 'auto' })
+    sessionStorage.removeItem(RANKING_SCROLL_KEY)
+  })
 }
 
 function eventNameForInternalHref(href: string) {
@@ -86,11 +118,15 @@ function eventNameForForm(form: HTMLFormElement) {
 
 export function PostHogEventBridge() {
   useEffect(() => {
+    restoreRankingScrollOnLoad()
+
     const handleClick = (event: MouseEvent) => {
       const anchor = findAnchor(event.target)
       if (anchor) {
         const href = anchor.getAttribute('href')
         if (!href) return
+
+        rememberRankingScroll(href)
 
         const eventName = href.startsWith('/')
           ? eventNameForInternalHref(href)
