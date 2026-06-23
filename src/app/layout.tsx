@@ -217,7 +217,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <Link href="/contact" className="hover:underline">お問い合わせ</Link>
                 <Link href="/about" className="hover:underline">運営者情報</Link>
               </div>
-              <div>©<Link href="/">デュエマ掲示板</Link> — デュエル・マスターズ専門掲示板</div>
+              <div>©デュエマ掲示板 — デュエル・マスターズ専門掲示板</div>
             </div>
           </footer>
       </body>
