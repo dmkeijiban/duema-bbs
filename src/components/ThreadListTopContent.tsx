@@ -43,7 +43,7 @@ function HomeBannerServer() {
   return <HomeBannerFallback />
 }
 
-export async function ThreadListTopContent({ showPopularThreads = true }: { showPopularThreads?: boolean }) {
+export async function ThreadListTopContent({ showPopularThreads = false }: { showPopularThreads?: boolean }) {
   return (
     <div className="max-w-screen-xl mx-auto px-2 pt-2">
       <Suspense fallback={<RecommendSectionSkeleton />}>
