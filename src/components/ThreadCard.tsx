@@ -41,9 +41,7 @@ export function ThreadCard({ thread, rank, priority }: Props) {
       prefetch={false}
       className="thread-card bg-white hover:bg-gray-50 overflow-hidden border-b border-r border-gray-300 block"
     >
-      {/* ── モバイル: 横並び（あにまん式） ── */}
       <div className="md:hidden flex" style={{ height: 52, overflow: 'hidden' }}>
-        {/* 画像（コメント数オーバーレイ付き） */}
         <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 52, height: 52 }}>
           <SafeThumbnail src={imgSrc} alt={thread.title} priority={priority} />
           {rank !== undefined && (
@@ -56,36 +54,30 @@ export function ThreadCard({ thread, rank, priority }: Props) {
               過去
             </span>
           )}
-          {/* コメント数：画像下部に黒半透明オーバーレイ */}
           <span className="absolute bottom-0 left-0 right-0 text-white text-[9px] font-bold px-1 leading-[14px] flex items-center gap-0.5" style={{ background: 'rgba(0,0,0,0.52)' }}>
             💬{thread.post_count}
           </span>
         </div>
-        {/* タイトル */}
         <div className="px-1.5 py-1 flex-1 min-w-0">
+          <div className="mb-0.5 flex min-w-0 items-center gap-1">
+            {activityBadge && (
+              <span className={`thread-card-activity-badge shrink-0 rounded-sm px-1.5 text-[10px] font-black leading-4 shadow-sm ${activityBadge.className}`}>
+                {activityBadge.label}
+              </span>
+            )}
+            {category && (
+              <span className="truncate text-[9px] font-bold leading-4 text-gray-500">
+                {category.name}
+              </span>
+            )}
+          </div>
           <p className="text-[11px] leading-snug text-gray-800 line-clamp-2 break-all">
             {thread.title}
           </p>
-          {(activityBadge || category) && (
-            <div className="mt-0.5 flex min-w-0 items-center gap-1">
-              {activityBadge && (
-                <span className={`thread-card-activity-badge shrink-0 rounded-sm px-1.5 text-[10px] font-black leading-4 shadow-sm ${activityBadge.className}`}>
-                  {activityBadge.label}
-                </span>
-              )}
-              {category && (
-                <span className="truncate text-[9px] font-bold leading-4 text-gray-500">
-                  {category.name}
-                </span>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
-      {/* ── PC: 横並び ── */}
       <div className="hidden md:flex" style={{ height: 80, overflow: 'hidden' }}>
-        {/* 画像 */}
         <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 80, height: 80 }}>
           <SafeThumbnail src={imgSrc} alt={thread.title} priority={priority} />
           {rank !== undefined && (
@@ -99,7 +91,6 @@ export function ThreadCard({ thread, rank, priority }: Props) {
             </span>
           )}
         </div>
-        {/* テキスト */}
         <div className="p-1.5 flex-1 min-w-0 relative">
           <div className="mb-0.5 flex min-w-0 items-center gap-1">
             {category && (
