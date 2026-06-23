@@ -42,6 +42,15 @@ body > footer {
   min-height: unset;
 }
 
+/* 活動バッジは各グリッドの先頭3件だけ表示して、一覧全体のノイズを抑える */
+.thread-card-activity-badge {
+  display: none;
+}
+
+.grid > .thread-card:nth-child(-n+3) .thread-card-activity-badge {
+  display: inline-flex;
+}
+
 /* Hide the reply-form notification row when Web Push is unavailable. */
 tr:has(.push-subscribe-empty) {
   display: none;
