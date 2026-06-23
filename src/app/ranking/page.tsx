@@ -178,7 +178,7 @@ function RankingUserMeta({
 }
 
 async function CampaignRankingSection() {
-  const { settings, ranking: result, cachedDateJst } = await getCachedCampaignRanking()
+  const { settings, ranking: result } = await getCachedCampaignRanking()
   const state = resolveCampaignState(settings)
 
   // 未設定・無効・開始前は表示しない
@@ -193,9 +193,6 @@ async function CampaignRankingSection() {
   }
   const shortStartLabel = toShortDate(toDisplayJst(settings.startIso))
   const shortEndLabel = toShortDate(toDisplayJst(settings.endIso))
-  // "2026-06-22" → "6/22 0:00"
-  const [, cMonth, cDay] = cachedDateJst.split('-')
-  const shortLastUpdatedLabel = `${parseInt(cMonth)}/${parseInt(cDay)} 0:00`
 
   return (
     <section className="mb-4 overflow-hidden border border-yellow-300 bg-yellow-50">
@@ -204,7 +201,6 @@ async function CampaignRankingSection() {
           <p className="text-[12px] leading-snug text-yellow-900">
             <span className="font-bold">🏆 {settings.title}{isEnded ? ' 結果' : ''}</span>
             <span className="text-yellow-700">｜期間：{shortStartLabel}〜{shortEndLabel}</span>
-            <span className="text-yellow-600">｜最終更新：{shortLastUpdatedLabel}</span>
           </p>
           <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold ${
             isEnded
