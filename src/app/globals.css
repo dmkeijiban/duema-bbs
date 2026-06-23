@@ -42,20 +42,36 @@ body > footer {
   min-height: unset;
 }
 
-/* 活動中スレの強調は各グリッド先頭3件だけ。ラベルではなくカード全体で差を出す */
-.grid > .thread-card:nth-child(-n+3).thread-card-highlight-hot {
-  background: linear-gradient(90deg, #fff1f2 0, #fff1f2 4px, #ffffff 26px);
-  box-shadow: inset 4px 0 0 #dc2626;
+/* スマホのスレカードは既存表示に戻す */
+@media (max-width: 767px) {
+  .thread-card > .md\:hidden > div:last-child > span {
+    display: none !important;
+  }
+
+  .thread-card > .md\:hidden > div:last-child > p {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 3 !important;
+    overflow: hidden !important;
+  }
 }
 
-.grid > .thread-card:nth-child(-n+3).thread-card-highlight-rising {
-  background: linear-gradient(90deg, #fff7ed 0, #fff7ed 4px, #ffffff 26px);
-  box-shadow: inset 4px 0 0 #f97316;
-}
+/* 活動中スレの強調はPCの各グリッド先頭3件だけ。スマホは元の見た目のまま */
+@media (min-width: 768px) {
+  .grid > .thread-card:nth-child(-n+3).thread-card-highlight-hot {
+    background: linear-gradient(90deg, #fff1f2 0, #fff1f2 4px, #ffffff 26px);
+    box-shadow: inset 4px 0 0 #dc2626;
+  }
 
-.grid > .thread-card:nth-child(-n+3).thread-card-highlight-hot:hover,
-.grid > .thread-card:nth-child(-n+3).thread-card-highlight-rising:hover {
-  filter: brightness(0.985);
+  .grid > .thread-card:nth-child(-n+3).thread-card-highlight-rising {
+    background: linear-gradient(90deg, #fff7ed 0, #fff7ed 4px, #ffffff 26px);
+    box-shadow: inset 4px 0 0 #f97316;
+  }
+
+  .grid > .thread-card:nth-child(-n+3).thread-card-highlight-hot:hover,
+  .grid > .thread-card:nth-child(-n+3).thread-card-highlight-rising:hover {
+    filter: brightness(0.985);
+  }
 }
 
 /* Hide the reply-form notification row when Web Push is unavailable. */
