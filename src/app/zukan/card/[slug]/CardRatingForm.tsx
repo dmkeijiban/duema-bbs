@@ -57,7 +57,6 @@ function StarRow({
       <span className="text-xs text-gray-500 tabular-nums w-10">
         {value !== null ? `${value} / 5` : ''}
       </span>
-      {/* Hidden input for Server Action FormData */}
       {value !== null && (
         <input type="hidden" name={name} value={value} />
       )}
@@ -69,6 +68,10 @@ export default function CardRatingForm({ cardId, slug, initialValues }: { cardId
   const action = submitCardRating.bind(null, cardId, slug)
   const [state, dispatch, isPending] = useActionState(action, INITIAL)
   const [values, setValues] = useState<Partial<Record<ItemKey, number>>>(initialValues ?? {})
+
+  if (initialValues || state.status === 'success') {
+    return null
+  }
 
   const setValue = (key: ItemKey, v: number) => {
     setValues(prev => ({ ...prev, [key]: v }))
@@ -96,7 +99,7 @@ export default function CardRatingForm({ cardId, slug, initialValues }: { cardId
           disabled={isPending || !allSelected}
           className="rounded bg-blue-600 px-4 py-1.5 text-xs font-bold text-white transition-all duration-100 hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
         >
-          {isPending ? '送信中…' : initialValues ? '評価を変更する' : '評価を送信する'}
+          {isPending ? '送信中…' : '評価を送信する'}
         </button>
         {!allSelected && (
           <span className="text-xs text-gray-400">全項目を選択してください</span>
