@@ -194,7 +194,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
         </p>
         {authState.status === 'anon' && (
           <p>
-            <Link href="/login?mode=signup" className="font-bold text-blue-700 hover:underline">アカウント作成</Link> でプロフィール・投稿管理が使えます。※登録なしでも匿名投稿できます。
+            <Link href="/login?mode=signup" className="font-bold text-blue-700 hover:underline">アカウント作成</Link> で投稿管理が行え便利です。※登録なしでも匿名投稿できます。
           </p>
         )}
       </div>
