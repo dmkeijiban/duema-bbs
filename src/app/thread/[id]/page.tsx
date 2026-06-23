@@ -93,7 +93,8 @@ export async function generateMetadata({ params }: Props) {
 
   const baseUrl = SITE_URL
   const canonicalUrl = `${baseUrl}/thread/${id}`
-  const metadataDescription = buildThreadDescription(thread as Thread)
+  const typedThread = thread as unknown as Thread
+  const metadataDescription = buildThreadDescription(typedThread)
   // Use a stable, query-free image URL for X cards. Twitterbot can be picky
   // with long query-string image URLs, even when the endpoint returns 200.
   const ogImageUrl = thread.image_url
@@ -202,11 +203,6 @@ export async function renderThreadPage(threadId: number, page: number) {
             "interactionType": { "@type": "CommentAction" },
             "userInteractionCount": typedThread.post_count ?? 0,
           },
-          ...(typedThread.view_count != null ? [{
-            "@type": "InteractionCounter",
-            "interactionType": { "@type": "ViewAction" },
-            "userInteractionCount": typedThread.view_count,
-          }] : []),
         ],
         "comment": visiblePosts.map(post => {
           const displayNumber = post.post_number + 1
