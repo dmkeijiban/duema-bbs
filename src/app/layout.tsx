@@ -193,12 +193,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           strategy="afterInteractive"
         />
       </head>
-      <body className="min-h-screen flex flex-col antialiased" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
+      <body className="min-h-screen antialiased" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
           <Header />
-          <main className="flex-1">{children}</main>
+          <main>{children}</main>
           <LazyFloatingBar snsUrls={snsUrls} />
           <LazyPostHogBridge />
-          <footer className="bg-white border-t border-gray-200 py-4 mt-6">
+          <footer className="bg-white border-t border-gray-200 py-4 mt-0">
             <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-600 space-y-2">
 
               {/* サイト案内系リンク */}
