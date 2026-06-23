@@ -12,6 +12,8 @@ interface Props {
 }
 
 function getActivityBadge(thread: Thread) {
+  if (thread.is_archived) return null
+
   const lastPostedAt = new Date(thread.last_posted_at).getTime()
   const hoursSinceLastPost = Number.isFinite(lastPostedAt)
     ? (Date.now() - lastPostedAt) / (1000 * 60 * 60)
@@ -23,10 +25,6 @@ function getActivityBadge(thread: Thread) {
 
   if (thread.post_count >= 5 && hoursSinceLastPost <= 24) {
     return { label: '急上昇', className: 'bg-orange-500 text-white' }
-  }
-
-  if (hoursSinceLastPost <= 12) {
-    return { label: '更新', className: 'bg-blue-600 text-white' }
   }
 
   return null
@@ -71,7 +69,7 @@ export function ThreadCard({ thread, rank, priority }: Props) {
           {(activityBadge || category) && (
             <div className="mt-0.5 flex min-w-0 items-center gap-1">
               {activityBadge && (
-                <span className={`shrink-0 rounded-sm px-1 text-[9px] font-bold leading-4 ${activityBadge.className}`}>
+                <span className={`thread-card-activity-badge shrink-0 rounded-sm px-1.5 text-[10px] font-black leading-4 shadow-sm ${activityBadge.className}`}>
                   {activityBadge.label}
                 </span>
               )}
@@ -110,7 +108,7 @@ export function ThreadCard({ thread, rank, priority }: Props) {
               </span>
             )}
             {activityBadge && (
-              <span className={`inline-block shrink-0 px-1 text-[9px] font-bold leading-4 ${activityBadge.className}`}>
+              <span className={`thread-card-activity-badge inline-block shrink-0 rounded-sm px-1.5 text-[10px] font-black leading-4 shadow-sm ${activityBadge.className}`}>
                 {activityBadge.label}
               </span>
             )}
