@@ -42,13 +42,20 @@ body > footer {
   min-height: unset;
 }
 
-/* 活動バッジは各グリッドの先頭3件だけ表示して、一覧全体のノイズを抑える */
-.thread-card-activity-badge {
-  display: none;
+/* 活動中スレの強調は各グリッド先頭3件だけ。ラベルではなくカード全体で差を出す */
+.grid > .thread-card:nth-child(-n+3).thread-card-highlight-hot {
+  background: linear-gradient(90deg, #fff1f2 0, #fff1f2 4px, #ffffff 26px);
+  box-shadow: inset 4px 0 0 #dc2626;
 }
 
-.grid > .thread-card:nth-child(-n+3) .thread-card-activity-badge {
-  display: inline-flex;
+.grid > .thread-card:nth-child(-n+3).thread-card-highlight-rising {
+  background: linear-gradient(90deg, #fff7ed 0, #fff7ed 4px, #ffffff 26px);
+  box-shadow: inset 4px 0 0 #f97316;
+}
+
+.grid > .thread-card:nth-child(-n+3).thread-card-highlight-hot:hover,
+.grid > .thread-card:nth-child(-n+3).thread-card-highlight-rising:hover {
+  filter: brightness(0.985);
 }
 
 /* Hide the reply-form notification row when Web Push is unavailable. */
