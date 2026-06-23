@@ -140,6 +140,12 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
       try {
         const result = await createPost(fd)
         if (result?.error) {
+          capturePostHogEvent('reply_submit_error', {
+            thread_id: threadId,
+            category_slug: thread.categories?.slug ?? null,
+            error_message: result.error,
+            has_image: Boolean(file),
+          })
           setError(result.error)
         } else {
           capturePostHogEvent('reply_submit_success', {
@@ -155,6 +161,11 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
           }
         }
       } catch {
+        capturePostHogEvent('reply_submit_exception', {
+          thread_id: threadId,
+          category_slug: thread.categories?.slug ?? null,
+          has_image: Boolean(file),
+        })
         // デプロイ後に古いJSキャッシュを持つタブからアクセスするとサーバーアクションIDが
         // 一致せず404が返る。ページ更新を促すメッセージを表示する。
         setError('ページが古くなっています。再読み込みしてから再度投稿してください。')
@@ -258,7 +269,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
               <td className="py-2 px-3 align-top text-xs font-medium" style={{ background: '#f5f5f5', paddingTop: 10 }}>
                 本文
               </td>
-              <td className="py-2 px-3">
+              <td className="p-2 min-w-0">
                 <textarea
                   id="reply-textarea"
                   value={bodyValue}
