@@ -74,14 +74,6 @@ export default function CardRatingForm({ cardId, slug, initialValues }: { cardId
     setValues(prev => ({ ...prev, [key]: v }))
   }
 
-  if (state.status === 'success') {
-    return (
-      <p className="border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700">
-        評価を送信しました！ありがとうございます。
-      </p>
-    )
-  }
-
   const allSelected = ITEMS.every(item => values[item.key] !== undefined)
 
   return (
