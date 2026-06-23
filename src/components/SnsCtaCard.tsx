@@ -11,7 +11,7 @@ export async function SnsCtaCard() {
   const sns = await getSnsUrls()
 
   return (
-    <div className="my-4 border border-gray-200 rounded-xl overflow-hidden">
+    <div className="mt-4 mb-1 border border-gray-200 rounded-xl overflow-hidden">
       {/* ヘッダー */}
       <div className="px-4 py-3 text-center" style={{ background: 'linear-gradient(135deg, #1a3a6e 0%, #2a5298 100%)' }}>
         <p className="text-white text-sm font-bold leading-snug">
