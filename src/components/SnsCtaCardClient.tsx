@@ -18,7 +18,7 @@ export function SnsCtaCardClient({ sns }: { sns: SnsUrls }) {
   if (!shouldShowSnsCta(pathname)) return null
 
   return (
-    <div className="mt-4 mb-1 border border-gray-200 rounded-xl overflow-hidden">
+    <div className="mt-3 mb-0 border border-gray-200 rounded-xl overflow-hidden">
       <div className="px-4 py-3 text-center" style={{ background: 'linear-gradient(135deg, #1a3a6e 0%, #2a5298 100%)' }}>
         <p className="text-white text-sm font-bold leading-snug">
           📢 デュエマ情報をSNSでも発信中！
