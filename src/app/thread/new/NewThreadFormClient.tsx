@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createThread } from '@/app/actions/thread'
 import { ImageUploadField } from '@/components/ImageUploadField'
@@ -8,6 +8,14 @@ import { PenSquare } from '@/components/Icons'
 import Link from 'next/link'
 import { getPostableConsolidatedCategories } from '@/lib/categories'
 import type { Category } from '@/types'
+import { createClient } from '@/lib/supabase'
+import { ProfileAvatar } from '@/components/ProfileAvatar'
+
+type AuthState =
+  | { status: 'loading' }
+  | { status: 'anon' }
+  | { status: 'user'; displayName: string; avatarUrl: string | null }
+  | { status: 'profile_missing' }
 
 interface Props {
   categories: Category[]
@@ -16,8 +24,33 @@ interface Props {
 export function NewThreadFormClient({ categories }: Props) {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
+  const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
   const router = useRouter()
   const categoryOptions = getPostableConsolidatedCategories(categories)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) {
+        setAuthState({ status: 'anon' })
+        return
+      }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name, avatar_url')
+        .eq('id', data.user.id)
+        .single()
+      if (!profile?.display_name) {
+        setAuthState({ status: 'profile_missing' })
+        return
+      }
+      setAuthState({
+        status: 'user',
+        displayName: profile.display_name,
+        avatarUrl: profile.avatar_url ?? null,
+      })
+    })
+  }, [])
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -76,19 +109,44 @@ export function NewThreadFormClient({ categories }: Props) {
         />
       </div>
 
-      {/* 名前 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          名前（省略可）
-        </label>
-        <input
-          type="text"
-          name="author_name"
-          maxLength={30}
-          placeholder="名無しのデュエリスト"
-          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 placeholder-gray-400"
-        />
-      </div>
+      {/* 名前/投稿者 */}
+      {authState.status === 'loading' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">投稿者</label>
+          <div className="text-sm text-gray-400">ログイン状態を確認中…</div>
+        </div>
+      )}
+      {authState.status === 'anon' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">名前（省略可）</label>
+          <input
+            type="text"
+            name="author_name"
+            maxLength={30}
+            placeholder="名無しのデュエリスト"
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 placeholder-gray-400"
+          />
+        </div>
+      )}
+      {authState.status === 'user' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">投稿者</label>
+          <input type="hidden" name="author_name" value={authState.displayName} />
+          <div className="inline-flex items-center gap-1.5 text-sm text-gray-700">
+            <ProfileAvatar src={authState.avatarUrl} alt={`${authState.displayName}のアイコン`} size="sm" />
+            <span className="font-medium">{authState.displayName}</span>
+          </div>
+        </div>
+      )}
+      {authState.status === 'profile_missing' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">投稿者</label>
+          <p className="text-sm text-red-600">
+            スレッドを作成するにはプロフィールを設定してください。{' '}
+            <Link href="/profile/new" className="underline text-blue-600">プロフィール設定</Link>
+          </p>
+        </div>
+      )}
 
       {/* 本文 */}
       <div>

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { fetchPublishedPacks, fetchCardsBySlugs, fetchCardReviewHighlights } from '@/lib/zukan'
 import type { ZukanPack, ZukanCard, ZukanCardReviewHighlight } from '@/lib/zukan'
 import { SITE_URL } from '@/lib/site-config'
@@ -110,8 +111,8 @@ function PackListCard({ pack }: { pack: ZukanPack }) {
   const isLinked = pack.slug === 'dm-01'
 
   const body = (
-    <div className="flex h-full flex-col overflow-hidden border border-gray-300 bg-white transition-all duration-100 sm:flex-row">
-      <div className="w-full bg-orange-50 sm:w-32 sm:shrink-0">
+    <div className="flex h-full overflow-hidden border border-gray-300 bg-white transition-all duration-100">
+      <div className="w-20 shrink-0 bg-orange-50 sm:w-24">
         {pack.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -119,28 +120,25 @@ function PackListCard({ pack }: { pack: ZukanPack }) {
             alt={`${pack.code} ${pack.name} パック画像`}
             loading="lazy"
             decoding="async"
-            className="h-36 w-full object-contain p-2 sm:h-full"
+            className="h-full w-full object-contain p-1.5"
           />
         ) : (
-          <div className="flex h-36 items-center justify-center text-xs font-bold text-orange-300 sm:h-full">
-            パック画像準備中
+          <div className="flex h-full min-h-[72px] items-center justify-center text-[10px] font-bold text-orange-300">
+            準備中
           </div>
         )}
       </div>
-      <div className="flex min-w-0 flex-1 flex-col px-3 py-3">
+      <div className="flex min-w-0 flex-1 flex-col px-3 py-2">
         <div className="font-mono text-xs font-bold text-blue-700">{pack.code}</div>
-        <div className="mt-0.5 text-sm font-bold text-gray-800">{pack.name}</div>
-        <dl className="mt-2 space-y-1 text-xs text-gray-600">
+        <div className="mt-0.5 text-sm font-bold leading-snug text-gray-800">{pack.name}</div>
+        <dl className="mt-1.5 flex flex-wrap gap-x-4 text-xs text-gray-600">
           {pack.released_year && (
-            <div><dt className="inline font-bold">発売日：</dt><dd className="inline">{pack.released_year}</dd></div>
+            <div><dt className="inline font-bold">発売：</dt><dd className="inline">{pack.released_year}</dd></div>
           )}
           {pack.card_count && (
             <div><dt className="inline font-bold">収録：</dt><dd className="inline">全{pack.card_count}種</dd></div>
           )}
         </dl>
-        <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-500">
-          {pack.description ?? 'パックを開いた思い出や、当時使っていたカードを振り返るページです。'}
-        </p>
       </div>
     </div>
   )
@@ -222,7 +220,7 @@ export default async function ZukanTopPage() {
   const cardMap = new Map<string, ZukanCard>((dm01Cards ?? []).map(c => [c.slug, c]))
 
   return (
-    <div className="max-w-screen-xl mx-auto px-2 pt-2 pb-10">
+    <div className="max-w-screen-xl mx-auto px-2 pt-2 pb-0">
       {/* パンくず */}
       <nav className="text-xs text-gray-500 mb-2 flex items-center gap-x-1">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
@@ -258,20 +256,17 @@ export default async function ZukanTopPage() {
 
       {/* DM-01 のカード */}
       <section className="mb-5">
-        <div className="mb-2 flex items-baseline justify-between border border-gray-300 bg-gray-50 px-3 py-2">
-          <div>
-            <h2 className="text-sm font-bold text-gray-800">DM-01 基本セットの代表カード</h2>
-            <p className="mt-0.5 text-xs text-gray-500">このパックを代表するカードを一部掲載しています。</p>
-          </div>
+        <div className="mb-2 flex items-center justify-between border border-gray-300 bg-gray-50 px-3 py-2">
+          <h2 className="text-sm font-bold text-gray-800">DM-01 基本セットの代表カード</h2>
           <Link href="/zukan/dm-01" className="text-xs text-blue-600 hover:underline shrink-0">
             収録カードをもっと見る
           </Link>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
+        <div className="flex gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0 md:grid-cols-5">
           {DM01_PREVIEW_DEFS.map(def => {
             const dbCard = cardMap.get(def.slug) ?? null
             const href = dbCard ? `/zukan/card/${def.slug}` : '#'
-            const cardClass = `border border-gray-300 bg-white ${dbCard ? 'block cursor-pointer transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]' : 'opacity-60'}`
+            const cardClass = `w-[44%] flex-shrink-0 sm:w-auto border border-gray-300 bg-white ${dbCard ? 'block cursor-pointer transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]' : 'opacity-60'}`
             const cardBody = (
               <>
                 <CardThumb
@@ -316,6 +311,8 @@ export default async function ZukanTopPage() {
           cards={reviewHighlights?.mostReviewed ?? []}
         />
       </div>
+
+      <SnsCtaCard />
     </div>
   )
 }

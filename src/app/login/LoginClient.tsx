@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
+import { getSessionProfileStatus } from '@/app/auth/actions'
 
 type LoginClientProps = {
   nextPath?: string
@@ -19,14 +19,27 @@ function safeNextPath(value?: string) {
   return value
 }
 
+// ログイン後の遷移先を決める。
+// - プロフィール未作成 → 新規作成
+// - 退会済み → アカウント再開フロー
+// - 通常 → next（無ければトップ）
+function resolvePostLoginPath(
+  profile: { id: string; withdrawn_at: string | null } | null,
+  safeNext: string,
+) {
+  if (!profile) return '/profile/new'
+  if (profile.withdrawn_at) return '/account/reactivate'
+  return safeNext || '/'
+}
+
 function mapAuthError(msg: string): string {
   const m = msg.toLowerCase()
   if (m.includes('invalid login credentials'))
-    return 'メールアドレスまたはパスワードが違います。'
+    return 'メールアドレスまたはパスワードが違います。退会済みアカウントを再開したい場合も、まずはログインが必要です。パスワードが分からない場合は「パスワードを忘れた方」から再設定してください。'
   if (m.includes('email not confirmed'))
     return 'メールアドレスの確認が完了していません。登録時のメールをご確認ください。'
   if (m.includes('user already registered'))
-    return 'このメールアドレスはすでに登録されています。Googleログインをお試しいただくか、別のメールアドレスをお使いください。'
+    return 'このメールアドレスは既に登録済みの可能性があります。退会済みアカウントを再開する場合は、新規作成ではなくログインしてください。パスワードを忘れた場合は、パスワード再設定をご利用ください。'
   if (m.includes('password should be at least') || m.includes('password too short'))
     return 'パスワードは6文字以上で入力してください。'
   if (m.includes('rate limit') || m.includes('email rate'))
@@ -39,7 +52,6 @@ function mapAuthError(msg: string): string {
 }
 
 export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProps) {
-  const router = useRouter()
   const [mode, setMode] = useState<Mode>(initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -47,6 +59,7 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [submittingMethod, setSubmittingMethod] = useState<SubmittingMethod>(null)
+  const [showPasswordResetHint, setShowPasswordResetHint] = useState(false)
 
   const emailSubmitting = submittingMethod === 'email'
   const googleSubmitting = submittingMethod === 'google'
@@ -55,6 +68,7 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
 
   const handleGoogleLogin = async () => {
     setError('')
+    setShowPasswordResetHint(false)
     setSubmittingMethod('google')
     const supabase = createClient()
     const callbackUrl = new URL('/auth/callback', window.location.origin)
@@ -72,29 +86,43 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setShowPasswordResetHint(false)
     setSubmittingMethod('email')
-    const supabase = createClient()
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    })
-    if (error) {
-      setError(mapAuthError(error.message))
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      })
+      if (error) {
+        console.warn('signInWithPassword failed', { code: (error as { code?: string }).code, message: error.message, status: error.status })
+        setError(mapAuthError(error.message))
+        if (error.message.toLowerCase().includes('invalid login credentials')) {
+          setShowPasswordResetHint(true)
+        }
+        return
+      }
+      let dest: string
+      try {
+        const profile = await getSessionProfileStatus()
+        // null はセッション未確立など不明状態 → /mypage でサーバー側に委ねる
+        dest = profile !== null ? resolvePostLoginPath(profile, safeNext) : '/mypage'
+      } catch {
+        // server action 失敗 → /mypage がno-profile/withdrawnを安全にルーティング
+        dest = '/mypage'
+      }
+      window.location.assign(dest)
+    } catch {
+      setError('ログインに失敗しました。時間を空けて再度お試しください。')
+    } finally {
       setSubmittingMethod(null)
-      return
     }
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', data.user.id)
-      .maybeSingle()
-    router.push(profile ? (safeNext || '/') : '/profile/new')
-    router.refresh()
   }
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setShowPasswordResetHint(false)
     if (password.length < 6) {
       setError('パスワードは6文字以上で入力してください。')
       return
@@ -104,38 +132,44 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
       return
     }
     setSubmittingMethod('email')
-    const supabase = createClient()
-    const callbackUrl = new URL('/auth/callback', window.location.origin)
-    if (safeNext) callbackUrl.searchParams.set('next', safeNext)
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: { emailRedirectTo: callbackUrl.toString() },
-    })
-    if (error) {
-      setError(mapAuthError(error.message))
+    try {
+      const supabase = createClient()
+      const callbackUrl = new URL('/auth/callback', window.location.origin)
+      if (safeNext) callbackUrl.searchParams.set('next', safeNext)
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { emailRedirectTo: callbackUrl.toString() },
+      })
+      if (error) {
+        setError(mapAuthError(error.message))
+        return
+      }
+      // email confirmation disabled — session returned immediately
+      if (data.session) {
+        let dest: string
+        try {
+          const profile = await getSessionProfileStatus()
+          dest = profile !== null ? resolvePostLoginPath(profile, safeNext) : '/mypage'
+        } catch {
+          dest = '/mypage'
+        }
+        window.location.assign(dest)
+        return
+      }
+      setSuccess('確認メールを送信しました。メール内のリンクからアカウント作成を完了してください。')
+    } catch {
+      setError('アカウント作成に失敗しました。時間を空けて再度お試しください。')
+    } finally {
       setSubmittingMethod(null)
-      return
     }
-    // email confirmation disabled — session returned immediately
-    if (data.session) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', data.user!.id)
-        .maybeSingle()
-      router.push(profile ? (safeNext || '/') : '/profile/new')
-      router.refresh()
-      return
-    }
-    setSuccess('確認メールを送信しました。メール内のリンクからアカウント作成を完了してください。')
-    setSubmittingMethod(null)
   }
 
   const switchMode = (next: Mode) => {
     setMode(next)
     setError('')
     setSuccess('')
+    setShowPasswordResetHint(false)
   }
 
   if (success) {
@@ -145,7 +179,11 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
           {success}
         </p>
         <p className="text-xs text-gray-500">
-          メールが届かない場合は、迷惑メールフォルダをご確認ください。
+          メールが届かない場合は、迷惑メールフォルダをご確認ください。すでに登録済みのメールアドレスの場合、新規作成メールは届かないことがあります。その場合は
+          <Link href="/login" className="text-blue-600 hover:underline">ログイン</Link>
+          または
+          <Link href="/auth/forgot-password" className="text-blue-600 hover:underline">パスワード再設定</Link>
+          をお試しください。
         </p>
         <Link
           href="/"
@@ -236,9 +274,16 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
         )}
 
         {error && (
-          <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-            {error}
-          </p>
+          <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            <p>{error}</p>
+            {showPasswordResetHint && (
+              <p className="mt-2">
+                <Link href="/auth/forgot-password" className="font-bold underline">
+                  パスワードを忘れた方はこちら →
+                </Link>
+              </p>
+            )}
+          </div>
         )}
 
         <button

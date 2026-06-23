@@ -7,9 +7,10 @@ type Props = {
   pendingText: string
   className?: string
   style?: React.CSSProperties
+  confirmMessage?: string
 }
 
-export function AdminSubmitButton({ children, pendingText, className, style }: Props) {
+export function AdminSubmitButton({ children, pendingText, className, style, confirmMessage }: Props) {
   const { pending } = useFormStatus()
 
   return (
@@ -19,6 +20,7 @@ export function AdminSubmitButton({ children, pendingText, className, style }: P
       aria-busy={pending}
       className={className}
       style={style}
+      onClick={confirmMessage ? (e) => { if (!window.confirm(confirmMessage)) e.preventDefault() } : undefined}
     >
       {pending ? pendingText : children}
     </button>

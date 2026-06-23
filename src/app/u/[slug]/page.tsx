@@ -4,7 +4,8 @@ import { ProfileHeaderCard } from '@/components/ProfileHeaderCard'
 import { UserProfileShareButtons } from '@/components/UserProfileShareButtons'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings } from '@/lib/cached-queries'
+import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings, getCachedCampaignRanking } from '@/lib/cached-queries'
+import { resolveCampaignState } from '@/lib/campaign-ranking'
 
 export const dynamic = 'force-dynamic'
 
@@ -163,12 +164,42 @@ export default async function UserProfilePage({
     'youtu.be',
   ])
 
-  const [recentThreads, recentPosts, rankings, activityCounts] = await Promise.all([
+  const [recentThreads, recentPosts, rankings, activityCounts, cachedCampaign] = await Promise.all([
     getCachedUserThreads(profile.id),
     getCachedUserPosts(profile.id),
     getCachedUserRankings(),
     getUserActivityCounts(profile.id),
+    getCachedCampaignRanking(),
   ])
+
+  const campaignSettings = cachedCampaign.settings
+  const campaignResult = cachedCampaign.ranking
+
+  let campaignRank: number | null = null
+  let campaignPoints: number | null = null
+  let campaignTitle: string | null = null
+
+  const campaignState = resolveCampaignState(campaignSettings)
+  if (campaignState === 'active' || campaignState === 'ended') {
+    const entry = campaignResult.entries.find((e) => e.profileSlug === profile.profile_slug)
+    if (campaignState === 'active') {
+      // 開催中: 圏外・0pt でも「参加中」バッジを表示
+      campaignTitle = campaignSettings.title
+      if (entry) {
+        campaignRank = entry.rank
+        campaignPoints = entry.totalPoints
+      } else {
+        campaignPoints = 0
+      }
+    } else {
+      // 終了後: トップ30入りユーザーのみ最終順位バッジを表示
+      if (entry) {
+        campaignTitle = campaignSettings.title
+        campaignRank = entry.rank
+        campaignPoints = entry.totalPoints
+      }
+    }
+  }
 
   const monthlyRankIndex = rankings.monthly.findIndex(
     (r) => r.profile_slug === profile.profile_slug
@@ -205,6 +236,9 @@ export default async function UserProfilePage({
         postCountLabel={postDisplayCount}
         monthlyRank={monthlyRank}
         totalRank={totalRank}
+        campaignTitle={campaignTitle}
+        campaignRank={campaignRank}
+        campaignPoints={campaignPoints}
       />
 
       {profile.profile_hidden && isOwner && (

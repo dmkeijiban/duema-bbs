@@ -14,6 +14,9 @@ type ProfileHeaderCardProps = {
   postCountLabel: string
   monthlyRank: number | null
   totalRank: number | null
+  campaignTitle?: string | null
+  campaignRank?: number | null
+  campaignPoints?: number | null
   actions?: ReactNode
 }
 
@@ -61,6 +64,9 @@ export function ProfileHeaderCard({
   postCountLabel,
   monthlyRank,
   totalRank,
+  campaignTitle,
+  campaignRank,
+  campaignPoints,
   actions,
 }: ProfileHeaderCardProps) {
   return (
@@ -81,6 +87,13 @@ export function ProfileHeaderCard({
               {(monthlyRank === 1 || totalRank === 1) && (
                 <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 border border-yellow-300">
                   🏆 1位
+                </span>
+              )}
+              {campaignTitle && (
+                <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-300">
+                  {campaignRank != null
+                    ? `🏆 ${campaignTitle} ${campaignRank}位 / ${campaignPoints}pt`
+                    : `🏆 キャンペーン参加中 / ${campaignPoints ?? 0}pt`}
                 </span>
               )}
             </div>
@@ -133,32 +146,28 @@ export function ProfileHeaderCard({
           <p className="text-lg font-bold text-gray-900 leading-none">{postCountLabel}</p>
           <p className="text-xs text-gray-500 mt-1">コメント</p>
         </div>
-        <div className="px-3 py-3">
+        <Link
+          href="/ranking?type=author&period=month"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-3 py-3 hover:bg-blue-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
+        >
           <p className="text-lg font-bold text-blue-600 leading-none">
             {monthlyRank ? `${monthlyRank}位` : '—'}
           </p>
-          <Link
-            href="/ranking?type=author&period=month"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-gray-500 mt-1 hover:underline inline-block"
-          >
-            今月
-          </Link>
-        </div>
-        <div className="px-3 py-3">
+          <p className="text-xs text-gray-500 mt-1">今月</p>
+        </Link>
+        <Link
+          href="/ranking?type=author&period=all"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-3 py-3 hover:bg-indigo-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400"
+        >
           <p className="text-lg font-bold text-indigo-600 leading-none">
             {totalRank ? `${totalRank}位` : '—'}
           </p>
-          <Link
-            href="/ranking?type=author&period=all"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-gray-500 mt-1 hover:underline inline-block"
-          >
-            総合
-          </Link>
-        </div>
+          <p className="text-xs text-gray-500 mt-1">総合</p>
+        </Link>
       </div>
 
       {actions && (

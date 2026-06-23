@@ -99,7 +99,7 @@ export async function toggleRankExcluded(
     return { error: 'ランキング除外の更新に失敗しました。' }
   }
 
-  // 7. ランキングは 6 時間キャッシュ（tag: 'user-rankings'）。即時反映のため tag を失効させる。
+  // 7. 投稿者ランキングは1日1回更新（JST 0:00、tag: 'user-rankings'）。即時反映のため tag を失効させる。
   try {
     revalidateTag('user-rankings', { expire: 0 })
   } catch (e) {
@@ -217,7 +217,7 @@ export async function toggleAccountSuspended(
     return { error: 'アカウント停止状態の更新に失敗しました。' }
   }
 
-  // 7. 投稿者ランキングは 6 時間キャッシュ（tag: 'user-rankings'）。
+  // 7. 投稿者ランキングは1日1回更新（JST 0:00、tag: 'user-rankings'）。
   //    停止ユーザーはランキングから除外されるため、即時反映のため tag を失効させる。
   try {
     revalidateTag('user-rankings', { expire: 0 })

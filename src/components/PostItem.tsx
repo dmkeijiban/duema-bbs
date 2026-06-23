@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect, useRef } from 'react'
+import { useState, useTransition, useEffect, useRef, useMemo, memo } from 'react'
 import Link from 'next/link'
 import { Post, PublicAuthorProfile } from '@/types'
 import { formatDateTimeJP } from '@/lib/utils'
@@ -9,7 +9,6 @@ import { PostLikeButton } from './PostLikeButton'
 import { ReportButton } from './ReportButton'
 import { ImageViewer } from './ImageViewer'
 import { LinkCard } from './LinkCard'
-import { ProfileAvatar } from './ProfileAvatar'
 
 declare global {
   interface Window {
@@ -44,13 +43,16 @@ interface AnchorProps {
 
 function AnchorLink({ num, allPosts }: AnchorProps) {
   const [show, setShow] = useState(false)
-  const ref = allPosts.find(p => (p as Post & { displayNumber: number }).displayNumber === num)
+  const ref = useMemo(
+    () => allPosts.find(p => (p as Post & { displayNumber: number }).displayNumber === num),
+    [allPosts, num]
+  )
 
   return (
     <span className="relative inline-block">
       <a
         href={`#post-${num}`}
-        className="font-medium hover:underline"
+        className="no-underline hover:underline hover:opacity-75"
         style={{ color: '#0d6efd' }}
         onMouseEnter={() => setShow(true)}
         onMouseLeave={() => setShow(false)}
@@ -190,18 +192,154 @@ function TwitterEmbed({ url }: { url: string }) {
 }
 
 // YouTube 埋め込み（最大幅480px）
+// YouTube埋め込みを遅延読み込みにする。
+// 初期表示はサムネ＋「動画を表示」ボタンのカード。クリック後だけiframeをマウントする。
+// YouTube playerのJS・トラッカーがページ初期表示で読み込まれることを防ぎ、
+// 複数YouTube埋め込みがあるスレでもページ重量を抑える。
 function YouTubeEmbed({ videoId }: { videoId: string }) {
+  const [showEmbed, setShowEmbed] = useState(false)
+  const [meta, setMeta] = useState<{ title: string | null; channelName: string | null } | null>(null)
+
+  useEffect(() => {
+    // 既存の /api/ogp oEmbed ルートを使う（LinkCardと同じエンドポイント・キャッシュ共有）
+    const watchUrl = `https://www.youtube.com/watch?v=${videoId}`
+    fetch(`/api/ogp?url=${encodeURIComponent(watchUrl)}&v=yt2`)
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { title?: string | null; description?: string | null; error?: string } | null) => {
+        if (!d || d.error) return
+        const raw = typeof d.title === 'string' ? d.title.trim() : ''
+        const unusable = new Set(['', '- YouTube', 'YouTube', 'www.youtube.com', 'youtube.com'])
+        setMeta({
+          title: !unusable.has(raw) && !/^https?:\/\//.test(raw) ? raw : null,
+          channelName: typeof d.description === 'string' && d.description.trim() ? d.description.trim() : null,
+        })
+      })
+      .catch(() => {})
+  }, [videoId])
+
+  if (showEmbed) {
+    return (
+      <div className="my-2" style={{ maxWidth: 480 }}>
+        <div className="relative bg-black" style={{ paddingBottom: '56.25%' }}>
+          <iframe
+            className="absolute inset-0 w-full h-full"
+            src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            title={meta?.title ?? 'YouTube video'}
+          />
+        </div>
+        {(meta?.title || meta?.channelName) && (
+          <div style={{ padding: '6px 10px 8px', border: '1px solid #e5e7eb', borderTop: 'none', background: '#fff' }}>
+            {meta.title && (
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#1f2937', margin: 0, lineHeight: 1.4 }}>
+                {meta.title}
+              </p>
+            )}
+            {meta.channelName && (
+              <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>
+                {meta.channelName}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
-    <div className="my-2 w-full" style={{ maxWidth: 480 }}>
-      <div className="relative bg-black" style={{ paddingBottom: '56.25%' }}>
-        <iframe
-          className="absolute inset-0 w-full h-full"
-          src={`https://www.youtube.com/embed/${videoId}`}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          loading="lazy"
-          title="YouTube video"
-        />
+    <div className="my-2" style={{ maxWidth: 480 }}>
+      {/* カード全体をボタンにする。クリックするとiframeを展開する。 */}
+      <button
+        type="button"
+        onClick={() => setShowEmbed(true)}
+        aria-label="YouTube動画を表示"
+        style={{
+          display: 'block',
+          width: '100%',
+          padding: 0,
+          border: '1px solid #e5e7eb',
+          borderRadius: meta ? '8px 8px 0 0' : 8,
+          overflow: 'hidden',
+          cursor: 'pointer',
+          background: 'none',
+          textAlign: 'left',
+        }}
+      >
+        {/* 16:9 サムネイルエリア */}
+        <div className="relative w-full bg-black" style={{ paddingBottom: '56.25%' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+            alt=""
+            referrerPolicy="no-referrer"
+            onError={e => {
+              const img = e.target as HTMLImageElement
+              if (!img.dataset.fallback) {
+                img.dataset.fallback = '1'
+                img.src = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`
+              }
+            }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+          {/* 再生ボタン＋ラベル */}
+          <span
+            aria-hidden
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'rgba(0,0,0,0.7)',
+              borderRadius: 6,
+              padding: '7px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <span
+              style={{
+                width: 0,
+                height: 0,
+                borderTop: '6px solid transparent',
+                borderBottom: '6px solid transparent',
+                borderLeft: '10px solid #fff',
+                flexShrink: 0,
+              }}
+            />
+            動画を表示
+          </span>
+        </div>
+      </button>
+      {/* タイトル＋チャンネル名パネル（oEmbed取得後に表示） */}
+      <div
+        style={{
+          padding: '6px 10px 8px',
+          border: '1px solid #e5e7eb',
+          borderTop: 'none',
+          background: '#fff',
+          borderRadius: '0 0 8px 8px',
+        }}
+      >
+        {meta?.title ? (
+          <>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#1f2937', margin: 0, lineHeight: 1.4 }}>
+              {meta.title}
+            </p>
+            {meta.channelName && (
+              <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>
+                {meta.channelName}
+              </p>
+            )}
+          </>
+        ) : (
+          <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>YouTube</p>
+        )}
       </div>
     </div>
   )
@@ -278,11 +416,33 @@ export function renderBody(body: string, allPosts: Post[]): React.ReactNode[] {
       continue
     }
 
+    if (trimmed !== '' && /^(>>\d+\s*)+$/.test(trimmed)) {
+      flushText()
+      elements.push(
+        <span key={key++} className="block" style={{ marginBottom: 0, lineHeight: 1.3, whiteSpace: 'pre-wrap' }}>
+          {renderWithAnchors(line, allPosts)}
+        </span>
+      )
+      continue
+    }
+
     textBuf.push(line)
   }
 
   flushText()
   return elements
+}
+
+function TimelineAvatar({ src, alt }: { src: string | null | undefined; alt: string }) {
+  if (!src) return null
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt}
+      className="h-4 w-4 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover"
+    />
+  )
 }
 
 function PostAuthorName({
@@ -298,8 +458,8 @@ function PostAuthorName({
 
   if (!profile.profile_slug) {
     return (
-      <span className="inline-flex items-center gap-1.5 font-medium text-gray-600">
-        <ProfileAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} size="sm" />
+      <span className="inline-flex items-center gap-1 font-medium text-gray-600">
+        <TimelineAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} />
         <span>{profile.display_name}</span>
       </span>
     )
@@ -308,15 +468,15 @@ function PostAuthorName({
   return (
     <Link
       href={`/u/${profile.profile_slug}`}
-      className="inline-flex items-center gap-1.5 font-medium text-blue-700 hover:underline"
+      className="inline-flex items-center gap-1 font-medium text-blue-700 hover:underline"
     >
-      <ProfileAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} size="sm" />
+      <TimelineAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} />
       <span>{profile.display_name}</span>
     </Link>
   )
 }
 
-export function PostItem({
+export const PostItem = memo(function PostItem({
   post,
   allPosts,
   onAnchorClick,
@@ -351,14 +511,16 @@ export function PostItem({
     })
   }
 
+  const bodyNodes = useMemo(() => renderBody(post.body, allPosts), [post.body, allPosts])
+
   return (
-    <div id={`post-${displayNumber}`} className="border-b border-gray-200 last:border-b-0">
+    <div id={`post-${displayNumber}`} className="border-b border-gray-200 last:border-b-0 scroll-mt-20">
       {/* ヘッダー行 */}
       <div className="px-2 py-1.5 text-xs flex items-center gap-1 flex-wrap" style={{ background: '#f5f5f5' }}>
         <button
           type="button"
           onClick={() => onAnchorClick(displayNumber)}
-          className="font-bold hover:underline cursor-pointer"
+          className="inline-flex items-center px-1.5 py-0.5 font-bold cursor-pointer border border-blue-300 bg-white hover:bg-blue-50 leading-none shrink-0 mr-1.5"
           style={{ color: '#0d6efd' }}
           title={`>>${displayNumber}を本文に挿入`}
         >
@@ -399,8 +561,8 @@ export function PostItem({
           このコメントは削除されました
         </div>
       ) : (
-        <div className="px-3 py-3 text-base text-gray-800 break-words leading-relaxed">
-          {renderBody(post.body, allPosts)}
+        <div className="px-3 pt-1.5 pb-7 text-base text-gray-800 break-words leading-relaxed">
+          {bodyNodes}
         </div>
       )}
 
@@ -412,4 +574,4 @@ export function PostItem({
       )}
     </div>
   )
-}
+})

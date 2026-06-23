@@ -35,7 +35,7 @@ export default function AdminPackReviewControls({
       <button
         onClick={toggle}
         disabled={pending || isHidden}
-        className="text-[10px] text-gray-500 underline hover:text-red-600 disabled:opacity-50"
+        className="text-[10px] text-red-600 underline hover:text-red-800 disabled:opacity-50"
       >
         削除
       </button>

@@ -1,17 +1,17 @@
 import { Suspense } from 'react'
 import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadCard } from '@/components/ThreadCard'
-import { SafeThumbnail } from '@/components/SafeThumbnail'
 import { SITE_URL } from '@/lib/site-config'
-import { getCachedCategories, getCachedUserRankings, UserRankingRow } from '@/lib/cached-queries'
+import { getCachedCategories, getCachedUserRankings, getCachedCampaignRanking, UserRankingRow } from '@/lib/cached-queries'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { ThreadListHeader } from '@/components/ThreadListHeader'
 import { ThreadListTopContent } from '@/components/ThreadListTopContent'
-import { withFallbackThumbnails, DEFAULT_THREAD_THUMBNAIL } from '@/lib/thumbnail'
-import { resolveImageUrl } from '@/lib/utils'
+import { SnsCtaCard } from '@/components/SnsCtaCard'
+import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
+import { resolveCampaignState, toDisplayJst } from '@/lib/campaign-ranking'
 
 export const revalidate = 3600
 
@@ -36,7 +36,7 @@ export const metadata = {
 
 type ThreadPeriod = 'today' | 'week' | 'all'
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 60
 
 const rankDecoration = [
   {
@@ -82,15 +82,206 @@ function RankingAvatar({ row, rank }: { row: UserRankingRow; rank: number }) {
   )
 }
 
+function safeRankingSocialUrl(url: string | null | undefined, allowedHosts: string[]) {
+  if (!url) return null
+  try {
+    const parsed = new URL(url)
+    const host = parsed.hostname.toLowerCase()
+    if (!allowedHosts.some(allowed => host === allowed || host.endsWith(`.${allowed}`))) {
+      return null
+    }
+    return parsed.toString()
+  } catch {
+    return null
+  }
+}
+
+function RankingSocialLinks({
+  xUrl,
+  youtubeUrl,
+}: {
+  xUrl: string | null | undefined
+  youtubeUrl: string | null | undefined
+}) {
+  const safeXUrl = safeRankingSocialUrl(xUrl, ['x.com', 'twitter.com'])
+  const safeYoutubeUrl = safeRankingSocialUrl(youtubeUrl, [
+    'youtube.com',
+    'www.youtube.com',
+    'm.youtube.com',
+    'youtu.be',
+  ])
+
+  if (!safeXUrl && !safeYoutubeUrl) return null
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1 align-middle">
+      {safeXUrl && (
+        <a href={safeXUrl} target="_blank" rel="noopener noreferrer"
+           className="inline-flex items-center rounded border border-gray-900 bg-gray-900 px-2 py-1 text-xs font-bold leading-none text-white hover:bg-gray-700">
+          X
+        </a>
+      )}
+      {safeYoutubeUrl && (
+        <a href={safeYoutubeUrl} target="_blank" rel="noopener noreferrer"
+           className="inline-flex items-center rounded border border-red-600 bg-red-600 px-2 py-1 text-xs font-bold leading-none text-white hover:bg-red-700">
+          YouTube
+        </a>
+      )}
+    </span>
+  )
+}
+
+function CompactActivityBreakdown({
+  threadCount,
+  postCount,
+  ratingCount,
+  reviewCount,
+}: {
+  threadCount: number
+  postCount: number
+  ratingCount: number
+  reviewCount: number
+}) {
+  return (
+    <div className="min-w-0 flex flex-wrap items-center gap-x-2 text-xs text-gray-500 md:text-sm">
+      <span>スレ{threadCount}</span>
+      <span className="text-gray-300">/</span>
+      <span>コメ{postCount}</span>
+      <span className="text-gray-300">/</span>
+      <span>評価{ratingCount}</span>
+      <span className="text-gray-300">/</span>
+      <span>レビュー{reviewCount}</span>
+    </div>
+  )
+}
+
+function RankingUserMeta({
+  name,
+  xUrl,
+  youtubeUrl,
+  href,
+}: {
+  name: string
+  xUrl: string | null | undefined
+  youtubeUrl: string | null | undefined
+  href: string
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        <Link href={href} className="text-sm font-bold text-blue-700 hover:underline">
+          {name}
+        </Link>
+        <RankingSocialLinks xUrl={xUrl} youtubeUrl={youtubeUrl} />
+      </div>
+    </div>
+  )
+}
+
+async function CampaignRankingSection() {
+  const { settings, ranking: result } = await getCachedCampaignRanking()
+  const state = resolveCampaignState(settings)
+
+  // 未設定・無効・開始前は表示しない
+  if (state === 'disabled' || state === 'scheduled') return null
+
+  const isEnded = state === 'ended'
+
+  // "2026/06/21 00:00" → "6/21"
+  const toShortDate = (displayJst: string) => {
+    const m = displayJst.match(/\d{4}\/(\d{2})\/(\d{2})/)
+    return m ? `${parseInt(m[1])}/${parseInt(m[2])}` : displayJst
+  }
+  const shortStartLabel = toShortDate(toDisplayJst(settings.startIso))
+  const shortEndLabel = toShortDate(toDisplayJst(settings.endIso))
+
+  return (
+    <section className="mb-4 overflow-hidden border border-yellow-300 bg-yellow-50">
+      <div className="border-b border-yellow-200 bg-yellow-100 px-3 py-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+          <p className="text-[12px] leading-snug text-yellow-900">
+            <span className="font-bold">🏆 {settings.title}{isEnded ? ' 結果' : ''}</span>
+            <span className="text-yellow-700">｜期間：{shortStartLabel}〜{shortEndLabel}</span>
+          </p>
+          <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold ${
+            isEnded
+              ? 'border-gray-300 bg-white text-gray-600'
+              : 'border-yellow-300 bg-white text-yellow-700'
+          }`}>
+            {isEnded ? '終了' : '開催中'}
+          </span>
+        </div>
+      </div>
+      {result.error ? (
+        <div className="px-3 py-4 text-center text-sm text-red-500">
+          集計データを取得できませんでした
+        </div>
+      ) : result.entries.length === 0 ? (
+        <div className="px-3 py-6 text-center text-sm text-yellow-700">
+          {isEnded ? 'ランキング対象者はいませんでした' : '期間中のポイントはまだありません'}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-2 p-2 xl:grid-cols-2">
+          {result.entries.map((entry) => {
+            const deco = rankDecoration[entry.rank - 1]
+            return (
+              <div
+                key={entry.profileSlug}
+                className="grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)] items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm md:grid-cols-[2.5rem_2.5rem_minmax(12rem,1fr)_minmax(14rem,auto)]"
+              >
+                <div className="text-center font-mono font-black text-gray-700">
+                  <span className="block text-lg leading-none">
+                    {deco?.medal ?? entry.rank}
+                  </span>
+                  {entry.rank <= 3 && (
+                    <span className="mt-1 block text-[10px] leading-none text-gray-500">{entry.rank}位</span>
+                  )}
+                </div>
+                <Link href={`/u/${entry.profileSlug}`} aria-label={`${entry.displayName}の投稿者ページ`}>
+                  {entry.avatarUrl ? (
+                    <ProfileAvatar src={entry.avatarUrl} alt={`${entry.displayName}のアイコン`} size="md" />
+                  ) : (
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ring-1 bg-yellow-50 text-yellow-700 ring-yellow-200"
+                      aria-hidden="true"
+                    >
+                      {entry.displayName.trim().charAt(0) || '?'}
+                    </span>
+                  )}
+                </Link>
+                <RankingUserMeta
+                  name={entry.displayName}
+                  href={`/u/${entry.profileSlug}`}
+                  xUrl={entry.xUrl}
+                  youtubeUrl={entry.youtubeUrl}
+                />
+                <div className="col-span-3 flex flex-wrap items-center gap-x-6 gap-y-1 md:col-span-1">
+                  <CompactActivityBreakdown
+                    threadCount={entry.rawThreadCount}
+                    postCount={entry.rawPostCount}
+                    ratingCount={entry.rawRatingCount}
+                    reviewCount={entry.rawReviewCount}
+                  />
+                  <div className={`ml-auto shrink-0 whitespace-nowrap font-mono text-xl font-black ${isEnded ? 'text-gray-700' : 'text-yellow-700'}`}>
+                    {entry.totalPoints}pt
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </section>
+  )
+}
+
 function UserRankingList({
   title,
   periodLabel,
-  topLabel,
   rows,
 }: {
   title: string
   periodLabel: string
-  topLabel: string
   rows: UserRankingRow[]
 }) {
   return (
@@ -112,11 +303,9 @@ function UserRankingList({
           {rows.map((row, index) => (
             <div
               key={row.profile_slug}
-              className={`grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-                rankDecoration[index]?.card ?? 'border-gray-200 bg-white'
-              }`}
+              className="grid grid-cols-[2.5rem_2.5rem_minmax(0,1fr)] items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm md:grid-cols-[2.5rem_2.5rem_minmax(12rem,1fr)_minmax(14rem,auto)]"
             >
-              <div className={`text-center font-mono font-black ${rankDecoration[index]?.rank ?? 'text-gray-500'}`}>
+              <div className="text-center font-mono font-black text-gray-700">
                 <span className="block text-lg leading-none">{rankDecoration[index]?.medal ?? index + 1}</span>
                 {index < 3 && (
                   <span className="mt-1 block text-[10px] leading-none text-gray-500">
@@ -127,26 +316,22 @@ function UserRankingList({
               <Link href={`/u/${row.profile_slug}`} aria-label={`${row.display_name}の投稿者ページ`}>
                 <RankingAvatar row={row} rank={index + 1} />
               </Link>
-              <div className="min-w-0">
-                <Link
-                  href={`/u/${row.profile_slug}`}
-                  className="font-bold text-blue-700 hover:underline"
-                >
-                  {row.display_name}
-                </Link>
-                {index === 0 && (
-                  <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${rankDecoration[0].badge}`}>
-                    {topLabel}
-                  </span>
-                )}
-                <div className="mt-0.5 text-xs text-gray-500">
-                  <span>コメント{row.post_count}件</span>
-                  <span className="ml-2">スレッド{row.thread_count}件</span>
-                  <span className="ml-2 font-mono text-gray-400">@{row.profile_slug}</span>
+              <RankingUserMeta
+                name={row.display_name}
+                href={`/u/${row.profile_slug}`}
+                xUrl={row.x_url}
+                youtubeUrl={row.youtube_url}
+              />
+              <div className="col-span-3 flex flex-wrap items-center gap-x-6 gap-y-1 md:col-span-1">
+                <CompactActivityBreakdown
+                  threadCount={row.thread_count}
+                  postCount={row.post_count}
+                  ratingCount={row.card_rating_count}
+                  reviewCount={row.card_review_count + row.pack_review_count}
+                />
+                <div className="ml-auto shrink-0 whitespace-nowrap font-mono text-xl font-black text-blue-700">
+                  {row.points}pt
                 </div>
-              </div>
-              <div className="whitespace-nowrap text-right font-mono text-base font-black text-blue-700">
-                {row.points}pt
               </div>
             </div>
           ))}
@@ -161,7 +346,6 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
   const rows = period === 'month' ? rankings.monthly : rankings.total
   const title = period === 'month' ? '今月のランキング' : '総合ランキング'
   const periodLabel = period === 'month' ? '今月' : '総合'
-  const topLabel = period === 'month' ? '今月1位' : '総合1位'
 
   return (
     <section className="mb-4 mt-4">
@@ -188,10 +372,12 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
           総合
         </Link>
       </div>
+      <p className="mb-3 border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700">
+        投稿者ランキングは、スレッド投稿・コメント・思い出図鑑の評価・思い出レビューなどの活動から集計しています。ランキングは1日1回更新されます。
+      </p>
       <UserRankingList
         title={title}
         periodLabel={periodLabel}
-        topLabel={topLabel}
         rows={rows}
       />
     </section>
@@ -201,46 +387,13 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
 type TypedThread = Thread & { categories: Category | null }
 
 function ThreadRankingMobile({ threads, offset }: { threads: TypedThread[]; offset: number }) {
-  const first = threads[0]
-  const rest = threads.slice(1)
-  const firstImgSrc = first ? (resolveImageUrl(first.image_url) ?? DEFAULT_THREAD_THUMBNAIL) : null
-
   return (
     <div className="md:hidden">
-      {/* 1位: 横長カード（通常カードと同系統） */}
-      {first && (
-        <Link
-          href={`/thread/${first.id}`}
-          className="flex border-b border-l border-r border-t border-gray-300 bg-white hover:bg-gray-50"
-          style={{ height: 72 }}
-        >
-          <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 72, height: 72 }}>
-            {firstImgSrc && (
-              <SafeThumbnail src={firstImgSrc} alt={first.title} priority />
-            )}
-            <span className="absolute left-0 top-0 bg-gray-900 px-1 text-[10px] font-bold leading-4 text-white">
-              1位
-            </span>
-            <span className="absolute bottom-0 left-0 right-0 flex items-center gap-0.5 px-1 text-[9px] font-bold leading-[14px] text-white" style={{ background: 'rgba(0,0,0,0.52)' }}>
-              💬{first.post_count}
-            </span>
-          </div>
-          <div className="min-w-0 flex-1 px-2 py-1.5">
-            <p className="line-clamp-3 break-all text-[12px] leading-snug text-gray-800">
-              {first.title}
-            </p>
-          </div>
-        </Link>
-      )}
-
-      {/* 2〜50位: 同じグリッドカード */}
-      {rest.length > 0 && (
-        <div className="grid grid-cols-3 border-l border-t border-gray-300">
-          {rest.map((thread, i) => (
-            <ThreadCard key={thread.id} thread={thread} rank={offset + i + 2} />
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-3 border-l border-t border-gray-300">
+        {threads.map((thread, i) => (
+          <ThreadCard key={thread.id} thread={thread} rank={offset + i + 1} />
+        ))}
+      </div>
     </div>
   )
 }
@@ -301,7 +454,7 @@ async function RankingList({ page, period }: { page: number; period: ThreadPerio
         }}
       />
 
-      {/* モバイル: 1位カード + 2-10位グリッド + 11-50位リスト */}
+      {/* モバイル: グリッドカード */}
       <ThreadRankingMobile threads={typedThreads} offset={offset} />
 
       {/* デスクトップ: グリッド */}
@@ -365,6 +518,11 @@ export default async function RankingPage({ searchParams }: Props) {
       />
 
       <div className="mx-auto max-w-screen-xl px-2">
+        {/* キャンペーンランキング（開催中のみ表示） */}
+        <Suspense fallback={null}>
+          <CampaignRankingSection />
+        </Suspense>
+
         {/* タブナビゲーション */}
         <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
           <Link
@@ -446,6 +604,7 @@ export default async function RankingPage({ searchParams }: Props) {
           </Suspense>
         )}
 
+        <SnsCtaCard />
         <BottomNav current="/ranking" categories={categories} />
         <div className="mb-6" />
       </div>

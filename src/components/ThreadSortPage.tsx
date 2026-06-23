@@ -12,7 +12,7 @@ import { SITE_URL } from '@/lib/site-config'
 import { ThreadListHeader } from '@/components/ThreadListHeader'
 import { ThreadListTopContent } from '@/components/ThreadListTopContent'
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 60
 
 export const NAV_LINKS = [
   { label: '↺ 更新順一覧', href: '/update' },
@@ -196,7 +196,7 @@ export function BottomNav({
   const categoryActive = current === '/category' || Boolean(currentCategory)
 
   return (
-    <nav className="mt-3" aria-label="共通スレッド一覧ナビ">
+    <nav className="mt-3 -mb-5" aria-label="共通スレッド一覧ナビ">
       <ul className="grid grid-cols-2 gap-1.5 text-sm sm:grid-cols-5">
       {NAV_LINKS.map((btn) => (
         <li key={btn.href}>
@@ -238,7 +238,7 @@ export async function ThreadSortPage({ sort, title, icon, page = 1 }: Props) {
 
   return (
     <div className="w-full px-0 py-0">
-      <ThreadListTopContent showPopularThreads />
+      <ThreadListTopContent />
 
       <ThreadListHeader title={title} icon={icon} />
 

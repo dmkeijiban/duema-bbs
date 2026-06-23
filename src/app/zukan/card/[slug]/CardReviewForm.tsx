@@ -62,9 +62,9 @@ export default function CardReviewForm({ cardId, slug }: { cardId: string; slug:
 
   if (state.status === 'success') {
     return (
-      <p className="border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700">
+      <div className="border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700">
         投稿しました！ありがとうございます。
-      </p>
+      </div>
     )
   }
 

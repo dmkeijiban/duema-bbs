@@ -1,6 +1,21 @@
 import { unstable_cache } from 'next/cache'
 import { createPublicClient } from './supabase-public'
 import { withFallbackThumbnails } from './thumbnail'
+import {
+  USER_RANKING_CARD_RATING_POINT,
+  USER_RANKING_CARD_REVIEW_POINT,
+  USER_RANKING_PACK_REVIEW_POINT,
+  USER_RANKING_POST_POINT,
+  USER_RANKING_THREAD_POINT,
+} from './ranking-points'
+import {
+  fetchCampaignSettings,
+  fetchCampaignRankingPublic,
+  resolveCampaignState,
+  getJstTodayCutoffUtcIso,
+  type CampaignSettings,
+  type CampaignRankingPublicResult,
+} from './campaign-ranking'
 import type { NavPage, FixedPage } from '@/types/fixed-pages'
 import { parseBlocks } from '@/types/fixed-pages'
 import type { PublicAuthorProfile } from '@/types'
@@ -10,6 +25,11 @@ export type { NavPage, FixedPage }
 const STANDARD_CACHE_SECONDS = 3600
 const NOTICE_CACHE_SECONDS = 1800
 const THREAD_CACHE_SECONDS = 21600
+
+export const THREAD_PAGE_SIZE = 60
+export const POPULAR_PAGE_SIZE = 100
+const THREAD_POSTS_PER_PAGE = 100
+export { THREAD_POSTS_PER_PAGE }
 
 export const getCachedNavPages = unstable_cache(
   async (): Promise<NavPage[]> => {
@@ -50,16 +70,6 @@ export const getCachedFixedPage = (slug: string): Promise<FixedPage | null> =>
     [`fixed-page-${slug}`],
     { revalidate: STANDARD_CACHE_SECONDS, tags: ['fixed_pages', `fixed-page-${slug}`] }
   )()
-
-type ThreadRow = { id: number; title: string; image_url: string | null; post_count: number }
-type RelatedThreadRow = ThreadRow & {
-  category_id: number | null
-  created_at: string | null
-  last_posted_at: string | null
-}
-
-export const THREAD_PAGE_SIZE = 60
-export const POPULAR_PAGE_SIZE = 100
 
 export const getCachedCategories = unstable_cache(
   async () => {
@@ -134,6 +144,13 @@ export const getCachedSetting = unstable_cache(
   { revalidate: STANDARD_CACHE_SECONDS, tags: ['settings'] }
 )
 
+type ThreadRow = { id: number; title: string; image_url: string | null; post_count: number }
+type RelatedThreadRow = ThreadRow & {
+  category_id: number | null
+  created_at: string | null
+  last_posted_at: string | null
+}
+
 export const getCachedTopThreads = unstable_cache(
   async () => {
     try {
@@ -195,20 +212,16 @@ function scoreRelatedThread(
   categoryId: number | null,
 ) {
   let score = Math.min(thread.post_count ?? 0, 30)
-
   if (categoryId !== null && thread.category_id === categoryId) score += 40
-
   for (const keyword of keywords) {
     if (thread.title.includes(keyword)) score += keyword.length >= 5 ? 35 : 22
   }
-
   const lastPostedAt = thread.last_posted_at ?? thread.created_at
   if (lastPostedAt) {
     const ageHours = (new Date().getTime() - new Date(lastPostedAt).getTime()) / 36e5
     if (ageHours <= 72) score += 12
     else if (ageHours <= 168) score += 6
   }
-
   return score
 }
 
@@ -253,10 +266,7 @@ export function getCachedRelatedThreads(
       }
 
       const ranked = [...byId.values()]
-        .map(thread => ({
-          thread,
-          score: scoreRelatedThread(thread, keywords, categoryId),
-        }))
+        .map(thread => ({ thread, score: scoreRelatedThread(thread, keywords, categoryId) }))
         .sort((a, b) => b.score - a.score || b.thread.post_count - a.thread.post_count)
         .slice(0, 8)
         .map(item => item.thread)
@@ -268,8 +278,6 @@ export function getCachedRelatedThreads(
     { revalidate: THREAD_CACHE_SECONDS, tags: [`related-threads-${threadId}`, `thread-${threadId}`] }
   )()
 }
-
-const THREAD_POSTS_PER_PAGE = 50
 
 export const getCachedThread = (threadId: number) =>
   unstable_cache(
@@ -292,8 +300,8 @@ export const getCachedThreadPosts = (threadId: number, page: number) =>
       const supabase = createPublicClient()
       const offset = (page - 1) * THREAD_POSTS_PER_PAGE
       const { data } = await supabase
-          .from('posts')
-          .select('id, thread_id, post_number, body, author_name, user_id, image_url, created_at, is_deleted, deleted_by, deleted_at')
+        .from('posts')
+        .select('id, thread_id, post_number, body, author_name, user_id, image_url, created_at, is_deleted, deleted_by, deleted_at')
         .eq('thread_id', threadId)
         .or('is_deleted.eq.false,deleted_by.eq.registered_user')
         .order('post_number', { ascending: true })
@@ -304,8 +312,6 @@ export const getCachedThreadPosts = (threadId: number, page: number) =>
     { revalidate: THREAD_CACHE_SECONDS, tags: [`thread-${threadId}`] }
   )()
 
-export { THREAD_POSTS_PER_PAGE }
-
 export const getCachedPublicAuthorProfiles = (userIds: string[]) => {
   const ids = Array.from(new Set(userIds.filter(Boolean))).sort()
   const key = ids.join(',')
@@ -313,16 +319,13 @@ export const getCachedPublicAuthorProfiles = (userIds: string[]) => {
   return unstable_cache(
     async (): Promise<Record<string, PublicAuthorProfile>> => {
       if (ids.length === 0) return {}
-
       try {
         const supabase = createPublicClient()
         const { data, error } = await supabase
           .from('profiles')
           .select('id, display_name, profile_slug, avatar_url, profile_hidden, account_suspended, withdrawn_at')
           .in('id', ids)
-
         if (error) return {}
-
         return Object.fromEntries(
           (data ?? [])
             .filter(profile => profile.profile_slug && profile.display_name)
@@ -334,12 +337,7 @@ export const getCachedPublicAuthorProfiles = (userIds: string[]) => {
             .map(profile => [
               String(profile.id),
               profile.withdrawn_at
-                ? {
-                    id: String(profile.id),
-                    display_name: '退会済みユーザー',
-                    profile_slug: '',
-                    avatar_url: null,
-                  }
+                ? { id: String(profile.id), display_name: '退会済みユーザー', profile_slug: '', avatar_url: null }
                 : {
                     id: String(profile.id),
                     display_name: String(profile.display_name),
@@ -373,7 +371,6 @@ export type UserPostRow = {
   threads: { title: string | null } | null
 }
 
-// 投稿者ページ用：そのユーザーの最近スレッド（新しい順・最大10件、アーカイブ除外）
 export const getCachedUserThreads = (userId: string): Promise<UserThreadRow[]> =>
   unstable_cache(
     async () => {
@@ -396,7 +393,6 @@ export const getCachedUserThreads = (userId: string): Promise<UserThreadRow[]> =
     { revalidate: STANDARD_CACHE_SECONDS, tags: ['threads'] }
   )()
 
-// 投稿者ページ用：そのユーザーの最近コメント（新しい順・最大10件、削除済み除外）
 export const getCachedUserPosts = (userId: string): Promise<UserPostRow[]> =>
   unstable_cache(
     async () => {
@@ -419,32 +415,28 @@ export const getCachedUserPosts = (userId: string): Promise<UserPostRow[]> =>
     { revalidate: STANDARD_CACHE_SECONDS, tags: ['posts'] }
   )()
 
-const USER_RANKING_PROFILE_LIMIT = 100
-const USER_RANKING_LIMIT = 10
-const USER_RANKING_FETCH_LIMIT = 10000
-const USER_RANKING_THREAD_POINT = 2
-const USER_RANKING_POST_POINT = 1
-const USER_RANKING_CARD_RATING_POINT = 1
-const USER_RANKING_CARD_REVIEW_POINT = 3
-const USER_RANKING_PACK_REVIEW_POINT = 3
-
 type UserRankingProfile = {
   id: string
   display_name: string | null
   profile_slug: string | null
   avatar_url: string | null
+  x_url: string | null
+  youtube_url: string | null
 }
 
-type UserRankingActivity = {
-  user_id: string | null
-}
+type UserRankingActivity = { user_id: string | null }
 
 export type UserRankingRow = {
   display_name: string
   profile_slug: string
   avatar_url: string | null
+  x_url: string | null
+  youtube_url: string | null
   thread_count: number
   post_count: number
+  card_rating_count: number
+  card_review_count: number
+  pack_review_count: number
   points: number
 }
 
@@ -453,6 +445,10 @@ export type UserRankingResult = {
   total: UserRankingRow[]
 }
 
+const USER_RANKING_PROFILE_LIMIT = 100
+const USER_RANKING_LIMIT = 10
+const USER_RANKING_FETCH_LIMIT = 10000
+
 function getJstMonthStartIso() {
   const now = new Date()
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -460,21 +456,22 @@ function getJstMonthStartIso() {
     year: 'numeric',
     month: 'numeric',
   }).formatToParts(now)
-
   const year = Number(parts.find(part => part.type === 'year')?.value ?? now.getUTCFullYear())
   const month = Number(parts.find(part => part.type === 'month')?.value ?? now.getUTCMonth() + 1)
-
   return new Date(Date.UTC(year, month - 1, 1, -9, 0, 0)).toISOString()
+}
+
+function getJstDateKey(): string {
+  const jst = new Date(Date.now() + 9 * 60 * 60 * 1000)
+  return jst.toISOString().slice(0, 10)
 }
 
 function countUserActivity(rows: UserRankingActivity[]) {
   const counts = new Map<string, number>()
-
   for (const row of rows) {
     if (!row.user_id) continue
     counts.set(row.user_id, (counts.get(row.user_id) ?? 0) + 1)
   }
-
   return counts
 }
 
@@ -504,8 +501,13 @@ function buildUserRanking(
         display_name: profile.display_name || '(未設定)',
         profile_slug: profile.profile_slug || '',
         avatar_url: profile.avatar_url || null,
+        x_url: profile.x_url || null,
+        youtube_url: profile.youtube_url || null,
         thread_count: threadCount,
         post_count: postCount,
+        card_rating_count: cardRatingCount,
+        card_review_count: cardReviewCount,
+        pack_review_count: packReviewCount,
         points:
           threadCount * USER_RANKING_THREAD_POINT +
           postCount * USER_RANKING_POST_POINT +
@@ -514,7 +516,7 @@ function buildUserRanking(
           packReviewCount * USER_RANKING_PACK_REVIEW_POINT,
       }
     })
-    .filter(row => row.profile_slug && row.points > 0)
+    .filter(row => !!row.profile_slug)
     .sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points
       if (b.thread_count !== a.thread_count) return b.thread_count - a.thread_count
@@ -523,133 +525,106 @@ function buildUserRanking(
     .slice(0, USER_RANKING_LIMIT)
 }
 
-export const getCachedUserRankings = unstable_cache(
-  async (): Promise<UserRankingResult> => {
-    try {
-      const supabase = createPublicClient()
-      const monthStartIso = getJstMonthStartIso()
+export function getCachedUserRankings(): Promise<UserRankingResult> {
+  const dateKey = getJstDateKey()
+  return unstable_cache(
+    async (): Promise<UserRankingResult> => {
+      try {
+        const supabase = createPublicClient()
+        const monthStartIso = getJstMonthStartIso()
+        const cutoffIso = getJstTodayCutoffUtcIso()
 
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, display_name, profile_slug, avatar_url')
-        .eq('profile_hidden', false)
-        .eq('ranking_enabled', true)
-        .eq('rank_excluded', false)
-        .eq('account_suspended', false)
-        .is('withdrawn_at', null)
-        .order('created_at', { ascending: false })
-        .limit(USER_RANKING_PROFILE_LIMIT)
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, display_name, profile_slug, avatar_url, x_url, youtube_url')
+          .eq('profile_hidden', false)
+          .eq('ranking_enabled', true)
+          .eq('rank_excluded', false)
+          .eq('account_suspended', false)
+          .is('withdrawn_at', null)
+          .lt('created_at', cutoffIso)
+          .order('created_at', { ascending: false })
+          .limit(USER_RANKING_PROFILE_LIMIT)
 
-      const profiles = (profilesData ?? []) as UserRankingProfile[]
-      const userIds = profiles.map(profile => profile.id)
-      if (userIds.length === 0) return { monthly: [], total: [] }
+        const profiles = (profilesData ?? []) as UserRankingProfile[]
+        const userIds = profiles.map(profile => profile.id)
+        if (userIds.length === 0) return { monthly: [], total: [] }
 
-      const [
-        monthlyThreads, monthlyPosts, totalThreads, totalPosts,
-        monthlyCardRatings, monthlyCardReviews, monthlyPackReviews,
-        totalCardRatings, totalCardReviews, totalPackReviews,
-      ] = await Promise.all([
-        supabase
-          .from('threads')
-          .select('user_id')
-          .in('user_id', userIds)
-          .eq('is_archived', false)
-          .gte('created_at', monthStartIso)
-          .limit(USER_RANKING_FETCH_LIMIT),
-        supabase
-          .from('posts')
-          .select('user_id, threads!inner(is_archived)')
-          .in('user_id', userIds)
-          .eq('is_deleted', false)
-          .eq('threads.is_archived', false)
-          .gte('created_at', monthStartIso)
-          .limit(USER_RANKING_FETCH_LIMIT),
-        supabase
-          .from('threads')
-          .select('user_id')
-          .in('user_id', userIds)
-          .eq('is_archived', false)
-          .limit(USER_RANKING_FETCH_LIMIT),
-        supabase
-          .from('posts')
-          .select('user_id, threads!inner(is_archived)')
-          .in('user_id', userIds)
-          .eq('is_deleted', false)
-          .eq('threads.is_archived', false)
-          .limit(USER_RANKING_FETCH_LIMIT),
-        supabase
-          .from('zukan_card_ratings')
-          .select('user_id')
-          .in('user_id', userIds)
-          .eq('is_deleted', false)
-          .eq('is_hidden', false)
-          .gte('created_at', monthStartIso)
-          .limit(USER_RANKING_FETCH_LIMIT),
-        supabase
-          .from('zukan_card_reviews')
-          .select('user_id')
-          .in('user_id', userIds)
-          .eq('is_deleted', false)
-          .eq('is_hidden', false)
-          .gte('created_at', monthStartIso)
-          .limit(USER_RANKING_FETCH_LIMIT),
-        supabase
-          .from('zukan_pack_reviews')
-          .select('user_id')
-          .in('user_id', userIds)
-          .eq('is_deleted', false)
-          .eq('is_hidden', false)
-          .gte('created_at', monthStartIso)
-          .limit(USER_RANKING_FETCH_LIMIT),
-        supabase
-          .from('zukan_card_ratings')
-          .select('user_id')
-          .in('user_id', userIds)
-          .eq('is_deleted', false)
-          .eq('is_hidden', false)
-          .limit(USER_RANKING_FETCH_LIMIT),
-        supabase
-          .from('zukan_card_reviews')
-          .select('user_id')
-          .in('user_id', userIds)
-          .eq('is_deleted', false)
-          .eq('is_hidden', false)
-          .limit(USER_RANKING_FETCH_LIMIT),
-        supabase
-          .from('zukan_pack_reviews')
-          .select('user_id')
-          .in('user_id', userIds)
-          .eq('is_deleted', false)
-          .eq('is_hidden', false)
-          .limit(USER_RANKING_FETCH_LIMIT),
-      ])
+        const [
+          monthlyThreads,
+          monthlyPosts,
+          totalThreads,
+          totalPosts,
+          monthlyCardRatings,
+          monthlyCardReviews,
+          monthlyPackReviews,
+          totalCardRatings,
+          totalCardReviews,
+          totalPackReviews,
+        ] = await Promise.all([
+          supabase.from('threads').select('user_id').in('user_id', userIds).eq('is_archived', false).gte('created_at', monthStartIso).lt('created_at', cutoffIso).limit(USER_RANKING_FETCH_LIMIT),
+          supabase.from('posts').select('user_id, threads!inner(is_archived)').in('user_id', userIds).eq('is_deleted', false).eq('threads.is_archived', false).gte('created_at', monthStartIso).lt('created_at', cutoffIso).limit(USER_RANKING_FETCH_LIMIT),
+          supabase.from('threads').select('user_id').in('user_id', userIds).eq('is_archived', false).lt('created_at', cutoffIso).limit(USER_RANKING_FETCH_LIMIT),
+          supabase.from('posts').select('user_id, threads!inner(is_archived)').in('user_id', userIds).eq('is_deleted', false).eq('threads.is_archived', false).lt('created_at', cutoffIso).limit(USER_RANKING_FETCH_LIMIT),
+          supabase.from('zukan_card_ratings').select('user_id').in('user_id', userIds).eq('is_deleted', false).gte('created_at', monthStartIso).lt('created_at', cutoffIso).limit(USER_RANKING_FETCH_LIMIT),
+          supabase.from('zukan_card_reviews').select('user_id').in('user_id', userIds).eq('is_deleted', false).eq('is_hidden', false).gte('created_at', monthStartIso).lt('created_at', cutoffIso).limit(USER_RANKING_FETCH_LIMIT),
+          supabase.from('zukan_pack_reviews').select('user_id').in('user_id', userIds).eq('is_deleted', false).eq('is_hidden', false).gte('created_at', monthStartIso).lt('created_at', cutoffIso).limit(USER_RANKING_FETCH_LIMIT),
+          supabase.from('zukan_card_ratings').select('user_id').in('user_id', userIds).eq('is_deleted', false).lt('created_at', cutoffIso).limit(USER_RANKING_FETCH_LIMIT),
+          supabase.from('zukan_card_reviews').select('user_id').in('user_id', userIds).eq('is_deleted', false).eq('is_hidden', false).lt('created_at', cutoffIso).limit(USER_RANKING_FETCH_LIMIT),
+          supabase.from('zukan_pack_reviews').select('user_id').in('user_id', userIds).eq('is_deleted', false).eq('is_hidden', false).lt('created_at', cutoffIso).limit(USER_RANKING_FETCH_LIMIT),
+        ])
 
-      return {
-        monthly: buildUserRanking(
-          profiles,
-          (monthlyThreads.data ?? []) as UserRankingActivity[],
-          (monthlyPosts.data ?? []) as UserRankingActivity[],
-          (monthlyCardRatings.data ?? []) as UserRankingActivity[],
-          (monthlyCardReviews.data ?? []) as UserRankingActivity[],
-          (monthlyPackReviews.data ?? []) as UserRankingActivity[]
-        ),
-        total: buildUserRanking(
-          profiles,
-          (totalThreads.data ?? []) as UserRankingActivity[],
-          (totalPosts.data ?? []) as UserRankingActivity[],
-          (totalCardRatings.data ?? []) as UserRankingActivity[],
-          (totalCardReviews.data ?? []) as UserRankingActivity[],
-          (totalPackReviews.data ?? []) as UserRankingActivity[]
-        ),
+        return {
+          monthly: buildUserRanking(
+            profiles,
+            (monthlyThreads.data ?? []) as UserRankingActivity[],
+            (monthlyPosts.data ?? []) as UserRankingActivity[],
+            (monthlyCardRatings.data ?? []) as UserRankingActivity[],
+            (monthlyCardReviews.data ?? []) as UserRankingActivity[],
+            (monthlyPackReviews.data ?? []) as UserRankingActivity[]
+          ),
+          total: buildUserRanking(
+            profiles,
+            (totalThreads.data ?? []) as UserRankingActivity[],
+            (totalPosts.data ?? []) as UserRankingActivity[],
+            (totalCardRatings.data ?? []) as UserRankingActivity[],
+            (totalCardReviews.data ?? []) as UserRankingActivity[],
+            (totalPackReviews.data ?? []) as UserRankingActivity[]
+          ),
+        }
+      } catch (error) {
+        console.warn('user rankings fetch failed:', error)
+        return { monthly: [], total: [] }
       }
-    } catch (error) {
-      console.warn('user rankings fetch failed:', error)
-      return { monthly: [], total: [] }
-    }
-  },
-  ['user-rankings-public-v2'],
-  { revalidate: 21600, tags: ['user-rankings'] }
-)
+    },
+    [`user-rankings-public-v8-${dateKey}`],
+    { revalidate: 86400, tags: ['user-rankings'] }
+  )()
+}
+
+export type CachedCampaignRankingResult = {
+  settings: CampaignSettings
+  ranking: CampaignRankingPublicResult
+  cachedDateJst: string
+}
+
+export function getCachedCampaignRanking(): Promise<CachedCampaignRankingResult> {
+  const dateKey = getJstDateKey()
+  return unstable_cache(
+    async (): Promise<CachedCampaignRankingResult> => {
+      const settings = await fetchCampaignSettings()
+      const state = resolveCampaignState(settings)
+      if (state === 'disabled' || state === 'scheduled') {
+        return { settings, ranking: { entries: [], error: null, overflow: false }, cachedDateJst: getJstDateKey() }
+      }
+      const cutoffIso = getJstTodayCutoffUtcIso()
+      const ranking = await fetchCampaignRankingPublic(settings.startIso, settings.endIso, state === 'active', cutoffIso)
+      return { settings, ranking, cachedDateJst: getJstDateKey() }
+    },
+    [`campaign-ranking-public-v2-${dateKey}`],
+    { revalidate: 86400, tags: ['campaign-ranking'] }
+  )()
+}
 
 export interface CachedThreadListResult {
   threads: unknown[]
@@ -657,8 +632,6 @@ export interface CachedThreadListResult {
   totalPages: number
 }
 
-// 標準クエリ（検索・ランダム以外）をキャッシュ。
-// キャッシュキーにsort/page/categoryId/isArchivedを含めて一意に管理。
 export function getCachedThreadList(
   sort: string,
   page: number,
@@ -669,6 +642,7 @@ export function getCachedThreadList(
   const pageSize = sort === 'popular' ? POPULAR_PAGE_SIZE : (pageSizeOverride ?? THREAD_PAGE_SIZE)
   const categoryKey = Array.isArray(categoryId) ? categoryId.slice().sort((a, b) => a - b).join('-') : String(categoryId)
   const cacheKey = `tl-${sort}-ps${pageSize}-p${page}-c${categoryKey}-a${String(isArchived)}`
+
   return unstable_cache(
     async () => {
       const supabase = createPublicClient()

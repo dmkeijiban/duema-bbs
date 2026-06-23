@@ -91,10 +91,16 @@ export function renderBlock(block: Block, i: number) {
   }
 
   if (block.type === 'image') {
+    const shouldLoadEarly = i <= 3
     // eslint-disable-next-line @next/next/no-img-element
-    const img = <img src={block.url} alt={block.alt ?? ''} loading="lazy"
+    const img = <img
+      src={block.url}
+      alt={block.alt ?? ''}
+      loading={shouldLoadEarly ? 'eager' : 'lazy'}
+      decoding={shouldLoadEarly ? 'sync' : 'async'}
       style={{ maxWidth: '100%', height: 'auto', display: 'block' }}
-      className="border border-gray-100" />
+      className="border border-gray-100"
+    />
     if (block.link) {
       return (
         <a key={i} href={block.link} target="_blank" rel="noopener noreferrer"

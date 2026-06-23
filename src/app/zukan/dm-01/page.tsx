@@ -44,10 +44,6 @@ export async function generateMetadata() {
 
 const PAGE_SIZE = 60
 
-const PACK_DESCRIPTION_PARAGRAPHS = [
-  '2002年5月30日に発売された、デュエル・マスターズ最初の弾。火・水・自然・光・闇の5文明から全120種を収録しています。',
-  '1パック5枚入り・150円（税込）。',
-]
 
 // --- モックフォールバック ---------------------------------------------------
 
@@ -300,8 +296,8 @@ export default async function ZukanDm01Page({
         <div className="flex min-h-full flex-col">
           <div className="font-mono text-xs font-bold text-blue-700">{pack.code}</div>
           <h1 className="mt-0.5 text-lg font-bold text-gray-800">{pack.code} {pack.name}</h1>
-          <dl className="mt-2 text-xs text-gray-600 space-y-0.5">
-            <div className="flex flex-wrap gap-x-4">
+          <dl className="mt-2 text-sm text-gray-700 space-y-1">
+            <div className="flex flex-wrap gap-x-6">
               {pack.released_year && (
                 <div><dt className="inline font-bold">発売：</dt><dd className="inline">{pack.released_year}</dd></div>
               )}
@@ -311,11 +307,6 @@ export default async function ZukanDm01Page({
             </div>
             <div><dt className="inline font-bold">パック内容：</dt><dd className="inline">5枚入り 150円（税込）</dd></div>
           </dl>
-          <div className="mt-3 space-y-2 text-sm leading-relaxed text-gray-700">
-            {PACK_DESCRIPTION_PARAGRAPHS.map(paragraph => (
-              <p key={paragraph} className="whitespace-pre-line">{paragraph}</p>
-            ))}
-          </div>
           <div className="mt-auto pt-4">
             <div className="mb-2 text-xs font-bold text-gray-700">このページをシェア</div>
             <PackShareButtons packName={`${pack.code} ${pack.name}`} />

@@ -59,6 +59,9 @@ export default function ForgotPasswordPage() {
               <p className="text-sm text-gray-600">
                 登録済みのメールアドレスを入力してください。パスワード再設定用のメールをお送りします。
               </p>
+              <p className="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                退会済みアカウントを再開したい場合も、このページからパスワードを再設定してログインすると再開できます。
+              </p>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-700">
                   メールアドレス

@@ -3,13 +3,17 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { verifyAdminCookie } from '@/lib/admin-auth'
+import {
+  USER_RANKING_CARD_RATING_POINT,
+  USER_RANKING_CARD_REVIEW_POINT,
+  USER_RANKING_PACK_REVIEW_POINT,
+  USER_RANKING_POST_POINT,
+  USER_RANKING_THREAD_POINT,
+} from '@/lib/ranking-points'
 
 const PROFILE_LIMIT = 100
 const RANKING_LIMIT = 50
-const THREAD_FETCH_LIMIT = 10000
-const POST_FETCH_LIMIT = 10000
-const THREAD_POINT = 3
-const POST_POINT = 1
+const ACTIVITY_FETCH_LIMIT = 10000
 
 type ProfileRow = {
   id: string
@@ -30,6 +34,9 @@ type RankingRow = {
   profile: ProfileRow
   threadCount: number
   postCount: number
+  cardRatingCount: number
+  cardReviewCount: number
+  packReviewCount: number
   points: number
 }
 
@@ -43,7 +50,16 @@ async function requireAdmin() {
 
 function getMonthStartIso() {
   const now = new Date()
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0)).toISOString()
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: 'numeric',
+  }).formatToParts(now)
+
+  const year = Number(parts.find(part => part.type === 'year')?.value ?? now.getUTCFullYear())
+  const month = Number(parts.find(part => part.type === 'month')?.value ?? now.getUTCMonth() + 1)
+
+  return new Date(Date.UTC(year, month - 1, 1, -9, 0, 0)).toISOString()
 }
 
 function countByUser(rows: ActivityRow[]) {
@@ -60,20 +76,37 @@ function countByUser(rows: ActivityRow[]) {
 function buildRanking(
   profiles: ProfileRow[],
   threadRows: ActivityRow[],
-  postRows: ActivityRow[]
+  postRows: ActivityRow[],
+  cardRatingRows: ActivityRow[],
+  cardReviewRows: ActivityRow[],
+  packReviewRows: ActivityRow[]
 ) {
   const threadCounts = countByUser(threadRows)
   const postCounts = countByUser(postRows)
+  const cardRatingCounts = countByUser(cardRatingRows)
+  const cardReviewCounts = countByUser(cardReviewRows)
+  const packReviewCounts = countByUser(packReviewRows)
 
   return profiles
     .map((profile): RankingRow => {
       const threadCount = threadCounts.get(profile.id) ?? 0
       const postCount = postCounts.get(profile.id) ?? 0
+      const cardRatingCount = cardRatingCounts.get(profile.id) ?? 0
+      const cardReviewCount = cardReviewCounts.get(profile.id) ?? 0
+      const packReviewCount = packReviewCounts.get(profile.id) ?? 0
       return {
         profile,
         threadCount,
         postCount,
-        points: threadCount * THREAD_POINT + postCount * POST_POINT,
+        cardRatingCount,
+        cardReviewCount,
+        packReviewCount,
+        points:
+          threadCount * USER_RANKING_THREAD_POINT +
+          postCount * USER_RANKING_POST_POINT +
+          cardRatingCount * USER_RANKING_CARD_RATING_POINT +
+          cardReviewCount * USER_RANKING_CARD_REVIEW_POINT +
+          packReviewCount * USER_RANKING_PACK_REVIEW_POINT,
       }
     })
     .filter(row => row.points > 0)
@@ -126,7 +159,16 @@ function RankingTable({
                   コメント
                 </th>
                 <th className="whitespace-nowrap border-b border-gray-200 px-3 py-2 text-right font-semibold">
-                  仮pt
+                  評価
+                </th>
+                <th className="whitespace-nowrap border-b border-gray-200 px-3 py-2 text-right font-semibold">
+                  カードレビュー
+                </th>
+                <th className="whitespace-nowrap border-b border-gray-200 px-3 py-2 text-right font-semibold">
+                  パックレビュー
+                </th>
+                <th className="whitespace-nowrap border-b border-gray-200 px-3 py-2 text-right font-semibold">
+                  pt
                 </th>
               </tr>
             </thead>
@@ -163,6 +205,15 @@ function RankingTable({
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-gray-700">
                       {row.postCount}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-gray-700">
+                      {row.cardRatingCount}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-gray-700">
+                      {row.cardReviewCount}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-gray-700">
+                      {row.packReviewCount}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-right font-mono font-bold text-gray-900">
                       {row.points}
@@ -201,9 +252,31 @@ export default async function AdminRankingPreviewPage() {
   const userIds = profiles.map(profile => profile.id)
 
   const emptyActivity = { data: [] as ActivityRow[], error: null }
-  const [monthThreads, monthPosts, totalThreads, totalPosts] =
+  const [
+    monthThreads,
+    monthPosts,
+    monthCardRatings,
+    monthCardReviews,
+    monthPackReviews,
+    totalThreads,
+    totalPosts,
+    totalCardRatings,
+    totalCardReviews,
+    totalPackReviews,
+  ] =
     userIds.length === 0
-      ? [emptyActivity, emptyActivity, emptyActivity, emptyActivity]
+      ? [
+          emptyActivity,
+          emptyActivity,
+          emptyActivity,
+          emptyActivity,
+          emptyActivity,
+          emptyActivity,
+          emptyActivity,
+          emptyActivity,
+          emptyActivity,
+          emptyActivity,
+        ]
       : await Promise.all([
           supabase
             .from('threads')
@@ -211,7 +284,7 @@ export default async function AdminRankingPreviewPage() {
             .in('user_id', userIds)
             .eq('is_archived', false)
             .gte('created_at', monthStartIso)
-            .limit(THREAD_FETCH_LIMIT),
+            .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('posts')
             .select('user_id, threads!inner(is_archived)')
@@ -219,39 +292,96 @@ export default async function AdminRankingPreviewPage() {
             .eq('is_deleted', false)
             .eq('threads.is_archived', false)
             .gte('created_at', monthStartIso)
-            .limit(POST_FETCH_LIMIT),
+            .limit(ACTIVITY_FETCH_LIMIT),
+          supabase
+            .from('zukan_card_ratings')
+            .select('user_id')
+            .in('user_id', userIds)
+            .eq('is_deleted', false)
+            .eq('is_hidden', false)
+            .gte('created_at', monthStartIso)
+            .limit(ACTIVITY_FETCH_LIMIT),
+          supabase
+            .from('zukan_card_reviews')
+            .select('user_id')
+            .in('user_id', userIds)
+            .eq('is_deleted', false)
+            .eq('is_hidden', false)
+            .gte('created_at', monthStartIso)
+            .limit(ACTIVITY_FETCH_LIMIT),
+          supabase
+            .from('zukan_pack_reviews')
+            .select('user_id')
+            .in('user_id', userIds)
+            .eq('is_deleted', false)
+            .eq('is_hidden', false)
+            .gte('created_at', monthStartIso)
+            .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('threads')
             .select('user_id')
             .in('user_id', userIds)
             .eq('is_archived', false)
-            .limit(THREAD_FETCH_LIMIT),
+            .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('posts')
             .select('user_id, threads!inner(is_archived)')
             .in('user_id', userIds)
             .eq('is_deleted', false)
             .eq('threads.is_archived', false)
-            .limit(POST_FETCH_LIMIT),
+            .limit(ACTIVITY_FETCH_LIMIT),
+          supabase
+            .from('zukan_card_ratings')
+            .select('user_id')
+            .in('user_id', userIds)
+            .eq('is_deleted', false)
+            .eq('is_hidden', false)
+            .limit(ACTIVITY_FETCH_LIMIT),
+          supabase
+            .from('zukan_card_reviews')
+            .select('user_id')
+            .in('user_id', userIds)
+            .eq('is_deleted', false)
+            .eq('is_hidden', false)
+            .limit(ACTIVITY_FETCH_LIMIT),
+          supabase
+            .from('zukan_pack_reviews')
+            .select('user_id')
+            .in('user_id', userIds)
+            .eq('is_deleted', false)
+            .eq('is_hidden', false)
+            .limit(ACTIVITY_FETCH_LIMIT),
         ])
 
   const monthRanking = buildRanking(
     profiles,
     (monthThreads.data ?? []) as ActivityRow[],
-    (monthPosts.data ?? []) as ActivityRow[]
+    (monthPosts.data ?? []) as ActivityRow[],
+    (monthCardRatings.data ?? []) as ActivityRow[],
+    (monthCardReviews.data ?? []) as ActivityRow[],
+    (monthPackReviews.data ?? []) as ActivityRow[]
   )
   const totalRanking = buildRanking(
     profiles,
     (totalThreads.data ?? []) as ActivityRow[],
-    (totalPosts.data ?? []) as ActivityRow[]
+    (totalPosts.data ?? []) as ActivityRow[],
+    (totalCardRatings.data ?? []) as ActivityRow[],
+    (totalCardReviews.data ?? []) as ActivityRow[],
+    (totalPackReviews.data ?? []) as ActivityRow[]
   )
 
   const queryError =
     profilesError ||
     monthThreads.error ||
     monthPosts.error ||
+    monthCardRatings.error ||
+    monthCardReviews.error ||
+    monthPackReviews.error ||
     totalThreads.error ||
-    totalPosts.error
+    totalPosts.error ||
+    totalCardRatings.error ||
+    totalCardReviews.error ||
+    totalPackReviews.error
 
   return (
     <div className="mx-auto max-w-screen-xl px-3 py-4 text-sm">
@@ -273,12 +403,14 @@ export default async function AdminRankingPreviewPage() {
 
       <div className="mb-4 space-y-2 border border-blue-200 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-800">
         <p>
-          管理者確認用の仮集計です。スレ作成 {THREAD_POINT}pt、コメント投稿 {POST_POINT}
-          ptで、その場計算しています。公開ランキング、pt保存、定期集計はまだ行っていません。
+          管理者確認用の集計プレビューです。公開投稿者ランキングと同じく、スレ作成
+          {USER_RANKING_THREAD_POINT}pt、コメント投稿{USER_RANKING_POST_POINT}pt、図鑑評価
+          {USER_RANKING_CARD_RATING_POINT}pt、カードレビュー{USER_RANKING_CARD_REVIEW_POINT}pt、
+          パックレビュー{USER_RANKING_PACK_REVIEW_POINT}ptで、その場計算しています。
         </p>
         <p>
-          対象profilesは最新{PROFILE_LIMIT}件、threadsは最大{THREAD_FETCH_LIMIT}件、postsは最大
-          {POST_FETCH_LIMIT}件まで取得します。公開時は集計済みテーブル方式に切り替える想定です。
+          対象profilesは最新{PROFILE_LIMIT}件、各activityは最大{ACTIVITY_FETCH_LIMIT}件まで取得します。
+          pt保存、定期集計は行っていません。
         </p>
       </div>
 
