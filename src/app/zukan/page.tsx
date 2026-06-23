@@ -220,7 +220,7 @@ export default async function ZukanTopPage() {
   const cardMap = new Map<string, ZukanCard>((dm01Cards ?? []).map(c => [c.slug, c]))
 
   return (
-    <div className="max-w-screen-xl mx-auto px-2 pt-2 pb-10">
+    <div className="max-w-screen-xl mx-auto px-2 pt-2 pb-0">
       {/* パンくず */}
       <nav className="text-xs text-gray-500 mb-2 flex items-center gap-x-1">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
