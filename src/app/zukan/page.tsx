@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { fetchPublishedPacks, fetchCardsBySlugs, fetchCardReviewHighlights } from '@/lib/zukan'
 import type { ZukanPack, ZukanCard, ZukanCardReviewHighlight } from '@/lib/zukan'
 import { SITE_URL } from '@/lib/site-config'
@@ -310,6 +311,8 @@ export default async function ZukanTopPage() {
           cards={reviewHighlights?.mostReviewed ?? []}
         />
       </div>
+
+      <SnsCtaCard />
     </div>
   )
 }
