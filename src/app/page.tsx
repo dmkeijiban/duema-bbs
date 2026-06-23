@@ -220,12 +220,12 @@ function HomeBannerFallback() {
 function HomeGuideBanner() {
   return (
     <div
-      className="mb-1.5 flex flex-col gap-1 border px-3 py-1.5 text-xs text-green-900 md:flex-row md:items-center md:justify-between"
+      className="mb-1.5 flex flex-col gap-1.5 border px-3 py-1.5 text-sm text-green-900 md:flex-row md:items-center md:justify-between"
       style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb' }}
     >
-      <p className="leading-relaxed">
+      <p className="font-bold leading-relaxed">
         初めての方は
-        <Link href="/guide" className="font-bold underline underline-offset-2 hover:opacity-80">
+        <Link href="/guide" className="underline underline-offset-2 hover:opacity-80">
           スレッドの立て方
         </Link>
         をご確認ください。
@@ -233,13 +233,13 @@ function HomeGuideBanner() {
       <div className="flex shrink-0 flex-wrap gap-1.5">
         <Link
           href="/login?mode=signup"
-          className="inline-flex items-center justify-center rounded border border-green-700 bg-white px-2.5 py-1 text-[11px] font-bold text-green-800 transition-colors hover:bg-green-50"
+          className="inline-flex items-center justify-center rounded border border-green-700 bg-white px-2.5 py-1 text-xs font-bold text-green-800 transition-colors hover:bg-green-50"
         >
           アカウント作成
         </Link>
         <Link
           href="/zukan"
-          className="inline-flex items-center justify-center rounded border border-green-700 bg-white px-2.5 py-1 text-[11px] font-bold text-green-800 transition-colors hover:bg-green-50"
+          className="inline-flex items-center justify-center rounded border border-green-700 bg-white px-2.5 py-1 text-xs font-bold text-green-800 transition-colors hover:bg-green-50"
         >
           思い出図鑑
         </Link>
@@ -374,7 +374,7 @@ export default async function Home({
           <BottomNavServer params={params} />
         </Suspense>
 
-        <AdBanner slot="5316786416" format="auto" style={{ margin: '8px 0' }} minHeight={90} />
+        <AdBanner slot="5316786416" format="auto" style={{ margin: '8px 0' }} minHeight={0} />
 
         <Suspense fallback={null}>
           <BotNoticesServer />
