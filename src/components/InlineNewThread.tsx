@@ -62,24 +62,15 @@ export function InlineNewThread({ categories }: Props) {
       from_path: window.location.pathname,
     })
     startTransition(async () => {
-      try {
-        const result = await createThread(formData)
-        if (result?.error) {
-          capturePostHogEvent('thread_create_submit_error', {
-            category_id: formData.get('category_id'),
-            error_message: result.error,
-            has_image: imageFile instanceof File && imageFile.size > 0,
-            from_path: window.location.pathname,
-          })
-          setError(result.error)
-        }
-      } catch {
-        capturePostHogEvent('thread_create_submit_exception', {
+      const result = await createThread(formData)
+      if (result?.error) {
+        capturePostHogEvent('thread_create_submit_error', {
           category_id: formData.get('category_id'),
+          error_message: result.error,
           has_image: imageFile instanceof File && imageFile.size > 0,
           from_path: window.location.pathname,
         })
-        setError('スレッドの作成に失敗しました。再読み込みしてから再度お試しください。')
+        setError(result.error)
       }
     })
   }
