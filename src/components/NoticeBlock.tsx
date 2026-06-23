@@ -31,7 +31,7 @@ export function NoticeBlock({ notice, priority }: { notice: Notice; priority?: b
       <div className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] md:gap-1 md:overflow-visible md:pb-0">
         {items.map((item, i) => {
           const inner = (
-            <div className="relative h-16 overflow-hidden bg-gray-100 md:h-20">
+            <div className="relative h-14 overflow-hidden bg-gray-100 md:h-20">
               {item.image_url && (
                 <Image
                   src={item.image_url}
@@ -40,7 +40,7 @@ export function NoticeBlock({ notice, priority }: { notice: Notice; priority?: b
                   className="object-cover"
                   loading="eager"
                   priority={priority && i === 0}
-                  sizes="(max-width: 768px) 150px, 25vw"
+                  sizes="(max-width: 768px) 120px, 25vw"
                 />
               )}
               {item.title && (
@@ -60,17 +60,24 @@ export function NoticeBlock({ notice, priority }: { notice: Notice; priority?: b
               href={item.link_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-[44vw] max-w-[170px] shrink-0 md:min-w-0 md:max-w-none md:flex-1"
+              className="block w-[31vw] max-w-[135px] shrink-0 md:min-w-0 md:max-w-none md:flex-1"
             >
               {inner}
             </a>
           ) : (
-            <div key={i} className="w-[44vw] max-w-[170px] shrink-0 md:min-w-0 md:max-w-none md:flex-1">
+            <div key={i} className="w-[31vw] max-w-[135px] shrink-0 md:min-w-0 md:max-w-none md:flex-1">
               {inner}
             </div>
           )
         })}
       </div>
+      {notice.position === 'top' && (
+        <div className="mt-3 flex items-center gap-2 text-[11px] font-bold text-gray-500 md:hidden">
+          <span className="h-px flex-1 bg-gray-200" />
+          <span>ここからスレ一覧</span>
+          <span className="h-px flex-1 bg-gray-200" />
+        </div>
+      )}
     </div>
   )
 }
