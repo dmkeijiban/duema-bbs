@@ -56,6 +56,13 @@ function cleanAuthorName(value: string | null | undefined) {
   return (value ?? '').trim() || DEFAULT_AUTHOR_NAME
 }
 
+function buildThreadDescription(thread: Thread, fallbackText?: string) {
+  const text = cleanStructuredText(fallbackText ?? thread.body, thread.title).slice(0, 120)
+  const count = thread.post_count ?? 0
+  const suffix = count > 0 ? ` コメント${count}件。` : ''
+  return `${text}｜デュエマ掲示板のスレッド。${suffix}`.slice(0, 160)
+}
+
 function removeEmptyStructuredData<T>(value: T): T {
   if (Array.isArray(value)) {
     return value
@@ -84,39 +91,33 @@ export async function generateMetadata({ params }: Props) {
 
   if (!thread) return { title: 'スレッドが見つかりません' }
 
-  const ogImage: string | undefined = thread.image_url ?? undefined
-  const desc = thread.body
-    .replace(/>>?\d+/g, '')      // >>123 アンカー除去
-    .replace(/[\r\n]+/g, ' ')    // 改行をスペースに
-    .replace(/\s{2,}/g, ' ')     // 連続スペース圧縮
-    .trim()
-    .slice(0, 150)
   const baseUrl = SITE_URL
-  const metadataDescription = desc || thread.title
+  const canonicalUrl = `${baseUrl}/thread/${id}`
+  const metadataDescription = buildThreadDescription(thread as Thread)
   // Use a stable, query-free image URL for X cards. Twitterbot can be picky
   // with long query-string image URLs, even when the endpoint returns 200.
-  const ogImageUrl = ogImage
+  const ogImageUrl = thread.image_url
     ? `${baseUrl}/og/thread/${id}.jpg`
     : `${baseUrl}/default-thumbnail.jpg`
 
   return {
-    title: `${thread.title} | デュエマ掲示板`,
+    title: `${thread.title}｜デュエマ掲示板`,
     description: metadataDescription,
     alternates: {
-      canonical: `${baseUrl}/thread/${id}`,
+      canonical: canonicalUrl,
     },
     openGraph: {
-      title: thread.title,
+      title: `${thread.title}｜デュエマ掲示板`,
       description: metadataDescription,
-      url: `${baseUrl}/thread/${id}`,
+      url: canonicalUrl,
       type: 'article',
       publishedTime: thread.created_at,
       modifiedTime: thread.last_posted_at ?? thread.created_at,
-      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: thread.title }],
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: `${thread.title}のスレッド画像` }],
     },
     twitter: {
       card: 'summary_large_image',
-      title: thread.title,
+      title: `${thread.title}｜デュエマ掲示板`,
       description: metadataDescription,
       images: [ogImageUrl],
     },
@@ -160,6 +161,7 @@ export async function renderThreadPage(threadId: number, page: number) {
   const canonicalUrl = `${baseUrl}/thread/${threadId}`
   const currentPageUrl = page <= 1 ? canonicalUrl : `${canonicalUrl}/p/${page}`
   const structuredText = cleanStructuredText(typedThread.body, typedThread.title)
+  const structuredDescription = buildThreadDescription(typedThread, structuredText)
   const structuredImage = typedThread.image_url ? `${baseUrl}/og/thread/${threadId}.jpg` : undefined
   const categoryForumId = typedThread.categories
     ? `${baseUrl}/category/${typedThread.categories.slug}#forum`
@@ -176,7 +178,7 @@ export async function renderThreadPage(threadId: number, page: number) {
         "@id": `${canonicalUrl}#discussion`,
         "headline": typedThread.title,
         "url": canonicalUrl,
-        "mainEntityOfPage": canonicalUrl,
+        "mainEntityOfPage": { "@id": `${canonicalUrl}#webpage` },
         "datePublished": typedThread.created_at,
         "dateModified": typedThread.last_posted_at ?? typedThread.created_at,
         "isPartOf": { "@id": categoryForumId },
@@ -191,7 +193,7 @@ export async function renderThreadPage(threadId: number, page: number) {
           "url": `${canonicalUrl}#post-1`,
         },
         "text": structuredText,
-        "description": structuredText.slice(0, 160),
+        "description": structuredDescription,
         "relatedLink": relatedForLD.slice(0, 5).map(t => `${baseUrl}/thread/${t.id}`),
         "image": structuredImage ? [structuredImage] : undefined,
         "interactionStatistic": [
@@ -245,6 +247,7 @@ export async function renderThreadPage(threadId: number, page: number) {
             {
               "@context": "https://schema.org",
               "@type": "BreadcrumbList",
+              "@id": `${canonicalUrl}#breadcrumb`,
               "itemListElement": [
                 { "@type": "ListItem", "position": 1, "name": "TOP", "item": baseUrl },
                 ...(typedThread.categories ? [
@@ -254,9 +257,9 @@ export async function renderThreadPage(threadId: number, page: number) {
                     "name": `カテゴリ『${typedThread.categories.name}』`,
                     "item": `${baseUrl}/category/${typedThread.categories.slug}`,
                   },
-                  { "@type": "ListItem", "position": 3, "name": typedThread.title },
+                  { "@type": "ListItem", "position": 3, "name": typedThread.title, "item": canonicalUrl },
                 ] : [
-                  { "@type": "ListItem", "position": 2, "name": typedThread.title },
+                  { "@type": "ListItem", "position": 2, "name": typedThread.title, "item": canonicalUrl },
                 ]),
               ],
             },
@@ -266,8 +269,10 @@ export async function renderThreadPage(threadId: number, page: number) {
               "@id": `${canonicalUrl}#webpage`,
               "url": canonicalUrl,
               "name": `${typedThread.title} | デュエマ掲示板`,
+              "description": structuredDescription,
               "isPartOf": { "@id": `${baseUrl}/#website` },
               "publisher": { "@id": `${baseUrl}/#organization` },
+              "breadcrumb": { "@id": `${canonicalUrl}#breadcrumb` },
               "inLanguage": "ja",
             },
           ])
@@ -298,7 +303,7 @@ export async function renderThreadPage(threadId: number, page: number) {
           <ShareXButton title={typedThread.title} />
         </div>
         <div className="text-xs text-gray-500 mt-0.5">
-          {typedThread.post_count}件 ／ 閲覧 {typedThread.view_count}
+          {typedThread.post_count}件
         </div>
       </div>
 
