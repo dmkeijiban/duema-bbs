@@ -22,7 +22,7 @@ const PushSubscribeButton = dynamic(
   { ssr: false },
 )
 
-const POSTS_PER_PAGE = 50
+const POSTS_PER_PAGE = 100
 
 interface Props {
   threadId: number
