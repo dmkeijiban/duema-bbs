@@ -124,6 +124,40 @@ function ShowcaseContainer({
   )
 }
 
+function HomeDailyHub() {
+  const links = [
+    { href: '/update', label: '最新コメント', sub: '今動いてるスレを見る' },
+    { href: '/ranking', label: 'ランキング', sub: '毎日0時ごろ更新' },
+    { href: '/thread/new', label: 'スレ立て', sub: 'ログインなしでもOK' },
+  ]
+
+  return (
+    <div className="mb-2 border border-red-200 bg-white">
+      <div className="flex flex-col gap-1 border-b border-red-100 bg-red-50 px-3 py-2 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-bold text-red-800">🔥 今日のデュエマ掲示板</p>
+          <p className="text-xs leading-relaxed text-red-700">
+            Xで話題になったネタの続き、最新コメント、投稿者ランキングをまとめてチェックできます。
+          </p>
+        </div>
+        <span className="text-[11px] font-bold text-red-700 md:shrink-0">見るだけ・一言コメント歓迎</span>
+      </div>
+      <div className="grid grid-cols-3 divide-x divide-red-100">
+        {links.map(link => (
+          <Link
+            key={link.href}
+            href={link.href}
+            className="flex min-h-16 flex-col justify-center px-2 py-2 text-center transition-colors hover:bg-red-50"
+          >
+            <span className="text-sm font-bold text-gray-900">{link.label}</span>
+            <span className="mt-0.5 text-[11px] leading-snug text-gray-500">{link.sub}</span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export async function TopRankingShowcase() {
   try {
     const { settings, ranking: campaignResult } = await getCachedCampaignRanking()
@@ -137,14 +171,17 @@ export async function TopRankingShowcase() {
         avatarUrl: e.avatarUrl,
         points: e.totalPoints,
       }))
-      if (entries.length === 0) return null
+      if (entries.length === 0) return <HomeDailyHub />
       return (
-        <ShowcaseContainer
-          title="🏆 キャンペーンランキング TOP10"
-          subtitle="（1日1回更新）"
-          entries={entries}
-          variant="campaign"
-        />
+        <>
+          <ShowcaseContainer
+            title="🏆 キャンペーンランキング TOP10"
+            subtitle="（1日1回更新）"
+            entries={entries}
+            variant="campaign"
+          />
+          <HomeDailyHub />
+        </>
       )
     }
 
@@ -156,35 +193,41 @@ export async function TopRankingShowcase() {
       avatarUrl: row.avatar_url,
       points: row.points,
     }))
-    if (entries.length === 0) return null
+    if (entries.length === 0) return <HomeDailyHub />
     return (
-      <ShowcaseContainer
-        title="👑 今月の投稿者ランキング TOP10"
-        entries={entries}
-        variant="monthly"
-      />
+      <>
+        <ShowcaseContainer
+          title="👑 今月の投稿者ランキング TOP10"
+          entries={entries}
+          variant="monthly"
+        />
+        <HomeDailyHub />
+      </>
     )
   } catch (error) {
     console.warn('TopRankingShowcase fetch failed:', error)
-    return null
+    return <HomeDailyHub />
   }
 }
 
 export function TopRankingShowcaseSkeleton() {
   return (
-    <div className="mb-2 border border-gray-300 bg-white animate-pulse">
-      <div className="px-3 py-1.5 border-b border-gray-300 flex items-center gap-1.5">
-        <div className="h-5 bg-gray-200 rounded w-52" />
+    <>
+      <div className="mb-2 border border-gray-300 bg-white animate-pulse">
+        <div className="px-3 py-1.5 border-b border-gray-300 flex items-center gap-1.5">
+          <div className="h-5 bg-gray-200 rounded w-52" />
+        </div>
+        <div className="grid grid-cols-5 md:grid-cols-10 gap-px bg-gray-200">
+          {[...Array(10)].map((_, i) => (
+            <div key={i} className="relative flex flex-col items-center justify-center bg-white px-0.5 py-2 md:px-1 md:py-1">
+              <div className="absolute top-0.5 left-0.5 h-3.5 w-5 bg-gray-200 rounded" />
+              <div className="absolute top-0.5 right-0.5 h-3 w-4 md:w-5 bg-gray-200 rounded" />
+              <div className="h-10 w-10 md:h-20 md:w-20 bg-gray-200 rounded-full" />
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="grid grid-cols-5 md:grid-cols-10 gap-px bg-gray-200">
-        {[...Array(10)].map((_, i) => (
-          <div key={i} className="relative flex flex-col items-center justify-center bg-white px-0.5 py-2 md:px-1 md:py-1">
-            <div className="absolute top-0.5 left-0.5 h-3.5 w-5 bg-gray-200 rounded" />
-            <div className="absolute top-0.5 right-0.5 h-3 w-4 md:w-5 bg-gray-200 rounded" />
-            <div className="h-10 w-10 md:h-20 md:w-20 bg-gray-200 rounded-full" />
-          </div>
-        ))}
-      </div>
-    </div>
+      <div className="mb-2 h-28 border border-gray-200 bg-white animate-pulse" />
+    </>
   )
 }
