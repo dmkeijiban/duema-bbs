@@ -196,7 +196,7 @@ export function BottomNav({
   const categoryActive = current === '/category' || Boolean(currentCategory)
 
   return (
-    <nav className="mt-3" aria-label="共通スレッド一覧ナビ">
+    <nav className="mt-3 -mb-5" aria-label="共通スレッド一覧ナビ">
       <ul className="grid grid-cols-2 gap-1.5 text-sm sm:grid-cols-5">
       {NAV_LINKS.map((btn) => (
         <li key={btn.href}>
