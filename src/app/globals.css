@@ -14,7 +14,6 @@
   --color-foreground: var(--foreground);
 }
 
-/* スクロールバー常時確保 → コンテンツロード時のCLS防止（PC環境でのスクロールバー出現による6pxシフト対策） */
 html {
   overflow-y: scroll;
 }
@@ -27,7 +26,6 @@ body {
   font-size: 16px;
 }
 
-/* フッター直前の余白を全ページで少し圧縮 */
 body > footer {
   margin-top: 0.75rem !important;
 }
@@ -36,13 +34,11 @@ body > footer {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #aaa; border-radius: 3px; }
 
-/* スレッドカードの画像 */
 .thread-card img {
   min-width: unset;
   min-height: unset;
 }
 
-/* スマホのスレカードは本文表示を元の3行に戻す */
 @media (max-width: 767px) {
   .thread-card > .md\:hidden > div:last-child > span {
     display: none !important;
@@ -54,35 +50,55 @@ body > footer {
     -webkit-line-clamp: 3 !important;
     overflow: hidden !important;
   }
+
+  .grid > .thread-card:nth-child(-n+3) {
+    position: relative;
+    outline: 2px solid #f97316;
+    outline-offset: -2px;
+    box-shadow: inset 5px 0 0 #f97316, 0 0 0 1px rgba(249, 115, 22, 0.35);
+    background: #fff7ed !important;
+  }
+
+  .grid > .thread-card:nth-child(1)::after,
+  .grid > .thread-card:nth-child(2)::after,
+  .grid > .thread-card:nth-child(3)::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 3;
+    padding: 1px 4px;
+    background: #f97316;
+    color: white;
+    font-size: 9px;
+    font-weight: 900;
+    line-height: 14px;
+    pointer-events: none;
+  }
+
+  .grid > .thread-card:nth-child(1)::after { content: '注目'; }
+  .grid > .thread-card:nth-child(2)::after { content: '注目'; }
+  .grid > .thread-card:nth-child(3)::after { content: '注目'; }
 }
 
-/* 活動中スレの強調はスマホ・PC両方で各グリッド先頭3件だけ */
-.grid > .thread-card:nth-child(-n+3).thread-card-highlight-hot {
-  background: linear-gradient(90deg, #fff1f2 0, #fff1f2 4px, #ffffff 26px);
-  box-shadow: inset 4px 0 0 #dc2626;
+@media (min-width: 768px) {
+  .grid > .thread-card:nth-child(-n+3) {
+    background: linear-gradient(90deg, #fff7ed 0, #fff7ed 4px, #ffffff 26px) !important;
+    box-shadow: inset 4px 0 0 #f97316;
+  }
+
+  .grid > .thread-card:nth-child(-n+3):hover {
+    filter: brightness(0.985);
+  }
 }
 
-.grid > .thread-card:nth-child(-n+3).thread-card-highlight-rising {
-  background: linear-gradient(90deg, #fff7ed 0, #fff7ed 4px, #ffffff 26px);
-  box-shadow: inset 4px 0 0 #f97316;
-}
-
-.grid > .thread-card:nth-child(-n+3).thread-card-highlight-hot:hover,
-.grid > .thread-card:nth-child(-n+3).thread-card-highlight-rising:hover {
-  filter: brightness(0.985);
-}
-
-/* Hide the reply-form notification row when Web Push is unavailable. */
 tr:has(.push-subscribe-empty) {
   display: none;
 }
 
-/* AdSense 空白を除去：filled になるまで（ロード前・unfilled 両方）非表示にしてフラッシュも防ぐ */
 ins.adsbygoogle:not([data-ad-status="filled"]) {
   display: none !important;
 }
 
-/* iOS Safari の入力欄ズームイン防止（16px未満でズームする） */
 @media (max-width: 768px) {
   input[type="text"],
   input[type="email"],
@@ -94,13 +110,11 @@ ins.adsbygoogle:not([data-ad-status="filled"]) {
   }
 }
 
-/* サイトテキスト設定（バナー・ルール）のリンクスタイル */
 .setting-content p { margin-bottom: 0.4em; }
 .setting-content p:last-child { margin-bottom: 0; }
 .setting-content a { text-decoration: underline; font-weight: 500; }
 .setting-content a:hover { opacity: 0.8; }
 
-/* リッチテキスト（固定ページ本文）のスタイル */
 .rich-content p { margin-bottom: 0.75em; }
 .rich-content p:last-child { margin-bottom: 0; }
 .rich-content a { color: #2563eb; text-decoration: underline; }
