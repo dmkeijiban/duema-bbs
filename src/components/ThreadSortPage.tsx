@@ -238,7 +238,7 @@ export async function ThreadSortPage({ sort, title, icon, page = 1 }: Props) {
 
   return (
     <div className="w-full px-0 py-0">
-      <ThreadListTopContent showPopularThreads />
+      <ThreadListTopContent />
 
       <ThreadListHeader title={title} icon={icon} />
 
