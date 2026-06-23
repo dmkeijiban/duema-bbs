@@ -37,6 +37,12 @@ interface Props {
   searchParams: Promise<{ sort?: string; page?: string }>
 }
 
+function getCategoryDescription(category: { name: string; description?: string | null }) {
+  return category.description
+    ? `${category.description}について語るデュエマ掲示板のカテゴリです。`
+    : `デュエルマスターズ（デュエマ）の「${category.name}」について語る掲示板カテゴリです。`
+}
+
 export async function generateStaticParams() {
   const cats = await getCachedCategories()
   const slugs = new Set([
@@ -52,26 +58,24 @@ export async function generateMetadata({ params }: Props) {
   const category = getDisplayCategoryBySlug(slug, cats)
   if (!category) return { title: 'カテゴリが見つかりません' }
 
-  const desc = category.description
-    ? `${category.description} — デュエマ掲示板`
-    : `デュエルマスターズ（デュエマ）掲示板の「${category.name}」カテゴリ。デッキ相談・カード評価・大会情報など幅広く語ろう。`
+  const desc = getCategoryDescription(category)
 
   return {
-    title: `${category.name} | デュエマ掲示板`,
+    title: `${category.name}のスレッド一覧 | デュエマ掲示板`,
     description: desc,
     alternates: {
       canonical: `${BASE_URL}/category/${slug}`,
     },
     openGraph: {
-      title: `${category.name} | デュエマ掲示板`,
+      title: `${category.name}のスレッド一覧 | デュエマ掲示板`,
       description: desc,
       url: `${BASE_URL}/category/${slug}`,
       type: 'website',
-      images: [{ url: `${BASE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: `${category.name} | デュエマ掲示板` }],
+      images: [{ url: `${BASE_URL}/default-thumbnail.jpg`, width: 1200, height: 630, alt: `${category.name}のスレッド一覧 | デュエマ掲示板` }],
     },
     twitter: {
       card: 'summary_large_image' as const,
-      title: `${category.name} | デュエマ掲示板`,
+      title: `${category.name}のスレッド一覧 | デュエマ掲示板`,
       description: desc,
       images: [`${BASE_URL}/default-thumbnail.jpg`],
     },
@@ -130,6 +134,7 @@ async function CategoryThreadList({
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'ItemList',
+            '@id': `${BASE_URL}/category/${category.slug}#itemlist`,
             name: listName,
             url: `${BASE_URL}/category/${category.slug}`,
             numberOfItems: threads.length,
@@ -229,6 +234,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const topNotices = typedNotices.filter(n => n.position === 'top')
   const midNotices = typedNotices.filter(n => n.position === 'mid')
   const botNotices = typedNotices.filter(n => n.position === 'bot')
+  const categoryDescription = getCategoryDescription(category)
 
   return (
     <div className="w-full px-0 py-0">
@@ -240,6 +246,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             {
               "@context": "https://schema.org",
               "@type": "BreadcrumbList",
+              "@id": `${BASE_URL}/category/${slug}#breadcrumb`,
               "itemListElement": [
                 { "@type": "ListItem", "position": 1, "name": "TOP", "item": BASE_URL },
                 { "@type": "ListItem", "position": 2, "name": `カテゴリ『${category.name}』`, "item": `${BASE_URL}/category/${slug}` },
@@ -250,13 +257,12 @@ export default async function CategoryPage({ params, searchParams }: Props) {
               "@type": "DiscussionForum",
               "@id": `${BASE_URL}/category/${slug}#forum`,
               "name": `${category.name} | デュエマ掲示板`,
-              "description": category.description
-                ? `${category.description} — デュエマ掲示板`
-                : `デュエルマスターズ（デュエマ）掲示板の「${category.name}」カテゴリ。`,
+              "description": categoryDescription,
               "url": `${BASE_URL}/category/${slug}`,
               "inLanguage": "ja",
               "isPartOf": { "@id": `${BASE_URL}/#website` },
               "publisher": { "@id": `${BASE_URL}/#organization` },
+              "breadcrumb": { "@id": `${BASE_URL}/category/${slug}#breadcrumb` },
             },
           ])
         }}
@@ -278,6 +284,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
           <span>カテゴリ：{category.name}</span>
         </nav>
         <h1 className="text-sm font-bold text-gray-900 mt-0.5">{category.name} のスレッド一覧</h1>
+        <p className="mt-0.5 text-[11px] leading-relaxed text-gray-500">{categoryDescription}</p>
       </div>
 
       <div className="max-w-screen-xl mx-auto px-2">
