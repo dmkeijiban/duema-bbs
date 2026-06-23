@@ -189,18 +189,154 @@ function TwitterEmbed({ url }: { url: string }) {
 }
 
 // YouTube 埋め込み（最大幅480px）
+// YouTube埋め込みを遅延読み込みにする。
+// 初期表示はサムネ＋「動画を表示」ボタンのカード。クリック後だけiframeをマウントする。
+// YouTube playerのJS・トラッカーがページ初期表示で読み込まれることを防ぎ、
+// 複数YouTube埋め込みがあるスレでもページ重量を抑える。
 function YouTubeEmbed({ videoId }: { videoId: string }) {
+  const [showEmbed, setShowEmbed] = useState(false)
+  const [meta, setMeta] = useState<{ title: string | null; channelName: string | null } | null>(null)
+
+  useEffect(() => {
+    // 既存の /api/ogp oEmbed ルートを使う（LinkCardと同じエンドポイント・キャッシュ共有）
+    const watchUrl = `https://www.youtube.com/watch?v=${videoId}`
+    fetch(`/api/ogp?url=${encodeURIComponent(watchUrl)}&v=yt2`)
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { title?: string | null; description?: string | null; error?: string } | null) => {
+        if (!d || d.error) return
+        const raw = typeof d.title === 'string' ? d.title.trim() : ''
+        const unusable = new Set(['', '- YouTube', 'YouTube', 'www.youtube.com', 'youtube.com'])
+        setMeta({
+          title: !unusable.has(raw) && !/^https?:\/\//.test(raw) ? raw : null,
+          channelName: typeof d.description === 'string' && d.description.trim() ? d.description.trim() : null,
+        })
+      })
+      .catch(() => {})
+  }, [videoId])
+
+  if (showEmbed) {
+    return (
+      <div className="my-2" style={{ maxWidth: 480 }}>
+        <div className="relative bg-black" style={{ paddingBottom: '56.25%' }}>
+          <iframe
+            className="absolute inset-0 w-full h-full"
+            src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            title={meta?.title ?? 'YouTube video'}
+          />
+        </div>
+        {(meta?.title || meta?.channelName) && (
+          <div style={{ padding: '6px 10px 8px', border: '1px solid #e5e7eb', borderTop: 'none', background: '#fff' }}>
+            {meta.title && (
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#1f2937', margin: 0, lineHeight: 1.4 }}>
+                {meta.title}
+              </p>
+            )}
+            {meta.channelName && (
+              <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>
+                {meta.channelName}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
-    <div className="my-2 w-full" style={{ maxWidth: 480 }}>
-      <div className="relative bg-black" style={{ paddingBottom: '56.25%' }}>
-        <iframe
-          className="absolute inset-0 w-full h-full"
-          src={`https://www.youtube.com/embed/${videoId}`}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          loading="lazy"
-          title="YouTube video"
-        />
+    <div className="my-2" style={{ maxWidth: 480 }}>
+      {/* カード全体をボタンにする。クリックするとiframeを展開する。 */}
+      <button
+        type="button"
+        onClick={() => setShowEmbed(true)}
+        aria-label="YouTube動画を表示"
+        style={{
+          display: 'block',
+          width: '100%',
+          padding: 0,
+          border: '1px solid #e5e7eb',
+          borderRadius: meta ? '8px 8px 0 0' : 8,
+          overflow: 'hidden',
+          cursor: 'pointer',
+          background: 'none',
+          textAlign: 'left',
+        }}
+      >
+        {/* 16:9 サムネイルエリア */}
+        <div className="relative w-full bg-black" style={{ paddingBottom: '56.25%' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+            alt=""
+            referrerPolicy="no-referrer"
+            onError={e => {
+              const img = e.target as HTMLImageElement
+              if (!img.dataset.fallback) {
+                img.dataset.fallback = '1'
+                img.src = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`
+              }
+            }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+          {/* 再生ボタン＋ラベル */}
+          <span
+            aria-hidden
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'rgba(0,0,0,0.7)',
+              borderRadius: 6,
+              padding: '7px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <span
+              style={{
+                width: 0,
+                height: 0,
+                borderTop: '6px solid transparent',
+                borderBottom: '6px solid transparent',
+                borderLeft: '10px solid #fff',
+                flexShrink: 0,
+              }}
+            />
+            動画を表示
+          </span>
+        </div>
+      </button>
+      {/* タイトル＋チャンネル名パネル（oEmbed取得後に表示） */}
+      <div
+        style={{
+          padding: '6px 10px 8px',
+          border: '1px solid #e5e7eb',
+          borderTop: 'none',
+          background: '#fff',
+          borderRadius: '0 0 8px 8px',
+        }}
+      >
+        {meta?.title ? (
+          <>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#1f2937', margin: 0, lineHeight: 1.4 }}>
+              {meta.title}
+            </p>
+            {meta.channelName && (
+              <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>
+                {meta.channelName}
+              </p>
+            )}
+          </>
+        ) : (
+          <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>YouTube</p>
+        )}
       </div>
     </div>
   )
