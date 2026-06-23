@@ -11,9 +11,14 @@ function findAnchor(target: EventTarget | null): HTMLAnchorElement | null {
 function eventNameForInternalHref(href: string) {
   if (href === '/ranking' || href.startsWith('/ranking?')) return 'ranking_link_click'
   if (href === '/zukan' || href.startsWith('/zukan?')) return 'zukan_link_click'
+  if (href.startsWith('/zukan/card/')) return 'zukan_card_link_click'
+  if (href.startsWith('/zukan/pack/')) return 'zukan_pack_link_click'
   if (href === '/thread/new') return 'thread_new_link_click'
-  if (href === '/login' || href.startsWith('/login?')) return 'login_link_click'
+  if (href === '/login' || href.startsWith('/login?mode=login') || href.startsWith('/login?next=')) return 'login_link_click'
+  if (href === '/login?mode=signup' || href.startsWith('/login?mode=signup&')) return 'account_signup_link_click'
   if (href === '/profile/new') return 'profile_new_link_click'
+  if (href === '/mypage' || href.startsWith('/mypage?')) return 'mypage_link_click'
+  if (/^\/thread\/\d+\/p\/\d+/.test(href)) return 'thread_page_link_click'
   if (href.startsWith('/summary/') && href !== '/summary/') return 'summary_link_click'
   return null
 }
@@ -41,10 +46,18 @@ function eventNameForExternalHref(href: string) {
   return null
 }
 
+function eventNameForLoginForm(form: HTMLFormElement) {
+  const buttonText = form.querySelector('button[type="submit"]')?.textContent ?? ''
+  if (buttonText.includes('アカウント作成') || buttonText.includes('作成中')) return 'account_signup_email_submit'
+  if (buttonText.includes('ログイン') || buttonText.includes('ログイン中')) return 'login_email_submit'
+  return 'auth_email_form_submit'
+}
+
 function eventNameForForm(form: HTMLFormElement) {
   const action = form.getAttribute('action') ?? ''
   const path = window.location.pathname
 
+  if (path === '/login') return eventNameForLoginForm(form)
   if (path === '/thread/new') return 'thread_create_form_submit'
   if (path.startsWith('/thread/')) return 'comment_form_submit'
   if (path === '/profile/new') return 'profile_create_form_submit'
