@@ -14,7 +14,6 @@ import { seededShuffle } from '@/lib/stable-shuffle'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
-import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { FeaturedSummaries } from '@/components/FeaturedSummaries'
 import {
   getCachedCategories,
@@ -353,8 +352,6 @@ export default async function Home({
         <Suspense fallback={<HomeBannerFallback />}>
           <HomeBannerServer />
         </Suspense>
-
-        <SnsCtaCard />
 
         <Suspense fallback={null}>
           <TopNoticesServer />
