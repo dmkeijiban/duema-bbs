@@ -7,6 +7,7 @@ import { getPostableConsolidatedCategories } from '@/lib/categories'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
+import { capturePostHogEvent } from '@/lib/posthog-events'
 
 type AuthState =
   | { status: 'loading' }
@@ -54,10 +55,31 @@ export function InlineNewThread({ categories }: Props) {
     e.preventDefault()
     setError('')
     const formData = new FormData(e.currentTarget)
+    const imageFile = formData.get('image')
+    capturePostHogEvent('thread_create_submit_start', {
+      category_id: formData.get('category_id'),
+      has_image: imageFile instanceof File && imageFile.size > 0,
+      from_path: window.location.pathname,
+    })
     startTransition(async () => {
-      const result = await createThread(formData)
-      if (result?.error) {
-        setError(result.error)
+      try {
+        const result = await createThread(formData)
+        if (result?.error) {
+          capturePostHogEvent('thread_create_submit_error', {
+            category_id: formData.get('category_id'),
+            error_message: result.error,
+            has_image: imageFile instanceof File && imageFile.size > 0,
+            from_path: window.location.pathname,
+          })
+          setError(result.error)
+        }
+      } catch {
+        capturePostHogEvent('thread_create_submit_exception', {
+          category_id: formData.get('category_id'),
+          has_image: imageFile instanceof File && imageFile.size > 0,
+          from_path: window.location.pathname,
+        })
+        setError('スレッドの作成に失敗しました。再読み込みしてから再度お試しください。')
       }
     })
   }
