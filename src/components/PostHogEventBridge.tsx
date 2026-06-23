@@ -8,6 +8,11 @@ function findAnchor(target: EventTarget | null): HTMLAnchorElement | null {
   return target.closest('a')
 }
 
+function findButton(target: EventTarget | null): HTMLButtonElement | null {
+  if (!(target instanceof Element)) return null
+  return target.closest('button')
+}
+
 function eventNameForInternalHref(href: string) {
   if (href === '/ranking' || href.startsWith('/ranking?')) return 'ranking_link_click'
   if (href === '/zukan' || href.startsWith('/zukan?')) return 'zukan_link_click'
@@ -46,6 +51,16 @@ function eventNameForExternalHref(href: string) {
   return null
 }
 
+function eventNameForLoginButton(button: HTMLButtonElement) {
+  if (window.location.pathname !== '/login') return null
+  const text = button.textContent ?? ''
+  if (text.includes('Googleでログイン')) return 'login_google_click'
+  if (text.includes('Googleでアカウント作成')) return 'account_signup_google_click'
+  if (text.trim() === 'ログイン') return 'login_tab_click'
+  if (text.trim() === 'アカウント作成') return 'account_signup_tab_click'
+  return null
+}
+
 function eventNameForLoginForm(form: HTMLFormElement) {
   const buttonText = form.querySelector('button[type="submit"]')?.textContent ?? ''
   if (buttonText.includes('アカウント作成') || buttonText.includes('作成中')) return 'account_signup_email_submit'
@@ -73,19 +88,30 @@ export function PostHogEventBridge() {
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
       const anchor = findAnchor(event.target)
-      if (!anchor) return
+      if (anchor) {
+        const href = anchor.getAttribute('href')
+        if (!href) return
 
-      const href = anchor.getAttribute('href')
-      if (!href) return
+        const eventName = href.startsWith('/')
+          ? eventNameForInternalHref(href)
+          : eventNameForExternalHref(href)
 
-      const eventName = href.startsWith('/')
-        ? eventNameForInternalHref(href)
-        : eventNameForExternalHref(href)
+        if (!eventName) return
 
+        capturePostHogEvent(eventName, {
+          href,
+          from_path: window.location.pathname,
+        })
+        return
+      }
+
+      const button = findButton(event.target)
+      if (!button) return
+
+      const eventName = eventNameForLoginButton(button)
       if (!eventName) return
 
       capturePostHogEvent(eventName, {
-        href,
         from_path: window.location.pathname,
       })
     }
