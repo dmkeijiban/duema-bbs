@@ -11,9 +11,31 @@ interface Props {
   priority?: boolean
 }
 
+function getActivityBadge(thread: Thread) {
+  const lastPostedAt = new Date(thread.last_posted_at).getTime()
+  const hoursSinceLastPost = Number.isFinite(lastPostedAt)
+    ? (Date.now() - lastPostedAt) / (1000 * 60 * 60)
+    : Infinity
+
+  if (thread.post_count >= 20) {
+    return { label: '盛況', className: 'bg-red-600 text-white' }
+  }
+
+  if (thread.post_count >= 5 && hoursSinceLastPost <= 24) {
+    return { label: '急上昇', className: 'bg-orange-500 text-white' }
+  }
+
+  if (hoursSinceLastPost <= 12) {
+    return { label: '更新', className: 'bg-blue-600 text-white' }
+  }
+
+  return null
+}
+
 export function ThreadCard({ thread, rank, priority }: Props) {
   const category = getDisplayCategory(thread.categories)
   const imgSrc = resolveImageUrl(thread.image_url) ?? DEFAULT_THREAD_THUMBNAIL
+  const activityBadge = getActivityBadge(thread)
 
   return (
     <Link
@@ -43,9 +65,23 @@ export function ThreadCard({ thread, rank, priority }: Props) {
         </div>
         {/* タイトル */}
         <div className="px-1.5 py-1 flex-1 min-w-0">
-          <p className="text-[11px] leading-snug text-gray-800 line-clamp-3 break-all">
+          <p className="text-[11px] leading-snug text-gray-800 line-clamp-2 break-all">
             {thread.title}
           </p>
+          {(activityBadge || category) && (
+            <div className="mt-0.5 flex min-w-0 items-center gap-1">
+              {activityBadge && (
+                <span className={`shrink-0 rounded-sm px-1 text-[9px] font-bold leading-4 ${activityBadge.className}`}>
+                  {activityBadge.label}
+                </span>
+              )}
+              {category && (
+                <span className="truncate text-[9px] font-bold leading-4 text-gray-500">
+                  {category.name}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -67,11 +103,18 @@ export function ThreadCard({ thread, rank, priority }: Props) {
         </div>
         {/* テキスト */}
         <div className="p-1.5 flex-1 min-w-0 relative">
-          {category && (
-            <span className="inline-block text-[9px] font-bold text-white px-1 leading-4 mb-0.5" style={{ backgroundColor: category.color }}>
-              {category.name}
-            </span>
-          )}
+          <div className="mb-0.5 flex min-w-0 items-center gap-1">
+            {category && (
+              <span className="inline-block shrink-0 text-[9px] font-bold text-white px-1 leading-4" style={{ backgroundColor: category.color }}>
+                {category.name}
+              </span>
+            )}
+            {activityBadge && (
+              <span className={`inline-block shrink-0 px-1 text-[9px] font-bold leading-4 ${activityBadge.className}`}>
+                {activityBadge.label}
+              </span>
+            )}
+          </div>
           <p className="text-[12px] leading-snug text-gray-800 line-clamp-2 break-all">
             {thread.title}
           </p>
