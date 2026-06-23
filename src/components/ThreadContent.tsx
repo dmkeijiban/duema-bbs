@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { Post, Thread, Category, PublicAuthorProfile } from '@/types'
@@ -106,7 +106,7 @@ export function ThreadContent({
     }
   }, [threadId])
 
-  const handleAnchorClick = (displayNum: number) => {
+  const handleAnchorClick = useCallback((displayNum: number) => {
     setBodyValue(prev => prev ? prev + `>>${displayNum}\n` : `>>${displayNum}\n`)
     const el = document.getElementById('reply-form-bottom')
     if (el) {
@@ -119,15 +119,19 @@ export function ThreadContent({
         }
       }, 400)
     }
-  }
+  }, [])
 
-  const displayPosts: DisplayPost[] = posts.map(post => ({
+  const displayPosts = useMemo<DisplayPost[]>(() => posts.map(post => ({
     ...post,
     displayNumber: post.post_number + 1,
-  }))
+  })), [posts])
 
   const threadSessionId = (thread as Thread & { session_id?: string }).session_id ?? ''
   const threadAuthorProfile = thread.user_id ? authorProfiles[thread.user_id] : undefined
+  const threadBodyNodes = useMemo(
+    () => renderBody(thread.body, displayPosts as Post[]),
+    [thread.body, displayPosts]
+  )
 
   return (
     <>
@@ -150,7 +154,7 @@ export function ThreadContent({
             <ReportButton itemType="thread" itemId={thread.id} itemBody={thread.body} />
           </div>
           <div className="px-3 pt-1.5 pb-7 text-base text-gray-800 break-words leading-relaxed">
-            {renderBody(thread.body, displayPosts as Post[])}
+            {threadBodyNodes}
           </div>
           {thread.image_url && (
             <div className="px-3 pb-2">

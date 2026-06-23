@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect, useRef } from 'react'
+import { useState, useTransition, useEffect, useRef, useMemo, memo } from 'react'
 import Link from 'next/link'
 import { Post, PublicAuthorProfile } from '@/types'
 import { formatDateTimeJP } from '@/lib/utils'
@@ -43,7 +43,10 @@ interface AnchorProps {
 
 function AnchorLink({ num, allPosts }: AnchorProps) {
   const [show, setShow] = useState(false)
-  const ref = allPosts.find(p => (p as Post & { displayNumber: number }).displayNumber === num)
+  const ref = useMemo(
+    () => allPosts.find(p => (p as Post & { displayNumber: number }).displayNumber === num),
+    [allPosts, num]
+  )
 
   return (
     <span className="relative inline-block">
@@ -473,7 +476,7 @@ function PostAuthorName({
   )
 }
 
-export function PostItem({
+export const PostItem = memo(function PostItem({
   post,
   allPosts,
   onAnchorClick,
@@ -507,6 +510,8 @@ export function PostItem({
       }
     })
   }
+
+  const bodyNodes = useMemo(() => renderBody(post.body, allPosts), [post.body, allPosts])
 
   return (
     <div id={`post-${displayNumber}`} className="border-b border-gray-200 last:border-b-0 scroll-mt-20">
@@ -557,7 +562,7 @@ export function PostItem({
         </div>
       ) : (
         <div className="px-3 pt-1.5 pb-7 text-base text-gray-800 break-words leading-relaxed">
-          {renderBody(post.body, allPosts)}
+          {bodyNodes}
         </div>
       )}
 
@@ -569,4 +574,4 @@ export function PostItem({
       )}
     </div>
   )
-}
+})
