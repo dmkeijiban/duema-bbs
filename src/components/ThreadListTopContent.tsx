@@ -4,20 +4,18 @@ import { RecommendSection, RecommendSectionSkeleton } from '@/components/Recomme
 
 function BannerButtons() {
   return (
-    <div className="mt-2 flex shrink-0 flex-wrap gap-2 md:mt-0">
+    <div className="flex shrink-0 flex-wrap gap-1.5">
       <Link
         href="/login?mode=signup"
-        className="inline-block px-3 py-1 text-xs font-medium rounded border"
-        style={{ color: '#155724', borderColor: '#155724', background: 'rgba(255,255,255,0.55)' }}
+        className="inline-flex items-center justify-center rounded border border-green-700 bg-white px-2.5 py-1 text-xs font-bold text-green-800 transition-colors hover:bg-green-50"
       >
         アカウント作成
       </Link>
       <Link
         href="/zukan"
-        className="inline-block px-3 py-1 text-xs font-medium rounded border"
-        style={{ color: '#155724', borderColor: '#155724', background: 'rgba(255,255,255,0.55)' }}
+        className="inline-flex items-center justify-center rounded border border-green-700 bg-white px-2.5 py-1 text-xs font-bold text-green-800 transition-colors hover:bg-green-50"
       >
-        思い出図鑑を見る
+        思い出図鑑
       </Link>
     </div>
   )
@@ -26,12 +24,16 @@ function BannerButtons() {
 function HomeBannerFallback() {
   return (
     <div
-      className="mb-2 flex flex-col gap-2 border px-3 py-2 text-sm md:flex-row md:items-center md:justify-between"
+      className="mb-1.5 flex flex-col gap-1.5 border px-3 py-1.5 text-sm text-green-900 md:flex-row md:items-center md:justify-between"
       style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb' }}
     >
-      <div className="leading-relaxed">
-        <p>初めての方は<Link href="/guide" className="underline">スレッドの立て方</Link>をご確認ください。</p>
-      </div>
+      <p className="font-bold leading-relaxed">
+        初めての方は
+        <Link href="/guide" className="underline underline-offset-2 hover:opacity-80">
+          スレッドの立て方
+        </Link>
+        をご確認ください。
+      </p>
       <BannerButtons />
     </div>
   )
