@@ -27,6 +27,11 @@ body {
   font-size: 16px;
 }
 
+/* フッター直前の余白を全ページで少し圧縮 */
+body > footer {
+  margin-top: 0.75rem !important;
+}
+
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #aaa; border-radius: 3px; }
