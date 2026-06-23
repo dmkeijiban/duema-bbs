@@ -11,35 +11,30 @@ interface Props {
   priority?: boolean
 }
 
-function getActivityBadge(thread: Thread) {
-  if (thread.is_archived) return null
+function getActivityClass(thread: Thread) {
+  if (thread.is_archived) return ''
 
   const lastPostedAt = new Date(thread.last_posted_at).getTime()
   const hoursSinceLastPost = Number.isFinite(lastPostedAt)
     ? (Date.now() - lastPostedAt) / (1000 * 60 * 60)
     : Infinity
 
-  if (thread.post_count >= 20) {
-    return { label: '盛況', className: 'bg-red-600 text-white' }
-  }
+  if (thread.post_count >= 20) return 'thread-card-highlight-hot'
+  if (thread.post_count >= 5 && hoursSinceLastPost <= 24) return 'thread-card-highlight-rising'
 
-  if (thread.post_count >= 5 && hoursSinceLastPost <= 24) {
-    return { label: '急上昇', className: 'bg-orange-500 text-white' }
-  }
-
-  return null
+  return ''
 }
 
 export function ThreadCard({ thread, rank, priority }: Props) {
   const category = getDisplayCategory(thread.categories)
   const imgSrc = resolveImageUrl(thread.image_url) ?? DEFAULT_THREAD_THUMBNAIL
-  const activityBadge = getActivityBadge(thread)
+  const activityClass = getActivityClass(thread)
 
   return (
     <Link
       href={`/thread/${thread.id}`}
       prefetch={false}
-      className="thread-card bg-white hover:bg-gray-50 overflow-hidden border-b border-r border-gray-300 block"
+      className={`thread-card ${activityClass} bg-white hover:bg-gray-50 overflow-hidden border-b border-r border-gray-300 block`}
     >
       <div className="md:hidden flex" style={{ height: 52, overflow: 'hidden' }}>
         <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 52, height: 52 }}>
@@ -59,18 +54,11 @@ export function ThreadCard({ thread, rank, priority }: Props) {
           </span>
         </div>
         <div className="px-1.5 py-1 flex-1 min-w-0">
-          <div className="mb-0.5 flex min-w-0 items-center gap-1">
-            {activityBadge && (
-              <span className={`thread-card-activity-badge shrink-0 rounded-sm px-1.5 text-[10px] font-black leading-4 shadow-sm ${activityBadge.className}`}>
-                {activityBadge.label}
-              </span>
-            )}
-            {category && (
-              <span className="truncate text-[9px] font-bold leading-4 text-gray-500">
-                {category.name}
-              </span>
-            )}
-          </div>
+          {category && (
+            <span className="mb-0.5 inline-block max-w-full truncate text-[9px] font-bold leading-4 text-gray-500">
+              {category.name}
+            </span>
+          )}
           <p className="text-[11px] leading-snug text-gray-800 line-clamp-2 break-all">
             {thread.title}
           </p>
@@ -92,18 +80,11 @@ export function ThreadCard({ thread, rank, priority }: Props) {
           )}
         </div>
         <div className="p-1.5 flex-1 min-w-0 relative">
-          <div className="mb-0.5 flex min-w-0 items-center gap-1">
-            {category && (
-              <span className="inline-block shrink-0 text-[9px] font-bold text-white px-1 leading-4" style={{ backgroundColor: category.color }}>
-                {category.name}
-              </span>
-            )}
-            {activityBadge && (
-              <span className={`thread-card-activity-badge inline-block shrink-0 rounded-sm px-1.5 text-[10px] font-black leading-4 shadow-sm ${activityBadge.className}`}>
-                {activityBadge.label}
-              </span>
-            )}
-          </div>
+          {category && (
+            <span className="inline-block text-[9px] font-bold text-white px-1 leading-4 mb-0.5" style={{ backgroundColor: category.color }}>
+              {category.name}
+            </span>
+          )}
           <p className="text-[12px] leading-snug text-gray-800 line-clamp-2 break-all">
             {thread.title}
           </p>
