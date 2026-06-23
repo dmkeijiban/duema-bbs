@@ -71,13 +71,6 @@ export function NoticeBlock({ notice, priority }: { notice: Notice; priority?: b
           )
         })}
       </div>
-      {notice.position === 'top' && (
-        <div className="mt-3 flex items-center gap-2 text-[11px] font-bold text-gray-500 md:hidden">
-          <span className="h-px flex-1 bg-gray-200" />
-          <span>ここからスレ一覧</span>
-          <span className="h-px flex-1 bg-gray-200" />
-        </div>
-      )}
     </div>
   )
 }
