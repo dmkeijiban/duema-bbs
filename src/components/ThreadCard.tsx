@@ -66,7 +66,7 @@ export function ThreadCard({ thread, rank, priority }: Props) {
           )}
         </div>
         {/* テキスト */}
-        <div className="p-1.5 flex-1 min-w-0 relative">
+        <div className="p-1.5 pr-10 pb-5 flex-1 min-w-0 relative">
           {category && (
             <span className="inline-block text-[9px] font-bold text-white px-1 leading-4 mb-0.5" style={{ backgroundColor: category.color }}>
               {category.name}
