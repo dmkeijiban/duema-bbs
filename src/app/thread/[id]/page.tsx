@@ -298,9 +298,6 @@ export async function renderThreadPage(threadId: number, page: number) {
           <FavoriteButton threadId={threadId} />
           <ShareXButton title={typedThread.title} />
         </div>
-        <div className="text-xs text-gray-500 mt-0.5">
-          {typedThread.post_count}件
-        </div>
       </div>
 
       {(threadNotices as Notice[]).map(n => (
