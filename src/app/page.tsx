@@ -241,7 +241,7 @@ function HomeGuideBanner() {
           href="/zukan"
           className="inline-flex items-center justify-center rounded border border-green-700 bg-white px-2.5 py-1 text-xs font-bold text-green-800 transition-colors hover:bg-green-50"
         >
-          思い出図鑑
+          思い出図鑑を見る
         </Link>
       </div>
     </div>
@@ -303,38 +303,38 @@ export default async function Home({
     !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!isConfigured) return <SetupGuide />
 
+  const paramsKey = JSON.stringify(params)
+
   return (
     <div className="w-full px-0 py-0">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify([
-            {
-              '@context': 'https://schema.org',
-              '@type': 'DiscussionForum',
-              '@id': `${SITE_URL}/#forum`,
-              name: 'デュエマ掲示板',
-              description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報・環境考察など何でも語ろう。',
-              url: SITE_URL,
-              inLanguage: 'ja',
-              isPartOf: { '@id': `${SITE_URL}/#website` },
-              publisher: {
-                '@type': 'Organization',
-                '@id': `${SITE_URL}/#organization`,
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@graph': [
+              {
+                '@type': 'DiscussionForumPosting',
+                '@id': `${SITE_URL}/#forum`,
+                url: SITE_URL,
                 name: 'デュエマ掲示板',
+                headline: 'デュエマ掲示板 - デュエルマスターズ専門掲示板',
+                text: 'デュエル・マスターズに関する話題、デッキ相談、カード評価、雑談を投稿できる掲示板です。',
+                isPartOf: { '@id': `${SITE_URL}/#website` },
               },
-            },
-            {
-              '@context': 'https://schema.org',
-              '@type': 'WebPage',
-              '@id': `${SITE_URL}/#webpage`,
-              url: SITE_URL,
-              name: 'デュエマ掲示板 - デュエルマスターズ専門掲示板',
-              isPartOf: { '@id': `${SITE_URL}/#website` },
-              publisher: { '@id': `${SITE_URL}/#organization` },
-              inLanguage: 'ja',
-            },
-          ]),
+              {
+                '@type': 'WebSite',
+                '@id': `${SITE_URL}/#website`,
+                url: SITE_URL,
+                name: 'デュエマ掲示板',
+                potentialAction: {
+                  '@type': 'SearchAction',
+                  target: `${SITE_URL}/?q={search_term_string}`,
+                  'query-input': 'required name=search_term_string',
+                },
+              },
+            ],
+          }),
         }}
       />
       <h1 className="sr-only">デュエマ掲示板 - デュエルマスターズ専門掲示板</h1>
@@ -354,6 +354,8 @@ export default async function Home({
           <HomeBannerServer />
         </Suspense>
 
+        <SnsCtaCard />
+
         <Suspense fallback={null}>
           <TopNoticesServer />
         </Suspense>
@@ -366,7 +368,7 @@ export default async function Home({
           <MidNoticesServer />
         </Suspense>
 
-        <Suspense fallback={<ThreadListSkeleton />}>
+        <Suspense fallback={<ThreadListSkeleton />} key={paramsKey}>
           <ThreadList searchParams={params} />
         </Suspense>
 
@@ -383,11 +385,6 @@ export default async function Home({
         <Suspense fallback={null}>
           <InlineNewThreadServer />
         </Suspense>
-
-        <Suspense fallback={null}>
-          <SnsCtaCard />
-        </Suspense>
-        <div className="mb-6" />
       </div>
     </div>
   )
@@ -396,16 +393,14 @@ export default async function Home({
 function SetupGuide() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">デュエマ掲示板</h1>
-      <p className="text-gray-500 mb-8">Supabaseの設定が必要です</p>
-      <div className="bg-white border border-gray-200 p-6 text-left space-y-4 text-sm">
-        <h2 className="font-bold text-gray-800 text-base">セットアップ手順</h2>
-        <ol className="space-y-3 text-gray-600 list-decimal list-inside">
-          <li><a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">supabase.com</a> でプロジェクトを作成</li>
-          <li>SQL Editor で <code className="bg-gray-100 px-1">supabase/schema.sql</code> を実行</li>
-          <li>Storage → <code className="bg-gray-100 px-1">bbs-images</code> バケットをPublicで作成</li>
-          <li><code className="bg-gray-100 px-1">.env.local</code> にURLとANON KEYを設定</li>
-        </ol>
+      <h1 className="text-2xl font-bold mb-4">デュエマ掲示板</h1>
+      <p className="text-gray-600 mb-6">
+        Supabaseの環境変数が未設定です。
+      </p>
+      <div className="bg-gray-100 p-4 rounded text-left text-sm">
+        <p className="font-bold mb-2">必要な環境変数:</p>
+        <code className="block">NEXT_PUBLIC_SUPABASE_URL</code>
+        <code className="block">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>
       </div>
     </div>
   )
@@ -426,8 +421,9 @@ function ThreadListSkeleton() {
           <div className="hidden md:flex" style={{ height: 80 }}>
             <div className="shrink-0 bg-gray-200" style={{ width: 80, height: 80 }} />
             <div className="p-1.5 flex-1 flex flex-col gap-1 justify-center">
-              <div className="h-2 bg-gray-200 rounded w-full" />
-              <div className="h-2 bg-gray-200 rounded w-3/4" />
+              <div className="h-3 bg-gray-200 rounded w-1/3" />
+              <div className="h-3 bg-gray-200 rounded w-full" />
+              <div className="h-3 bg-gray-200 rounded w-2/3" />
             </div>
           </div>
         </div>
