@@ -63,18 +63,7 @@ export default function CardReviewForm({ cardId, slug }: { cardId: string; slug:
   if (state.status === 'success') {
     return (
       <div className="border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700">
-        <p>投稿しました！ありがとうございます。</p>
-        {viewer.status === 'anonymous' && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-gray-600">
-            <span>登録すると、投稿管理ができて便利です。</span>
-            <a
-              href="/login?mode=signup"
-              className="inline-block rounded border border-blue-400 px-2 py-0.5 text-xs font-bold text-blue-600 hover:bg-blue-50"
-            >
-              アカウント登録
-            </a>
-          </div>
-        )}
+        投稿しました！ありがとうございます。
       </div>
     )
   }
