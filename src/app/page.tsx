@@ -26,6 +26,7 @@ import { SITE_URL } from '@/lib/site-config'
 import type { Metadata } from 'next'
 import { AdBanner } from '@/components/AdBanner'
 import { getCategoryIdsForSlug } from '@/lib/categories'
+import { ADSENSE_REVIEW_MODE, isAdSenseRiskyThreadTitle } from '@/lib/adsense-review-mode'
 
 export const revalidate = 3600
 const TOP_THREAD_PAGE_SIZE = 60
@@ -95,7 +96,8 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
     if (categoryIds.length === 1) q = q.eq('category_id', categoryIds[0])
     if (categoryIds.length > 1) q = q.in('category_id', categoryIds)
     const { data: raw } = await q
-    const all = seededShuffle(raw ? await withFallbackThumbnails(supabase, raw) : [])
+    const fetched = raw ? await withFallbackThumbnails(supabase, raw) : []
+    const all = seededShuffle(ADSENSE_REVIEW_MODE ? fetched.filter(t => !isAdSenseRiskyThreadTitle(t.title)) : fetched)
     if (all.length === 0) return <ThreadEmpty searchQ={undefined} />
     return (
       <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
@@ -127,7 +129,8 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
     }
     dataQ = dataQ.order('last_posted_at', { ascending: false }).range(offset, offset + TOP_THREAD_PAGE_SIZE - 1)
     const [{ count }, { data: raw }] = await Promise.all([countQ, dataQ])
-    const threads = raw ? await withFallbackThumbnails(supabase, raw) : []
+    const rawThreads = raw ? await withFallbackThumbnails(supabase, raw) : []
+    const threads = ADSENSE_REVIEW_MODE ? rawThreads.filter(t => !isAdSenseRiskyThreadTitle(t.title)) : rawThreads
     if (threads.length === 0) return <ThreadEmpty searchQ={searchQ} />
     const totalPages = Math.max(1, Math.ceil((count ?? 0) / TOP_THREAD_PAGE_SIZE))
     return (
@@ -148,7 +151,8 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
   }
 
   const result = await getCachedThreadList(sort, page, categoryIds.length > 0 ? categoryIds : null, isArchived, TOP_THREAD_PAGE_SIZE)
-  const threads = result.threads as unknown as (Thread & { categories: Category | null })[]
+  const allThreads = result.threads as unknown as (Thread & { categories: Category | null })[]
+  const threads = ADSENSE_REVIEW_MODE ? allThreads.filter(t => !isAdSenseRiskyThreadTitle(t.title)) : allThreads
 
   if (threads.length === 0) return <ThreadEmpty searchQ={undefined} />
 
@@ -357,6 +361,12 @@ export default async function Home({
         <Suspense fallback={null}>
           <TopNoticesServer />
         </Suspense>
+
+        {ADSENSE_REVIEW_MODE && (
+          <p className="text-xs text-gray-500 mb-2 px-1 leading-relaxed">
+            デュエマ掲示板は、デュエル・マスターズのデッキ相談、カードの思い出、昔のカード談義を残せるファン向け掲示板です。
+          </p>
+        )}
 
         <Suspense fallback={null}><FeaturedSummaries /></Suspense>
       </div>

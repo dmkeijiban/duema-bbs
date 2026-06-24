@@ -14,6 +14,7 @@ import { createPublicClient } from '@/lib/supabase-public'
 import { NextReadNav } from '@/components/NextReadNav'
 import { AdBanner } from '@/components/AdBanner'
 import { getDisplayCategory } from '@/lib/categories'
+import { isThinThreadForAdSenseReview } from '@/lib/adsense-review-mode'
 
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
@@ -106,7 +107,7 @@ export async function generateMetadata({ params }: Props) {
     ? `${baseUrl}/og/thread/${id}.jpg`
     : `${baseUrl}/default-thumbnail.jpg`
 
-  return {
+  const meta = {
     title: `${thread.title}｜デュエマ掲示板`,
     description: metadataDescription,
     alternates: {
@@ -116,18 +117,24 @@ export async function generateMetadata({ params }: Props) {
       title: `${thread.title}｜デュエマ掲示板`,
       description: metadataDescription,
       url: canonicalUrl,
-      type: 'article',
+      type: 'article' as const,
       publishedTime: thread.created_at,
       modifiedTime: thread.last_posted_at ?? thread.created_at,
       images: [{ url: ogImageUrl, width: 1200, height: 630, alt: `${thread.title}のスレッド画像` }],
     },
     twitter: {
-      card: 'summary_large_image',
+      card: 'summary_large_image' as const,
       title: `${thread.title}｜デュエマ掲示板`,
       description: metadataDescription,
       images: [ogImageUrl],
     },
   }
+
+  const ageDays = (Date.now() - new Date(thread.created_at).getTime()) / 86400000
+  if (ageDays >= 14 && isThinThreadForAdSenseReview(thread)) {
+    return { ...meta, robots: { index: false, follow: true } }
+  }
+  return meta
 }
 
 export default async function ThreadPage({ params }: Props) {
