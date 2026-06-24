@@ -565,7 +565,7 @@ export default async function AdminPage({
                 {isSearching ? '該当するスレッドがありません' : 'スレッドがありません'}
               </p>
             ) : (
-              <table className="min-w-full text-xs border-collapse">
+              <table className="w-full table-fixed text-xs border-collapse">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 text-[11px]">
                     <th className="px-2 py-2.5 text-left whitespace-nowrap font-semibold w-12">ID</th>
@@ -574,7 +574,7 @@ export default async function AdminPage({
                     <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold w-20">コメント数</th>
                     <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold w-20">閲覧数</th>
                     <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold hidden md:table-cell w-24">作成日</th>
-                    <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold">操作</th>
+                    <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold w-44">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -587,7 +587,7 @@ export default async function AdminPage({
                     return (
                       <tr key={t.id} className="hover:bg-gray-50">
                         <td className="px-2 py-2.5 font-mono text-[10px] text-gray-400 whitespace-nowrap w-12">{t.id}</td>
-                        <td className="px-2 py-2.5 w-56 md:w-72 overflow-hidden">
+                        <td className="px-2 py-2.5 overflow-hidden">
                           <a href={`/thread/${t.id}`} target="_blank" className="text-blue-600 hover:underline line-clamp-2 block text-xs leading-snug">
                             {t.title}
                           </a>

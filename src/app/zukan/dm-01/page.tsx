@@ -257,7 +257,7 @@ export default async function ZukanDm01Page({
   const morePackReviews = packReviews?.slice(3) ?? []
 
   return (
-    <div className="max-w-screen-xl mx-auto px-2 pt-2 pb-10">
+    <div className="max-w-screen-xl mx-auto px-2 pt-2 pb-4">
       {/* パンくず */}
       <nav className="text-xs text-gray-500 mb-2 flex items-center gap-x-1">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>

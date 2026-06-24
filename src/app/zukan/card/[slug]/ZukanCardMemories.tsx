@@ -32,7 +32,7 @@ type AdminCardReview = {
 
 export function ZukanCardMemoriesSkeleton() {
   return (
-    <section className="mb-5 border border-gray-300 bg-white">
+    <section className="mb-2 border border-gray-300 bg-white">
       <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
         <h2 className="text-base font-bold text-gray-800">みんなの思い出</h2>
       </div>
@@ -71,7 +71,7 @@ export async function ZukanCardMemories({ cardId, slug }: { cardId: string; slug
   const reviewCount = cardReviews?.length ?? 0
 
   return (
-    <section className="mb-5 border border-gray-300 bg-white">
+    <section className="mb-2 border border-gray-300 bg-white">
       <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
         <h2 className="text-base font-bold text-gray-800">みんなの思い出</h2>
       </div>
