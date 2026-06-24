@@ -1,10 +1,13 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getCachedFixedPage } from '@/lib/cached-queries'
 import { renderBlock } from '@/components/FixedPageBlocks'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
 import { createPublicClient } from '@/lib/supabase-public'
+import { ADSENSE_REVIEW_MODE } from '@/lib/adsense-review-mode'
+
+const HIDDEN_IN_REVIEW_MODE = ['dmsaishin']
 
 // 固定ページはほぼ変わらないため1時間キャッシュ（guide/privacy/terms と統一）
 export const revalidate = 3600
@@ -19,11 +22,14 @@ export async function generateStaticParams() {
     .from('fixed_pages')
     .select('slug')
     .eq('is_published', true)
-  return (data ?? []).map(p => ({ slug: p.slug }))
+  return (data ?? [])
+    .filter(p => !(ADSENSE_REVIEW_MODE && HIDDEN_IN_REVIEW_MODE.includes(p.slug)))
+    .map(p => ({ slug: p.slug }))
 }
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
+  if (ADSENSE_REVIEW_MODE && HIDDEN_IN_REVIEW_MODE.includes(slug)) return {}
   const page = await getCachedFixedPage(slug)
   if (!page) return {}
 
@@ -56,6 +62,7 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function FixedPageRoute({ params }: Props) {
   const { slug } = await params
+  if (ADSENSE_REVIEW_MODE && HIDDEN_IN_REVIEW_MODE.includes(slug)) redirect('/')
   const page = await getCachedFixedPage(slug)
   if (!page) notFound()
 
