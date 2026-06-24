@@ -6,6 +6,14 @@ import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings, getCachedCampaignRanking } from '@/lib/cached-queries'
 import { resolveCampaignState } from '@/lib/campaign-ranking'
+import { getHonorTitle } from '@/lib/honor-title'
+import {
+  USER_RANKING_THREAD_POINT,
+  USER_RANKING_POST_POINT,
+  USER_RANKING_CARD_RATING_POINT,
+  USER_RANKING_CARD_REVIEW_POINT,
+  USER_RANKING_PACK_REVIEW_POINT,
+} from '@/lib/ranking-points'
 
 export const dynamic = 'force-dynamic'
 
@@ -112,23 +120,20 @@ async function getViewerUserId() {
 
 async function getUserActivityCounts(userId: string) {
   const supabase = createAdminClient()
-  const [threadsResult, postsResult] = await Promise.all([
-    supabase
-      .from('threads')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('is_archived', false),
-    supabase
-      .from('posts')
-      .select('id, threads!inner(is_archived)', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('is_deleted', false)
-      .eq('threads.is_archived', false),
+  const [threadsResult, postsResult, cardRatingsResult, cardReviewsResult, packReviewsResult] = await Promise.all([
+    supabase.from('threads').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('is_archived', false),
+    supabase.from('posts').select('id, threads!inner(is_archived)', { count: 'exact', head: true }).eq('user_id', userId).eq('is_deleted', false).eq('threads.is_archived', false),
+    supabase.from('zukan_card_ratings').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('is_deleted', false),
+    supabase.from('zukan_card_reviews').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('is_deleted', false).eq('is_hidden', false),
+    supabase.from('zukan_pack_reviews').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('is_deleted', false).eq('is_hidden', false),
   ])
 
   return {
     threadCount: threadsResult.count ?? 0,
     postCount: postsResult.count ?? 0,
+    cardRatingCount: cardRatingsResult.count ?? 0,
+    cardReviewCount: cardReviewsResult.count ?? 0,
+    packReviewCount: packReviewsResult.count ?? 0,
   }
 }
 
@@ -210,6 +215,14 @@ export default async function UserProfilePage({
   const monthlyRank = monthlyRankIndex >= 0 ? monthlyRankIndex + 1 : null
   const totalRank = totalRankIndex >= 0 ? totalRankIndex + 1 : null
 
+  const totalPoints =
+    activityCounts.threadCount * USER_RANKING_THREAD_POINT +
+    activityCounts.postCount * USER_RANKING_POST_POINT +
+    activityCounts.cardRatingCount * USER_RANKING_CARD_RATING_POINT +
+    activityCounts.cardReviewCount * USER_RANKING_CARD_REVIEW_POINT +
+    activityCounts.packReviewCount * USER_RANKING_PACK_REVIEW_POINT
+  const honorTitle = getHonorTitle(totalPoints)
+
   const threadDisplayCount = formatCount(activityCounts.threadCount)
   const postDisplayCount = formatCount(activityCounts.postCount)
 
@@ -236,6 +249,7 @@ export default async function UserProfilePage({
         postCountLabel={postDisplayCount}
         monthlyRank={monthlyRank}
         totalRank={totalRank}
+        honorTitle={honorTitle}
         campaignTitle={campaignTitle}
         campaignRank={campaignRank}
         campaignPoints={campaignPoints}

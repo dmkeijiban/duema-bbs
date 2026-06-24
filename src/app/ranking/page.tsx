@@ -12,6 +12,7 @@ import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { resolveCampaignState, toDisplayJst } from '@/lib/campaign-ranking'
+import { getHonorTitle } from '@/lib/honor-title'
 
 export const revalidate = 3600
 
@@ -160,11 +161,13 @@ function RankingUserMeta({
   xUrl,
   youtubeUrl,
   href,
+  honorTitle,
 }: {
   name: string
   xUrl: string | null | undefined
   youtubeUrl: string | null | undefined
   href: string
+  honorTitle?: { icon: string; label: string } | null
 }) {
   return (
     <div className="min-w-0">
@@ -172,6 +175,9 @@ function RankingUserMeta({
         <Link href={href} className="text-sm font-bold text-blue-700 hover:underline">
           {name}
         </Link>
+        {honorTitle && (
+          <span className="text-[11px] text-gray-500">{honorTitle.icon} {honorTitle.label}</span>
+        )}
         <RankingSocialLinks xUrl={xUrl} youtubeUrl={youtubeUrl} />
       </div>
     </div>
@@ -279,10 +285,12 @@ function UserRankingList({
   title,
   periodLabel,
   rows,
+  showHonorTitle = false,
 }: {
   title: string
   periodLabel: string
   rows: UserRankingRow[]
+  showHonorTitle?: boolean
 }) {
   return (
     <section className="overflow-hidden border border-gray-300 bg-white">
@@ -321,6 +329,7 @@ function UserRankingList({
                 href={`/u/${row.profile_slug}`}
                 xUrl={row.x_url}
                 youtubeUrl={row.youtube_url}
+                honorTitle={showHonorTitle ? getHonorTitle(row.points) : null}
               />
               <div className="col-span-3 flex flex-wrap items-center gap-x-6 gap-y-1 md:col-span-1">
                 <CompactActivityBreakdown
@@ -374,11 +383,15 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
       </div>
       <p className="mb-3 border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700">
         投稿者ランキングは、スレッド投稿・コメント・思い出図鑑の評価・思い出レビューなどの活動から集計しています。ランキングは1日1回更新されます。
+        {period === 'all' && (
+          <span className="block mt-0.5 text-blue-500">称号は累計ポイントに応じて毎日更新されます。</span>
+        )}
       </p>
       <UserRankingList
         title={title}
         periodLabel={periodLabel}
         rows={rows}
+        showHonorTitle={period === 'all'}
       />
     </section>
   )

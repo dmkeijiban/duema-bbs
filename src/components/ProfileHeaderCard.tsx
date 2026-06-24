@@ -14,6 +14,7 @@ type ProfileHeaderCardProps = {
   postCountLabel: string
   monthlyRank: number | null
   totalRank: number | null
+  honorTitle?: { icon: string; label: string } | null
   campaignTitle?: string | null
   campaignRank?: number | null
   campaignPoints?: number | null
@@ -64,6 +65,7 @@ export function ProfileHeaderCard({
   postCountLabel,
   monthlyRank,
   totalRank,
+  honorTitle,
   campaignTitle,
   campaignRank,
   campaignPoints,
@@ -84,6 +86,11 @@ export function ProfileHeaderCard({
               <h1 className="text-2xl font-bold text-gray-900 break-words leading-tight">
                 {displayName}
               </h1>
+              {honorTitle && (
+                <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-300">
+                  {honorTitle.icon} {honorTitle.label}
+                </span>
+              )}
               {(monthlyRank === 1 || totalRank === 1) && (
                 <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 border border-yellow-300">
                   🏆 1位
