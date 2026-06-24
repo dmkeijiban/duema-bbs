@@ -477,7 +477,7 @@ export default function ProfileEditForm({
 
         <div>
           <label htmlFor="duema_generation" className="mb-1 block text-sm font-bold text-gray-700">
-            プレイ開始時期
+            どの世代？
           </label>
           <select
             id="duema_generation"
@@ -490,6 +490,22 @@ export default function ProfileEditForm({
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label htmlFor="favorite_card" className="mb-1 block text-sm font-bold text-gray-700">
+            一番好きなカード
+          </label>
+          <input
+            id="favorite_card"
+            name="favorite_card"
+            type="text"
+            maxLength={FAVORITE_CARD_MAX_LENGTH}
+            defaultValue={initialFavoriteCard}
+            placeholder="例：ボルシャック・ドラゴン"
+            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+          />
+          <p className="mt-1 text-xs text-gray-500">{FAVORITE_CARD_MAX_LENGTH}文字以内。空欄にすると削除されます。</p>
         </div>
 
         <div>
@@ -507,22 +523,6 @@ export default function ProfileEditForm({
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-        </div>
-
-        <div>
-          <label htmlFor="favorite_card" className="mb-1 block text-sm font-bold text-gray-700">
-            好きなカード
-          </label>
-          <input
-            id="favorite_card"
-            name="favorite_card"
-            type="text"
-            maxLength={FAVORITE_CARD_MAX_LENGTH}
-            defaultValue={initialFavoriteCard}
-            placeholder="例：ボルシャック・ドラゴン"
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
-          />
-          <p className="mt-1 text-xs text-gray-500">{FAVORITE_CARD_MAX_LENGTH}文字以内。空欄にすると削除されます。</p>
         </div>
 
         <div>

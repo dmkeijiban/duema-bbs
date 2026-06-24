@@ -1,31 +1,28 @@
 export type DuemaOption = { value: string; label: string }
 
 export const DUEMA_GENERATIONS: readonly DuemaOption[] = [
-  { value: 'era_early',  label: '〜2009年（黎明期）' },
-  { value: 'era_mid',    label: '2010〜2016年' },
-  { value: 'era_late',   label: '2017〜2021年' },
-  { value: 'era_recent', label: '2022年〜' },
-  { value: 'newbie',     label: '最近始めた' },
+  { value: 'katsumai', label: '切札勝舞' },
+  { value: 'katsuta',  label: '切札勝太' },
+  { value: 'joe',      label: '切札ジョー' },
+  { value: 'other',    label: 'その他' },
 ]
 
 export const DUEMA_CIVILIZATIONS: readonly DuemaOption[] = [
-  { value: 'light',    label: '光文明' },
-  { value: 'water',    label: '水文明' },
-  { value: 'darkness', label: '闇文明' },
-  { value: 'fire',     label: '火文明' },
-  { value: 'nature',   label: '自然文明' },
-  { value: 'multi',    label: '多色' },
-  { value: 'zero',     label: 'ゼロ文明' },
+  { value: 'fire',     label: '火' },
+  { value: 'water',    label: '水' },
+  { value: 'nature',   label: '自然' },
+  { value: 'light',    label: '光' },
+  { value: 'darkness', label: '闇' },
+  { value: 'zero',     label: 'ゼロ' },
+  { value: 'other',    label: 'その他' },
 ]
 
 export const DUEMA_PLAY_STYLES: readonly DuemaOption[] = [
-  { value: 'aggro',   label: 'ビートダウン' },
-  { value: 'control', label: 'コントロール' },
-  { value: 'combo',   label: 'コンボ・ループ' },
-  { value: 'mid',     label: 'ミッドレンジ' },
-  { value: 'netdeck', label: 'ネットデッキ派' },
-  { value: 'janky',   label: 'ファンデッキ派' },
-  { value: 'casual',  label: 'カジュアル勢' },
+  { value: 'casual',    label: 'カジュアル' },
+  { value: 'serious',   label: 'ガチ勢' },
+  { value: 'retired',   label: '引退勢' },
+  { value: 'spectator', label: '見る専' },
+  { value: 'other',     label: 'その他' },
 ]
 
 export const DUEMA_GENERATION_MAP: Record<string, string> = Object.fromEntries(
