@@ -26,7 +26,7 @@ import { SITE_URL } from '@/lib/site-config'
 import type { Metadata } from 'next'
 import { AdBanner } from '@/components/AdBanner'
 import { getCategoryIdsForSlug } from '@/lib/categories'
-import { ADSENSE_REVIEW_MODE, isAdSenseRiskyThreadTitle } from '@/lib/adsense-review-mode'
+import { ADSENSE_REVIEW_MODE, isAdSenseRiskyThreadTitle, isPrNoticeForAdSenseReview } from '@/lib/adsense-review-mode'
 
 export const revalidate = 3600
 const TOP_THREAD_PAGE_SIZE = 60
@@ -258,21 +258,21 @@ function HomeBannerServer() {
 
 async function TopNoticesServer() {
   const notices = (await getCachedActiveNotices()) as Notice[]
-  const top = notices.filter(n => n.position === 'top')
+  const top = notices.filter(n => n.position === 'top' && !isPrNoticeForAdSenseReview(n.header_text))
   if (top.length === 0) return null
   return <>{top.map(n => <NoticeBlock key={n.id} notice={n} />)}</>
 }
 
 async function MidNoticesServer() {
   const notices = (await getCachedActiveNotices()) as Notice[]
-  const mid = notices.filter(n => n.position === 'mid')
+  const mid = notices.filter(n => n.position === 'mid' && !isPrNoticeForAdSenseReview(n.header_text))
   if (mid.length === 0) return null
   return <>{mid.map(n => <NoticeBlock key={n.id} notice={n} />)}</>
 }
 
 async function BotNoticesServer() {
   const notices = (await getCachedActiveNotices()) as Notice[]
-  const bot = notices.filter(n => n.position === 'bot')
+  const bot = notices.filter(n => n.position === 'bot' && !isPrNoticeForAdSenseReview(n.header_text))
   if (bot.length === 0) return null
   return <>{bot.map(n => <NoticeBlock key={n.id} notice={n} />)}</>
 }
@@ -363,8 +363,9 @@ export default async function Home({
         </Suspense>
 
         {ADSENSE_REVIEW_MODE && (
-          <p className="text-xs text-gray-500 mb-2 px-1 leading-relaxed">
-            デュエマのデッキ相談・カード談義・思い出話を気軽に投稿できる掲示板です。
+          <p className="text-xs text-gray-500 px-1 mt-1 mb-1 leading-normal">
+            デュエマのデッキ相談・カード談義・思い出話を<br />
+            気軽に投稿できる掲示板です。
           </p>
         )}
 

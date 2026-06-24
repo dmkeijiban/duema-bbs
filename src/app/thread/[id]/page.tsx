@@ -14,7 +14,7 @@ import { createPublicClient } from '@/lib/supabase-public'
 import { NextReadNav } from '@/components/NextReadNav'
 import { AdBanner } from '@/components/AdBanner'
 import { getDisplayCategory } from '@/lib/categories'
-import { isThinThreadForAdSenseReview } from '@/lib/adsense-review-mode'
+import { isThinThreadForAdSenseReview, isPrNoticeForAdSenseReview } from '@/lib/adsense-review-mode'
 
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
@@ -65,8 +65,7 @@ function buildThreadDescription(thread: Thread, fallbackText?: string) {
 }
 
 function isReviewModeHiddenNotice(notice: Notice) {
-  const header = notice.header_text ?? ''
-  return header.includes('【PR】') || header.includes('[PR]') || header.includes('新商品予約リンク')
+  return isPrNoticeForAdSenseReview(notice.header_text)
 }
 
 function removeEmptyStructuredData<T>(value: T): T {
