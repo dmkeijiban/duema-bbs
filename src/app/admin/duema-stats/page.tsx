@@ -116,7 +116,7 @@ export default async function DuemaStatsPage() {
       </div>
 
       <StatTable
-        label="プレイ開始時期"
+        label="どの世代？"
         options={DUEMA_GENERATIONS}
         counts={generationCounts}
         filled={generationFilled}

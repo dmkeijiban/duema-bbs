@@ -287,20 +287,20 @@ export default async function UserProfilePage({
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-xs">
             {profile.duema_generation && (
               <>
-                <dt className="whitespace-nowrap text-gray-500">プレイ開始時期</dt>
+                <dt className="whitespace-nowrap text-gray-500">どの世代？</dt>
                 <dd className="text-gray-800">{DUEMA_GENERATION_MAP[profile.duema_generation] ?? profile.duema_generation}</dd>
+              </>
+            )}
+            {profile.favorite_card && (
+              <>
+                <dt className="whitespace-nowrap text-gray-500">一番好きなカード</dt>
+                <dd className="break-all text-gray-800">{profile.favorite_card}</dd>
               </>
             )}
             {profile.favorite_civilization && (
               <>
                 <dt className="whitespace-nowrap text-gray-500">好きな文明</dt>
                 <dd className="text-gray-800">{DUEMA_CIVILIZATION_MAP[profile.favorite_civilization] ?? profile.favorite_civilization}</dd>
-              </>
-            )}
-            {profile.favorite_card && (
-              <>
-                <dt className="whitespace-nowrap text-gray-500">好きなカード</dt>
-                <dd className="break-all text-gray-800">{profile.favorite_card}</dd>
               </>
             )}
             {profile.play_style && (
