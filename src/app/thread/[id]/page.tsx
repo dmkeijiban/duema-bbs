@@ -63,6 +63,11 @@ function buildThreadDescription(thread: Thread, fallbackText?: string) {
   return `${text}｜デュエマ掲示板のスレッド。${suffix}`.slice(0, 160)
 }
 
+function isReviewModeHiddenNotice(notice: Notice) {
+  const header = notice.header_text ?? ''
+  return header.includes('【PR】') || header.includes('[PR]') || header.includes('新商品予約リンク')
+}
+
 function removeEmptyStructuredData<T>(value: T): T {
   if (Array.isArray(value)) {
     return value
@@ -154,6 +159,7 @@ export async function renderThreadPage(threadId: number, page: number) {
     ...(posts ?? []).map(post => (post as Post).user_id ?? ''),
   ])
   const totalPages = Math.max(1, Math.ceil((typedThread.post_count ?? 0) / POSTS_PER_PAGE))
+  const visibleThreadNotices = (threadNotices as Notice[]).filter(notice => !isReviewModeHiddenNotice(notice))
 
   const baseUrl = SITE_URL
 
@@ -300,7 +306,7 @@ export async function renderThreadPage(threadId: number, page: number) {
         </div>
       </div>
 
-      {(threadNotices as Notice[]).map(n => (
+      {visibleThreadNotices.map(n => (
         <NoticeBlock key={n.id} notice={n} />
       ))}
 
