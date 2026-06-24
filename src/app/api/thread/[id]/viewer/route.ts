@@ -8,10 +8,16 @@ interface Props {
 }
 
 const BOT_USER_AGENT_PATTERN = /googlebot|bingbot|twitterbot|facebookexternalhit|discordbot|slackbot|bot|crawler|spider|preview|headless|puppeteer|playwright|lighthouse|pingdom|uptimerobot|gtmetrix|pagespeed|dataforseo|monitoring/i
+const VIEW_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 2
 
 function isBotRequest(request: NextRequest) {
   const userAgent = request.headers.get('user-agent') ?? ''
   return BOT_USER_AGENT_PATTERN.test(userAgent)
+}
+
+function getJstDateKey() {
+  const jstNow = new Date(Date.now() + 9 * 60 * 60 * 1000)
+  return jstNow.toISOString().slice(0, 10)
 }
 
 export async function GET(request: NextRequest, { params }: Props) {
@@ -24,7 +30,12 @@ export async function GET(request: NextRequest, { params }: Props) {
   const cookieStore = await cookies()
   const sessionId = cookieStore.get('bbs_session')?.value ?? ''
   const isAdmin = verifyAdminCookie(cookieStore.get('admin_auth')?.value)
-  const shouldCountView = request.nextUrl.searchParams.get('view') === '1' && !isBotRequest(request)
+  const todayKey = getJstDateKey()
+  const viewCookieName = `thread_viewed_${threadId}`
+  const shouldCountView =
+    request.nextUrl.searchParams.get('view') === '1' &&
+    !isBotRequest(request) &&
+    cookieStore.get(viewCookieName)?.value !== todayKey
   const supabase = await createClient()
   const { data: userData } = await supabase.auth.getUser()
   const currentUserId = userData.user?.id ?? ''
@@ -44,8 +55,18 @@ export async function GET(request: NextRequest, { params }: Props) {
     await supabase.rpc('increment_view_count', { thread_id: threadId })
   }
 
-  return NextResponse.json(
+  const response = NextResponse.json(
     { sessionId, currentUserId, isAdmin, isFavorited },
     { headers: { 'Cache-Control': 'private, no-store' } },
   )
+
+  if (shouldCountView) {
+    response.cookies.set(viewCookieName, todayKey, {
+      maxAge: VIEW_COOKIE_MAX_AGE_SECONDS,
+      path: '/',
+      sameSite: 'lax',
+    })
+  }
+
+  return response
 }
