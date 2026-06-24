@@ -295,6 +295,7 @@ export default async function AdminPage({
               <Link href="/admin/users" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">👤 登録ユーザー</Link>
               <Link href="/admin/ranking-preview" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">🏆 ランキングプレビュー</Link>
               <Link href="/admin/campaign-ranking" className="px-2.5 py-1 text-xs border border-yellow-300 text-yellow-700 hover:bg-yellow-50 rounded">🎯 キャンペーンランキング</Link>
+              <Link href="/admin/duema-stats" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">📊 デュエマプロフィール統計</Link>
             </div>
           </div>
 

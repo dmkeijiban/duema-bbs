@@ -6,6 +6,12 @@ import type { ChangeEvent, CSSProperties } from 'react'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { updateProfile } from './actions'
+import {
+  DUEMA_GENERATIONS,
+  DUEMA_CIVILIZATIONS,
+  DUEMA_PLAY_STYLES,
+  FAVORITE_CARD_MAX_LENGTH,
+} from '@/lib/duema-profile'
 
 type ProfileEditFormProps = {
   initialDisplayName: string
@@ -15,6 +21,10 @@ type ProfileEditFormProps = {
   initialAvatarUrl: string | null
   initialProfileHidden: boolean
   initialRankingEnabled: boolean
+  initialDuemaGeneration: string
+  initialFavoriteCard: string
+  initialFavoriteCivilization: string
+  initialPlayStyle: string
 }
 
 type CropImageState = {
@@ -87,6 +97,10 @@ export default function ProfileEditForm({
   initialAvatarUrl,
   initialProfileHidden,
   initialRankingEnabled,
+  initialDuemaGeneration,
+  initialFavoriteCard,
+  initialFavoriteCivilization,
+  initialPlayStyle,
 }: ProfileEditFormProps) {
   const router = useRouter()
   const [error, setError] = useState('')
@@ -453,6 +467,80 @@ export default function ProfileEditForm({
           className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
         />
         <p className="mt-1 text-xs text-gray-500">300文字以内で入力してください。</p>
+      </div>
+
+      <div className="rounded border border-gray-200 bg-gray-50 px-3 py-3 space-y-4">
+        <p className="text-sm font-bold text-gray-700">
+          デュエマプロフィール
+          <span className="ml-1.5 text-xs font-normal text-gray-400">（任意）</span>
+        </p>
+
+        <div>
+          <label htmlFor="duema_generation" className="mb-1 block text-sm font-bold text-gray-700">
+            プレイ開始時期
+          </label>
+          <select
+            id="duema_generation"
+            name="duema_generation"
+            defaultValue={initialDuemaGeneration}
+            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+          >
+            <option value="">選択しない</option>
+            {DUEMA_GENERATIONS.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="favorite_civilization" className="mb-1 block text-sm font-bold text-gray-700">
+            好きな文明
+          </label>
+          <select
+            id="favorite_civilization"
+            name="favorite_civilization"
+            defaultValue={initialFavoriteCivilization}
+            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+          >
+            <option value="">選択しない</option>
+            {DUEMA_CIVILIZATIONS.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="favorite_card" className="mb-1 block text-sm font-bold text-gray-700">
+            好きなカード
+          </label>
+          <input
+            id="favorite_card"
+            name="favorite_card"
+            type="text"
+            maxLength={FAVORITE_CARD_MAX_LENGTH}
+            defaultValue={initialFavoriteCard}
+            placeholder="例：ボルシャック・ドラゴン"
+            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+          />
+          <p className="mt-1 text-xs text-gray-500">{FAVORITE_CARD_MAX_LENGTH}文字以内。空欄にすると削除されます。</p>
+        </div>
+
+        <div>
+          <label htmlFor="play_style" className="mb-1 block text-sm font-bold text-gray-700">
+            プレイスタイル
+          </label>
+          <select
+            id="play_style"
+            name="play_style"
+            defaultValue={initialPlayStyle}
+            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+          >
+            <option value="">選択しない</option>
+            {DUEMA_PLAY_STYLES.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div>
