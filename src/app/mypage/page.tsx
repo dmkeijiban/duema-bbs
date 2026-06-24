@@ -331,7 +331,7 @@ async function AnonMyPage() {
 export default async function MyPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ profile_hidden?: string }>
+  searchParams?: Promise<{ profile_hidden?: string; profileUpdated?: string }>
 }) {
   const params = searchParams ? await searchParams : {}
   let user: User | null = null
@@ -393,6 +393,12 @@ export default async function MyPage({
         </div>
 
         <div className="space-y-5 p-4">
+          {params.profileUpdated === '1' && (
+            <div className="rounded border border-green-300 bg-green-50 px-3 py-2 text-sm font-bold text-green-800">
+              プロフィールを保存しました。
+            </div>
+          )}
+
           <div className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
             ログイン中です。
           </div>
