@@ -14,7 +14,6 @@
   --color-foreground: var(--foreground);
 }
 
-/* スクロールバー常時確保 → コンテンツロード時のCLS防止（PC環境でのスクロールバー出現による6pxシフト対策） */
 html {
   overflow-y: scroll;
 }
@@ -27,7 +26,6 @@ body {
   font-size: 16px;
 }
 
-/* フッター直前の余白を全ページで少し圧縮 */
 body > footer {
   margin-top: 0.75rem !important;
 }
@@ -36,23 +34,26 @@ body > footer {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #aaa; border-radius: 3px; }
 
-/* スレッドカードの画像 */
 .thread-card img {
   min-width: unset;
   min-height: unset;
 }
 
-/* Hide the reply-form notification row when Web Push is unavailable. */
 tr:has(.push-subscribe-empty) {
   display: none;
 }
 
-/* AdSense 空白を除去：filled になるまで（ロード前・unfilled 両方）非表示にしてフラッシュも防ぐ */
+@media (min-width: 768px) {
+  table.admin-thread-table {
+    width: auto !important;
+    min-width: max-content !important;
+  }
+}
+
 ins.adsbygoogle:not([data-ad-status="filled"]) {
   display: none !important;
 }
 
-/* iOS Safari の入力欄ズームイン防止（16px未満でズームする） */
 @media (max-width: 768px) {
   input[type="text"],
   input[type="email"],
@@ -64,13 +65,11 @@ ins.adsbygoogle:not([data-ad-status="filled"]) {
   }
 }
 
-/* サイトテキスト設定（バナー・ルール）のリンクスタイル */
 .setting-content p { margin-bottom: 0.4em; }
 .setting-content p:last-child { margin-bottom: 0; }
 .setting-content a { text-decoration: underline; font-weight: 500; }
 .setting-content a:hover { opacity: 0.8; }
 
-/* リッチテキスト（固定ページ本文）のスタイル */
 .rich-content p { margin-bottom: 0.75em; }
 .rich-content p:last-child { margin-bottom: 0; }
 .rich-content a { color: #2563eb; text-decoration: underline; }
