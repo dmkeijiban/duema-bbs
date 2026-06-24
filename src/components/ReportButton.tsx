@@ -12,17 +12,25 @@ interface Props {
 export function ReportButton({ itemType, itemId, itemBody }: Props) {
   const [open, setOpen] = useState(false)
   const [done, setDone] = useState(false)
+  const [error, setError] = useState('')
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async () => {
     setLoading(true)
-    await reportItem({ itemType, itemId, reason, itemBody })
+    setError('')
+    const result = await reportItem({ itemType, itemId, reason, itemBody })
+    if (result?.error) {
+      setError(result.error)
+      setLoading(false)
+      return
+    }
     setDone(true)
     setLoading(false)
     setTimeout(() => {
       setOpen(false)
       setDone(false)
+      setError('')
       setReason('')
     }, 1500)
   }
@@ -59,6 +67,11 @@ export function ReportButton({ itemType, itemId, itemBody }: Props) {
                 <p className="text-xs text-gray-500 mb-2">
                   {itemType === 'thread' ? 'スレッド' : 'コメント'}を管理者に報告します
                 </p>
+                {error && (
+                  <p className="mb-2 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">
+                    {error}
+                  </p>
+                )}
                 <textarea
                   value={reason}
                   onChange={e => setReason(e.target.value)}
