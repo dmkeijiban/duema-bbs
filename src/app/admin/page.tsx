@@ -19,6 +19,24 @@ import { AdminSubmitButton } from './AdminSubmitButton'
 const ADMIN_COOKIE = 'admin_auth'
 const THREADS_PER_PAGE = 30
 
+type SortKey = 'created_at' | 'post_count' | 'view_count'
+type SortOrder = 'asc' | 'desc'
+
+function normalizeSort(v: string | undefined): SortKey {
+  if (v === 'post_count' || v === 'view_count' || v === 'created_at') return v
+  return 'created_at'
+}
+function normalizeOrder(v: string | undefined): SortOrder {
+  return v === 'asc' ? 'asc' : 'desc'
+}
+function adminThreadsUrl({ page, q, sort, order }: { page?: number; q: string; sort: SortKey; order: SortOrder }) {
+  const p = new URLSearchParams()
+  if (q) p.set('q', q)
+  if (page && page > 1) p.set('threadPage', String(page))
+  if (sort !== 'created_at' || order !== 'desc') { p.set('sort', sort); p.set('order', order) }
+  return `/admin${p.toString() ? '?' + p.toString() : ''}`
+}
+
 type ModerationNgWord = {
   id: number
   word: string
@@ -70,6 +88,8 @@ export default async function AdminPage({
     ban?: string
     adminError?: string
     q?: string
+    sort?: string
+    order?: string
   }>
 }) {
   const sp = await searchParams
@@ -82,15 +102,21 @@ export default async function AdminPage({
   // スレッド検索
   const searchQ = (sp.q ?? '').trim()
   const isSearching = searchQ.length > 0
+  const sort = normalizeSort(sp.sort)
+  const order = normalizeOrder(sp.order)
 
   const threadPage = isSearching ? 1 : Math.max(1, parseInt(sp.threadPage ?? '1') || 1)
   const threadOffset = (threadPage - 1) * THREADS_PER_PAGE
 
   let threadsQuery = supabase
     .from('threads')
-    .select('id, title, body, post_count, is_archived, category_id, session_id, created_at, categories(name)', { count: 'exact' })
+    .select('id, title, body, post_count, view_count, is_archived, category_id, session_id, created_at, categories(name)', { count: 'exact' })
     .eq('is_archived', false)
-    .order('created_at', { ascending: false })
+    .order(sort, { ascending: order === 'asc', nullsFirst: false })
+
+  if (sort !== 'created_at') {
+    threadsQuery = threadsQuery.order('created_at', { ascending: false })
+  }
 
   if (isSearching) {
     const numericId = parseInt(searchQ)
@@ -505,15 +531,32 @@ export default async function AdminPage({
               placeholder="スレッドIDまたはタイトルで検索..."
               className="flex-1 border border-gray-300 px-2.5 py-1.5 text-xs rounded focus:outline-none focus:border-blue-400"
             />
+            <input type="hidden" name="sort" value={sort} />
+            <input type="hidden" name="order" value={order} />
             <button type="submit" className="px-3 py-1.5 text-xs text-white rounded" style={{ background: '#0d6efd' }}>
               検索
             </button>
             {isSearching && (
-              <a href="/admin" className="px-3 py-1.5 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">
+              <a href={adminThreadsUrl({ q: '', sort, order })} className="px-3 py-1.5 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">
                 クリア
               </a>
             )}
           </form>
+
+          {/* ソートボタン */}
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {(['created_at', 'post_count', 'view_count'] as SortKey[]).map(key => {
+              const labels: Record<SortKey, string> = { created_at: '日付順', post_count: 'コメント順', view_count: '閲覧数順' }
+              const nextOrder: SortOrder = sort === key && order === 'desc' ? 'asc' : 'desc'
+              return (
+                <a key={key} href={adminThreadsUrl({ q: searchQ, sort: key, order: nextOrder })}
+                  className="rounded border px-2.5 py-1 text-xs"
+                  style={sort === key ? { borderColor: '#0d6efd', color: '#0d6efd', background: '#eff6ff' } : { borderColor: '#d1d5db', color: '#4b5563', background: '#fff' }}>
+                  {labels[key]}{sort === key ? (order === 'desc' ? ' ↓' : ' ↑') : ''}
+                </a>
+              )
+            })}
+          </div>
 
           {/* スレッド一覧テーブル */}
           <div className="overflow-x-auto border border-gray-200 rounded bg-white">
@@ -529,6 +572,7 @@ export default async function AdminPage({
                     <th className="px-2 py-3.5 text-left font-semibold">タイトル</th>
                     <th className="px-2 py-3.5 text-left whitespace-nowrap font-semibold hidden sm:table-cell">カテゴリ</th>
                     <th className="px-2 py-3.5 text-right whitespace-nowrap font-semibold">💬</th>
+                    <th className="px-2 py-3.5 text-right whitespace-nowrap font-semibold">👁</th>
                     <th className="px-2 py-3.5 text-right whitespace-nowrap font-semibold hidden md:table-cell">作成日</th>
                     <th className="px-2 py-3.5 text-right whitespace-nowrap font-semibold">操作</th>
                   </tr>
@@ -551,7 +595,8 @@ export default async function AdminPage({
                         <td className="px-2 py-3.5 whitespace-nowrap text-gray-500 hidden sm:table-cell">
                           {cat?.name ?? <span className="text-gray-300">-</span>}
                         </td>
-                        <td className="px-2 py-3.5 text-right text-gray-600 whitespace-nowrap">{t.post_count}</td>
+                        <td className="px-2 py-3.5 text-right text-gray-600 whitespace-nowrap tabular-nums">{t.post_count}</td>
+                        <td className="px-2 py-3.5 text-right text-blue-700 whitespace-nowrap tabular-nums font-bold">{(t as typeof t & { view_count?: number | null }).view_count ?? 0}</td>
                         <td className="px-2 py-3.5 text-right text-gray-400 whitespace-nowrap hidden md:table-cell text-[10px]">{dateStr}</td>
                         <td className="px-2 py-3.5 whitespace-nowrap">
                           <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1.5">
@@ -604,7 +649,7 @@ export default async function AdminPage({
           {!isSearching && threadTotalPages > 1 && (
             <div className="flex items-center gap-1 flex-wrap mt-2">
               {threadPage > 1 && (
-                <a href={`/admin?threadPage=${threadPage - 1}`}
+                <a href={adminThreadsUrl({ page: threadPage - 1, q: searchQ, sort, order })}
                   className="min-w-[1.75rem] h-6 px-1.5 text-[11px] font-medium border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 rounded flex items-center justify-center">
                   «
                 </a>
@@ -615,7 +660,7 @@ export default async function AdminPage({
                 ) : (
                   <a
                     key={p}
-                    href={`/admin?threadPage=${p}`}
+                    href={adminThreadsUrl({ page: p as number, q: searchQ, sort, order })}
                     className="min-w-[1.75rem] h-6 px-1.5 text-[11px] font-medium border rounded flex items-center justify-center"
                     style={p === threadPage
                       ? { background: '#0d6efd', color: '#fff', borderColor: '#0d6efd' }
@@ -626,7 +671,7 @@ export default async function AdminPage({
                 )
               )}
               {threadPage < threadTotalPages && (
-                <a href={`/admin?threadPage=${threadPage + 1}`}
+                <a href={adminThreadsUrl({ page: threadPage + 1, q: searchQ, sort, order })}
                   className="min-w-[1.75rem] h-6 px-1.5 text-[11px] font-medium border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 rounded flex items-center justify-center">
                   »
                 </a>
