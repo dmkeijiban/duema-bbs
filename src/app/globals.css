@@ -44,7 +44,7 @@ tr:has(.push-subscribe-empty) {
 }
 
 @media (min-width: 768px) {
-  table.admin-thread-table {
+  .min-w-full.text-xs.border-collapse {
     width: auto !important;
     min-width: max-content !important;
   }
