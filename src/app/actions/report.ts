@@ -12,6 +12,17 @@ interface ReportParams {
   itemBody: string
 }
 
+function getTodayJstRange() {
+  const now = new Date()
+  const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000)
+  const y = jstNow.getUTCFullYear()
+  const m = jstNow.getUTCMonth()
+  const d = jstNow.getUTCDate()
+  const startUtc = new Date(Date.UTC(y, m, d, -9, 0, 0, 0))
+  const endUtc = new Date(Date.UTC(y, m, d + 1, -9, 0, 0, 0))
+  return { start: startUtc.toISOString(), end: endUtc.toISOString() }
+}
+
 async function isMutedReporter(userId: string | null, sessionId: string | null) {
   const admin = createAdminClient()
 
@@ -40,6 +51,37 @@ async function isMutedReporter(userId: string | null, sessionId: string | null) 
   return false
 }
 
+async function hasReportedToday(userId: string | null, sessionId: string | null) {
+  const admin = createAdminClient()
+  const { start, end } = getTodayJstRange()
+
+  if (userId) {
+    const { data } = await admin
+      .from('reports')
+      .select('id')
+      .eq('reporter_user_id', userId)
+      .gte('created_at', start)
+      .lt('created_at', end)
+      .limit(1)
+      .maybeSingle()
+    if (data?.id) return true
+  }
+
+  if (sessionId) {
+    const { data } = await admin
+      .from('reports')
+      .select('id')
+      .eq('reporter_session_id', sessionId)
+      .gte('created_at', start)
+      .lt('created_at', end)
+      .limit(1)
+      .maybeSingle()
+    if (data?.id) return true
+  }
+
+  return false
+}
+
 export async function reportItem({ itemType, itemId, reason, itemBody }: ReportParams) {
   const supabase = await createClient()
   const { data: userData } = await supabase.auth.getUser()
@@ -49,6 +91,10 @@ export async function reportItem({ itemType, itemId, reason, itemBody }: ReportP
 
   if (await isMutedReporter(userId, sessionId)) {
     return { error: '通報を受け付けできませんでした' }
+  }
+
+  if (await hasReportedToday(userId, sessionId)) {
+    return { error: '通報は1日1回までです' }
   }
 
   const admin = createAdminClient()
