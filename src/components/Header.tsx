@@ -5,6 +5,7 @@ import { HeaderAuthNav } from './HeaderAuthNav'
 import { MobileMenu } from './MobileMenu'
 import { HeaderHomeLink } from './HeaderHomeLink'
 import { getCachedNavPages } from '@/lib/cached-queries'
+import { ADSENSE_REVIEW_MODE } from '@/lib/adsense-review-mode'
 
 const HIDE_FROM_NAV = new Set(['terms', 'privacy', 'contact', 'settings'])
 
@@ -41,7 +42,8 @@ function isGuidePage(page: NavPage) {
 }
 
 function buildHeaderNavItems(navPages: NavPage[]): HeaderNavItem[] {
-  const remaining = [...navPages]
+  const visiblePages = ADSENSE_REVIEW_MODE ? navPages.filter(p => !isNewProductPage(p)) : navPages
+  const remaining = [...visiblePages]
   const take = (matcher: (page: NavPage) => boolean) => {
     const index = remaining.findIndex(matcher)
     return index >= 0 ? remaining.splice(index, 1)[0] : null
