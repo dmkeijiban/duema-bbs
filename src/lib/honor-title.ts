@@ -1,3 +1,6 @@
+// false にすると全ページで称号表示を無効化（ロジックは保持）
+export const HONOR_TITLE_ENABLED = false
+
 export type HonorTitle = {
   icon: string
   label: string

@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings, getCachedCampaignRanking } from '@/lib/cached-queries'
 import { resolveCampaignState } from '@/lib/campaign-ranking'
-import { getHonorTitle } from '@/lib/honor-title'
+import { getHonorTitle, HONOR_TITLE_ENABLED } from '@/lib/honor-title'
 import {
   USER_RANKING_THREAD_POINT,
   USER_RANKING_POST_POINT,
@@ -260,7 +260,7 @@ export default async function UserProfilePage({
         postCountLabel={postDisplayCount}
         monthlyRank={monthlyRank}
         totalRank={totalRank}
-        honorTitle={honorTitle}
+        honorTitle={HONOR_TITLE_ENABLED ? honorTitle : null}
         campaignTitle={campaignTitle}
         campaignRank={campaignRank}
         campaignPoints={campaignPoints}

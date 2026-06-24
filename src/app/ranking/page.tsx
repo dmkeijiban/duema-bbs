@@ -12,7 +12,7 @@ import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { resolveCampaignState, toDisplayJst } from '@/lib/campaign-ranking'
-import { getHonorTitle } from '@/lib/honor-title'
+import { getHonorTitle, HONOR_TITLE_ENABLED } from '@/lib/honor-title'
 
 export const revalidate = 3600
 
@@ -391,7 +391,7 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
         title={title}
         periodLabel={periodLabel}
         rows={rows}
-        showHonorTitle={period === 'all'}
+        showHonorTitle={HONOR_TITLE_ENABLED && period === 'all'}
       />
     </section>
   )
