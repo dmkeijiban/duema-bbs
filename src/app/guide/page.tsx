@@ -307,8 +307,49 @@ export default async function GuidePage() {
         </section>
 
         {/* Section 15 */}
+        <section id="honor-title" className="mb-6">
+          <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">15. 称号について</h2>
+          <p className="mb-3 text-sm text-gray-700">
+            登録ユーザーには、累計ポイントに応じて称号が自動で付与されます。称号は毎日1回、ランキング更新時に自動更新されます。
+          </p>
+          <div className="border border-gray-200 rounded divide-y divide-gray-100 text-sm">
+            <div className="grid grid-cols-[6rem_1fr] items-center px-3 py-2">
+              <span className="font-bold text-gray-600">10pt〜</span>
+              <span className="text-gray-700">🟤 ブロンズ</span>
+            </div>
+            <div className="grid grid-cols-[6rem_1fr] items-center px-3 py-2">
+              <span className="font-bold text-gray-600">50pt〜</span>
+              <span className="text-gray-700">⚪ シルバー</span>
+            </div>
+            <div className="grid grid-cols-[6rem_1fr] items-center px-3 py-2">
+              <span className="font-bold text-gray-600">150pt〜</span>
+              <span className="text-gray-700">🟡 ゴールド</span>
+            </div>
+            <div className="grid grid-cols-[6rem_1fr] items-center px-3 py-2">
+              <span className="font-bold text-gray-600">400pt〜</span>
+              <span className="text-gray-700">💎 プラチナ</span>
+            </div>
+            <div className="grid grid-cols-[6rem_1fr] items-center px-3 py-2">
+              <span className="font-bold text-gray-600">800pt〜</span>
+              <span className="text-gray-700">🔷 ダイヤモンド</span>
+            </div>
+            <div className="grid grid-cols-[6rem_1fr] items-center px-3 py-2">
+              <span className="font-bold text-gray-600">1500pt〜</span>
+              <span className="text-gray-700">👑 レジェンド</span>
+            </div>
+            <div className="grid grid-cols-[6rem_1fr] items-center px-3 py-2">
+              <span className="font-bold text-gray-600">3000pt〜</span>
+              <span className="text-gray-700">🌟 殿堂入り</span>
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-gray-500">
+            称号はプロフィールページ（/u/ユーザー名）と投稿者ランキングの通算タブに表示されます。
+          </p>
+        </section>
+
+        {/* Section 16 */}
         <section id="contact" className="mb-2">
-          <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">15. 注意事項・お問い合わせ</h2>
+          <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">16. 注意事項・お問い合わせ</h2>
           <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700 mb-3">
             <li>荒らし・スパム・不適切な投稿は禁止です。違反投稿は削除する場合があります。</li>
             <li>詳細は<Link href="/terms" className="text-blue-600 hover:underline">利用規約</Link>・<Link href="/privacy" className="text-blue-600 hover:underline">プライバシーポリシー</Link>をご確認ください。</li>
