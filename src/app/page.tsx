@@ -364,7 +364,7 @@ export default async function Home({
 
         {ADSENSE_REVIEW_MODE && (
           <p className="text-xs text-gray-500 mb-2 px-1 leading-relaxed">
-            デュエマ掲示板は、デュエル・マスターズのデッキ相談、カードの思い出、昔のカード談義を残せるファン向け掲示板です。
+            デュエマのデッキ相談・カード談義・思い出話を気軽に投稿できる掲示板です。
           </p>
         )}
 
