@@ -9,8 +9,8 @@ export const DUEMA_GENERATIONS: readonly DuemaOption[] = [
 
 export const DUEMA_CIVILIZATIONS: readonly DuemaOption[] = [
   { value: 'fire',     label: '火' },
-  { value: 'water',    label: '水' },
   { value: 'nature',   label: '自然' },
+  { value: 'water',    label: '水' },
   { value: 'light',    label: '光' },
   { value: 'darkness', label: '闇' },
   { value: 'zero',     label: 'ゼロ' },
