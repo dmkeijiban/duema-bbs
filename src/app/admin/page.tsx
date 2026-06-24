@@ -568,13 +568,13 @@ export default async function AdminPage({
               <table className="min-w-full text-xs border-collapse">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 text-[11px]">
-                    <th className="px-2 py-3.5 text-left whitespace-nowrap font-semibold">ID</th>
-                    <th className="px-2 py-3.5 text-left font-semibold">タイトル</th>
-                    <th className="px-2 py-3.5 text-left whitespace-nowrap font-semibold hidden sm:table-cell">カテゴリ</th>
-                    <th className="px-2 py-3.5 text-right whitespace-nowrap font-semibold">💬</th>
-                    <th className="px-2 py-3.5 text-right whitespace-nowrap font-semibold">👁</th>
-                    <th className="px-2 py-3.5 text-right whitespace-nowrap font-semibold hidden md:table-cell">作成日</th>
-                    <th className="px-2 py-3.5 text-right whitespace-nowrap font-semibold">操作</th>
+                    <th className="px-2 py-2.5 text-left whitespace-nowrap font-semibold w-12">ID</th>
+                    <th className="px-2 py-2.5 text-left font-semibold">タイトル</th>
+                    <th className="px-2 py-2.5 text-left whitespace-nowrap font-semibold hidden sm:table-cell max-w-[8rem]">カテゴリ</th>
+                    <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold">コメント数</th>
+                    <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold">閲覧数</th>
+                    <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold hidden md:table-cell">作成日</th>
+                    <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -586,19 +586,19 @@ export default async function AdminPage({
                       : '-'
                     return (
                       <tr key={t.id} className="hover:bg-gray-50">
-                        <td className="px-2 py-3.5 font-mono text-gray-400 whitespace-nowrap">{t.id}</td>
-                        <td className="px-2 py-3.5 max-w-[12rem] md:max-w-xs">
+                        <td className="px-2 py-2.5 font-mono text-[10px] text-gray-400 whitespace-nowrap w-12">{t.id}</td>
+                        <td className="px-2 py-2.5 min-w-0">
                           <a href={`/thread/${t.id}`} target="_blank" className="text-blue-600 hover:underline line-clamp-2 block text-xs leading-snug">
                             {t.title}
                           </a>
                         </td>
-                        <td className="px-2 py-3.5 whitespace-nowrap text-gray-500 hidden sm:table-cell">
+                        <td className="px-2 py-2.5 max-w-[8rem] truncate text-gray-500 hidden sm:table-cell text-xs">
                           {cat?.name ?? <span className="text-gray-300">-</span>}
                         </td>
-                        <td className="px-2 py-3.5 text-right text-gray-600 whitespace-nowrap tabular-nums">{t.post_count}</td>
-                        <td className="px-2 py-3.5 text-right text-blue-700 whitespace-nowrap tabular-nums font-bold">{(t as typeof t & { view_count?: number | null }).view_count ?? 0}</td>
-                        <td className="px-2 py-3.5 text-right text-gray-400 whitespace-nowrap hidden md:table-cell text-[10px]">{dateStr}</td>
-                        <td className="px-2 py-3.5 whitespace-nowrap">
+                        <td className="px-2 py-2.5 text-right text-gray-600 whitespace-nowrap tabular-nums">{t.post_count}</td>
+                        <td className="px-2 py-2.5 text-right text-blue-700 whitespace-nowrap tabular-nums font-bold">{(t as typeof t & { view_count?: number | null }).view_count ?? 0}</td>
+                        <td className="px-2 py-2.5 text-right text-gray-400 whitespace-nowrap hidden md:table-cell text-[10px]">{dateStr}</td>
+                        <td className="px-2 py-2.5 whitespace-nowrap">
                           <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1.5">
                             <a href={`/admin?thread=${t.id}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}`}
                               className="px-2 py-1 text-[10px] text-blue-600 border border-blue-300 hover:bg-blue-50 rounded leading-none">
