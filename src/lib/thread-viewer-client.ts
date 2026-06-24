@@ -9,16 +9,21 @@ export interface ThreadViewerState {
   isFavorited: boolean
 }
 
-const VIEW_THROTTLE_MS = 24 * 60 * 60 * 1000
 const viewerStateCache = new Map<number, Promise<ThreadViewerState>>()
 
+function getJstDateKey() {
+  const jstNow = new Date(Date.now() + 9 * 60 * 60 * 1000)
+  return jstNow.toISOString().slice(0, 10)
+}
+
 function shouldCountThreadView(threadId: number) {
-  const storageKey = `viewed_thread_${threadId}`
+  const storageKey = `viewed_thread_${threadId}_date`
+  const todayKey = getJstDateKey()
 
   try {
-    const lastViewedAt = Number(window.localStorage.getItem(storageKey) ?? 0)
-    if (lastViewedAt && Date.now() - lastViewedAt < VIEW_THROTTLE_MS) return false
-    window.localStorage.setItem(storageKey, String(Date.now()))
+    const lastViewedDate = window.localStorage.getItem(storageKey)
+    if (lastViewedDate === todayKey) return false
+    window.localStorage.setItem(storageKey, todayKey)
     return true
   } catch {
     return true
