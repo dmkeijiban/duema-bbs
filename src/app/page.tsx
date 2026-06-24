@@ -363,9 +363,14 @@ export default async function Home({
         </Suspense>
 
         {ADSENSE_REVIEW_MODE && (
-          <p className="text-xs text-gray-500 px-1 mt-1 mb-1 leading-normal">
-            デュエマのデッキ相談・カード談義・思い出話を<br />
-            気軽に投稿できる掲示板です。
+          <p className="text-center md:text-left text-xs text-gray-500 px-1 mt-1 mb-1 leading-normal md:whitespace-nowrap">
+            <span className="md:hidden">
+              デュエマのデッキ相談・カード談義・思い出話を<br />
+              気軽に投稿できる掲示板です。
+            </span>
+            <span className="hidden md:inline">
+              デュエマのデッキ相談・カード談義・思い出話を気軽に投稿できる掲示板です。
+            </span>
           </p>
         )}
 
