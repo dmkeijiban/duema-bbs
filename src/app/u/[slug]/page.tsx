@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { unstable_cache } from 'next/cache'
 import { ProfileHeaderCard } from '@/components/ProfileHeaderCard'
 import { UserProfileShareButtons } from '@/components/UserProfileShareButtons'
 import { createClient } from '@/lib/supabase-server'
@@ -118,23 +119,33 @@ async function getViewerUserId() {
   }
 }
 
-async function getUserActivityCounts(userId: string) {
-  const supabase = createAdminClient()
-  const [threadsResult, postsResult, cardRatingsResult, cardReviewsResult, packReviewsResult] = await Promise.all([
-    supabase.from('threads').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('is_archived', false),
-    supabase.from('posts').select('id, threads!inner(is_archived)', { count: 'exact', head: true }).eq('user_id', userId).eq('is_deleted', false).eq('threads.is_archived', false),
-    supabase.from('zukan_card_ratings').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('is_deleted', false),
-    supabase.from('zukan_card_reviews').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('is_deleted', false).eq('is_hidden', false),
-    supabase.from('zukan_pack_reviews').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('is_deleted', false).eq('is_hidden', false),
-  ])
+function getJstDateKey(): string {
+  const jst = new Date(Date.now() + 9 * 60 * 60 * 1000)
+  return jst.toISOString().slice(0, 10)
+}
 
-  return {
-    threadCount: threadsResult.count ?? 0,
-    postCount: postsResult.count ?? 0,
-    cardRatingCount: cardRatingsResult.count ?? 0,
-    cardReviewCount: cardReviewsResult.count ?? 0,
-    packReviewCount: packReviewsResult.count ?? 0,
-  }
+function getUserActivityCounts(userId: string) {
+  return unstable_cache(
+    async () => {
+      const supabase = createAdminClient()
+      const [threadsResult, postsResult, cardRatingsResult, cardReviewsResult, packReviewsResult] = await Promise.all([
+        supabase.from('threads').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('is_archived', false),
+        supabase.from('posts').select('id, threads!inner(is_archived)', { count: 'exact', head: true }).eq('user_id', userId).eq('is_deleted', false).eq('threads.is_archived', false),
+        supabase.from('zukan_card_ratings').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('is_deleted', false),
+        supabase.from('zukan_card_reviews').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('is_deleted', false).eq('is_hidden', false),
+        supabase.from('zukan_pack_reviews').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('is_deleted', false).eq('is_hidden', false),
+      ])
+      return {
+        threadCount: threadsResult.count ?? 0,
+        postCount: postsResult.count ?? 0,
+        cardRatingCount: cardRatingsResult.count ?? 0,
+        cardReviewCount: cardReviewsResult.count ?? 0,
+        packReviewCount: packReviewsResult.count ?? 0,
+      }
+    },
+    [`user-activity-counts-${userId}-${getJstDateKey()}`],
+    { revalidate: 86400 }
+  )()
 }
 
 export default async function UserProfilePage({
