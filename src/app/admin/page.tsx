@@ -291,6 +291,14 @@ export default async function AdminPage({
           </div>
 
           <div>
+            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">通報管理</p>
+            <div className="flex flex-wrap gap-1.5">
+              <Link href="/admin/reports" className="px-2.5 py-1 text-xs border border-orange-300 text-orange-700 hover:bg-orange-50 rounded">🚨 通報管理</Link>
+              <Link href="/admin/report-mutes" className="px-2.5 py-1 text-xs border border-orange-300 text-orange-700 hover:bg-orange-50 rounded">🔇 受付停止一覧</Link>
+            </div>
+          </div>
+
+          <div>
             <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">ユーザー・ランキング</p>
             <div className="flex flex-wrap gap-1.5">
               <Link href="/admin/users" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">👤 登録ユーザー</Link>
