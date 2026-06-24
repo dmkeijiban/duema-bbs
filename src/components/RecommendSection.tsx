@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { seededShuffle } from '@/lib/stable-shuffle'
 import { DEFAULT_THREAD_THUMBNAIL } from '@/lib/thumbnail'
 import { SafeThumbnail } from '@/components/SafeThumbnail'
+import { isAdSenseRiskyThreadTitle } from '@/lib/adsense-review-mode'
 
 /** CLS防止用スケルトン — fallback={null}の代わりに使う */
 export function RecommendSectionSkeleton() {
@@ -46,7 +47,11 @@ export async function RecommendSection({ threadId, title, categoryId = null }: P
   })()
   if (raw.length === 0) return null
 
-  const threads = seededShuffle(raw).slice(0, 8)
+  const threads = seededShuffle(raw)
+    .filter(thread => !isAdSenseRiskyThreadTitle(thread.title))
+    .slice(0, 8)
+
+  if (threads.length === 0) return null
 
   return (
     <div className="mb-2 border border-gray-300 bg-white">
