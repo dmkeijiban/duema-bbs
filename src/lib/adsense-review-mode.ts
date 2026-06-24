@@ -30,7 +30,7 @@ export function isThinThreadForAdSenseReview(thread: {
     .replace(/[\s\n\r　]+/g, '')
     .trim()
 
-  return text.length < 40 && (thread.post_count ?? 0) <= 1
+  return text.length < 40 && (thread.post_count ?? 0) === 0
 }
 
 export function isPrNoticeForAdSenseReview(headerText: string | null | undefined) {
