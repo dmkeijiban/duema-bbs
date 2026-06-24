@@ -3,6 +3,12 @@
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { revalidatePath, revalidateTag } from 'next/cache'
+import {
+  DUEMA_GENERATIONS,
+  DUEMA_CIVILIZATIONS,
+  DUEMA_PLAY_STYLES,
+  FAVORITE_CARD_MAX_LENGTH,
+} from '@/lib/duema-profile'
 
 type UpdateProfileResult = {
   error?: string
@@ -48,6 +54,10 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
   const rankingEnabled = formData.get('ranking_enabled') === 'on'
   const deleteAvatar = formData.get('delete_avatar') === 'on'
   const avatarFile = formData.get('avatar_file')
+  const duemaGeneration = String(formData.get('duema_generation') ?? '').trim() || null
+  const favoriteCard = String(formData.get('favorite_card') ?? '').trim() || null
+  const favoriteCivilization = String(formData.get('favorite_civilization') ?? '').trim() || null
+  const playStyle = String(formData.get('play_style') ?? '').trim() || null
 
   if (displayName.length < 1 || displayName.length > 20) {
     return { error: '表示名は1〜20文字で入力してください。' }
@@ -65,6 +75,25 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
   const youtubeUrl = normalizeUrl(youtubeUrlRaw, YOUTUBE_HOSTS)
   if (!youtubeUrl.ok) {
     return { error: 'YouTubeのURLは https://youtube.com/... / https://youtu.be/... の形式で入力してください。' }
+  }
+
+  if (favoriteCard && favoriteCard.length > FAVORITE_CARD_MAX_LENGTH) {
+    return { error: `好きなカードは${FAVORITE_CARD_MAX_LENGTH}文字以内で入力してください。` }
+  }
+
+  const validGenerations = new Set(DUEMA_GENERATIONS.map(o => o.value))
+  if (duemaGeneration && !validGenerations.has(duemaGeneration)) {
+    return { error: 'プレイ開始時期の値が正しくありません。' }
+  }
+
+  const validCivilizations = new Set(DUEMA_CIVILIZATIONS.map(o => o.value))
+  if (favoriteCivilization && !validCivilizations.has(favoriteCivilization)) {
+    return { error: '好きな文明の値が正しくありません。' }
+  }
+
+  const validPlayStyles = new Set(DUEMA_PLAY_STYLES.map(o => o.value))
+  if (playStyle && !validPlayStyles.has(playStyle)) {
+    return { error: 'プレイスタイルの値が正しくありません。' }
   }
 
   // 本人確認：Server Action 内で getUser() を呼び、client からの user_id は一切受け取らない。
@@ -143,6 +172,10 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
     youtube_url: string | null
     profile_hidden: boolean
     ranking_enabled: boolean
+    duema_generation: string | null
+    favorite_card: string | null
+    favorite_civilization: string | null
+    play_style: string | null
     avatar_url?: string | null
   } = {
     display_name: displayName,
@@ -151,6 +184,10 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
     youtube_url: youtubeUrl.value,
     profile_hidden: profileHidden,
     ranking_enabled: rankingEnabled,
+    duema_generation: duemaGeneration,
+    favorite_card: favoriteCard,
+    favorite_civilization: favoriteCivilization,
+    play_style: playStyle,
   }
 
   if (nextAvatarUrl !== undefined) {

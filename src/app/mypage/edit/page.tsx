@@ -15,13 +15,17 @@ type EditableProfile = {
   ranking_enabled: boolean | null
   account_suspended: boolean | null
   withdrawn_at: string | null
+  duema_generation: string | null
+  favorite_card: string | null
+  favorite_civilization: string | null
+  play_style: string | null
 }
 
 async function getMyProfile(userId: string): Promise<EditableProfile | null> {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('profiles')
-    .select('display_name, bio, x_url, youtube_url, avatar_url, profile_hidden, ranking_enabled, account_suspended, withdrawn_at')
+    .select('display_name, bio, x_url, youtube_url, avatar_url, profile_hidden, ranking_enabled, account_suspended, withdrawn_at, duema_generation, favorite_card, favorite_civilization, play_style')
     .eq('id', userId)
     .maybeSingle()
 
@@ -29,7 +33,7 @@ async function getMyProfile(userId: string): Promise<EditableProfile | null> {
     if (error.message.includes('avatar_url')) {
       const { data: fallback, error: fallbackError } = await admin
         .from('profiles')
-        .select('display_name, bio, x_url, youtube_url, profile_hidden, ranking_enabled, account_suspended, withdrawn_at')
+        .select('display_name, bio, x_url, youtube_url, profile_hidden, ranking_enabled, account_suspended, withdrawn_at, duema_generation, favorite_card, favorite_civilization, play_style')
         .eq('id', userId)
         .maybeSingle()
 
@@ -142,6 +146,10 @@ export default async function MyPageEdit({
             initialAvatarUrl={profile.avatar_url}
             initialProfileHidden={!!profile.profile_hidden}
             initialRankingEnabled={profile.ranking_enabled !== false}
+            initialDuemaGeneration={profile.duema_generation ?? ''}
+            initialFavoriteCard={profile.favorite_card ?? ''}
+            initialFavoriteCivilization={profile.favorite_civilization ?? ''}
+            initialPlayStyle={profile.play_style ?? ''}
           />
         </div>
       </div>
