@@ -24,12 +24,16 @@ export function getJstDateKey(now: Date = new Date()): string {
 
 function buildBody(cardName: string, cardUrl: string): string {
   return [
-    `みんなの「${cardName}」に対する思い出を募集中です。`,
+    `みんなの`,
+    `「${cardName}」に対する`,
+    `思い出を募集中です。`,
     ``,
     `当時の思い出でも、今の評価でもOKです。`,
     ``,
     `使っていたデッキ、当てた時の記憶`,
-    `対戦で印象に残った場面など、気軽にコメントしてください。`,
+    `対戦で印象に残った場面など`,
+    ``,
+    `気軽にコメントしてください。`,
     ``,
     `思い出図鑑ページ：`,
     cardUrl,
