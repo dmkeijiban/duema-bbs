@@ -26,6 +26,24 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await runDailyZukanThread()
+
+    if (result.status === 'created') {
+      console.log('[daily-zukan-thread] created', {
+        postedDate: result.postedDate,
+        cardName: result.cardName,
+        cardSlug: result.cardSlug,
+        threadId: result.threadId,
+        cycleNo: result.cycleNo,
+      })
+    } else if (result.status === 'skipped') {
+      console.log('[daily-zukan-thread] skipped', {
+        postedDate: result.postedDate,
+        reason: result.reason,
+      })
+    } else {
+      console.error('[daily-zukan-thread] error', result)
+    }
+
     const httpStatus = result.status === 'error' ? 500 : 200
     return NextResponse.json(result, { status: httpStatus })
   } catch (e) {
