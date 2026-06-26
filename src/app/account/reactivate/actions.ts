@@ -59,9 +59,15 @@ export async function reactivateAccount(): Promise<ReactivateAccountResult> {
     return { error: 'アカウントの再開に失敗しました。時間を置いてもう一度お試しください。' }
   }
 
-  // 5〜6. 匿名化が完了してから、退会フラグを解除し再開に必要なフラグを通常状態へ戻す。
-  //        display_name / avatar_url 等のプロフィール情報は退会時にクリアしておらず内部保持して
-  //        いるため、ここでは触らずそのまま引き継ぐ。戻すのは公開停止・ランキング除外フラグのみ。
+  // 5〜6. 匿名化が完了してから、退会フラグを解除し再開に必要な「本人操作で戻せるフラグ」だけを
+  //        通常状態へ戻す。display_name / avatar_url 等のプロフィール情報は退会時にクリアしておらず
+  //        内部保持しているため、ここでは触らずそのまま引き継ぐ。
+  //
+  //        モデレーション系フラグ（rank_excluded / account_suspended）は管理者が設定するもので、
+  //        退会・再開（＝本人操作）で勝手に解除してはいけない。ここで戻すのは本人が退会時に立てた
+  //        公開停止(profile_hidden) と ランキング参加(ranking_enabled) のみ。
+  //        - rank_excluded はここで触らない（管理者の除外を退会→再開で回避させない）
+  //        - account_suspended は元々ここでは触っていない（再開後も停止状態は維持される）
   const now = new Date().toISOString()
   const { error: updateError } = await admin
     .from('profiles')
@@ -69,7 +75,6 @@ export async function reactivateAccount(): Promise<ReactivateAccountResult> {
       withdrawn_at: null,
       profile_hidden: false,
       ranking_enabled: true,
-      rank_excluded: false,
       updated_at: now,
     })
     .eq('id', user.id)
