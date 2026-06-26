@@ -669,7 +669,7 @@ export function getCachedCampaignRanking(): Promise<CachedCampaignRankingResult>
       const ranking = await fetchCampaignRankingPublic(settings.startIso, settings.endIso, state === 'active', cutoffIso)
       return { settings, ranking, cachedDateJst: getJstDateKey() }
     },
-    [`campaign-ranking-public-v2-${dateKey}`],
+    [`campaign-ranking-public-v3-${dateKey}`],
     { revalidate: 86400, tags: ['campaign-ranking'] }
   )()
 }

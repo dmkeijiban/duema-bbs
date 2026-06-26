@@ -9,6 +9,8 @@ import {
   CAMPAIGN_RATING_DAILY_LIMIT,
   CAMPAIGN_THREAD_CONTRIB_POINT,
   CAMPAIGN_THREAD_CONTRIB_DAILY_LIMIT,
+  RANKING_DAILY_TOTAL_CAP,
+  RANKING_DAILY_CAP_START_DATE_JST,
 } from './ranking-points'
 
 const PAGE_SIZE = 1000
@@ -449,6 +451,9 @@ export async function fetchCampaignRankingFull(
     ratingCount: number
     contributionCount: number
     lastActivity: string
+    // JST日付キー → その日の獲得pt合計（アクション別上限適用後）。
+    // 最終的に開始日以降の各日を RANKING_DAILY_TOTAL_CAP で丸めて totalPoints を算出する。
+    dailyPoints: Map<string, number>
   }
 
   const activityMap = new Map<string, InternalActivity>()
@@ -460,12 +465,16 @@ export async function fetchCampaignRankingFull(
         threadCount: 0, postCount: 0, reviewCount: 0, ratingCount: 0,
         contributionCount: 0,
         lastActivity: '',
+        dailyPoints: new Map<string, number>(),
       })
     }
     return activityMap.get(uid)!
   }
   const updateLast = (a: InternalActivity, createdAt: string) => {
     if (createdAt > a.lastActivity) a.lastActivity = createdAt
+  }
+  const addDailyPoints = (a: InternalActivity, jstDate: string, pts: number) => {
+    a.dailyPoints.set(jstDate, (a.dailyPoints.get(jstDate) ?? 0) + pts)
   }
 
   // Threads: 3pt each, max CAMPAIGN_THREAD_DAILY_LIMIT per user per JST day (earliest first)
@@ -476,10 +485,11 @@ export async function fetchCampaignRankingFull(
   for (const row of sortedThreads) {
     const a = getOrCreate(row.user_id!)
     a.threadRawCount++
-    const key = `${row.user_id}|${toJstDate(row.created_at!)}`
+    const jd = toJstDate(row.created_at!)
+    const key = `${row.user_id}|${jd}`
     const n = (dailyThreads.get(key) ?? 0) + 1
     dailyThreads.set(key, n)
-    if (n <= CAMPAIGN_THREAD_DAILY_LIMIT) { a.threadCount++; updateLast(a, row.created_at!) }
+    if (n <= CAMPAIGN_THREAD_DAILY_LIMIT) { a.threadCount++; updateLast(a, row.created_at!); addDailyPoints(a, jd, CAMPAIGN_THREAD_POINT) }
   }
 
   // Posts: 1pt each, max CAMPAIGN_POST_DAILY_LIMIT per user per JST day (earliest first)
@@ -490,10 +500,11 @@ export async function fetchCampaignRankingFull(
   for (const row of sortedPosts) {
     const a = getOrCreate(row.user_id!)
     a.postRawCount++
-    const key = `${row.user_id}|${toJstDate(row.created_at!)}`
+    const jd = toJstDate(row.created_at!)
+    const key = `${row.user_id}|${jd}`
     const n = (dailyPosts.get(key) ?? 0) + 1
     dailyPosts.set(key, n)
-    if (n <= CAMPAIGN_POST_DAILY_LIMIT) { a.postCount++; updateLast(a, row.created_at!) }
+    if (n <= CAMPAIGN_POST_DAILY_LIMIT) { a.postCount++; updateLast(a, row.created_at!); addDailyPoints(a, jd, CAMPAIGN_POST_POINT) }
   }
 
   // Reviews: card + pack combined, 3pt each, max CAMPAIGN_REVIEW_DAILY_LIMIT per user per JST day (earliest first)
@@ -506,10 +517,11 @@ export async function fetchCampaignRankingFull(
     const a = getOrCreate(row.user_id!)
     if (row.isCard) a.cardReviewRawCount++
     else a.packReviewRawCount++
-    const key = `${row.user_id}|${toJstDate(row.created_at!)}`
+    const jd = toJstDate(row.created_at!)
+    const key = `${row.user_id}|${jd}`
     const n = (dailyReviews.get(key) ?? 0) + 1
     dailyReviews.set(key, n)
-    if (n <= CAMPAIGN_REVIEW_DAILY_LIMIT) { a.reviewCount++; updateLast(a, row.created_at!) }
+    if (n <= CAMPAIGN_REVIEW_DAILY_LIMIT) { a.reviewCount++; updateLast(a, row.created_at!); addDailyPoints(a, jd, CAMPAIGN_REVIEW_POINT) }
   }
 
   // Ratings: 1pt each, max CAMPAIGN_RATING_DAILY_LIMIT per user per JST day (earliest first).
@@ -521,10 +533,11 @@ export async function fetchCampaignRankingFull(
   for (const row of sortedRatings) {
     const a = getOrCreate(row.user_id!)
     a.ratingRawCount++
-    const key = `${row.user_id}|${toJstDate(row.created_at!)}`
+    const jd = toJstDate(row.created_at!)
+    const key = `${row.user_id}|${jd}`
     const n = (dailyRatings.get(key) ?? 0) + 1
     dailyRatings.set(key, n)
-    if (n <= CAMPAIGN_RATING_DAILY_LIMIT) { a.ratingCount++; updateLast(a, row.created_at!) }
+    if (n <= CAMPAIGN_RATING_DAILY_LIMIT) { a.ratingCount++; updateLast(a, row.created_at!); addDailyPoints(a, jd, 1) }
   }
 
   // Thread contribution pts: commenter B posts on thread owned by A (B !== A) → A gets 1pt
@@ -541,25 +554,30 @@ export async function fetchCampaignRankingFull(
   const dailyContribs = new Map<string, number>()
   for (const row of sortedContribs) {
     const ownerId = row.threads!.user_id!
-    const key = `${row.user_id}|${ownerId}|${toJstDate(row.created_at!)}`
+    const jd = toJstDate(row.created_at!)
+    const key = `${row.user_id}|${ownerId}|${jd}`
     const n = (dailyContribs.get(key) ?? 0) + 1
     dailyContribs.set(key, n)
     if (n <= CAMPAIGN_THREAD_CONTRIB_DAILY_LIMIT) {
       const a = getOrCreate(ownerId)
       a.contributionCount++
       updateLast(a, row.created_at!)
+      addDailyPoints(a, jd, CAMPAIGN_THREAD_CONTRIB_POINT)
     }
   }
 
-  // Build entries with total points
+  // Build entries with total points.
+  // 各JST日の獲得pt合計を、開始日(JST)以降のみ RANKING_DAILY_TOTAL_CAP で丸めて合算する。
+  // 開始日より前の日は従来どおり上限なし。アクション別の日次上限は上で適用済み。
   const entries: AdminCampaignEntry[] = []
   for (const [userId, activity] of activityMap) {
-    const totalPoints =
-      activity.threadCount * CAMPAIGN_THREAD_POINT +
-      activity.postCount * CAMPAIGN_POST_POINT +
-      activity.reviewCount * CAMPAIGN_REVIEW_POINT +
-      activity.ratingCount * 1 +
-      activity.contributionCount * CAMPAIGN_THREAD_CONTRIB_POINT
+    let totalPoints = 0
+    for (const [jstDate, dayPts] of activity.dailyPoints) {
+      totalPoints +=
+        jstDate >= RANKING_DAILY_CAP_START_DATE_JST
+          ? Math.min(dayPts, RANKING_DAILY_TOTAL_CAP)
+          : dayPts
+    }
     entries.push({ userId, totalPoints, profile: null, excludeReasons: [], ...activity })
   }
 
