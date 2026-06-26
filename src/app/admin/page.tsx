@@ -19,12 +19,12 @@ import { AdminSubmitButton } from './AdminSubmitButton'
 const ADMIN_COOKIE = 'admin_auth'
 const THREADS_PER_PAGE = 30
 
-type SortKey = 'created_at' | 'post_count' | 'view_count'
+type SortKey = 'last_posted_at' | 'created_at' | 'post_count' | 'view_count'
 type SortOrder = 'asc' | 'desc'
 
 function normalizeSort(v: string | undefined): SortKey {
-  if (v === 'post_count' || v === 'view_count' || v === 'created_at') return v
-  return 'created_at'
+  if (v === 'post_count' || v === 'view_count' || v === 'created_at' || v === 'last_posted_at') return v
+  return 'last_posted_at'
 }
 function normalizeOrder(v: string | undefined): SortOrder {
   return v === 'asc' ? 'asc' : 'desc'
@@ -33,7 +33,7 @@ function adminThreadsUrl({ page, q, sort, order }: { page?: number; q: string; s
   const p = new URLSearchParams()
   if (q) p.set('q', q)
   if (page && page > 1) p.set('threadPage', String(page))
-  if (sort !== 'created_at' || order !== 'desc') { p.set('sort', sort); p.set('order', order) }
+  if (sort !== 'last_posted_at' || order !== 'desc') { p.set('sort', sort); p.set('order', order) }
   return `/admin${p.toString() ? '?' + p.toString() : ''}`
 }
 
@@ -110,7 +110,7 @@ export default async function AdminPage({
 
   let threadsQuery = supabase
     .from('threads')
-    .select('id, title, body, post_count, view_count, is_archived, category_id, session_id, created_at, categories(name)', { count: 'exact' })
+    .select('id, title, body, post_count, view_count, is_archived, category_id, session_id, created_at, last_posted_at, categories(name)', { count: 'exact' })
     .eq('is_archived', false)
     .order(sort, { ascending: order === 'asc', nullsFirst: false })
 
@@ -555,8 +555,8 @@ export default async function AdminPage({
 
           {/* ソートボタン */}
           <div className="mb-2 flex flex-wrap gap-1.5">
-            {(['created_at', 'post_count', 'view_count'] as SortKey[]).map(key => {
-              const labels: Record<SortKey, string> = { created_at: '日付順', post_count: 'コメント順', view_count: '閲覧数順' }
+            {(['last_posted_at', 'created_at', 'post_count', 'view_count'] as SortKey[]).map(key => {
+              const labels: Record<SortKey, string> = { last_posted_at: '更新順', created_at: '日付順', post_count: 'コメント順', view_count: '閲覧数順' }
               const nextOrder: SortOrder = sort === key && order === 'desc' ? 'asc' : 'desc'
               return (
                 <a key={key} href={adminThreadsUrl({ q: searchQ, sort: key, order: nextOrder })}
@@ -583,7 +583,7 @@ export default async function AdminPage({
                     <th className="px-2 py-2.5 text-left whitespace-nowrap font-semibold hidden sm:table-cell w-24">カテゴリ</th>
                     <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold w-20">コメント数</th>
                     <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold w-20">閲覧数</th>
-                    <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold hidden md:table-cell w-24">作成日</th>
+                    <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold hidden md:table-cell w-24">更新日</th>
                     <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold w-44">操作</th>
                   </tr>
                 </thead>
@@ -591,9 +591,10 @@ export default async function AdminPage({
                   {threads?.map(t => {
                     const cat = (t as typeof t & { categories?: { name: string } | null }).categories
                     const createdAt = (t as typeof t & { created_at?: string }).created_at
-                    const dateStr = createdAt
-                      ? new Date(createdAt).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-                      : '-'
+                    const lastPostedAt = (t as typeof t & { last_posted_at?: string | null }).last_posted_at
+                    const toDateStr = (iso: string | null | undefined) =>
+                      iso ? new Date(iso).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'
+                    const dateStr = toDateStr(lastPostedAt ?? createdAt)
                     return (
                       <tr key={t.id} className="hover:bg-gray-50">
                         <td className="px-2 py-2.5 font-mono text-[10px] text-gray-400 whitespace-nowrap w-12">{t.id}</td>
