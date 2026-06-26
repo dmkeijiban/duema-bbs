@@ -382,7 +382,7 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
         </Link>
       </div>
       <p className="mb-3 border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700">
-        投稿者ランキングは、スレッド投稿・コメント・思い出図鑑の評価・思い出レビューなどの活動から集計しています。ランキングは1日1回更新されます。なお、ランキングの公平性維持のため、一部の集計には不正・連投対策を行っています。
+        投稿者ランキングは、スレッド投稿・コメント・思い出図鑑の評価・思い出レビューなどの活動から集計しています。ランキングは1日1回更新されます。
       </p>
       <UserRankingList
         title={title}
