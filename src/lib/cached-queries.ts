@@ -449,6 +449,7 @@ const USER_RANKING_PROFILE_LIMIT = 100
 const USER_RANKING_LIMIT = 10
 const USER_RANKING_FETCH_LIMIT = 10000
 const USER_RANKING_DAILY_CAP = 24
+const USER_RANKING_CAP_START_DATE_JST = '2026-06-26'
 
 function getJstMonthStartIso() {
   const now = new Date()
@@ -474,26 +475,38 @@ function toJstDateKey(isoString: string): string {
 function buildDailyPointsMap(
   ...activitySets: Array<{ rows: UserRankingActivity[]; pts: number }>
 ): Map<string, number> {
+  // cap開始日以降: userId → dateKey → 日別ポイント合計
   const dailyMap = new Map<string, Map<string, number>>()
+  // cap開始日より前: userId → 旧計算ポイント合計（上限なし）
+  const legacyTotals = new Map<string, number>()
+
   for (const { rows, pts } of activitySets) {
     for (const row of rows) {
       if (!row.user_id || !row.created_at) continue
       const dateKey = toJstDateKey(row.created_at)
-      let userMap = dailyMap.get(row.user_id)
-      if (!userMap) {
-        userMap = new Map()
-        dailyMap.set(row.user_id, userMap)
+      if (dateKey < USER_RANKING_CAP_START_DATE_JST) {
+        legacyTotals.set(row.user_id, (legacyTotals.get(row.user_id) ?? 0) + pts)
+      } else {
+        let userMap = dailyMap.get(row.user_id)
+        if (!userMap) {
+          userMap = new Map()
+          dailyMap.set(row.user_id, userMap)
+        }
+        userMap.set(dateKey, (userMap.get(dateKey) ?? 0) + pts)
       }
-      userMap.set(dateKey, (userMap.get(dateKey) ?? 0) + pts)
     }
   }
+
   const totals = new Map<string, number>()
+  for (const [userId, pts] of legacyTotals) {
+    totals.set(userId, pts)
+  }
   for (const [userId, userMap] of dailyMap) {
-    let total = 0
+    let cappedTotal = 0
     for (const dayPts of userMap.values()) {
-      total += Math.min(dayPts, USER_RANKING_DAILY_CAP)
+      cappedTotal += Math.min(dayPts, USER_RANKING_DAILY_CAP)
     }
-    totals.set(userId, total)
+    totals.set(userId, (totals.get(userId) ?? 0) + cappedTotal)
   }
   return totals
 }
@@ -632,7 +645,7 @@ export function getCachedUserRankings(): Promise<UserRankingResult> {
         return { monthly: [], total: [] }
       }
     },
-    [`user-rankings-public-v9-${dateKey}`],
+    [`user-rankings-public-v10-${dateKey}`],
     { revalidate: 86400, tags: ['user-rankings'] }
   )()
 }

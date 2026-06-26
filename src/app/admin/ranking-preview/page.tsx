@@ -15,6 +15,7 @@ const PROFILE_LIMIT = 100
 const RANKING_LIMIT = 50
 const ACTIVITY_FETCH_LIMIT = 10000
 const DAILY_CAP = 24
+const CAP_START_DATE_JST = '2026-06-26'
 
 type ProfileRow = {
   id: string
@@ -71,26 +72,38 @@ function toJstDateKey(isoString: string): string {
 function buildDailyPointsMap(
   ...activitySets: Array<{ rows: ActivityRow[]; pts: number }>
 ): Map<string, number> {
+  // cap開始日以降: userId → dateKey → 日別ポイント合計
   const dailyMap = new Map<string, Map<string, number>>()
+  // cap開始日より前: userId → 旧計算ポイント合計（上限なし）
+  const legacyTotals = new Map<string, number>()
+
   for (const { rows, pts } of activitySets) {
     for (const row of rows) {
       if (!row.user_id || !row.created_at) continue
       const dateKey = toJstDateKey(row.created_at)
-      let userMap = dailyMap.get(row.user_id)
-      if (!userMap) {
-        userMap = new Map()
-        dailyMap.set(row.user_id, userMap)
+      if (dateKey < CAP_START_DATE_JST) {
+        legacyTotals.set(row.user_id, (legacyTotals.get(row.user_id) ?? 0) + pts)
+      } else {
+        let userMap = dailyMap.get(row.user_id)
+        if (!userMap) {
+          userMap = new Map()
+          dailyMap.set(row.user_id, userMap)
+        }
+        userMap.set(dateKey, (userMap.get(dateKey) ?? 0) + pts)
       }
-      userMap.set(dateKey, (userMap.get(dateKey) ?? 0) + pts)
     }
   }
+
   const totals = new Map<string, number>()
+  for (const [userId, pts] of legacyTotals) {
+    totals.set(userId, pts)
+  }
   for (const [userId, userMap] of dailyMap) {
-    let total = 0
+    let cappedTotal = 0
     for (const dayPts of userMap.values()) {
-      total += Math.min(dayPts, DAILY_CAP)
+      cappedTotal += Math.min(dayPts, DAILY_CAP)
     }
-    totals.set(userId, total)
+    totals.set(userId, (totals.get(userId) ?? 0) + cappedTotal)
   }
   return totals
 }
