@@ -433,7 +433,7 @@ export default async function ZukanDm01Page({
       </section>
 
       {/* このパックの思い出 */}
-      <section className="mb-5">
+      <section className="mb-0">
         <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
           <h2 className="text-sm font-bold text-gray-800">このパックの思い出</h2>
         </div>
