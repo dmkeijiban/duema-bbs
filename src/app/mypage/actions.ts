@@ -60,12 +60,16 @@ export async function withdrawAccount(formData: FormData): Promise<WithdrawAccou
     return { error: '退会処理に失敗しました。時間を置いてもう一度お試しください。' }
   }
 
+  // rank_excluded（ランキング除外）は管理者モデレーション専用フラグのため、本人操作である
+  // 退会では設定しない。退会ユーザーは withdrawn_at / ranking_enabled=false / profile_hidden=true
+  // により各ランキング・公開ページから既に除外されるため、ここで rank_excluded を立てる必要はない。
+  // （退会時に立てると、管理者除外でない通常ユーザーも除外フラグを持ってしまい、
+  //   再開処理で rank_excluded を触らない方針と組み合わせたとき不整合になる）
   const { error: updateError } = await admin
     .from('profiles')
     .update({
       profile_hidden: true,
       ranking_enabled: false,
-      rank_excluded: true,
       withdrawn_at: now,
       updated_at: now,
     })
