@@ -6,10 +6,11 @@ import { verifyAdminCookie } from '@/lib/admin-auth'
 const ADMIN_COOKIE = 'admin_auth'
 const THREADS_PER_PAGE = 50
 
-type SortKey = 'created_at' | 'post_count' | 'view_count'
+type SortKey = 'last_posted_at' | 'created_at' | 'post_count' | 'view_count'
 type SortOrder = 'asc' | 'desc'
 
 const SORT_LABELS: Record<SortKey, string> = {
+  last_posted_at: '更新',
   created_at: '日付',
   post_count: 'コメント',
   view_count: '閲覧数',
@@ -21,8 +22,8 @@ async function isAdmin() {
 }
 
 function normalizeSort(value: string | undefined): SortKey {
-  if (value === 'post_count' || value === 'view_count' || value === 'created_at') return value
-  return 'created_at'
+  if (value === 'last_posted_at' || value === 'post_count' || value === 'view_count' || value === 'created_at') return value
+  return 'last_posted_at'
 }
 
 function normalizeOrder(value: string | undefined): SortOrder {
@@ -86,10 +87,11 @@ export default async function AdminThreadsPage({
 
   let query = supabase
     .from('threads')
-    .select('id, title, post_count, view_count, category_id, created_at, categories(name)', { count: 'exact' })
+    .select('id, title, post_count, view_count, category_id, created_at, last_posted_at, categories(name)', { count: 'exact' })
     .eq('is_archived', false)
     .order(sort, { ascending: order === 'asc', nullsFirst: false })
 
+  // 二次ソート: last_posted_at / post_count / view_count でソートするとき作成日を補助ソートに使う
   if (sort !== 'created_at') {
     query = query.order('created_at', { ascending: false })
   }
@@ -115,7 +117,7 @@ export default async function AdminThreadsPage({
         <div>
           <h1 className="text-xl font-bold text-gray-800">📋 スレッド閲覧数管理</h1>
           <p className="mt-1 text-xs text-gray-500">
-            日付・コメント・閲覧数で並び替えできます。現在：{SORT_LABELS[sort]} {order === 'desc' ? '多い/新しい順' : '少ない/古い順'}
+            更新・日付・コメント・閲覧数で並び替えできます。現在：{SORT_LABELS[sort]} {order === 'desc' ? '多い/新しい順' : '少ない/古い順'}
           </p>
         </div>
         <Link href="/admin" className="text-xs text-blue-600 hover:underline">管理画面へ戻る</Link>
@@ -142,7 +144,7 @@ export default async function AdminThreadsPage({
       </form>
 
       <div className="mb-3 flex flex-wrap gap-1.5">
-        {(['created_at', 'post_count', 'view_count'] as SortKey[]).map(key => (
+        {(['last_posted_at', 'created_at', 'post_count', 'view_count'] as SortKey[]).map(key => (
           <Link
             key={key}
             href={buildUrl({ q: searchQ, sort: key, order: sort === key && order === 'desc' ? 'asc' : 'desc' })}
@@ -173,6 +175,9 @@ export default async function AdminThreadsPage({
                   <SortLink label="閲覧数" sortKey="view_count" currentSort={sort} currentOrder={order} q={searchQ} />
                 </th>
                 <th className="px-2 py-3.5 text-right whitespace-nowrap font-semibold hidden md:table-cell">
+                  <SortLink label="更新日" sortKey="last_posted_at" currentSort={sort} currentOrder={order} q={searchQ} />
+                </th>
+                <th className="px-2 py-3.5 text-right whitespace-nowrap font-semibold hidden lg:table-cell">
                   <SortLink label="作成日" sortKey="created_at" currentSort={sort} currentOrder={order} q={searchQ} />
                 </th>
                 <th className="px-2 py-3.5 text-right whitespace-nowrap font-semibold">操作</th>
@@ -182,9 +187,13 @@ export default async function AdminThreadsPage({
               {threads.map(t => {
                 const cat = (t as typeof t & { categories?: { name: string } | null }).categories
                 const createdAt = (t as typeof t & { created_at?: string }).created_at
-                const dateStr = createdAt
-                  ? new Date(createdAt).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-                  : '-'
+                const lastPostedAt = (t as typeof t & { last_posted_at?: string | null }).last_posted_at
+                const toDateStr = (iso: string | null | undefined) =>
+                  iso
+                    ? new Date(iso).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+                    : '-'
+                const updatedStr = toDateStr(lastPostedAt ?? createdAt)
+                const createdStr = toDateStr(createdAt)
                 return (
                   <tr key={t.id} className="hover:bg-gray-50">
                     <td className="px-2 py-3.5 font-mono text-gray-400 whitespace-nowrap">{t.id}</td>
@@ -198,7 +207,8 @@ export default async function AdminThreadsPage({
                     </td>
                     <td className="px-2 py-3.5 text-right text-gray-600 whitespace-nowrap tabular-nums">{t.post_count ?? 0}</td>
                     <td className="px-2 py-3.5 text-right text-blue-700 whitespace-nowrap tabular-nums font-bold">{(t as typeof t & { view_count?: number | null }).view_count ?? 0}</td>
-                    <td className="px-2 py-3.5 text-right text-gray-400 whitespace-nowrap hidden md:table-cell text-[10px]">{dateStr}</td>
+                    <td className="px-2 py-3.5 text-right text-gray-400 whitespace-nowrap hidden md:table-cell text-[10px]">{updatedStr}</td>
+                    <td className="px-2 py-3.5 text-right text-gray-400 whitespace-nowrap hidden lg:table-cell text-[10px]">{createdStr}</td>
                     <td className="px-2 py-3.5 whitespace-nowrap text-right">
                       <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1.5">
                         <Link href={`/admin?thread=${t.id}`} className="px-2 py-1 text-[10px] text-blue-600 border border-blue-300 hover:bg-blue-50 rounded leading-none">
