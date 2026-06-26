@@ -31,6 +31,7 @@ interface Props {
 }
 
 type DisplayPost = Post & { displayNumber: number }
+const DEFAULT_AUTHOR_NAME = '名無しのデュエリスト'
 
 function ThreadAvatar({ src, alt }: { src: string | null | undefined; alt: string }) {
   if (!src) return null
@@ -121,13 +122,22 @@ export function ThreadContent({
     }
   }, [])
 
-  const displayPosts = useMemo<DisplayPost[]>(() => posts.map(post => ({
-    ...post,
-    displayNumber: post.post_number + 1,
-  })), [posts])
+  const displayPosts = useMemo<DisplayPost[]>(() => posts.map(post => {
+    const profile = post.user_id ? authorProfiles[post.user_id] : undefined
+    return {
+      ...post,
+      author_name: post.user_id
+        ? (profile?.display_name ?? DEFAULT_AUTHOR_NAME)
+        : post.author_name,
+      displayNumber: post.post_number + 1,
+    }
+  }), [posts, authorProfiles])
 
   const threadSessionId = (thread as Thread & { session_id?: string }).session_id ?? ''
   const threadAuthorProfile = thread.user_id ? authorProfiles[thread.user_id] : undefined
+  const threadAuthorFallbackName = thread.user_id && !threadAuthorProfile
+    ? DEFAULT_AUTHOR_NAME
+    : thread.author_name
   const threadBodyNodes = useMemo(
     () => renderBody(thread.body, displayPosts as Post[]),
     [thread.body, displayPosts]
@@ -148,7 +158,7 @@ export function ThreadContent({
               ▶1
             </button>
             <span className="inline-block px-0.5 text-white text-[10px] leading-4" style={{ background: '#dc3545' }}>スレ主</span>
-            <ThreadAuthorName fallbackName={thread.author_name} profile={threadAuthorProfile} />
+            <ThreadAuthorName fallbackName={threadAuthorFallbackName} profile={threadAuthorProfile} />
             <span className="text-gray-400 text-[10px]">{formatDateTimeJP(thread.created_at)}</span>
             <PostLikeButton likeKey={`thread-${thread.id}`} />
             <ReportButton itemType="thread" itemId={thread.id} itemBody={thread.body} />
