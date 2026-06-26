@@ -14,6 +14,7 @@ import {
 const PROFILE_LIMIT = 100
 const RANKING_LIMIT = 50
 const ACTIVITY_FETCH_LIMIT = 10000
+const DAILY_CAP = 24
 
 type ProfileRow = {
   id: string
@@ -28,6 +29,7 @@ type ProfileRow = {
 
 type ActivityRow = {
   user_id: string | null
+  created_at: string | null
 }
 
 type RankingRow = {
@@ -62,6 +64,37 @@ function getMonthStartIso() {
   return new Date(Date.UTC(year, month - 1, 1, -9, 0, 0)).toISOString()
 }
 
+function toJstDateKey(isoString: string): string {
+  return new Date(new Date(isoString).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)
+}
+
+function buildDailyPointsMap(
+  ...activitySets: Array<{ rows: ActivityRow[]; pts: number }>
+): Map<string, number> {
+  const dailyMap = new Map<string, Map<string, number>>()
+  for (const { rows, pts } of activitySets) {
+    for (const row of rows) {
+      if (!row.user_id || !row.created_at) continue
+      const dateKey = toJstDateKey(row.created_at)
+      let userMap = dailyMap.get(row.user_id)
+      if (!userMap) {
+        userMap = new Map()
+        dailyMap.set(row.user_id, userMap)
+      }
+      userMap.set(dateKey, (userMap.get(dateKey) ?? 0) + pts)
+    }
+  }
+  const totals = new Map<string, number>()
+  for (const [userId, userMap] of dailyMap) {
+    let total = 0
+    for (const dayPts of userMap.values()) {
+      total += Math.min(dayPts, DAILY_CAP)
+    }
+    totals.set(userId, total)
+  }
+  return totals
+}
+
 function countByUser(rows: ActivityRow[]) {
   const counts = new Map<string, number>()
 
@@ -87,6 +120,14 @@ function buildRanking(
   const cardReviewCounts = countByUser(cardReviewRows)
   const packReviewCounts = countByUser(packReviewRows)
 
+  const pointsMap = buildDailyPointsMap(
+    { rows: threadRows, pts: USER_RANKING_THREAD_POINT },
+    { rows: postRows, pts: USER_RANKING_POST_POINT },
+    { rows: cardRatingRows, pts: USER_RANKING_CARD_RATING_POINT },
+    { rows: cardReviewRows, pts: USER_RANKING_CARD_REVIEW_POINT },
+    { rows: packReviewRows, pts: USER_RANKING_PACK_REVIEW_POINT },
+  )
+
   return profiles
     .map((profile): RankingRow => {
       const threadCount = threadCounts.get(profile.id) ?? 0
@@ -101,12 +142,7 @@ function buildRanking(
         cardRatingCount,
         cardReviewCount,
         packReviewCount,
-        points:
-          threadCount * USER_RANKING_THREAD_POINT +
-          postCount * USER_RANKING_POST_POINT +
-          cardRatingCount * USER_RANKING_CARD_RATING_POINT +
-          cardReviewCount * USER_RANKING_CARD_REVIEW_POINT +
-          packReviewCount * USER_RANKING_PACK_REVIEW_POINT,
+        points: pointsMap.get(profile.id) ?? 0,
       }
     })
     .filter(row => row.points > 0)
@@ -280,14 +316,14 @@ export default async function AdminRankingPreviewPage() {
       : await Promise.all([
           supabase
             .from('threads')
-            .select('user_id')
+            .select('user_id, created_at')
             .in('user_id', userIds)
             .eq('is_archived', false)
             .gte('created_at', monthStartIso)
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('posts')
-            .select('user_id, threads!inner(is_archived)')
+            .select('user_id, created_at, threads!inner(is_archived)')
             .in('user_id', userIds)
             .eq('is_deleted', false)
             .eq('threads.is_archived', false)
@@ -295,7 +331,7 @@ export default async function AdminRankingPreviewPage() {
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('zukan_card_ratings')
-            .select('user_id')
+            .select('user_id, created_at')
             .in('user_id', userIds)
             .eq('is_deleted', false)
             .eq('is_hidden', false)
@@ -303,7 +339,7 @@ export default async function AdminRankingPreviewPage() {
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('zukan_card_reviews')
-            .select('user_id')
+            .select('user_id, created_at')
             .in('user_id', userIds)
             .eq('is_deleted', false)
             .eq('is_hidden', false)
@@ -311,7 +347,7 @@ export default async function AdminRankingPreviewPage() {
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('zukan_pack_reviews')
-            .select('user_id')
+            .select('user_id, created_at')
             .in('user_id', userIds)
             .eq('is_deleted', false)
             .eq('is_hidden', false)
@@ -319,34 +355,34 @@ export default async function AdminRankingPreviewPage() {
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('threads')
-            .select('user_id')
+            .select('user_id, created_at')
             .in('user_id', userIds)
             .eq('is_archived', false)
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('posts')
-            .select('user_id, threads!inner(is_archived)')
+            .select('user_id, created_at, threads!inner(is_archived)')
             .in('user_id', userIds)
             .eq('is_deleted', false)
             .eq('threads.is_archived', false)
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('zukan_card_ratings')
-            .select('user_id')
+            .select('user_id, created_at')
             .in('user_id', userIds)
             .eq('is_deleted', false)
             .eq('is_hidden', false)
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('zukan_card_reviews')
-            .select('user_id')
+            .select('user_id, created_at')
             .in('user_id', userIds)
             .eq('is_deleted', false)
             .eq('is_hidden', false)
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('zukan_pack_reviews')
-            .select('user_id')
+            .select('user_id, created_at')
             .in('user_id', userIds)
             .eq('is_deleted', false)
             .eq('is_hidden', false)
