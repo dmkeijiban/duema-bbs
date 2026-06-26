@@ -14,6 +14,8 @@ import {
 const PROFILE_LIMIT = 100
 const RANKING_LIMIT = 50
 const ACTIVITY_FETCH_LIMIT = 10000
+const DAILY_CAP = 24
+const CAP_START_DATE_JST = '2026-06-26'
 
 type ProfileRow = {
   id: string
@@ -28,6 +30,7 @@ type ProfileRow = {
 
 type ActivityRow = {
   user_id: string | null
+  created_at: string | null
 }
 
 type RankingRow = {
@@ -62,6 +65,49 @@ function getMonthStartIso() {
   return new Date(Date.UTC(year, month - 1, 1, -9, 0, 0)).toISOString()
 }
 
+function toJstDateKey(isoString: string): string {
+  return new Date(new Date(isoString).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)
+}
+
+function buildDailyPointsMap(
+  ...activitySets: Array<{ rows: ActivityRow[]; pts: number }>
+): Map<string, number> {
+  // cap開始日以降: userId → dateKey → 日別ポイント合計
+  const dailyMap = new Map<string, Map<string, number>>()
+  // cap開始日より前: userId → 旧計算ポイント合計（上限なし）
+  const legacyTotals = new Map<string, number>()
+
+  for (const { rows, pts } of activitySets) {
+    for (const row of rows) {
+      if (!row.user_id || !row.created_at) continue
+      const dateKey = toJstDateKey(row.created_at)
+      if (dateKey < CAP_START_DATE_JST) {
+        legacyTotals.set(row.user_id, (legacyTotals.get(row.user_id) ?? 0) + pts)
+      } else {
+        let userMap = dailyMap.get(row.user_id)
+        if (!userMap) {
+          userMap = new Map()
+          dailyMap.set(row.user_id, userMap)
+        }
+        userMap.set(dateKey, (userMap.get(dateKey) ?? 0) + pts)
+      }
+    }
+  }
+
+  const totals = new Map<string, number>()
+  for (const [userId, pts] of legacyTotals) {
+    totals.set(userId, pts)
+  }
+  for (const [userId, userMap] of dailyMap) {
+    let cappedTotal = 0
+    for (const dayPts of userMap.values()) {
+      cappedTotal += Math.min(dayPts, DAILY_CAP)
+    }
+    totals.set(userId, (totals.get(userId) ?? 0) + cappedTotal)
+  }
+  return totals
+}
+
 function countByUser(rows: ActivityRow[]) {
   const counts = new Map<string, number>()
 
@@ -87,6 +133,14 @@ function buildRanking(
   const cardReviewCounts = countByUser(cardReviewRows)
   const packReviewCounts = countByUser(packReviewRows)
 
+  const pointsMap = buildDailyPointsMap(
+    { rows: threadRows, pts: USER_RANKING_THREAD_POINT },
+    { rows: postRows, pts: USER_RANKING_POST_POINT },
+    { rows: cardRatingRows, pts: USER_RANKING_CARD_RATING_POINT },
+    { rows: cardReviewRows, pts: USER_RANKING_CARD_REVIEW_POINT },
+    { rows: packReviewRows, pts: USER_RANKING_PACK_REVIEW_POINT },
+  )
+
   return profiles
     .map((profile): RankingRow => {
       const threadCount = threadCounts.get(profile.id) ?? 0
@@ -101,12 +155,7 @@ function buildRanking(
         cardRatingCount,
         cardReviewCount,
         packReviewCount,
-        points:
-          threadCount * USER_RANKING_THREAD_POINT +
-          postCount * USER_RANKING_POST_POINT +
-          cardRatingCount * USER_RANKING_CARD_RATING_POINT +
-          cardReviewCount * USER_RANKING_CARD_REVIEW_POINT +
-          packReviewCount * USER_RANKING_PACK_REVIEW_POINT,
+        points: pointsMap.get(profile.id) ?? 0,
       }
     })
     .filter(row => row.points > 0)
@@ -280,14 +329,14 @@ export default async function AdminRankingPreviewPage() {
       : await Promise.all([
           supabase
             .from('threads')
-            .select('user_id')
+            .select('user_id, created_at')
             .in('user_id', userIds)
             .eq('is_archived', false)
             .gte('created_at', monthStartIso)
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('posts')
-            .select('user_id, threads!inner(is_archived)')
+            .select('user_id, created_at, threads!inner(is_archived)')
             .in('user_id', userIds)
             .eq('is_deleted', false)
             .eq('threads.is_archived', false)
@@ -295,7 +344,7 @@ export default async function AdminRankingPreviewPage() {
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('zukan_card_ratings')
-            .select('user_id')
+            .select('user_id, created_at')
             .in('user_id', userIds)
             .eq('is_deleted', false)
             .eq('is_hidden', false)
@@ -303,7 +352,7 @@ export default async function AdminRankingPreviewPage() {
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('zukan_card_reviews')
-            .select('user_id')
+            .select('user_id, created_at')
             .in('user_id', userIds)
             .eq('is_deleted', false)
             .eq('is_hidden', false)
@@ -311,7 +360,7 @@ export default async function AdminRankingPreviewPage() {
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('zukan_pack_reviews')
-            .select('user_id')
+            .select('user_id, created_at')
             .in('user_id', userIds)
             .eq('is_deleted', false)
             .eq('is_hidden', false)
@@ -319,34 +368,34 @@ export default async function AdminRankingPreviewPage() {
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('threads')
-            .select('user_id')
+            .select('user_id, created_at')
             .in('user_id', userIds)
             .eq('is_archived', false)
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('posts')
-            .select('user_id, threads!inner(is_archived)')
+            .select('user_id, created_at, threads!inner(is_archived)')
             .in('user_id', userIds)
             .eq('is_deleted', false)
             .eq('threads.is_archived', false)
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('zukan_card_ratings')
-            .select('user_id')
+            .select('user_id, created_at')
             .in('user_id', userIds)
             .eq('is_deleted', false)
             .eq('is_hidden', false)
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('zukan_card_reviews')
-            .select('user_id')
+            .select('user_id, created_at')
             .in('user_id', userIds)
             .eq('is_deleted', false)
             .eq('is_hidden', false)
             .limit(ACTIVITY_FETCH_LIMIT),
           supabase
             .from('zukan_pack_reviews')
-            .select('user_id')
+            .select('user_id, created_at')
             .in('user_id', userIds)
             .eq('is_deleted', false)
             .eq('is_hidden', false)
@@ -411,6 +460,12 @@ export default async function AdminRankingPreviewPage() {
         <p>
           対象profilesは最新{PROFILE_LIMIT}件、各activityは最大{ACTIVITY_FETCH_LIMIT}件まで取得します。
           pt保存、定期集計は行っていません。
+        </p>
+        <p className="text-blue-700">
+          【内部仕様・非公開】連投対策として、{CAP_START_DATE_JST}（JST）以降の活動は
+          1ユーザー1日あたり最大{DAILY_CAP}ptまでに丸めて加算しています。
+          {CAP_START_DATE_JST}より前の活動は従来どおり上限なしで計算しています。
+          この上限ルールはユーザー向け画面には表示していません。
         </p>
       </div>
 
