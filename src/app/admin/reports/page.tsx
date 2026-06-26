@@ -18,6 +18,17 @@ type ReportRow = {
   created_at: string
 }
 
+type ReporterProfile = {
+  id: string
+  display_name: string | null
+  profile_slug: string | null
+  rank_excluded: boolean | null
+  account_suspended: boolean | null
+  profile_hidden: boolean | null
+  ranking_enabled: boolean | null
+  withdrawn_at: string | null
+}
+
 function formatDateTime(value: string | null) {
   if (!value) return '-'
   return new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
@@ -26,6 +37,73 @@ function formatDateTime(value: string | null) {
 function shortId(value: string | null) {
   if (!value) return '-'
   return value.length <= 16 ? value : `${value.slice(0, 8)}…${value.slice(-4)}`
+}
+
+// 通報送信元のステータスを ON/OFF バッジで表示する。
+// onIsBad=true（除外・停止・非公開など）の ON は赤系、それ以外（参加中など）の ON は緑系。
+function StatusBadge({ label, on, onIsBad = false }: { label: string; on: boolean | null; onIsBad?: boolean }) {
+  const isOn = on === true
+  const cls = isOn
+    ? onIsBad
+      ? 'border-red-300 bg-red-50 text-red-700'
+      : 'border-green-300 bg-green-50 text-green-700'
+    : 'border-gray-200 bg-gray-50 text-gray-400'
+  return (
+    <span className={`inline-block rounded border px-1 py-0.5 text-[10px] font-bold leading-none ${cls}`}>
+      {label} {isOn ? 'ON' : 'OFF'}
+    </span>
+  )
+}
+
+// 通報一覧の「送信元」セル。profile が取れる場合は表示名・slug・状態・管理/公開リンクを出し、
+// 取れない場合（退会・匿名化・session通報など）は従来通り省略ID表示にフォールバックする。
+function ReporterCell({ report, profile }: { report: ReportRow; profile: ReporterProfile | undefined }) {
+  // ユーザー通報で profile が取得できた場合：リッチ表示
+  if (report.reporter_user_id && profile) {
+    const slug = profile.profile_slug
+    return (
+      <div className="space-y-1">
+        <div className="font-bold text-gray-800">{profile.display_name || '(表示名なし)'}</div>
+        {slug && <div className="text-[11px] text-gray-500">@{slug}</div>}
+        <div className="font-mono text-[10px] text-gray-400">id: {shortId(report.reporter_user_id)}</div>
+        <div className="flex flex-wrap gap-1">
+          <StatusBadge label="参加" on={profile.ranking_enabled} />
+          <StatusBadge label="除外" on={profile.rank_excluded} onIsBad />
+          <StatusBadge label="停止" on={profile.account_suspended} onIsBad />
+          <StatusBadge label="非公開" on={profile.profile_hidden} onIsBad />
+          {profile.withdrawn_at && (
+            <span className="inline-block rounded border border-amber-300 bg-amber-50 px-1 py-0.5 text-[10px] font-bold leading-none text-amber-700">
+              退会済み
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2 text-[11px]">
+          <Link href={`/admin/users/${report.reporter_user_id}`} className="text-blue-600 hover:underline">管理詳細</Link>
+          {slug && (
+            <a href={`/u/${slug}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">公開プロフィール</a>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ユーザー通報だが profile が取れない場合（退会・匿名化で profiles 行なし等）
+  if (report.reporter_user_id) {
+    return (
+      <div className="space-y-0.5">
+        <div className="font-mono text-[11px] text-gray-600">user:{shortId(report.reporter_user_id)}</div>
+        <div className="text-[10px] text-gray-400">（プロフィール取得不可）</div>
+        <Link href={`/admin/users/${report.reporter_user_id}`} className="text-[11px] text-blue-600 hover:underline">管理詳細</Link>
+      </div>
+    )
+  }
+
+  // 匿名（session）通報：従来通り
+  if (report.reporter_session_id) {
+    return <span className="font-mono text-[11px] text-gray-600">session:{shortId(report.reporter_session_id)}</span>
+  }
+
+  return <span className="text-gray-400">-</span>
 }
 
 export default async function AdminReportsPage({
@@ -45,6 +123,21 @@ export default async function AdminReportsPage({
     .limit(100)
 
   const reports = (data ?? []) as ReportRow[]
+
+  // 送信元ユーザーの profile をまとめて取得（表示改善のみ・データ変更はしない）。
+  const reporterIds = Array.from(
+    new Set(reports.map((r) => r.reporter_user_id).filter((id): id is string => !!id))
+  )
+  const profileMap = new Map<string, ReporterProfile>()
+  if (reporterIds.length > 0) {
+    const { data: profileData } = await admin
+      .from('profiles')
+      .select('id, display_name, profile_slug, rank_excluded, account_suspended, profile_hidden, ranking_enabled, withdrawn_at')
+      .in('id', reporterIds)
+    for (const p of (profileData ?? []) as ReporterProfile[]) {
+      profileMap.set(p.id, p)
+    }
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 text-sm">
@@ -90,7 +183,7 @@ export default async function AdminReportsPage({
               <tr key={r.id} className="align-top hover:bg-gray-50">
                 <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{formatDateTime(r.created_at)}</td>
                 <td className="px-3 py-2 whitespace-nowrap">{r.item_type === 'thread' ? <a href={`/thread/${r.item_id}`} target="_blank" className="text-blue-600 hover:underline">スレ #{r.item_id}</a> : <span>コメント #{r.item_id}</span>}</td>
-                <td className="px-3 py-2 font-mono text-[11px] text-gray-600">{r.reporter_user_id ? `user:${shortId(r.reporter_user_id)}` : r.reporter_session_id ? `session:${shortId(r.reporter_session_id)}` : '-'}</td>
+                <td className="px-3 py-2 text-[11px] text-gray-600"><ReporterCell report={r} profile={r.reporter_user_id ? profileMap.get(r.reporter_user_id) : undefined} /></td>
                 <td className="px-3 py-2 text-gray-700"><p className="font-bold">{r.reason || '（理由なし）'}</p>{r.item_body_excerpt && <p className="mt-1 line-clamp-2 break-all text-[11px] text-gray-500">{r.item_body_excerpt}</p>}</td>
                 <td className="px-3 py-2">
                   {(r.reporter_user_id || r.reporter_session_id) && (
