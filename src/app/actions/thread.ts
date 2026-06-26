@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { hasJapanese } from '@/lib/spam'
 import { v4 as uuidv4 } from 'uuid'
 import { uploadImage, validateImageFile } from '@/lib/upload'
@@ -343,14 +344,16 @@ export async function createPost(formData: FormData) {
   }
 
   // 画像付き投稿の場合、スレのサムネが未設定なら自動設定
+  // admin client を使う（threads テーブルに UPDATE RLS ポリシーがないため user client では失敗する）
   if (imageUrl) {
-    const { data: th } = await supabase
+    const admin = createAdminClient()
+    const { data: th } = await admin
       .from('threads')
       .select('image_url')
       .eq('id', threadId)
       .single()
     if (!th?.image_url) {
-      await supabase.from('threads').update({ image_url: imageUrl }).eq('id', threadId)
+      await admin.from('threads').update({ image_url: imageUrl }).eq('id', threadId)
     }
   }
 

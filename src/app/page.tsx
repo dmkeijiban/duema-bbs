@@ -318,7 +318,7 @@ export default async function Home({
             '@context': 'https://schema.org',
             '@graph': [
               {
-                '@type': 'DiscussionForumPosting',
+                '@type': 'DiscussionForum',
                 '@id': `${SITE_URL}/#forum`,
                 url: SITE_URL,
                 name: 'デュエマ掲示板',

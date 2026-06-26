@@ -99,12 +99,16 @@ export async function toggleRankExcluded(
     return { error: 'ランキング除外の更新に失敗しました。' }
   }
 
-  // 7. 投稿者ランキングは1日1回更新（JST 0:00、tag: 'user-rankings'）。即時反映のため tag を失効させる。
+  // 7. 投稿者ランキング・キャンペーンランキングは1日1回更新。即時反映のため tag を失効させる。
   try {
     revalidateTag('user-rankings', { expire: 0 })
   } catch (e) {
-    // revalidate に失敗しても更新自体は成功しているため、ブロックしない。
     console.error('Failed to revalidate user-rankings tag:', e)
+  }
+  try {
+    revalidateTag('campaign-ranking', { expire: 0 })
+  } catch (e) {
+    console.error('Failed to revalidate campaign-ranking tag:', e)
   }
 
   return {
@@ -217,13 +221,16 @@ export async function toggleAccountSuspended(
     return { error: 'アカウント停止状態の更新に失敗しました。' }
   }
 
-  // 7. 投稿者ランキングは1日1回更新（JST 0:00、tag: 'user-rankings'）。
-  //    停止ユーザーはランキングから除外されるため、即時反映のため tag を失効させる。
+  // 7. 投稿者ランキング・キャンペーンランキングは1日1回更新。即時反映のため tag を失効させる。
   try {
     revalidateTag('user-rankings', { expire: 0 })
   } catch (e) {
-    // revalidate に失敗しても更新自体は成功しているため、ブロックしない。
     console.error('Failed to revalidate user-rankings tag:', e)
+  }
+  try {
+    revalidateTag('campaign-ranking', { expire: 0 })
+  } catch (e) {
+    console.error('Failed to revalidate campaign-ranking tag:', e)
   }
 
   return {
