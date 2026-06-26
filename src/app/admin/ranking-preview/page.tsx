@@ -461,6 +461,12 @@ export default async function AdminRankingPreviewPage() {
           対象profilesは最新{PROFILE_LIMIT}件、各activityは最大{ACTIVITY_FETCH_LIMIT}件まで取得します。
           pt保存、定期集計は行っていません。
         </p>
+        <p className="text-blue-700">
+          【内部仕様・非公開】連投対策として、{CAP_START_DATE_JST}（JST）以降の活動は
+          1ユーザー1日あたり最大{DAILY_CAP}ptまでに丸めて加算しています。
+          {CAP_START_DATE_JST}より前の活動は従来どおり上限なしで計算しています。
+          この上限ルールはユーザー向け画面には表示していません。
+        </p>
       </div>
 
       {queryError && (
