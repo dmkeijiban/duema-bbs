@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 
-export const DEFAULT_THREAD_THUMBNAIL = '/default-thread-thumbnail.svg'
+export const DEFAULT_THREAD_THUMBNAIL = '/default-thumbnail.jpg'
 
 /**
  * Supabase Storage の object URL を Image Transformation（render）URL に変換する。
