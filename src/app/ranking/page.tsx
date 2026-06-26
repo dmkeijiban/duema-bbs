@@ -8,6 +8,7 @@ import { BottomNav } from '@/components/ThreadSortPage'
 import { ThreadListHeader } from '@/components/ThreadListHeader'
 import { ThreadListTopContent } from '@/components/ThreadListTopContent'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
+import { AuthorRankingTabs } from '@/components/AuthorRankingTabs'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
@@ -352,45 +353,37 @@ function UserRankingList({
 
 async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
   const rankings = await getCachedUserRankings()
-  const rows = period === 'month' ? rankings.monthly : rankings.total
-  const title = period === 'month' ? '今月のランキング' : '総合ランキング'
-  const periodLabel = period === 'month' ? '今月' : '総合'
 
+  const note = (
+    <p className="mb-3 border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700">
+      投稿者ランキングは、スレッド投稿・コメント・思い出図鑑の評価・思い出レビューなどの活動から集計しています。ランキングは1日1回更新されます。
+    </p>
+  )
+
+  // 今月・総合の両データはここで一度に取得済み。
+  // 期間切り替えはクライアントstate（AuthorRankingTabs）で表示のみ出し分けし、
+  // URL遷移を伴わないためタブ切り替え時にスクロールが最上部へ戻らない。
   return (
-    <section className="mb-4 mt-4">
-      {/* 期間サブタブ */}
-      <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
-        <Link
-          href="/ranking?type=author&period=month"
-          className={`flex-1 border-r border-gray-300 py-2 text-center text-sm font-bold transition-colors ${
-            period === 'month'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          今月
-        </Link>
-        <Link
-          href="/ranking?type=author&period=all"
-          className={`flex-1 py-2 text-center text-sm font-bold transition-colors ${
-            period === 'all'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          総合
-        </Link>
-      </div>
-      <p className="mb-3 border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700">
-        投稿者ランキングは、スレッド投稿・コメント・思い出図鑑の評価・思い出レビューなどの活動から集計しています。ランキングは1日1回更新されます。
-      </p>
-      <UserRankingList
-        title={title}
-        periodLabel={periodLabel}
-        rows={rows}
-        showHonorTitle={HONOR_TITLE_ENABLED && period === 'all'}
-      />
-    </section>
+    <AuthorRankingTabs
+      initialPeriod={period}
+      note={note}
+      monthly={
+        <UserRankingList
+          title="今月のランキング"
+          periodLabel="今月"
+          rows={rankings.monthly}
+          showHonorTitle={false}
+        />
+      }
+      total={
+        <UserRankingList
+          title="総合ランキング"
+          periodLabel="総合"
+          rows={rankings.total}
+          showHonorTitle={HONOR_TITLE_ENABLED}
+        />
+      }
+    />
   )
 }
 
