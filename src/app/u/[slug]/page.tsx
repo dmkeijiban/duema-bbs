@@ -35,6 +35,7 @@ type Profile = {
   profile_hidden: boolean | null
   account_suspended: boolean | null
   withdrawn_at: string | null
+  rank_excluded: boolean | null
   duema_generation: string | null
   favorite_card: string | null
   favorite_civilization: string | null
@@ -89,7 +90,7 @@ async function getProfile(slug: string): Promise<Profile | null> {
   const { data, error } = await admin
     .from('profiles')
     .select(
-      'id, display_name, profile_slug, bio, x_url, youtube_url, avatar_url, created_at, profile_hidden, account_suspended, withdrawn_at, duema_generation, favorite_card, favorite_civilization, play_style'
+      'id, display_name, profile_slug, bio, x_url, youtube_url, avatar_url, created_at, profile_hidden, account_suspended, withdrawn_at, rank_excluded, duema_generation, favorite_card, favorite_civilization, play_style'
     )
     .eq('profile_slug', slug)
     .maybeSingle()
@@ -99,7 +100,7 @@ async function getProfile(slug: string): Promise<Profile | null> {
       const { data: fallback, error: fallbackError } = await admin
         .from('profiles')
         .select(
-          'id, display_name, profile_slug, bio, x_url, youtube_url, created_at, profile_hidden, account_suspended, withdrawn_at, duema_generation, favorite_card, favorite_civilization, play_style'
+          'id, display_name, profile_slug, bio, x_url, youtube_url, created_at, profile_hidden, account_suspended, withdrawn_at, rank_excluded, duema_generation, favorite_card, favorite_civilization, play_style'
         )
         .eq('profile_slug', slug)
         .maybeSingle()
@@ -109,7 +110,7 @@ async function getProfile(slug: string): Promise<Profile | null> {
         return null
       }
 
-      return fallback ? { ...fallback, avatar_url: null } : null
+      return fallback ? { ...fallback, avatar_url: null, rank_excluded: null } : null
     }
     console.error('Failed to fetch public profile:', error.message)
     return null
@@ -205,10 +206,10 @@ export default async function UserProfilePage({
   let campaignTitle: string | null = null
 
   const campaignState = resolveCampaignState(campaignSettings)
-  if (campaignState === 'active' || campaignState === 'ended') {
+  if ((campaignState === 'active' || campaignState === 'ended') && !profile.rank_excluded) {
     const entry = campaignResult.entries.find((e) => e.profileSlug === profile.profile_slug)
     if (campaignState === 'active') {
-      // 開催中: 圏外・0pt でも「参加中」バッジを表示
+      // 開催中: 圏外・0pt でも「参加中」バッジを表示（rank_excluded ユーザーは除く）
       campaignTitle = campaignSettings.title
       if (entry) {
         campaignRank = entry.rank
