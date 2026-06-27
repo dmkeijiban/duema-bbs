@@ -38,11 +38,12 @@ export async function generateMetadata({ params }: { params: Promise<{ date: str
   }
 }
 
-// 規制状態ごとのチップ配色（無制限=グレー / 殿堂入り=オレンジ / プレミアム殿堂=赤）
+// 規制状態ごとのチップ配色（無制限=グレー / 殿堂入り=オレンジ / プレミアム殿堂・プレミアム殿堂コンビ=赤）
 const STATUS_CHIP: Record<string, string> = {
   無制限: 'bg-gray-100 text-gray-700',
   殿堂入り: 'bg-orange-100 text-orange-700',
   プレミアム殿堂: 'bg-red-100 text-red-700',
+  プレミアム殿堂コンビ: 'bg-red-100 text-red-700',
 }
 
 // 規制変遷ステップを「→」区切りで折り返し可能に表示
