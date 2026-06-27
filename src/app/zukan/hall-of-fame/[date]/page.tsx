@@ -70,14 +70,13 @@ function HallCardItem({ card }: { card: HallCard }) {
         {/* カード画像（スマホ=上 / PC=左） */}
         <div className="shrink-0 border-b border-gray-200 bg-gray-50 p-3 sm:border-b-0 sm:border-r">
           <div className="mx-auto w-28 sm:w-24">
-            <HallOfFameCardImage src={card.imageUrl} name={card.name} officialUrl={card.officialUrl} />
+            <HallOfFameCardImage src={card.imageUrl} name={card.name} />
           </div>
         </div>
 
         {/* テキスト情報（スマホ=下 / PC=右） */}
         <div className="min-w-0 flex-1 space-y-3 px-4 py-3">
           <h2 className="text-base font-bold text-gray-800">{card.name}</h2>
-          <p className="text-sm leading-relaxed text-gray-700">{card.description}</p>
 
           <div>
             <div className="text-xs font-bold text-gray-500">初回指定</div>
@@ -119,7 +118,6 @@ export default async function HallOfFameDatePage({
       {/* タイトル */}
       <header className="mb-4 border border-gray-300 bg-white px-4 py-4">
         <h1 className="text-lg font-bold text-gray-800">{entry.title}</h1>
-        <p className="mt-2 text-sm leading-relaxed text-gray-700">{entry.description}</p>
       </header>
 
       {/* カード一覧（画像付きの横長カードを1列で表示） */}
