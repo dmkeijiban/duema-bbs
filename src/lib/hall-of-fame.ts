@@ -297,3 +297,34 @@ export const HALL_OF_FAME_ENTRIES: HallEntry[] = [
 export function getHallEntry(slug: string): HallEntry | null {
   return HALL_OF_FAME_ENTRIES.find(e => e.slug === slug) ?? null
 }
+
+/** 施行年（4桁）一覧を昇順で返す（例: ['2004','2005','2006','2007']） */
+export function getHallYears(): string[] {
+  const years = new Set(HALL_OF_FAME_ENTRIES.map(e => e.slug.slice(0, 4)))
+  return Array.from(years).sort()
+}
+
+/** 指定した施行年のエントリ一覧を日付順（配列定義順）で返す */
+export function getEntriesByYear(year: string): HallEntry[] {
+  return HALL_OF_FAME_ENTRIES.filter(e => e.slug.startsWith(`${year}-`))
+}
+
+/**
+ * 1施行日エントリから代表カード画像を最大3枚集める（年ページの日付カード用サムネ）。
+ * コンビ殿堂など images を持つカードはその画像を優先し、無ければ各カードの imageUrl を使う。
+ */
+export function getEntryThumbnails(entry: HallEntry): { src: string; name: string }[] {
+  const out: { src: string; name: string }[] = []
+  for (const card of entry.cards) {
+    if (card.images && card.images.length > 0) {
+      for (const img of card.images) {
+        out.push({ src: img.src, name: img.name })
+        if (out.length >= 3) return out
+      }
+    } else if (card.imageUrl) {
+      out.push({ src: card.imageUrl, name: card.name })
+      if (out.length >= 3) return out
+    }
+  }
+  return out
+}

@@ -1,16 +1,58 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { HALL_OF_FAME_ENTRIES, getHallEntry } from '@/lib/hall-of-fame'
+import {
+  HALL_OF_FAME_ENTRIES,
+  getHallEntry,
+  getHallYears,
+  getEntriesByYear,
+  getEntryThumbnails,
+} from '@/lib/hall-of-fame'
 import type { HallCard } from '@/lib/hall-of-fame'
 import { HallOfFameCardImage } from '@/components/HallOfFameCardImage'
 import { SITE_URL } from '@/lib/site-config'
 
+// 4桁の施行年スラッグ（例: 2007）か判定する。年の場合は年別一覧、それ以外は施行日詳細を表示する。
+const isYear = (date: string) => /^\d{4}$/.test(date)
+
 export function generateStaticParams() {
-  return HALL_OF_FAME_ENTRIES.map(entry => ({ date: entry.slug }))
+  return [
+    ...HALL_OF_FAME_ENTRIES.map(entry => ({ date: entry.slug })),
+    ...getHallYears().map(year => ({ date: year })),
+  ]
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ date: string }> }) {
   const { date } = await params
+
+  // 施行年ページのメタデータ
+  if (isYear(date)) {
+    if (getEntriesByYear(date).length === 0) {
+      return { title: '殿堂・プレミアム殿堂図鑑 | デュエマ思い出図鑑' }
+    }
+    const title = `${date}年 殿堂発表 | デュエマ思い出図鑑`
+    const description = `${date}年に施行された殿堂・プレミアム殿堂レギュレーションを施行日ごとに振り返ります。`
+    const url = `${SITE_URL}/zukan/hall-of-fame/${date}`
+    const image = `${SITE_URL}/default-thumbnail.jpg`
+    return {
+      title,
+      description,
+      alternates: { canonical: url },
+      openGraph: {
+        title,
+        description,
+        url,
+        type: 'website' as const,
+        images: [{ url: image, width: 1200, height: 630, alt: `${date}年 殿堂発表` }],
+      },
+      twitter: {
+        card: 'summary_large_image' as const,
+        title,
+        description,
+        images: [image],
+      },
+    }
+  }
+
   const entry = getHallEntry(date)
   if (!entry) {
     return { title: '殿堂入りカード | デュエマ思い出図鑑' }
@@ -107,12 +149,100 @@ function HallCardItem({ card }: { card: HallCard }) {
   )
 }
 
+// 施行年ページ：その年の施行日カードを縦に並べる。各カードは代表カード画像を最大3枚中央寄せで表示し、施行日詳細へリンクする。
+function HallOfFameYearPage({ year }: { year: string }) {
+  const entries = getEntriesByYear(year)
+  if (entries.length === 0) notFound()
+
+  return (
+    <div className="max-w-screen-xl mx-auto px-2 pt-2 pb-0">
+      {/* パンくず */}
+      <nav className="text-xs text-gray-500 mb-2 flex flex-wrap items-center gap-x-1">
+        <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
+        <span>{'>'}</span>
+        <Link href="/zukan" className="text-blue-600 hover:underline">思い出図鑑</Link>
+        <span>{'>'}</span>
+        <Link href="/zukan/hall-of-fame" className="text-blue-600 hover:underline">殿堂・プレミアム殿堂図鑑</Link>
+        <span>{'>'}</span>
+        <span>{year}年</span>
+      </nav>
+
+      {/* タイトル */}
+      <header className="mb-4 border border-gray-300 bg-white px-4 py-4">
+        <h1 className="text-lg font-bold text-gray-800">{year}年 殿堂発表</h1>
+      </header>
+
+      {/* 施行日カード一覧 */}
+      <section className="mb-5">
+        <div className="grid gap-3 md:grid-cols-2">
+          {entries.map(entry => {
+            const thumbs = getEntryThumbnails(entry)
+            return (
+              <Link
+                key={entry.slug}
+                href={`/zukan/hall-of-fame/${entry.slug}`}
+                className="block border border-gray-300 bg-white px-4 py-3 transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]"
+              >
+                {/* 代表カード画像（最大3枚・中央寄せ横並び）。はみ出す分は画像エリア内だけ横スクロール */}
+                {thumbs.length > 0 && (
+                  <div className="mb-3 flex justify-center gap-2 overflow-x-auto">
+                    {thumbs.map(thumb => (
+                      <div key={thumb.src} className="w-16 shrink-0">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={thumb.src}
+                          alt={`${thumb.name} カード画像`}
+                          loading="lazy"
+                          decoding="async"
+                          className="block w-full border border-gray-300 object-cover"
+                          style={{ aspectRatio: '63 / 88' }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 text-sm font-bold text-blue-700">{entry.dateLabel}</div>
+                  <span className="shrink-0 text-xs text-blue-500">→</span>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* 戻り導線 */}
+      <nav className="mb-2 flex flex-wrap gap-2 text-xs">
+        <Link
+          href="/zukan/hall-of-fame"
+          className="border border-gray-300 bg-white px-3 py-1.5 text-blue-600 hover:border-blue-400 hover:underline"
+        >
+          ← 殿堂・プレミアム殿堂図鑑へ戻る
+        </Link>
+        <Link
+          href="/zukan"
+          className="border border-gray-300 bg-white px-3 py-1.5 text-blue-600 hover:border-blue-400 hover:underline"
+        >
+          ← 思い出図鑑トップへ戻る
+        </Link>
+      </nav>
+    </div>
+  )
+}
+
 export default async function HallOfFameDatePage({
   params,
 }: {
   params: Promise<{ date: string }>
 }) {
   const { date } = await params
+
+  // 4桁の年スラッグなら施行年ページを表示
+  if (isYear(date)) {
+    return <HallOfFameYearPage year={date} />
+  }
+
   const entry = getHallEntry(date)
   if (!entry) notFound()
 
