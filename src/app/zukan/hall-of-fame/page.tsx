@@ -40,13 +40,13 @@ export default function HallOfFameTopPage() {
       </nav>
 
       {/* タイトル */}
-      <header className="mb-4 border border-gray-300 bg-gradient-to-br from-purple-50 to-indigo-50 px-4 py-4">
-        <h1 className="text-lg font-bold text-indigo-900">殿堂・プレミアム殿堂図鑑</h1>
+      <header className="mb-4 border border-gray-300 bg-white px-4 py-4">
+        <h1 className="text-lg font-bold text-gray-800">殿堂・プレミアム殿堂図鑑</h1>
         <p className="mt-2 text-sm leading-relaxed text-gray-700">
-          このページは公式の殿堂レギュレーション一覧ではなく、過去に環境へ大きな影響を与えた殿堂カードを振り返る、思い出図鑑内の特集ページです。
+          環境を変えたカード、制限・禁止の歴史、今なお語られる伝説の一枚を振り返る図鑑です。
         </p>
         <p className="mt-2 text-xs leading-relaxed text-gray-500">
-          最新の公式レギュレーションは
+          このページは公式の殿堂レギュレーション一覧ではなく、思い出図鑑内の特集ページです。最新の公式レギュレーションは
           <a
             href={OFFICIAL_REGULATION_URL}
             target="_blank"
@@ -69,16 +69,16 @@ export default function HallOfFameTopPage() {
             <Link
               key={entry.slug}
               href={`/zukan/hall-of-fame/${entry.slug}`}
-              className="block border border-gray-300 bg-white px-4 py-3 transition-all duration-100 hover:border-indigo-400 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 [-webkit-tap-highlight-color:transparent]"
+              className="block border border-gray-300 bg-white px-4 py-3 transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]"
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-sm font-bold text-indigo-900">{entry.dateLabel}</div>
+                  <div className="text-sm font-bold text-blue-700">{entry.dateLabel}</div>
                   <div className="mt-1 text-xs text-gray-600">
                     {entry.cards.length}枚の殿堂入りカードを振り返る
                   </div>
                 </div>
-                <span className="shrink-0 text-xs text-indigo-600">→</span>
+                <span className="shrink-0 text-xs text-blue-500">→</span>
               </div>
             </Link>
           ))}
