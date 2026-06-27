@@ -37,13 +37,22 @@ export async function generateMetadata({ params }: { params: Promise<{ date: str
   }
 }
 
-// 履歴ステップを「→」区切りで折り返し可能に表示
+// 規制状態ごとのチップ配色（無制限=グレー / 殿堂入り=オレンジ / プレミアム殿堂=赤）
+const STATUS_CHIP: Record<string, string> = {
+  無制限: 'bg-gray-100 text-gray-700',
+  殿堂入り: 'bg-orange-100 text-orange-700',
+  プレミアム殿堂: 'bg-red-100 text-red-700',
+}
+
+// 規制変遷ステップを「→」区切りで折り返し可能に表示
 function HistoryTrail({ history }: { history: string[] }) {
   return (
     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
       {history.map((step, i) => (
         <span key={i} className="flex items-center gap-x-1.5">
-          <span className="inline-block whitespace-nowrap rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+          <span
+            className={`inline-block whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium ${STATUS_CHIP[step] ?? 'bg-gray-100 text-gray-700'}`}
+          >
             {step}
           </span>
           {i < history.length - 1 && <span className="text-xs text-gray-400">→</span>}
@@ -65,13 +74,10 @@ function HallCardItem({ card }: { card: HallCard }) {
         <div>
           <div className="text-xs font-bold text-gray-500">初回指定</div>
           <div className="mt-1 text-sm font-medium text-gray-800">{card.initial}</div>
-          {card.later && (
-            <div className="mt-1 text-xs text-gray-500">その後の変遷：{card.later}</div>
-          )}
         </div>
 
         <div>
-          <div className="mb-1 text-xs font-bold text-gray-500">履歴</div>
+          <div className="mb-1 text-xs font-bold text-gray-500">規制変遷</div>
           <HistoryTrail history={card.history} />
         </div>
       </div>
