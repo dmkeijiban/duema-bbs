@@ -18,7 +18,15 @@ export type HallCard = {
   description: string
   /** 履歴（無制限/殿堂入り/プレミアム殿堂…の時系列ステップ） */
   history: string[]
+  /** 公式カード画像URL（任意。未設定や読み込み失敗時はプレースホルダ表示） */
+  imageUrl?: string
+  /** 公式カード詳細ページURL（任意。出典リンク／画像クリック先） */
+  officialUrl?: string
 }
+
+// 公式カード画像・詳細ページのURLを id から組み立てる（外部APIは使わず静的に保持）。
+const officialImage = (id: string) => `https://dm.takaratomy.co.jp/wp-content/card/cardimage/${id}.jpg`
+const officialPage = (id: string) => `https://dm.takaratomy.co.jp/card/detail/?id=${id}`
 
 /** 1施行日分の殿堂特集エントリ */
 export type HallEntry = {
@@ -49,6 +57,8 @@ export const HALL_OF_FAME_ENTRIES: HallEntry[] = [
         later: 'プレミアム殿堂 → 殿堂入り → 無制限',
         description: '初期デュエマを代表する強力ドロー呪文。',
         history: ['無制限', '殿堂入り', 'プレミアム殿堂', '殿堂入り', '無制限'],
+        imageUrl: officialImage('dm01-052'),
+        officialUrl: officialPage('dm01-052'),
       },
       {
         name: '《アストラル・リーフ》',
@@ -56,18 +66,24 @@ export const HALL_OF_FAME_ENTRIES: HallEntry[] = [
         later: '無制限',
         description: '青単速攻や進化クリーチャーの象徴的存在。',
         history: ['無制限', '殿堂入り', '無制限'],
+        imageUrl: officialImage('dm04-002'),
+        officialUrl: officialPage('dm04-002'),
       },
       {
         name: '《エメラル》',
         initial: '無制限 → 殿堂入り',
         description: 'シールド操作で多くのデッキに採用されたカード。',
         history: ['無制限', '殿堂入り'],
+        imageUrl: officialImage('dm03-042'),
+        officialUrl: officialPage('dm03-042'),
       },
       {
         name: '《ストリーミング・シェイパー》',
         initial: '無制限 → 殿堂入り',
         description: '水文明デッキの手札補充を支えた呪文。',
         history: ['無制限', '殿堂入り'],
+        imageUrl: officialImage('dm03-011'),
+        officialUrl: officialPage('dm03-011'),
       },
       {
         name: '《ディープ・オペレーション》',
@@ -75,6 +91,8 @@ export const HALL_OF_FAME_ENTRIES: HallEntry[] = [
         later: '無制限',
         description: '大量ドローが狙える初期の水文明呪文。',
         history: ['無制限', '殿堂入り', '無制限'],
+        imageUrl: officialImage('dm02-026'),
+        officialUrl: officialPage('dm02-026'),
       },
     ],
   },

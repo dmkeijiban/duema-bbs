@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { HALL_OF_FAME_ENTRIES, getHallEntry } from '@/lib/hall-of-fame'
 import type { HallCard } from '@/lib/hall-of-fame'
+import { HallOfFameCardImage } from '@/components/HallOfFameCardImage'
 import { SITE_URL } from '@/lib/site-config'
 
 export function generateStaticParams() {
@@ -64,21 +65,29 @@ function HistoryTrail({ history }: { history: string[] }) {
 
 function HallCardItem({ card }: { card: HallCard }) {
   return (
-    <article className="border border-gray-300 bg-white">
-      <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-        <h2 className="text-base font-bold text-gray-800">{card.name}</h2>
-      </div>
-      <div className="space-y-3 px-4 py-3">
-        <p className="text-sm leading-relaxed text-gray-700">{card.description}</p>
-
-        <div>
-          <div className="text-xs font-bold text-gray-500">初回指定</div>
-          <div className="mt-1 text-sm font-medium text-gray-800">{card.initial}</div>
+    <article className="overflow-hidden border border-gray-300 bg-white">
+      <div className="flex flex-col sm:flex-row">
+        {/* カード画像（スマホ=上 / PC=左） */}
+        <div className="shrink-0 border-b border-gray-200 bg-gray-50 p-3 sm:border-b-0 sm:border-r">
+          <div className="mx-auto w-28 sm:w-24">
+            <HallOfFameCardImage src={card.imageUrl} name={card.name} officialUrl={card.officialUrl} />
+          </div>
         </div>
 
-        <div>
-          <div className="mb-1 text-xs font-bold text-gray-500">規制変遷</div>
-          <HistoryTrail history={card.history} />
+        {/* テキスト情報（スマホ=下 / PC=右） */}
+        <div className="min-w-0 flex-1 space-y-3 px-4 py-3">
+          <h2 className="text-base font-bold text-gray-800">{card.name}</h2>
+          <p className="text-sm leading-relaxed text-gray-700">{card.description}</p>
+
+          <div>
+            <div className="text-xs font-bold text-gray-500">初回指定</div>
+            <div className="mt-1 text-sm font-medium text-gray-800">{card.initial}</div>
+          </div>
+
+          <div>
+            <div className="mb-1 text-xs font-bold text-gray-500">規制変遷</div>
+            <HistoryTrail history={card.history} />
+          </div>
         </div>
       </div>
     </article>
@@ -113,9 +122,9 @@ export default async function HallOfFameDatePage({
         <p className="mt-2 text-sm leading-relaxed text-gray-700">{entry.description}</p>
       </header>
 
-      {/* カード一覧 */}
+      {/* カード一覧（画像付きの横長カードを1列で表示） */}
       <section className="mb-5">
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-3">
           {entry.cards.map(card => (
             <HallCardItem key={card.name} card={card} />
           ))}
