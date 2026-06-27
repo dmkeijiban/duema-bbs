@@ -329,21 +329,19 @@ export const getCachedPublicAuthorProfiles = (userIds: string[]) => {
         return Object.fromEntries(
           (data ?? [])
             .filter(profile => profile.profile_slug && profile.display_name)
-            .filter(profile => {
-              if (profile.account_suspended === true) return false
-              if (profile.withdrawn_at) return true
-              return profile.profile_hidden !== true
-            })
+            .filter(profile =>
+              profile.account_suspended !== true &&
+              !profile.withdrawn_at &&
+              profile.profile_hidden !== true
+            )
             .map(profile => [
               String(profile.id),
-              profile.withdrawn_at
-                ? { id: String(profile.id), display_name: '退会済みユーザー', profile_slug: '', avatar_url: null }
-                : {
-                    id: String(profile.id),
-                    display_name: String(profile.display_name),
-                    profile_slug: String(profile.profile_slug),
-                    avatar_url: typeof profile.avatar_url === 'string' ? profile.avatar_url : null,
-                  },
+              {
+                id: String(profile.id),
+                display_name: String(profile.display_name),
+                profile_slug: String(profile.profile_slug),
+                avatar_url: typeof profile.avatar_url === 'string' ? profile.avatar_url : null,
+              },
             ])
         )
       } catch {
