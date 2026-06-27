@@ -244,18 +244,15 @@ export default async function ZukanTopPage() {
           </p>
         </header>
 
-        {/* 右：殿堂・プレミアム殿堂図鑑（特集ページへの入口） */}
+        {/* 右：殿堂・プレミアム殿堂図鑑（特集ページへの入口。左と同じ白カード） */}
         <Link
           href="/zukan/hall-of-fame"
-          className="group flex h-full flex-col border border-gray-300 bg-gradient-to-br from-purple-50 to-indigo-50 px-4 py-4 transition-all duration-100 hover:border-indigo-400 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 [-webkit-tap-highlight-color:transparent]"
+          className="flex h-full flex-col border border-gray-300 bg-white px-4 py-4 transition-all duration-100 hover:border-gray-400 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 [-webkit-tap-highlight-color:transparent]"
         >
-          <h2 className="text-lg font-bold text-indigo-900">殿堂・プレミアム殿堂図鑑</h2>
+          <h2 className="text-lg font-bold text-gray-800">殿堂・プレミアム殿堂図鑑</h2>
           <p className="mt-2 text-sm leading-relaxed text-gray-600">
             環境を変えたカード、禁止・制限の歴史、今なお語られる伝説の一枚を振り返る図鑑です。
           </p>
-          <span className="mt-auto pt-3 text-xs font-bold text-indigo-700 group-hover:underline">
-            殿堂図鑑を見る →
-          </span>
         </Link>
       </div>
 
