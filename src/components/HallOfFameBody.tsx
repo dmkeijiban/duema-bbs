@@ -12,18 +12,6 @@ export function HallOfFameBody() {
         <p className="mt-2 text-sm leading-relaxed text-gray-700">
           環境を変えたカード、制限・禁止の歴史、今なお語られる伝説の一枚を振り返る図鑑です。
         </p>
-        <p className="mt-2 text-xs leading-relaxed text-gray-500">
-          このページは公式の殿堂レギュレーション一覧ではなく、思い出図鑑内の特集ページです。最新の公式レギュレーションは
-          <a
-            href={OFFICIAL_REGULATION_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:underline"
-          >
-            公式サイト
-          </a>
-          をご確認ください。
-        </p>
       </header>
 
       {/* 施行日一覧 */}
