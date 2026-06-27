@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
+import { ZukanTabs, type ZukanTab } from '@/components/ZukanTabs'
+import { HallOfFameBody } from '@/components/HallOfFameBody'
 import { fetchPublishedPacks, fetchCardsBySlugs, fetchCardReviewHighlights } from '@/lib/zukan'
 import type { ZukanPack, ZukanCard, ZukanCardReviewHighlight } from '@/lib/zukan'
 import { SITE_URL } from '@/lib/site-config'
@@ -205,7 +207,7 @@ const DM01_PREVIEW_DEFS = [
   { slug: 'natural-trap',    name: 'ナチュラル・トラップ',   civ: '自然' },
 ]
 
-export default async function ZukanTopPage() {
+async function MemoriesView() {
   const [dbPacks, reviewHighlights] = await Promise.all([
     fetchPublishedPacks(),
     fetchCardReviewHighlights(),
@@ -220,41 +222,20 @@ export default async function ZukanTopPage() {
   const cardMap = new Map<string, ZukanCard>((dm01Cards ?? []).map(c => [c.slug, c]))
 
   return (
-    <div className="max-w-screen-xl mx-auto px-2 pt-2 pb-0">
-      {/* パンくず */}
-      <nav className="text-xs text-gray-500 mb-2 flex items-center gap-x-1">
-        <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
-        <span>{'>'}</span>
-        <span>思い出図鑑</span>
-      </nav>
-
+    <>
       {!isDbReady && (
         <p className="mb-3 border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           図鑑データを準備中です。もうしばらくお待ちください。
         </p>
       )}
 
-      {/* タイトル：左右2分割の入口（PC=2カラム / スマホ=縦並び） */}
-      <div className="mb-4 grid items-stretch gap-3 md:grid-cols-2">
-        {/* 左：思い出図鑑（このページ本体の入口） */}
-        <header className="flex h-full flex-col border border-gray-300 bg-white px-4 py-4">
-          <h1 className="text-lg font-bold text-gray-800">デュエマ思い出図鑑</h1>
-          <p className="mt-2 text-sm leading-relaxed text-gray-600">
-            パックを開けた記憶、憧れたカード、対戦で忘れられない一枚。みんなの思い出で作る図鑑です。
-          </p>
-        </header>
-
-        {/* 右：殿堂・プレミアム殿堂図鑑（特集ページへの入口。左と同じ白カード） */}
-        <Link
-          href="/zukan/hall-of-fame"
-          className="flex h-full flex-col border border-gray-300 bg-white px-4 py-4 transition-all duration-100 hover:border-gray-400 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 [-webkit-tap-highlight-color:transparent]"
-        >
-          <h2 className="text-lg font-bold text-gray-800">殿堂・プレミアム殿堂図鑑</h2>
-          <p className="mt-2 text-sm leading-relaxed text-gray-600">
-            環境を変えたカード、禁止・制限の歴史、今なお語られる伝説の一枚を振り返る図鑑です。
-          </p>
-        </Link>
-      </div>
+      {/* タイトル */}
+      <header className="mb-4 border border-gray-300 bg-white px-4 py-4">
+        <h1 className="text-lg font-bold text-gray-800">デュエマ思い出図鑑</h1>
+        <p className="mt-2 text-sm leading-relaxed text-gray-600">
+          パックを開けた記憶、憧れたカード、対戦で忘れられない一枚。みんなの思い出で作る図鑑です。
+        </p>
+      </header>
 
       {/* パック一覧 */}
       <section className="mb-5">
@@ -327,6 +308,31 @@ export default async function ZukanTopPage() {
       </div>
 
       <SnsCtaCard />
+    </>
+  )
+}
+
+export default async function ZukanTopPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>
+}) {
+  const sp = await searchParams
+  const activeTab: ZukanTab = sp?.tab === 'hall-of-fame' ? 'hall-of-fame' : 'memories'
+
+  return (
+    <div className="max-w-screen-xl mx-auto px-2 pt-2 pb-0">
+      {/* パンくず */}
+      <nav className="text-xs text-gray-500 mb-2 flex items-center gap-x-1">
+        <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
+        <span>{'>'}</span>
+        <span>思い出図鑑</span>
+      </nav>
+
+      {/* 思い出図鑑 / 殿堂・プレミアム殿堂図鑑 のタブ切り替え（同一 /zukan 内で表示を出し分け） */}
+      <ZukanTabs active={activeTab} />
+
+      {activeTab === 'hall-of-fame' ? <HallOfFameBody /> : <MemoriesView />}
     </div>
   )
 }
