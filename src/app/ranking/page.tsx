@@ -477,8 +477,8 @@ interface Props {
 export default async function RankingPage({ searchParams }: Props) {
   const { page: pageStr, type: typeParam, period: periodParam } = await searchParams
   const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
-  const activeTab = typeParam === 'author' ? 'author' : 'thread'
-  const activePeriod = periodParam === 'all' ? 'all' : 'month'
+  const activeTab = typeParam === 'author' || typeParam === 'users' ? 'author' : 'thread'
+  const activePeriod = periodParam === 'all' || periodParam === 'total' ? 'all' : 'month'
   // TODO: 投稿数が増えたら today/week も有効化する（内部ロジックは保持済み）
   const threadPeriod: ThreadPeriod =
     periodParam === 'today' ? 'today' : periodParam === 'week' ? 'week' : 'all'
@@ -529,7 +529,8 @@ export default async function RankingPage({ searchParams }: Props) {
         {/* タブナビゲーション */}
         <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
           <Link
-            href="/ranking?type=thread"
+            href="/ranking?type=threads"
+            scroll={false}
             className={`flex flex-1 items-center justify-center gap-1.5 border-r border-gray-300 py-2.5 text-sm font-bold transition-colors ${
               activeTab === 'thread'
                 ? 'bg-blue-600 text-white'
@@ -539,7 +540,8 @@ export default async function RankingPage({ searchParams }: Props) {
             📋 スレッドランキング
           </Link>
           <Link
-            href="/ranking?type=author&period=month"
+            href="/ranking?type=users&period=monthly"
+            scroll={false}
             className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 text-sm font-bold transition-colors ${
               activeTab === 'author'
                 ? 'bg-blue-600 text-white'
@@ -557,7 +559,8 @@ export default async function RankingPage({ searchParams }: Props) {
               {(['today', 'week', 'all'] as const).map((p, i, arr) => (
                 <Link
                   key={p}
-                  href={`/ranking?type=thread&period=${p}`}
+                  href={`/ranking?type=threads&period=${p}`}
+                  scroll={false}
                   className={`flex-1 py-2 text-center text-sm font-bold transition-colors ${
                     i < arr.length - 1 ? 'border-r border-gray-300' : ''
                   } ${

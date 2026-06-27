@@ -154,7 +154,7 @@ export function ProfileHeaderCard({
           <p className="text-xs text-gray-500 mt-1">コメント</p>
         </div>
         <Link
-          href="/ranking?type=author&period=month"
+          href="/ranking?type=users&period=monthly"
           target="_blank"
           rel="noopener noreferrer"
           className="px-3 py-3 hover:bg-blue-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
@@ -165,7 +165,7 @@ export function ProfileHeaderCard({
           <p className="text-xs text-gray-500 mt-1">今月</p>
         </Link>
         <Link
-          href="/ranking?type=author&period=all"
+          href="/ranking?type=users&period=total"
           target="_blank"
           rel="noopener noreferrer"
           className="px-3 py-3 hover:bg-indigo-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400"
