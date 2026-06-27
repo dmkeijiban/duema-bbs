@@ -13,9 +13,9 @@ import { SITE_URL } from '@/lib/site-config'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-// Typefully投稿の結果（APIレスポンス・ログ用）。
+// Typefully予約投稿の結果（APIレスポンス・ログ用）。
 type TypefullyOutcome =
-  | { status: 'created'; id: string; shareUrl: string }
+  | { status: 'scheduled'; id: string; shareUrl: string; scheduledAt: string }
   | { status: 'error'; error: string }
 
 // 作成済み思い出図鑑スレを X/Typefully へ投稿する文面を組み立てる。
@@ -64,7 +64,10 @@ export async function GET(req: NextRequest) {
 
       const threadUrl = `${SITE_URL}/thread/${result.threadId}`
       const text = buildTypefullyText(result.cardName, threadUrl)
-      const tf = await createTypefullyDraft({ threadLines: [text] })
+      // 下書きではなく「予約投稿」として登録し X へ自動投稿させる。
+      // 安全のため Cron 実行時刻の少し後（+2分）に予約する。
+      const scheduledAt = new Date(Date.now() + 2 * 60 * 1000).toISOString()
+      const tf = await createTypefullyDraft({ threadLines: [text], scheduleDate: scheduledAt })
 
       if ('error' in tf) {
         // Typefully投稿の失敗だけでは作成済みスレ・ログは削除しない（ここでは触らない）。
@@ -74,12 +77,13 @@ export async function GET(req: NextRequest) {
         })
         typefully = { status: 'error', error: tf.error }
       } else {
-        console.log('[daily-zukan-thread] typefully created', {
+        console.log('[daily-zukan-thread] typefully scheduled', {
           threadId: result.threadId,
           id: tf.id,
           shareUrl: tf.share_url,
+          scheduledAt,
         })
-        typefully = { status: 'created', id: tf.id, shareUrl: tf.share_url }
+        typefully = { status: 'scheduled', id: tf.id, shareUrl: tf.share_url, scheduledAt }
       }
     } else if (result.status === 'skipped') {
       console.log('[daily-zukan-thread] skipped', {
