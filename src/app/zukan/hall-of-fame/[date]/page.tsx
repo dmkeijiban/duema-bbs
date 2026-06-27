@@ -70,11 +70,12 @@ function HallCardItem({ card }: { card: HallCard }) {
       <div className="flex flex-col sm:flex-row">
         {/* カード画像（スマホ=上 / PC=左） */}
         {card.images && card.images.length > 0 ? (
-          /* コンビ殿堂など複数画像：PC=横並び / スマホ=画像エリア内だけ横スクロール */
-          <div className="min-w-0 border-b border-gray-200 bg-gray-50 p-3 sm:shrink-0 sm:border-b-0 sm:border-r">
-            <div className="flex gap-2 overflow-x-auto sm:overflow-visible">
+          /* コンビ殿堂など複数画像：通常カードと同じ画像サイズのまま横並び。
+             収まらない分は画像エリア内だけ横スクロール（PC/スマホ共通、ページ全体ははみ出さない） */
+          <div className="min-w-0 border-b border-gray-200 bg-gray-50 p-3 sm:border-b-0 sm:border-r">
+            <div className="flex gap-2 overflow-x-auto">
               {card.images.map(img => (
-                <div key={img.src} className="w-20 shrink-0">
+                <div key={img.src} className="w-28 shrink-0 sm:w-24">
                   <HallOfFameCardImage src={img.src} name={img.name} />
                 </div>
               ))}
