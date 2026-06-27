@@ -79,13 +79,12 @@ function HallCardItem({ card }: { card: HallCard }) {
         <div className="min-w-0 flex-1 space-y-3 px-4 py-3">
           <h2 className="text-base font-bold text-gray-800">{card.name}</h2>
 
-          <div>
-            <div className="text-xs font-bold text-gray-500">初回指定</div>
-            <div className="mt-1 text-sm font-medium text-gray-800">{card.initial}</div>
-          </div>
+          {/* その施行日で起きた変更（このページの主役）。大きめ・太字で目立たせる */}
+          <p className="text-base font-bold leading-snug text-gray-900 sm:text-lg">{card.initial}</p>
 
+          {/* 規制変遷（補足の履歴）。ラベルは控えめにして主役より目立たせない */}
           <div>
-            <div className="mb-1 text-xs font-bold text-gray-500">規制変遷</div>
+            <div className="mb-1 text-[11px] text-gray-400">規制変遷</div>
             <HistoryTrail history={card.history} />
           </div>
         </div>
