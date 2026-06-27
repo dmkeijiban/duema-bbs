@@ -27,12 +27,7 @@ export function HallOfFameBody() {
               className="block border border-gray-300 bg-white px-4 py-3 transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]"
             >
               <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-sm font-bold text-blue-700">{entry.dateLabel}</div>
-                  <div className="mt-1 text-xs text-gray-600">
-                    {entry.cards.length}枚の殿堂入りカードを振り返る
-                  </div>
-                </div>
+                <div className="min-w-0 text-sm font-bold text-blue-700">{entry.dateLabel}</div>
                 <span className="shrink-0 text-xs text-blue-500">→</span>
               </div>
             </Link>
