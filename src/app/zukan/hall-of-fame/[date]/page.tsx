@@ -69,11 +69,24 @@ function HallCardItem({ card }: { card: HallCard }) {
     <article className="overflow-hidden border border-gray-300 bg-white">
       <div className="flex flex-col sm:flex-row">
         {/* カード画像（スマホ=上 / PC=左） */}
-        <div className="shrink-0 border-b border-gray-200 bg-gray-50 p-3 sm:border-b-0 sm:border-r">
-          <div className="mx-auto w-28 sm:w-24">
-            <HallOfFameCardImage src={card.imageUrl} name={card.name} />
+        {card.images && card.images.length > 0 ? (
+          /* コンビ殿堂など複数画像：PC=横並び / スマホ=画像エリア内だけ横スクロール */
+          <div className="min-w-0 border-b border-gray-200 bg-gray-50 p-3 sm:shrink-0 sm:border-b-0 sm:border-r">
+            <div className="flex gap-2 overflow-x-auto sm:overflow-visible">
+              {card.images.map(img => (
+                <div key={img.src} className="w-20 shrink-0">
+                  <HallOfFameCardImage src={img.src} name={img.name} />
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="shrink-0 border-b border-gray-200 bg-gray-50 p-3 sm:border-b-0 sm:border-r">
+            <div className="mx-auto w-28 sm:w-24">
+              <HallOfFameCardImage src={card.imageUrl} name={card.name} />
+            </div>
+          </div>
+        )}
 
         {/* テキスト情報（スマホ=下 / PC=右） */}
         <div className="min-w-0 flex-1 space-y-3 px-4 py-3">

@@ -22,6 +22,11 @@ export type HallCard = {
   imageUrl?: string
   /** 公式カード詳細ページURL（任意。出典リンク／画像クリック先） */
   officialUrl?: string
+  /**
+   * 複数カード画像（任意）。プレミアム殿堂コンビなど複数枚を並べたい場合に使う。
+   * 設定されている場合は imageUrl の1枚表示ではなく、これらを横並び（スマホは横スクロール）で表示する。
+   */
+  images?: { src: string; name: string }[]
 }
 
 // 公式カード画像・詳細ページのURLを id から組み立てる（外部APIは使わず静的に保持）。
@@ -271,13 +276,18 @@ export const HALL_OF_FAME_ENTRIES: HallEntry[] = [
     description: '2007年11月23日の殿堂発表で指定されたプレミアム殿堂コンビを振り返るページです。',
     cards: [
       {
-        // プレミアム殿堂コンビ（単体カードではなくコンビ指定）。代表画像は《龍仙ロマネスク》。
+        // プレミアム殿堂コンビ（単体カードではなくコンビ指定）。3枚の画像を並べて表示する。
         name: '《龍仙ロマネスク》と《母なる大地》または《母なる紋章》',
         initial: '無制限 → プレミアム殿堂コンビ',
         description: '',
         history: ['無制限', 'プレミアム殿堂コンビ', '無制限'],
         imageUrl: officialImage('dm25-s04'),
         officialUrl: officialPage('dm25-s04'),
+        images: [
+          { src: officialImage('dm25-s04'), name: '龍仙ロマネスク' },
+          { src: officialImage('dm10-036'), name: '母なる大地' },
+          { src: officialImage('dmx01-010'), name: '母なる紋章' },
+        ],
       },
     ],
   },
