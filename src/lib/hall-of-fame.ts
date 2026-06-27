@@ -48,7 +48,7 @@ export const HALL_OF_FAME_ENTRIES: HallEntry[] = [
   {
     slug: '2004-03-15',
     dateLabel: '2004年3月15日',
-    title: '2004年3月15日 殿堂入りカード',
+    title: '2004年3月15日 殿堂発表',
     description: 'デュエル・マスターズ初期に初めて殿堂入りしたカードたちを振り返るページです。',
     cards: [
       {
