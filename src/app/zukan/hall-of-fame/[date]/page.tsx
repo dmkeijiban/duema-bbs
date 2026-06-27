@@ -56,8 +56,8 @@ function HistoryTrail({ history }: { history: string[] }) {
 function HallCardItem({ card }: { card: HallCard }) {
   return (
     <article className="border border-gray-300 bg-white">
-      <div className="border-b border-gray-200 bg-gradient-to-br from-purple-50 to-indigo-50 px-4 py-3">
-        <h2 className="text-base font-bold text-indigo-900">{card.name}</h2>
+      <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
+        <h2 className="text-base font-bold text-gray-800">{card.name}</h2>
       </div>
       <div className="space-y-3 px-4 py-3">
         <p className="text-sm leading-relaxed text-gray-700">{card.description}</p>
@@ -102,8 +102,8 @@ export default async function HallOfFameDatePage({
       </nav>
 
       {/* タイトル */}
-      <header className="mb-4 border border-gray-300 bg-gradient-to-br from-purple-50 to-indigo-50 px-4 py-4">
-        <h1 className="text-lg font-bold text-indigo-900">{entry.title}</h1>
+      <header className="mb-4 border border-gray-300 bg-white px-4 py-4">
+        <h1 className="text-lg font-bold text-gray-800">{entry.title}</h1>
         <p className="mt-2 text-sm leading-relaxed text-gray-700">{entry.description}</p>
       </header>
 
