@@ -1,0 +1,136 @@
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+import { HALL_OF_FAME_ENTRIES, getHallEntry } from '@/lib/hall-of-fame'
+import type { HallCard } from '@/lib/hall-of-fame'
+import { SITE_URL } from '@/lib/site-config'
+
+export function generateStaticParams() {
+  return HALL_OF_FAME_ENTRIES.map(entry => ({ date: entry.slug }))
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ date: string }> }) {
+  const { date } = await params
+  const entry = getHallEntry(date)
+  if (!entry) {
+    return { title: '殿堂入りカード | デュエマ思い出図鑑' }
+  }
+  const title = `${entry.title} | デュエマ思い出図鑑`
+  const url = `${SITE_URL}/zukan/hall-of-fame/${entry.slug}`
+  const image = `${SITE_URL}/default-thumbnail.jpg`
+  return {
+    title,
+    description: entry.description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description: entry.description,
+      url,
+      type: 'article' as const,
+      images: [{ url: image, width: 1200, height: 630, alt: entry.title }],
+    },
+    twitter: {
+      card: 'summary_large_image' as const,
+      title,
+      description: entry.description,
+      images: [image],
+    },
+  }
+}
+
+// 履歴ステップを「→」区切りで折り返し可能に表示
+function HistoryTrail({ history }: { history: string[] }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+      {history.map((step, i) => (
+        <span key={i} className="flex items-center gap-x-1.5">
+          <span className="inline-block whitespace-nowrap rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+            {step}
+          </span>
+          {i < history.length - 1 && <span className="text-xs text-gray-400">→</span>}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function HallCardItem({ card }: { card: HallCard }) {
+  return (
+    <article className="border border-gray-300 bg-white">
+      <div className="border-b border-gray-200 bg-gradient-to-br from-purple-50 to-indigo-50 px-4 py-3">
+        <h2 className="text-base font-bold text-indigo-900">{card.name}</h2>
+      </div>
+      <div className="space-y-3 px-4 py-3">
+        <p className="text-sm leading-relaxed text-gray-700">{card.description}</p>
+
+        <div>
+          <div className="text-xs font-bold text-gray-500">初回指定</div>
+          <div className="mt-1 text-sm font-medium text-gray-800">{card.initial}</div>
+          {card.later && (
+            <div className="mt-1 text-xs text-gray-500">その後の変遷：{card.later}</div>
+          )}
+        </div>
+
+        <div>
+          <div className="mb-1 text-xs font-bold text-gray-500">履歴</div>
+          <HistoryTrail history={card.history} />
+        </div>
+      </div>
+    </article>
+  )
+}
+
+export default async function HallOfFameDatePage({
+  params,
+}: {
+  params: Promise<{ date: string }>
+}) {
+  const { date } = await params
+  const entry = getHallEntry(date)
+  if (!entry) notFound()
+
+  return (
+    <div className="max-w-screen-xl mx-auto px-2 pt-2 pb-0">
+      {/* パンくず */}
+      <nav className="text-xs text-gray-500 mb-2 flex flex-wrap items-center gap-x-1">
+        <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
+        <span>{'>'}</span>
+        <Link href="/zukan" className="text-blue-600 hover:underline">思い出図鑑</Link>
+        <span>{'>'}</span>
+        <Link href="/zukan/hall-of-fame" className="text-blue-600 hover:underline">殿堂・プレミアム殿堂図鑑</Link>
+        <span>{'>'}</span>
+        <span>{entry.dateLabel}</span>
+      </nav>
+
+      {/* タイトル */}
+      <header className="mb-4 border border-gray-300 bg-gradient-to-br from-purple-50 to-indigo-50 px-4 py-4">
+        <h1 className="text-lg font-bold text-indigo-900">{entry.title}</h1>
+        <p className="mt-2 text-sm leading-relaxed text-gray-700">{entry.description}</p>
+      </header>
+
+      {/* カード一覧 */}
+      <section className="mb-5">
+        <div className="grid gap-3 md:grid-cols-2">
+          {entry.cards.map(card => (
+            <HallCardItem key={card.name} card={card} />
+          ))}
+        </div>
+      </section>
+
+      {/* 戻り導線 */}
+      <nav className="mb-2 flex flex-wrap gap-2 text-xs">
+        <Link
+          href="/zukan/hall-of-fame"
+          className="border border-gray-300 bg-white px-3 py-1.5 text-blue-600 hover:border-blue-400 hover:underline"
+        >
+          ← 殿堂・プレミアム殿堂図鑑へ戻る
+        </Link>
+        <Link
+          href="/zukan"
+          className="border border-gray-300 bg-white px-3 py-1.5 text-blue-600 hover:border-blue-400 hover:underline"
+        >
+          ← 思い出図鑑トップへ戻る
+        </Link>
+      </nav>
+    </div>
+  )
+}
