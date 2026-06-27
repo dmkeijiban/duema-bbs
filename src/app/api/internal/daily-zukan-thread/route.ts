@@ -7,9 +7,30 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { runDailyZukanThread } from '@/lib/daily-zukan-thread'
+import { createTypefullyDraft } from '@/lib/typefully'
+import { SITE_URL } from '@/lib/site-config'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
+
+// Typefully予約投稿の結果（APIレスポンス・ログ用）。
+type TypefullyOutcome =
+  | { status: 'scheduled'; id: string; shareUrl: string; scheduledAt: string }
+  | { status: 'error'; error: string }
+
+// 作成済み思い出図鑑スレを X/Typefully へ投稿する文面を組み立てる。
+function buildTypefullyText(cardName: string, threadUrl: string): string {
+  return [
+    '本日の思い出図鑑スレ',
+    '',
+    `${cardName}について語ろう`,
+    '',
+    '当時の思い出、使っていたデッキ、今の評価など',
+    '気軽にコメントしてください。',
+    '',
+    threadUrl,
+  ].join('\n')
+}
 
 function assertCronAuth(req: NextRequest): NextResponse | null {
   const authHeader = req.headers.get('authorization')
@@ -27,6 +48,11 @@ export async function GET(req: NextRequest) {
   try {
     const result = await runDailyZukanThread()
 
+    // Typefully投稿は created のときだけ実行する。
+    // skipped / error では投稿しない。created は posted_date UNIQUE により
+    // 1日1回しか発生しないため、同じ日に二重投稿されることはない。
+    let typefully: TypefullyOutcome | undefined
+
     if (result.status === 'created') {
       console.log('[daily-zukan-thread] created', {
         postedDate: result.postedDate,
@@ -35,6 +61,30 @@ export async function GET(req: NextRequest) {
         threadId: result.threadId,
         cycleNo: result.cycleNo,
       })
+
+      const threadUrl = `${SITE_URL}/thread/${result.threadId}`
+      const text = buildTypefullyText(result.cardName, threadUrl)
+      // 下書きではなく「予約投稿」として登録し X へ自動投稿させる。
+      // 安全のため Cron 実行時刻の少し後（+2分）に予約する。
+      const scheduledAt = new Date(Date.now() + 2 * 60 * 1000).toISOString()
+      const tf = await createTypefullyDraft({ threadLines: [text], scheduleDate: scheduledAt })
+
+      if ('error' in tf) {
+        // Typefully投稿の失敗だけでは作成済みスレ・ログは削除しない（ここでは触らない）。
+        console.error('[daily-zukan-thread] typefully error', {
+          threadId: result.threadId,
+          error: tf.error,
+        })
+        typefully = { status: 'error', error: tf.error }
+      } else {
+        console.log('[daily-zukan-thread] typefully scheduled', {
+          threadId: result.threadId,
+          id: tf.id,
+          shareUrl: tf.share_url,
+          scheduledAt,
+        })
+        typefully = { status: 'scheduled', id: tf.id, shareUrl: tf.share_url, scheduledAt }
+      }
     } else if (result.status === 'skipped') {
       console.log('[daily-zukan-thread] skipped', {
         postedDate: result.postedDate,
@@ -44,8 +94,13 @@ export async function GET(req: NextRequest) {
       console.error('[daily-zukan-thread] error', result)
     }
 
+    // HTTPステータスはスレ作成結果のみで決める。Typefully投稿の失敗は
+    // body の typefully フィールドで知らせるだけで、200のまま（スレ作成は成功している）。
     const httpStatus = result.status === 'error' ? 500 : 200
-    return NextResponse.json(result, { status: httpStatus })
+    return NextResponse.json(
+      typefully ? { ...result, typefully } : result,
+      { status: httpStatus }
+    )
   } catch (e) {
     const message = e instanceof Error ? e.message : 'unknown error'
     console.error('[daily-zukan-thread] unexpected error:', message)
