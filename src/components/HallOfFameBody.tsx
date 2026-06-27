@@ -1,9 +1,10 @@
 import Link from 'next/link'
-import { HALL_OF_FAME_ENTRIES, OFFICIAL_REGULATION_URL } from '@/lib/hall-of-fame'
+import { getHallYears, OFFICIAL_REGULATION_URL } from '@/lib/hall-of-fame'
 
-// 殿堂・プレミアム殿堂図鑑の本文（見出し＋施行日一覧＋公式リンク）。
+// 殿堂・プレミアム殿堂図鑑の本文（見出し＋施行年一覧＋公式リンク）。
 // /zukan のタブ表示と、互換用の /zukan/hall-of-fame 単独ページの両方で再利用する。
 export function HallOfFameBody() {
+  const years = getHallYears()
   return (
     <>
       {/* タイトル */}
@@ -14,20 +15,20 @@ export function HallOfFameBody() {
         </p>
       </header>
 
-      {/* 施行日一覧 */}
+      {/* 施行年一覧 */}
       <section className="mb-5">
         <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
-          <h2 className="text-sm font-bold text-gray-800">施行日から振り返る</h2>
+          <h2 className="text-sm font-bold text-gray-800">施行年から振り返る</h2>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
-          {HALL_OF_FAME_ENTRIES.map(entry => (
+          {years.map(year => (
             <Link
-              key={entry.slug}
-              href={`/zukan/hall-of-fame/${entry.slug}`}
+              key={year}
+              href={`/zukan/hall-of-fame/${year}`}
               className="block border border-gray-300 bg-white px-4 py-3 transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]"
             >
               <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0 text-sm font-bold text-blue-700">{entry.dateLabel}</div>
+                <div className="min-w-0 text-sm font-bold text-blue-700">{year}年</div>
                 <span className="shrink-0 text-xs text-blue-500">→</span>
               </div>
             </Link>
