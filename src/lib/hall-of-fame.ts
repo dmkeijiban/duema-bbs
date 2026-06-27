@@ -96,6 +96,62 @@ export const HALL_OF_FAME_ENTRIES: HallEntry[] = [
       },
     ],
   },
+  {
+    slug: '2005-03-15',
+    dateLabel: '2005年3月15日',
+    title: '2005年3月15日 殿堂発表',
+    description: '2005年3月15日の殿堂発表で指定されたカードを振り返るページです。',
+    cards: [
+      {
+        name: '《アクアン》',
+        initial: '無制限 → 殿堂入り',
+        description: '',
+        history: ['無制限', '殿堂入り', 'プレミアム殿堂', '殿堂入り', '無制限'],
+        imageUrl: officialImage('dm04-010'),
+        officialUrl: officialPage('dm04-010'),
+      },
+    ],
+  },
+  {
+    slug: '2005-07-15',
+    dateLabel: '2005年7月15日',
+    title: '2005年7月15日 殿堂発表',
+    description: '2005年7月15日の殿堂発表で指定されたカードを振り返るページです。',
+    cards: [
+      {
+        name: '《スケルトン・バイス》',
+        initial: '無制限 → 殿堂入り',
+        description: '',
+        history: ['無制限', '殿堂入り', 'プレミアム殿堂'],
+        imageUrl: officialImage('dm08-014'),
+        officialUrl: officialPage('dm08-014'),
+      },
+      {
+        name: '《無双竜機ボルバルザーク》',
+        initial: '無制限 → 殿堂入り',
+        description: '',
+        history: ['無制限', '殿堂入り', 'プレミアム殿堂'],
+        imageUrl: officialImage('dm10-009'),
+        officialUrl: officialPage('dm10-009'),
+      },
+      {
+        name: '《ヘル・スラッシュ》',
+        initial: '無制限 → 殿堂入り',
+        description: '',
+        history: ['無制限', '殿堂入り', 'プレミアム殿堂'],
+        imageUrl: officialImage('dm06-057'),
+        officialUrl: officialPage('dm06-057'),
+      },
+      {
+        name: '《ロスト・チャージャー》',
+        initial: '無制限 → 殿堂入り',
+        description: '',
+        history: ['無制限', '殿堂入り', 'プレミアム殿堂'],
+        imageUrl: officialImage('dm09-014'),
+        officialUrl: officialPage('dm09-014'),
+      },
+    ],
+  },
 ]
 
 /** スラッグから殿堂特集エントリを取得（なければ null） */
