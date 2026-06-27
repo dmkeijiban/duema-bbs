@@ -172,9 +172,9 @@ function HallOfFameYearPage({ year }: { year: string }) {
         <h1 className="text-lg font-bold text-gray-800">{year}年 殿堂発表</h1>
       </header>
 
-      {/* 施行日カード一覧 */}
+      {/* 施行日カード一覧（1カラム縦並び：上に日付見出し、下に代表カード画像を中央寄せ） */}
       <section className="mb-5">
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-3">
           {entries.map(entry => {
             const thumbs = getEntryThumbnails(entry)
             return (
@@ -183,11 +183,18 @@ function HallOfFameYearPage({ year }: { year: string }) {
                 href={`/zukan/hall-of-fame/${entry.slug}`}
                 className="block border border-gray-300 bg-white px-4 py-3 transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]"
               >
-                {/* 代表カード画像（最大3枚・中央寄せ横並び）。はみ出す分は画像エリア内だけ横スクロール */}
+                {/* 日付見出し（カード上部） */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 text-sm font-bold text-blue-700">{entry.dateLabel} 殿堂発表</div>
+                  <span className="shrink-0 text-xs text-blue-500">→</span>
+                </div>
+
+                {/* 代表カード画像（最大3枚・中央寄せ）。枚数（1〜3枚）に関わらず1枚あたりの表示サイズは同一。
+                    スマホでも3枚が並んで収まる固定幅にして、ページ全体の横スクロールを発生させない */}
                 {thumbs.length > 0 && (
-                  <div className="mb-3 flex justify-center gap-2 overflow-x-auto">
+                  <div className="mt-3 flex justify-center gap-2 sm:gap-3">
                     {thumbs.map(thumb => (
-                      <div key={thumb.src} className="w-16 shrink-0">
+                      <div key={thumb.src} className="w-20 shrink-0 sm:w-28 md:w-32">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={thumb.src}
@@ -201,11 +208,6 @@ function HallOfFameYearPage({ year }: { year: string }) {
                     ))}
                   </div>
                 )}
-
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0 text-sm font-bold text-blue-700">{entry.dateLabel}</div>
-                  <span className="shrink-0 text-xs text-blue-500">→</span>
-                </div>
               </Link>
             )
           })}
