@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: { params: Promise<{ date: str
     if (getEntriesByYear(date).length === 0) {
       return { title: '殿堂・プレミアム殿堂図鑑 | デュエマ思い出図鑑' }
     }
-    const title = `${date}年 殿堂発表 | デュエマ思い出図鑑`
+    const title = `${date}年 殿堂発表まとめ | デュエマ思い出図鑑`
     const description = `${date}年に施行された殿堂・プレミアム殿堂レギュレーションを施行日ごとに振り返ります。`
     const url = `${SITE_URL}/zukan/hall-of-fame/${date}`
     const image = `${SITE_URL}/default-thumbnail.jpg`
@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: { params: Promise<{ date: str
         description,
         url,
         type: 'website' as const,
-        images: [{ url: image, width: 1200, height: 630, alt: `${date}年 殿堂発表` }],
+        images: [{ url: image, width: 1200, height: 630, alt: `${date}年 殿堂発表まとめ` }],
       },
       twitter: {
         card: 'summary_large_image' as const,
@@ -169,32 +169,34 @@ function HallOfFameYearPage({ year }: { year: string }) {
 
       {/* タイトル */}
       <header className="mb-4 border border-gray-300 bg-white px-4 py-4">
-        <h1 className="text-lg font-bold text-gray-800">{year}年 殿堂発表</h1>
+        <h1 className="text-lg font-bold text-gray-800">{year}年 殿堂発表まとめ</h1>
       </header>
 
-      {/* 施行日カード一覧（1カラム縦並び：上に日付見出し、下に代表カード画像を中央寄せ） */}
+      {/* 施行日カード一覧（1カラム縦並び：上に日付見出し、すぐ下に代表カード画像を中央寄せ）。
+          余白は最小限に抑えて1カードの高さをコンパクトに保ち、画像を主役にする */}
       <section className="mb-5">
-        <div className="space-y-3">
+        <div className="space-y-2">
           {entries.map(entry => {
             const thumbs = getEntryThumbnails(entry)
             return (
               <Link
                 key={entry.slug}
                 href={`/zukan/hall-of-fame/${entry.slug}`}
-                className="block border border-gray-300 bg-white px-4 py-3 transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]"
+                className="block border border-gray-300 bg-white px-3 py-2 transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]"
               >
-                {/* 日付見出し（カード上部） */}
+                {/* 日付見出し（カード上部・1行コンパクト） */}
                 <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0 text-sm font-bold text-blue-700">{entry.dateLabel} 殿堂発表</div>
+                  <div className="min-w-0 text-sm font-bold leading-tight text-blue-700">{entry.dateLabel} 殿堂発表</div>
                   <span className="shrink-0 text-xs text-blue-500">→</span>
                 </div>
 
                 {/* 代表カード画像（最大3枚・中央寄せ）。枚数（1〜3枚）に関わらず1枚あたりの表示サイズは同一。
-                    スマホでも3枚が並んで収まる固定幅にして、ページ全体の横スクロールを発生させない */}
+                    スマホでも3枚が並んで収まる固定幅にして、ページ全体の横スクロールを発生させない。
+                    日付見出しのすぐ下に置き、画像上下の余分な余白を作らない */}
                 {thumbs.length > 0 && (
-                  <div className="mt-3 flex justify-center gap-2 sm:gap-3">
+                  <div className="mt-1.5 flex justify-center gap-2 sm:gap-3">
                     {thumbs.map(thumb => (
-                      <div key={thumb.src} className="w-20 shrink-0 sm:w-28 md:w-32">
+                      <div key={thumb.src} className="w-20 shrink-0 sm:w-24 md:w-28">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={thumb.src}
