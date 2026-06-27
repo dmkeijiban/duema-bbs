@@ -42,6 +42,12 @@ const THREAD_RULES_DEFAULT = `1.アンカーはレス番号をクリックで自
 
 interface Props {
   params: Promise<{ id: string }>
+  searchParams?: Promise<{ posted?: string; auth?: string }>
+}
+
+function getPostSubmitNotice(params?: { posted?: string; auth?: string }) {
+  if (params?.posted !== 'thread') return null
+  return params.auth === 'anon' ? 'anon' : 'user'
 }
 
 function cleanStructuredText(value: string | null | undefined, fallback = '') {
@@ -136,15 +142,20 @@ export async function generateMetadata({ params }: Props) {
   return meta
 }
 
-export default async function ThreadPage({ params }: Props) {
+export default async function ThreadPage({ params, searchParams }: Props) {
   const { id } = await params
+  const query = await searchParams
   const threadId = parseInt(id)
   if (isNaN(threadId)) notFound()
 
-  return renderThreadPage(threadId, 1)
+  return renderThreadPage(threadId, 1, getPostSubmitNotice(query))
 }
 
-export async function renderThreadPage(threadId: number, page: number) {
+export async function renderThreadPage(
+  threadId: number,
+  page: number,
+  postSubmitNotice: 'anon' | 'user' | null = null
+) {
   const [threadRules, threadNotices] = await Promise.all([
     getCachedSetting('thread_rules', THREAD_RULES_DEFAULT),
     getCachedThreadNotices(),
@@ -315,6 +326,24 @@ export async function renderThreadPage(threadId: number, page: number) {
       {visibleThreadNotices.map(n => (
         <NoticeBlock key={n.id} notice={n} />
       ))}
+
+      {postSubmitNotice && (
+        <div
+          className="mb-3 border px-3 py-2 text-sm leading-relaxed"
+          style={{ background: '#d1e7dd', color: '#0f5132', borderColor: '#badbcc' }}
+        >
+          {postSubmitNotice === 'anon' ? (
+            <p>
+              投稿しました。アカウントを作成すると、プロフィールや投稿一覧を利用できます。
+              <Link href="/login?mode=signup" className="ml-2 font-bold underline">
+                アカウント作成
+              </Link>
+            </p>
+          ) : (
+            <p>投稿しました！ありがとうございます。</p>
+          )}
+        </div>
+      )}
 
       {/* AdSense 記事内広告（スレッドタイトル直下・1ページ目のみ） */}
       {page === 1 && (
