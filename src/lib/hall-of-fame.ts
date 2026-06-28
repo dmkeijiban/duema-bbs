@@ -328,3 +328,25 @@ export function getEntryThumbnails(entry: HallEntry): { src: string; name: strin
   }
   return out
 }
+
+/**
+ * 指定した施行年の代表カード画像を最大 max 枚集める（年度トップ一覧カードのサムネ用）。
+ * その年のエントリを古い順（配列定義順）に見て、各カードの images（コンビ殿堂など）→ imageUrl の順で先頭から拾う。
+ */
+export function getYearThumbnails(year: string, max = 3): { src: string; name: string }[] {
+  const out: { src: string; name: string }[] = []
+  for (const entry of getEntriesByYear(year)) {
+    for (const card of entry.cards) {
+      if (card.images && card.images.length > 0) {
+        for (const img of card.images) {
+          out.push({ src: img.src, name: img.name })
+          if (out.length >= max) return out
+        }
+      } else if (card.imageUrl) {
+        out.push({ src: card.imageUrl, name: card.name })
+        if (out.length >= max) return out
+      }
+    }
+  }
+  return out
+}
