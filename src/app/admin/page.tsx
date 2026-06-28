@@ -152,19 +152,30 @@ export default async function AdminPage({
   const [
     statThreadCountRes,
     statCommentCountRes,
-    statViewRowsRes,
     statTopThreadsRes,
   ] = await Promise.all([
     adminSupabase.from('threads').select('id', { count: 'exact', head: true }),
     adminSupabase.from('posts').select('id', { count: 'exact', head: true }).eq('is_deleted', false),
-    adminSupabase.from('threads').select('view_count').limit(20000),
     adminSupabase.from('threads').select('id, title, view_count').order('view_count', { ascending: false }).limit(5),
   ])
   const statThreadCount = statThreadCountRes.count ?? 0
   const statCommentCount = statCommentCountRes.count ?? 0
-  const statTotalViews = (statViewRowsRes.data ?? []).reduce((sum, r) => sum + (r.view_count ?? 0), 0)
-  const statAvgViews = statThreadCount > 0 ? Math.round(statTotalViews / statThreadCount) : 0
   const statTopThreads = statTopThreadsRes.data ?? []
+
+  // スレ総閲覧数：固定上限を設けず range() で全スレを全件ページングして合計する
+  // （スレ数が大きくても過少集計にならないように）。1000件ずつ取得し、満たない/0件で終了。
+  const STAT_PAGE = 1000
+  let statTotalViews = 0
+  for (let offset = 0; offset < 5_000_000; offset += STAT_PAGE) {
+    const { data: viewRows } = await adminSupabase
+      .from('threads')
+      .select('view_count')
+      .range(offset, offset + STAT_PAGE - 1)
+    if (!viewRows || viewRows.length === 0) break
+    statTotalViews += viewRows.reduce((sum, r) => sum + (r.view_count ?? 0), 0)
+    if (viewRows.length < STAT_PAGE) break
+  }
+  const statAvgViews = statThreadCount > 0 ? Math.round(statTotalViews / statThreadCount) : 0
 
   // サイト設定
   const settings = await getAllSettings()
