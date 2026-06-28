@@ -146,6 +146,26 @@ export default async function AdminPage({
   // お知らせ一覧
   const { data: notices } = await supabase.from('notices').select('*').order('position').order('sort_order')
 
+  // 📊 アクセス概要（簡易指標）
+  // 既存の個別スレ閲覧数（threads.view_count）とコメント（posts）から集計。
+  // GA/GA4/Analytics API・新規テーブルは使わず、DB変更なしで取得できる範囲のみ。閲覧数カウント処理は変更しない。
+  const [
+    statThreadCountRes,
+    statCommentCountRes,
+    statViewRowsRes,
+    statTopThreadsRes,
+  ] = await Promise.all([
+    adminSupabase.from('threads').select('id', { count: 'exact', head: true }),
+    adminSupabase.from('posts').select('id', { count: 'exact', head: true }).eq('is_deleted', false),
+    adminSupabase.from('threads').select('view_count').limit(20000),
+    adminSupabase.from('threads').select('id, title, view_count').order('view_count', { ascending: false }).limit(5),
+  ])
+  const statThreadCount = statThreadCountRes.count ?? 0
+  const statCommentCount = statCommentCountRes.count ?? 0
+  const statTotalViews = (statViewRowsRes.data ?? []).reduce((sum, r) => sum + (r.view_count ?? 0), 0)
+  const statAvgViews = statThreadCount > 0 ? Math.round(statTotalViews / statThreadCount) : 0
+  const statTopThreads = statTopThreadsRes.data ?? []
+
   // サイト設定
   const settings = await getAllSettings()
   const [{ data: ngWords }, { data: sessionBans }] = await Promise.all([
@@ -312,6 +332,48 @@ export default async function AdminPage({
 
         </div>
       </details>
+
+      {/* ─── 📊 アクセス概要（管理メニュー直下・モデレーションの上）。スレ閲覧数ベースの簡易指標 ─── */}
+      <section className="mb-4 border border-gray-200 bg-white rounded">
+        <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-2">
+          <span className="font-bold text-gray-700">📊 アクセス概要</span>
+          <span className="text-[10px] text-gray-400">スレ閲覧数ベース（簡易指標・GA等は未使用）</span>
+        </div>
+        <div className="px-3 py-3">
+          {/* 指標小カード：PC=横並び4列 / スマホ=2列で折り返し（横スクロールなし） */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              { label: 'スレ総閲覧数', value: statTotalViews },
+              { label: 'スレ数', value: statThreadCount },
+              { label: 'コメント数', value: statCommentCount },
+              { label: '平均閲覧数', value: statAvgViews },
+            ].map(s => (
+              <div key={s.label} className="rounded border border-gray-200 bg-gray-50 px-2 py-2 text-center">
+                <div className="text-sm font-bold tabular-nums text-gray-800">{s.value.toLocaleString()}</div>
+                <div className="mt-0.5 text-[10px] text-gray-500">{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* 閲覧数上位スレ5件 */}
+          {statTopThreads.length > 0 && (
+            <div className="mt-3">
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">閲覧数上位スレ</p>
+              <ol className="space-y-1 text-xs">
+                {statTopThreads.map((t, i) => (
+                  <li key={t.id} className="flex items-center gap-2">
+                    <span className="shrink-0 text-gray-400">{i + 1}.</span>
+                    <Link href={`/thread/${t.id}`} className="min-w-0 flex-1 truncate text-blue-600 hover:underline">
+                      {t.title}
+                    </Link>
+                    <span className="shrink-0 tabular-nums text-gray-500">{(t.view_count ?? 0).toLocaleString()}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* ─── 編集フォーム（URL パラメータがある場合のみ表示） ─── */}
       {editThread && (
