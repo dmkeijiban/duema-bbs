@@ -257,10 +257,12 @@ export default async function AdminPage({
           <span className="text-gray-400 text-xs">▶</span>
           <span>管理メニュー</span>
         </summary>
-        <div className="border-t border-gray-100 px-3 py-3 space-y-3">
+        <div className="border-t border-gray-100 px-3 py-2 space-y-1.5">
 
-          <div>
-            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">コンテンツ</p>
+          {/* 各カテゴリ：見出し＋ボタン群を横並び（PC=見出し左・ボタン右で1行寄せ／スマホ=見出し上・ボタン下に折り返し）。
+              ボタンは flex-wrap で自然に折り返し、横スクロールは発生させない */}
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:w-32 sm:shrink-0 sm:pt-1.5">コンテンツ</p>
             <div className="flex flex-wrap gap-1.5">
               <Link href="/admin/categories" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">🗂 カテゴリ</Link>
               <Link href="/admin/pages" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">📄 固定ページ</Link>
@@ -273,16 +275,16 @@ export default async function AdminPage({
             </div>
           </div>
 
-          <div>
-            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">X / SNS</p>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:w-32 sm:shrink-0 sm:pt-1.5">X / SNS</p>
             <div className="flex flex-wrap gap-1.5">
               <Link href="/admin/x-posts" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">🐦 X投稿管理</Link>
               <Link href="/admin/x-schedule" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">📅 スケジュール</Link>
             </div>
           </div>
 
-          <div>
-            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">ユーティリティ</p>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:w-32 sm:shrink-0 sm:pt-1.5">ユーティリティ</p>
             <div className="flex flex-wrap gap-1.5">
               <Link href="/admin/cleanup" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">🧹 データ整理</Link>
               <Link href="/admin/deleted-posts" className="px-2.5 py-1 text-xs border border-orange-300 text-orange-600 hover:bg-orange-50 rounded">🗑️ 削除済みレス</Link>
@@ -290,16 +292,16 @@ export default async function AdminPage({
             </div>
           </div>
 
-          <div>
-            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">通報管理</p>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:w-32 sm:shrink-0 sm:pt-1.5">通報管理</p>
             <div className="flex flex-wrap gap-1.5">
               <Link href="/admin/reports" className="px-2.5 py-1 text-xs border border-orange-300 text-orange-700 hover:bg-orange-50 rounded">🚨 通報管理</Link>
               <Link href="/admin/report-mutes" className="px-2.5 py-1 text-xs border border-orange-300 text-orange-700 hover:bg-orange-50 rounded">🔇 受付停止一覧</Link>
             </div>
           </div>
 
-          <div>
-            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">ユーザー・ランキング</p>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:w-32 sm:shrink-0 sm:pt-1.5">ユーザー・ランキング</p>
             <div className="flex flex-wrap gap-1.5">
               <Link href="/admin/users" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">👤 登録ユーザー</Link>
               <Link href="/admin/ranking-preview" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">🏆 ランキングプレビュー</Link>
