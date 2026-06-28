@@ -1,0 +1,25 @@
+name: Sync Typefully
+
+# Typefully 投稿 → 掲示板スレ化の自動同期。
+# Vercel Hobby/Free の Cron 制約を避けるため、Vercel Cron ではなく
+# GitHub Actions から /api/internal/sync-typefully を1日4回叩く。
+#
+# 実行時刻（JST → UTC 変換）:
+#   JST 07:20 = UTC 22:20（前日）
+#   JST 12:20 = UTC 03:20
+#   JST 19:20 = UTC 10:20
+#   JST 22:20 = UTC 13:20
+on:
+  schedule:
+    - cron: "20 22,3,10,13 * * *"
+  workflow_dispatch: # 手動実行も可能にする
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call sync-typefully API
+        run: |
+          curl -fsS \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://www.duema-bbs.com/api/internal/sync-typefully?max_new=5"
