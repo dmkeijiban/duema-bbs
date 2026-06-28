@@ -21,5 +21,5 @@ jobs:
       - name: Call sync-typefully API
         run: |
           curl -fsS \
-            -H "Authorization: Bearer ${{ secrets.INTERNAL_POST_SECRET }}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "https://www.duema-bbs.com/api/internal/sync-typefully?max_new=5"
