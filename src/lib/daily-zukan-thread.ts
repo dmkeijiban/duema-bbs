@@ -168,3 +168,43 @@ export async function runDailyZukanThread(): Promise<DailyZukanResult> {
     postedDate,
   }
 }
+
+// retry_typefully モード用：指定日のログから既存スレ情報を引く。
+// スレは作り直さず、Typefully再投稿に必要な threadId / cardName だけ返す。
+export type DailyZukanRetryLookup =
+  | { status: 'found'; threadId: number; cardName: string; postedDate: string }
+  | { status: 'not_found'; reason: string; postedDate: string }
+  | { status: 'error'; error: string }
+
+export async function getDailyZukanThreadForRetry(
+  postedDate: string,
+): Promise<DailyZukanRetryLookup> {
+  const admin = createAdminClient()
+
+  // 1. 該当日のログ行を取得。
+  const { data: log, error: logError } = await admin
+    .from('daily_zukan_thread_logs')
+    .select('card_slug, thread_id')
+    .eq('posted_date', postedDate)
+    .maybeSingle()
+  if (logError) {
+    return { status: 'error', error: `log: ${logError.message}` }
+  }
+  if (!log) {
+    return { status: 'not_found', reason: 'no_log_for_date', postedDate }
+  }
+  if (log.thread_id == null) {
+    // スレ未作成（作成途中で失敗した日）。Typefullyだけ再試行はできない。
+    return { status: 'not_found', reason: 'no_thread_id', postedDate }
+  }
+
+  // 2. Typefully文面に使うカード名を取得。カードが見つからなければslugで代替。
+  const { data: card } = await admin
+    .from('zukan_cards')
+    .select('name')
+    .eq('slug', log.card_slug)
+    .maybeSingle()
+  const cardName = card?.name ?? log.card_slug
+
+  return { status: 'found', threadId: log.thread_id, cardName, postedDate }
+}
