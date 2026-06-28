@@ -2,24 +2,89 @@ name: Sync Typefully
 
 # Typefully 投稿 → 掲示板スレ化の自動同期。
 # Vercel Hobby/Free の Cron 制約を避けるため、Vercel Cron ではなく
-# GitHub Actions から /api/internal/sync-typefully を1日4回叩く。
+# GitHub Actions から /api/internal/sync-typefully を叩く。
 #
-# 実行時刻（JST → UTC 変換）:
-#   JST 07:20 = UTC 22:20（前日）
-#   JST 12:20 = UTC 03:20
-#   JST 19:20 = UTC 10:20
-#   JST 22:20 = UTC 13:20
+# 【再発防止】GitHub Actions の schedule は「ベストエフォート」で、遅延・未発火（ドロップ）が起こり得る。
+# 1スロット1回だと未発火でその時間帯の同期が丸ごと欠落する（実際に JST 12:20 の回が未発火だった）。
+# そのため各定時投稿に対して「20分後」と「50分後」の二段構えで実行し、1回落ちても次で拾えるようにする。
+# sync-typefully 側は source_id / source_text_hash で重複排除するため、
+# 2回目以降に既存分があっても新規スレは作られない（冪等）。
+#
+# 実行時刻（JST → UTC 変換）。X 投稿（07/12/19/22時）の +20分・+50分:
+#   JST 07:20 / 07:50 = UTC 22:20 / 22:50（前日）
+#   JST 12:20 / 12:50 = UTC 03:20 / 03:50
+#   JST 19:20 / 19:50 = UTC 10:20 / 10:50
+#   JST 22:20 / 22:50 = UTC 13:20 / 13:50
 on:
   schedule:
-    - cron: "20 22,3,10,13 * * *"
-  workflow_dispatch: # 手動実行も可能にする
+    - cron: "20,50 22,3,10,13 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "ドライラン（true=本番スレ作成なしの確認実行）。安全のため初期値 true"
+        type: boolean
+        default: true
+      max_new:
+        description: "1回の実行で新規作成する最大スレッド数"
+        type: string
+        default: "5"
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
       - name: Call sync-typefully API
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          # schedule 実行では inputs が空 → 本番同期(dry_run=false)・max_new=5。
+          # workflow_dispatch では入力値を使用（初期値は dry_run=true の安全側）。
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          MAX_NEW: ${{ github.event.inputs.max_new || '5' }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          curl -fsS \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://www.duema-bbs.com/api/internal/sync-typefully?max_new=5"
+          set -uo pipefail
+
+          BASE="https://www.duema-bbs.com/api/internal/sync-typefully"
+          if [ "${DRY_RUN}" = "true" ]; then
+            URL="${BASE}?max_new=${MAX_NEW}&dry_run=1"
+            MODE="DRY RUN（本番スレ作成なし）"
+          else
+            URL="${BASE}?max_new=${MAX_NEW}"
+            MODE="LIVE（本番同期）"
+          fi
+
+          echo "==== sync-typefully 実行 ===="
+          echo "実行時刻 UTC : $(date -u '+%Y-%m-%d %H:%M:%S')"
+          echo "実行時刻 JST : $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S')"
+          echo "トリガー     : ${EVENT_NAME}"
+          echo "モード       : ${MODE}"
+          echo "max_new      : ${MAX_NEW}"
+          echo "URL          : ${URL}"   # クエリは max_new/dry_run のみ。secret は含めない
+          echo "============================"
+
+          # -f は HTTP エラー時に本文を隠すため使わない。本文と HTTP status を取得し、
+          # 最後に自前で 2xx 以外を失敗扱いにする（-f 相当の失敗挙動は担保）。
+          # secret は Authorization ヘッダで渡し、ログには一切出さない。
+          set +e
+          HTTP_CODE=$(curl -sS \
+            --retry 2 --retry-delay 10 --max-time 60 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -o response_body.txt -w '%{http_code}' \
+            "${URL}")
+          CURL_EXIT=$?
+          set -e
+
+          echo "HTTP status  : ${HTTP_CODE}"
+          echo "----- レスポンス本文 -----"
+          cat response_body.txt 2>/dev/null || echo "(本文なし)"
+          echo
+          echo "--------------------------"
+
+          if [ "${CURL_EXIT}" -ne 0 ]; then
+            echo "::error::curl 失敗 (exit=${CURL_EXIT})"
+            exit "${CURL_EXIT}"
+          fi
+          case "${HTTP_CODE}" in
+            2*) echo "OK (HTTP ${HTTP_CODE})" ;;
+            *) echo "::error::HTTP ${HTTP_CODE} はエラー扱い"; exit 1 ;;
+          esac
