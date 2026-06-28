@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { runDailyZukanThread } from '@/lib/daily-zukan-thread'
+import { runDailyZukanThread, getDailyZukanThreadForRetry } from '@/lib/daily-zukan-thread'
 import { createTypefullyDraft } from '@/lib/typefully'
 import { SITE_URL } from '@/lib/site-config'
 
@@ -41,9 +41,105 @@ function assertCronAuth(req: NextRequest): NextResponse | null {
   return null
 }
 
+// 手動再試行モード（?retry_typefully=YYYY-MM-DD）。
+// 「スレは作れたが Typefully 投稿だけ失敗した日」を救済する。
+// - 通常のスレ作成は実行しない（既存スレを使い回す）
+// - 新しいログ行も作らない・スレも作り直さない
+// - DBに Typefully 成功記録が無いため、二重投稿の注意を warning で返す（自動再試行はしない）
+async function handleRetryTypefully(postedDate: string): Promise<NextResponse> {
+  // 日付形式チェック（YYYY-MM-DD かつ実在する日付）。
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(postedDate) || Number.isNaN(Date.parse(postedDate))) {
+    return NextResponse.json(
+      {
+        ok: false,
+        mode: 'retry_typefully',
+        error: 'invalid_date_format',
+        detail: 'YYYY-MM-DD 形式で指定してください',
+      },
+      { status: 400 },
+    )
+  }
+
+  const lookup = await getDailyZukanThreadForRetry(postedDate)
+  if (lookup.status === 'error') {
+    console.error('[daily-zukan-thread] retry_typefully lookup error', {
+      postedDate,
+      error: lookup.error,
+    })
+    return NextResponse.json(
+      { ok: false, mode: 'retry_typefully', postedDate, error: lookup.error },
+      { status: 500 },
+    )
+  }
+  if (lookup.status === 'not_found') {
+    // no_log_for_date / no_thread_id
+    return NextResponse.json(
+      { ok: false, mode: 'retry_typefully', postedDate, error: lookup.reason },
+      { status: 404 },
+    )
+  }
+
+  // 既存スレを使って Typefully だけ再投稿する。
+  const threadUrl = `${SITE_URL}/thread/${lookup.threadId}`
+  const text = buildTypefullyText(lookup.cardName, threadUrl)
+  const scheduledAt = new Date(Date.now() + 2 * 60 * 1000).toISOString()
+  console.log('[daily-zukan-thread] retry_typefully (manual re-post)', {
+    postedDate,
+    threadId: lookup.threadId,
+    cardName: lookup.cardName,
+    scheduledAt,
+  })
+  const tf = await createTypefullyDraft({ threadLines: [text], scheduleDate: scheduledAt })
+
+  if ('error' in tf) {
+    console.error('[daily-zukan-thread] retry_typefully error', {
+      postedDate,
+      threadId: lookup.threadId,
+      error: tf.error,
+    })
+    return NextResponse.json(
+      {
+        ok: false,
+        mode: 'retry_typefully',
+        postedDate,
+        threadId: lookup.threadId,
+        typefully: 'error',
+        error: tf.error,
+      },
+      { status: 502 },
+    )
+  }
+
+  console.log('[daily-zukan-thread] retry_typefully scheduled', {
+    postedDate,
+    threadId: lookup.threadId,
+    id: tf.id,
+    shareUrl: tf.share_url,
+    scheduledAt,
+  })
+  return NextResponse.json({
+    ok: true,
+    mode: 'retry_typefully',
+    postedDate,
+    threadId: lookup.threadId,
+    typefully: 'scheduled',
+    typefullyId: tf.id,
+    shareUrl: tf.share_url,
+    scheduledAt,
+    warning:
+      'Typefully成功済みかどうかはDBに記録がないため、二重投稿に注意してください',
+  })
+}
+
 export async function GET(req: NextRequest) {
   const authError = assertCronAuth(req)
   if (authError) return authError
+
+  // 手動再試行モード。通常のスレ作成より先に分岐する。
+  const retryDate = req.nextUrl.searchParams.get('retry_typefully')
+  if (retryDate) {
+    return handleRetryTypefully(retryDate)
+  }
 
   try {
     const result = await runDailyZukanThread()
