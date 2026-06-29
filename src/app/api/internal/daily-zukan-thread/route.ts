@@ -1,6 +1,6 @@
 /**
  * GET /api/internal/daily-zukan-thread
- * 思い出図鑑の公開カードから1枚選び、通常スレを自動作成する。
+ * 思い出図鑑の当日予定カードから、通常スレを自動作成する。
  * Vercel Cron から毎日 JST 0:00（UTC 15:00）に呼ばれる。
  * 手動実行: Authorization: Bearer ${CRON_SECRET}
  */
