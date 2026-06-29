@@ -24,6 +24,14 @@ const SCHEDULED_DRAFT_LOOKAHEAD_DAYS = 30
 const PUBLISHED_DRAFT_LIMIT = 50
 const PUBLISHED_DRAFT_LOOKBACK_HOURS = 48
 const ERROR_MAX_LENGTH = 500
+const DUE_SCAN_MIN_LIMIT = 50
+const ELIGIBLE_DUE_STATUSES = [
+  'scheduled',
+  'posted',
+  'published',
+  'sent',
+  'typefully_drafted',
+]
 
 type SupabaseAdmin = ReturnType<typeof createAdminClient>
 
@@ -379,6 +387,7 @@ async function findDueXPosts(
     .is('synced_at', null)
     .not('scheduled_at', 'is', null)
     .lte('scheduled_at', new Date().toISOString())
+    .in('status', ELIGIBLE_DUE_STATUSES)
     .order('scheduled_at', { ascending: true })
     .limit(limit)
 
@@ -402,9 +411,9 @@ async function markXPostSynced(
   supabase: SupabaseAdmin,
   xPostId: number,
   threadId: number,
-): Promise<void> {
+): Promise<string | null> {
   const now = new Date().toISOString()
-  await supabase
+  const { error } = await supabase
     .from('x_posts')
     .update({
       status: 'posted',
@@ -414,6 +423,18 @@ async function markXPostSynced(
       sync_error: null,
     })
     .eq('id', xPostId)
+
+  if (error) {
+    const message = `mark_synced_failed: ${error.message}`
+    console.error('[sync-typefully] x_posts mark synced error:', {
+      xPostId,
+      threadId,
+      error: error.message,
+    })
+    return message
+  }
+
+  return null
 }
 
 async function markXPostError(
@@ -455,7 +476,10 @@ async function createThreadFromXPost(
     .eq('source_id', sourceId)
     .maybeSingle()
   if (existingById) {
-    if (!dryRun) await markXPostSynced(supabase, row.id, existingById.id)
+    const markError = dryRun ? null : await markXPostSynced(supabase, row.id, existingById.id)
+    if (markError) {
+      return { xPostId: row.id, typefullyId: row.typefully_id, status: 'error', error: markError }
+    }
     return {
       xPostId: row.id,
       typefullyId: row.typefully_id,
@@ -471,7 +495,10 @@ async function createThreadFromXPost(
     .eq('source_text_hash', textHash)
     .maybeSingle()
   if (existingByHash) {
-    if (!dryRun) await markXPostSynced(supabase, row.id, existingByHash.id)
+    const markError = dryRun ? null : await markXPostSynced(supabase, row.id, existingByHash.id)
+    if (markError) {
+      return { xPostId: row.id, typefullyId: row.typefully_id, status: 'error', error: markError }
+    }
     return {
       xPostId: row.id,
       typefullyId: row.typefully_id,
@@ -515,7 +542,10 @@ async function createThreadFromXPost(
     return { xPostId: row.id, typefullyId: row.typefully_id, status: 'error', error: message }
   }
 
-  await markXPostSynced(supabase, row.id, thread.id)
+  const markError = await markXPostSynced(supabase, row.id, thread.id)
+  if (markError) {
+    return { xPostId: row.id, typefullyId: row.typefully_id, status: 'error', threadId: thread.id, error: markError }
+  }
   await notifyNewThread({ threadId: thread.id, title, categoryName })
 
   return {
@@ -566,7 +596,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const saveScheduledResult = await saveScheduledDrafts(supabase, fetchedScheduled.drafts, dryRun, 'scheduled draft')
   const savePublishedResult = await saveScheduledDrafts(supabase, fetchedPublished.drafts, dryRun, 'published draft')
-  const dueFromSaved = await findDueXPosts(supabase, maxNewPerRun)
+  const dueScanLimit = Math.max(DUE_SCAN_MIN_LIMIT, maxNewPerRun * 10)
+  const dueFromSaved = await findDueXPosts(supabase, dueScanLimit)
   if (dueFromSaved.error) {
     return NextResponse.json({ error: dueFromSaved.error, dryRun }, { status: 500 })
   }
@@ -615,6 +646,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     `[sync-typefully] 完了: scheduled取得${fetchedScheduled.fetched}件 / scheduled保存予定${saveScheduledResult.saved}件` +
     ` / published取得${fetchedPublished.fetched}件 / published保存予定${savePublishedResult.saved}件` +
     ` / 保存済み重複${saveScheduledResult.duplicates + savePublishedResult.duplicates}件 / 期限到来${dueRows.length}件` +
+    ` / dueScanLimit${dueScanLimit}` +
     ` / 作成${created}件 / 重複${duplicate}件 / エラー${errors}件 / スキップ${skipped}件` +
     (dryRun ? ' [DRY RUN]' : ''),
   )
@@ -631,6 +663,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     duplicatePublishedDrafts: savePublishedResult.duplicates,
     saveErrors: saveScheduledResult.errors + savePublishedResult.errors,
     duePosts: dueRows.length,
+    dueScanLimit,
+    eligibleDueStatuses: ELIGIBLE_DUE_STATUSES,
     created,
     duplicate,
     errors,

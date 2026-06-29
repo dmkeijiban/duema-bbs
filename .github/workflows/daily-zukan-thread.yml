@@ -1,0 +1,72 @@
+name: Daily Zukan Thread
+
+# 思い出図鑑の当日スレ作成とX予約投稿。
+# GitHub Actions schedule はベストエフォートなので、JST 00:05の本実行に加えて
+# JST 01:05 / 07:05 に救済実行する。endpoint側の posted_date UNIQUE と
+# schedule completed 判定で同日二重作成を防ぐ。
+on:
+  schedule:
+    - cron: "5 15,16,22 * * *"
+  workflow_dispatch:
+
+jobs:
+  daily-zukan-thread:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call daily-zukan-thread API
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -uo pipefail
+
+          URL="https://www.duema-bbs.com/api/internal/daily-zukan-thread"
+
+          echo "==== daily-zukan-thread 実行 ===="
+          echo "実行時刻 UTC : $(date -u '+%Y-%m-%d %H:%M:%S')"
+          echo "実行時刻 JST : $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S')"
+          echo "トリガー     : ${EVENT_NAME}"
+          echo "モード       : LIVE（dryRun=false）"
+          echo "URL          : ${URL}"
+          echo "================================"
+
+          set +e
+          HTTP_CODE=$(curl -sS \
+            --retry 2 --retry-delay 10 --max-time 60 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -o response_body.txt -w '%{http_code}' \
+            "${URL}")
+          CURL_EXIT=$?
+          set -e
+
+          echo "HTTP status  : ${HTTP_CODE}"
+          echo "----- レスポンス本文 -----"
+          cat response_body.txt 2>/dev/null || echo "(本文なし)"
+          echo
+          echo "--------------------------"
+
+          if [ "${CURL_EXIT}" -ne 0 ]; then
+            echo "::error::curl 失敗 (exit=${CURL_EXIT})"
+            exit "${CURL_EXIT}"
+          fi
+          case "${HTTP_CODE}" in
+            2*) echo "OK (HTTP ${HTTP_CODE})" ;;
+            *) echo "::error::HTTP ${HTTP_CODE} はエラー扱い"; exit 1 ;;
+          esac
+
+          ERRORS=$(jq -r '.errors // 0' response_body.txt 2>/dev/null || echo "parse_error")
+          CREATED=$(jq -r '.created // 0' response_body.txt 2>/dev/null || echo "0")
+          DUPLICATE=$(jq -r '.duplicate // 0' response_body.txt 2>/dev/null || echo "0")
+          SKIPPED=$(jq -r '.skipped // 0' response_body.txt 2>/dev/null || echo "0")
+          STATUS=$(jq -r '.status // "unknown"' response_body.txt 2>/dev/null || echo "unknown")
+          REASON=$(jq -r '.reason // "-"' response_body.txt 2>/dev/null || echo "-")
+          echo "summary      : status=${STATUS} created=${CREATED} duplicate=${DUPLICATE} skipped=${SKIPPED} errors=${ERRORS} reason=${REASON}"
+
+          if [ "${ERRORS}" = "parse_error" ]; then
+            echo "::error::レスポンスJSONを解析できません"
+            exit 1
+          fi
+          if [ "${ERRORS}" -gt 0 ]; then
+            echo "::error::daily-zukan-thread が errors=${ERRORS} を返しました"
+            exit 1
+          fi
