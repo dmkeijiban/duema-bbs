@@ -19,7 +19,7 @@ export const maxDuration = 60
 
 const DEFAULT_MAX_NEW_PER_RUN = 5
 const TYPEFULLY_API = 'https://api.typefully.com/v2'
-const SCHEDULED_DRAFT_LIMIT = 250
+const SCHEDULED_DRAFT_LIMIT = 50
 const SCHEDULED_DRAFT_LOOKAHEAD_DAYS = 30
 const ERROR_MAX_LENGTH = 500
 
