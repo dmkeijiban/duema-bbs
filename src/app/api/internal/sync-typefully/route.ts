@@ -199,7 +199,7 @@ async function fetchScheduledDrafts(
   socialSetId: string,
 ): Promise<{ drafts: ScheduledDraftRecord[]; fetched: number; error?: string; status?: number }> {
   const endpoint =
-    `${TYPEFULLY_API}/social-sets/${socialSetId}/drafts?status=scheduled&order_by=scheduled_at&limit=${SCHEDULED_DRAFT_LIMIT}`
+    `${TYPEFULLY_API}/social-sets/${socialSetId}/drafts?status=scheduled&order_by=scheduled_date&limit=${SCHEDULED_DRAFT_LIMIT}`
 
   const res = await fetch(endpoint, {
     headers: { 'Authorization': `Bearer ${apiKey}` },
