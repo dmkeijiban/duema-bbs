@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { logout } from '@/app/auth/actions'
 import { ProfileHeaderActionLink, ProfileHeaderCard } from '@/components/ProfileHeaderCard'
+import { getActivityNotifications, type ActivityNotification } from '@/lib/activity-notifications'
 import { getCachedUserRankings } from '@/lib/cached-queries'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
@@ -35,6 +36,20 @@ type MyPostRow = {
   threads: { title: string | null } | null
 }
 
+type ZukanSuggestionCard = {
+  slug: string
+  name: string
+  official_image_url: string | null
+}
+
+type EmptySuggestion = {
+  title: string
+  body: string
+  href: string
+  actionLabel: string
+  card?: ZukanSuggestionCard
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('ja-JP', {
     year: 'numeric',
@@ -64,6 +79,99 @@ function excerpt(value: string | null, max = 80) {
   if (!value) return ''
   const oneLine = value.replace(/\s+/g, ' ').trim()
   return oneLine.length > max ? `${oneLine.slice(0, max)}…` : oneLine
+}
+
+function hashSeed(value: string) {
+  let hash = 0
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) >>> 0
+  }
+  return hash
+}
+
+function getJstDateKey() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+}
+
+async function getRandomZukanCard(seed: string): Promise<ZukanSuggestionCard | null> {
+  const admin = createAdminClient()
+  const { count, error: countError } = await admin
+    .from('zukan_cards')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_published', true)
+
+  if (countError || !count) {
+    if (countError) console.error('Failed to count zukan cards for suggestion:', countError.message)
+    return null
+  }
+
+  const offset = hashSeed(seed) % count
+  const { data, error } = await admin
+    .from('zukan_cards')
+    .select('slug, name, official_image_url')
+    .eq('is_published', true)
+    .order('sort_order', { ascending: true })
+    .range(offset, offset)
+    .maybeSingle()
+
+  if (error) {
+    console.error('Failed to fetch zukan card suggestion:', error.message)
+    return null
+  }
+
+  return data as ZukanSuggestionCard | null
+}
+
+async function getEmptySuggestion(seed: string): Promise<EmptySuggestion> {
+  const options = ['recommend', 'popular', 'new-thread', 'comment', 'zukan-card'] as const
+  const option = options[hashSeed(`${seed}:${getJstDateKey()}`) % options.length]
+
+  if (option === 'zukan-card') {
+    const card = await getRandomZukanCard(seed)
+    if (card) {
+      return {
+        title: `${card.name}の思い出、残してみませんか？`,
+        body: '好きだった使い方や、当時の対戦で印象に残っていることを書いてみる。',
+        href: `/zukan/card/${card.slug}`,
+        actionLabel: 'カードを見る',
+        card,
+      }
+    }
+  }
+
+  const fallback: Record<Exclude<typeof option, 'zukan-card'>, EmptySuggestion> = {
+    recommend: {
+      title: 'おすすめのスレを見る',
+      body: '気になる話題があれば、読むだけでもあとから見返しやすくなります。',
+      href: '/random',
+      actionLabel: '見てみる',
+    },
+    popular: {
+      title: '最近人気のスレを見る',
+      body: '今よく読まれている話題を軽く確認できます。',
+      href: '/ranking',
+      actionLabel: '人気スレを見る',
+    },
+    'new-thread': {
+      title: '新しいスレッドを立てる',
+      body: '聞いてみたいことや、残しておきたい話題がある時に使えます。',
+      href: '/thread/new',
+      actionLabel: 'スレッドを立てる',
+    },
+    comment: {
+      title: '気になるスレにコメントしてみる',
+      body: '最近更新されたスレから、少しだけ書けそうな話題を探せます。',
+      href: '/update',
+      actionLabel: '更新順を見る',
+    },
+  }
+
+  return fallback[option === 'zukan-card' ? 'recommend' : option]
 }
 
 async function getMyThreads(userId: string): Promise<MyThreadRow[]> {
@@ -221,15 +329,84 @@ function SignupBanner() {
   )
 }
 
+function NotificationListCard({ notifications }: { notifications: ActivityNotification[] }) {
+  return (
+    <section className="rounded border border-blue-200 bg-blue-50">
+      <div className="border-b border-blue-100 px-4 py-3">
+        <h2 className="text-sm font-bold text-blue-900">お知らせ</h2>
+      </div>
+      <ul className="divide-y divide-blue-100 bg-white">
+        {notifications.map(notification => (
+          <li key={notification.key} className="px-4 py-3">
+            <p className="text-xs font-bold text-blue-700">{notification.label}</p>
+            <Link
+              href={notification.href}
+              className="mt-1 block text-sm font-bold text-gray-900 hover:text-blue-700 hover:underline"
+            >
+              {notification.title}
+            </Link>
+            {notification.occurredAt && (
+              <p className="mt-1 text-xs text-gray-500">{formatDateTime(notification.occurredAt)}</p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function EmptyNotificationSuggestion({ suggestion }: { suggestion: EmptySuggestion }) {
+  return (
+    <section className="rounded border border-gray-200 bg-white">
+      <div className="border-b border-gray-100 px-4 py-3">
+        <h2 className="text-sm font-bold text-gray-800">新しいお知らせはありません</h2>
+      </div>
+      <div className="flex gap-3 px-4 py-3">
+        {suggestion.card?.official_image_url && (
+          <div className="w-16 shrink-0 overflow-hidden border border-gray-200 bg-gray-50" style={{ aspectRatio: '63 / 88' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={suggestion.card.official_image_url}
+              alt={`${suggestion.card.name} カード画像`}
+              width={126}
+              height={176}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover"
+            />
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-bold text-gray-900">{suggestion.title}</h3>
+          <p className="mt-1 text-sm leading-relaxed text-gray-600">{suggestion.body}</p>
+          <Link
+            href={suggestion.href}
+            className="mt-2 inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50"
+          >
+            {suggestion.actionLabel}
+          </Link>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 async function AnonMyPage() {
   const cookieStore = await cookies()
   const sessionId = cookieStore.get('bbs_session')?.value ?? null
 
-  const [anonThreads, anonPosts] = sessionId
-    ? await Promise.all([getAnonThreads(sessionId), getAnonPosts(sessionId)])
-    : [[], []]
+  const [anonThreads, anonPosts, notifications] = sessionId
+    ? await Promise.all([
+      getAnonThreads(sessionId),
+      getAnonPosts(sessionId),
+      getActivityNotifications({ userId: null, sessionId }),
+    ])
+    : [[], [], []]
 
   const hasHistory = anonThreads.length > 0 || anonPosts.length > 0
+  const emptySuggestion = notifications.length === 0
+    ? await getEmptySuggestion(sessionId ?? 'anonymous')
+    : null
 
   return (
     <main className="mx-auto w-full max-w-screen-xl px-3 py-4">
@@ -247,6 +424,12 @@ async function AnonMyPage() {
           </div>
 
           <SignupBanner />
+
+          {notifications.length > 0 ? (
+            <NotificationListCard notifications={notifications} />
+          ) : emptySuggestion ? (
+            <EmptyNotificationSuggestion suggestion={emptySuggestion} />
+          ) : null}
 
           {hasHistory ? (
             <div className="grid gap-4 lg:grid-cols-2">
@@ -359,12 +542,17 @@ export default async function MyPage({
     redirect('/account/reactivate')
   }
 
-  const [myThreads, myPosts, rankings, activityCounts] = await Promise.all([
+  const [myThreads, myPosts, rankings, activityCounts, notifications] = await Promise.all([
     getMyThreads(user.id),
     getMyPosts(user.id),
     getCachedUserRankings(),
     getMyActivityCounts(user.id),
+    getActivityNotifications({ userId: user.id, sessionId: null }),
   ])
+
+  const emptySuggestion = notifications.length === 0
+    ? await getEmptySuggestion(user.id)
+    : null
 
   const profilePath = `/u/${profile.profile_slug}`
   const xUrl = safeExternalLink(profile.x_url, ['x.com', 'twitter.com'])
@@ -435,6 +623,12 @@ export default async function MyPage({
               </div>
             }
           />
+
+          {notifications.length > 0 ? (
+            <NotificationListCard notifications={notifications} />
+          ) : emptySuggestion ? (
+            <EmptyNotificationSuggestion suggestion={emptySuggestion} />
+          ) : null}
 
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="rounded border border-gray-200">

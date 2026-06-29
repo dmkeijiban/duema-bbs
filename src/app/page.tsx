@@ -27,6 +27,7 @@ import type { Metadata } from 'next'
 import { AdBanner } from '@/components/AdBanner'
 import { getCategoryIdsForSlug } from '@/lib/categories'
 import { ADSENSE_REVIEW_MODE, isAdSenseRiskyThreadTitle, isPrNoticeForAdSenseReview } from '@/lib/adsense-review-mode'
+import { TopActivityNotice } from '@/components/TopActivityNotice'
 
 export const revalidate = 3600
 const TOP_THREAD_PAGE_SIZE = 60
@@ -357,6 +358,8 @@ export default async function Home({
         <Suspense fallback={<HomeBannerFallback />}>
           <HomeBannerServer />
         </Suspense>
+
+        <TopActivityNotice />
 
         <Suspense fallback={null}>
           <TopNoticesServer />
