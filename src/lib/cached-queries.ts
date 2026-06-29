@@ -22,6 +22,8 @@ import type { PublicAuthorProfile } from '@/types'
 
 export type { NavPage, FixedPage }
 
+export const DEFAULT_PUBLIC_AUTHOR_NAME = '名無しのデュエリスト'
+
 const STANDARD_CACHE_SECONDS = 3600
 const NOTICE_CACHE_SECONDS = 1800
 const THREAD_CACHE_SECONDS = 21600
@@ -328,29 +330,79 @@ export const getCachedPublicAuthorProfiles = (userIds: string[]) => {
         if (error) return {}
         return Object.fromEntries(
           (data ?? [])
-            .filter(profile => profile.profile_slug && profile.display_name)
-            .filter(profile => {
-              if (profile.account_suspended === true) return false
-              if (profile.withdrawn_at) return true
-              return profile.profile_hidden !== true
+            .map(profile => {
+              const id = String(profile.id)
+              const isRestricted =
+                profile.profile_hidden === true ||
+                profile.account_suspended === true ||
+                Boolean(profile.withdrawn_at)
+
+              if (isRestricted) {
+                return [
+                  id,
+                  { id, display_name: DEFAULT_PUBLIC_AUTHOR_NAME, profile_slug: '', avatar_url: null },
+                ] as const
+              }
+
+              if (!profile.profile_slug || !profile.display_name) return null
+
+              return [
+                id,
+                {
+                  id,
+                  display_name: String(profile.display_name),
+                  profile_slug: String(profile.profile_slug),
+                  avatar_url: typeof profile.avatar_url === 'string' ? profile.avatar_url : null,
+                },
+              ] as const
             })
-            .map(profile => [
-              String(profile.id),
-              profile.withdrawn_at
-                ? { id: String(profile.id), display_name: '退会済みユーザー', profile_slug: '', avatar_url: null }
-                : {
-                    id: String(profile.id),
-                    display_name: String(profile.display_name),
-                    profile_slug: String(profile.profile_slug),
-                    avatar_url: typeof profile.avatar_url === 'string' ? profile.avatar_url : null,
-                  },
-            ])
+            .filter((entry): entry is readonly [string, PublicAuthorProfile] => entry !== null)
         )
       } catch {
         return {}
       }
     },
     [`public-author-profiles-${key || 'none'}`],
+    { revalidate: STANDARD_CACHE_SECONDS, tags: ['profiles'] }
+  )()
+}
+
+export const getCachedRestrictedAuthorNames = (authorNames: string[]) => {
+  const names = Array.from(
+    new Set(
+      authorNames
+        .map(name => name.trim())
+        .filter(name => name && name !== DEFAULT_PUBLIC_AUTHOR_NAME)
+    )
+  ).sort()
+  const key = names.join(',')
+
+  return unstable_cache(
+    async (): Promise<string[]> => {
+      if (names.length === 0) return []
+      try {
+        const supabase = createPublicClient()
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('display_name, profile_hidden, account_suspended, withdrawn_at')
+          .in('display_name', names)
+        if (error) return []
+
+        return Array.from(new Set(
+          (data ?? [])
+            .filter(profile =>
+              profile.profile_hidden === true ||
+              profile.account_suspended === true ||
+              Boolean(profile.withdrawn_at)
+            )
+            .map(profile => String(profile.display_name ?? '').trim())
+            .filter(Boolean)
+        ))
+      } catch {
+        return []
+      }
+    },
+    [`restricted-author-names-${key || 'none'}`],
     { revalidate: STANDARD_CACHE_SECONDS, tags: ['profiles'] }
   )()
 }

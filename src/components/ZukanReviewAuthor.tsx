@@ -15,7 +15,7 @@ export function ZukanReviewAuthor({
   isWithdrawn,
 }: ZukanReviewAuthorProps) {
   if (isWithdrawn) {
-    return <span className="text-xs text-gray-500">退会済みユーザー</span>
+    return <span className="text-xs text-gray-500">名無しのデュエリスト</span>
   }
 
   const avatar = avatarUrl ? (
