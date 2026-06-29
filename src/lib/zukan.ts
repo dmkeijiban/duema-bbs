@@ -206,7 +206,7 @@ export type CardRatingSummary = {
 // ============================================================
 
 const ANONYMOUS_REVIEW_NAME = '名無しのデュエリスト'
-const WITHDRAWN_REVIEW_NAME = '退会済みユーザー'
+const WITHDRAWN_REVIEW_NAME = ANONYMOUS_REVIEW_NAME
 
 export async function attachReviewProfiles<T extends { user_id: string | null; display_name: string }>(
   rows: T[]

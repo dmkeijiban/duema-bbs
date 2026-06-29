@@ -6,7 +6,7 @@ import { ShareXButton } from '@/components/ShareXButton'
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { Thread, Post, Category } from '@/types'
 import Link from 'next/link'
-import { getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, getCachedRelatedThreads, getCachedPublicAuthorProfiles, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
+import { DEFAULT_PUBLIC_AUTHOR_NAME, getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, getCachedRelatedThreads, getCachedPublicAuthorProfiles, getCachedRestrictedAuthorNames, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
@@ -31,7 +31,7 @@ export async function generateStaticParams() {
   return (data ?? []).map(t => ({ id: String(t.id) }))
 }
 
-const DEFAULT_AUTHOR_NAME = '名無しのデュエリスト'
+const DEFAULT_AUTHOR_NAME = DEFAULT_PUBLIC_AUTHOR_NAME
 
 const THREAD_RULES_DEFAULT = `1.アンカーはレス番号をクリックで自動入力できます。
 2.誹謗中傷・暴言・煽り・スレッドと無関係な投稿は削除・規制対象です。
@@ -164,6 +164,25 @@ export async function renderThreadPage(threadId: number, page: number) {
     typedThread.user_id ?? '',
     ...(posts ?? []).map(post => (post as Post).user_id ?? ''),
   ])
+  const restrictedAuthorNames = await getCachedRestrictedAuthorNames([
+    typedThread.author_name,
+    ...(posts ?? []).map(post => (post as Post).author_name),
+  ])
+  const restrictedAuthorNameSet = new Set(restrictedAuthorNames)
+  const shouldMaskAuthor = (item: { author_name: string; user_id?: string | null }) => {
+    const profile = item.user_id ? authorProfiles[item.user_id] : undefined
+    if (profile?.profile_slug === '' && profile.display_name === DEFAULT_AUTHOR_NAME) return true
+    return restrictedAuthorNameSet.has(cleanAuthorName(item.author_name))
+  }
+  const publicThread = shouldMaskAuthor(typedThread)
+    ? { ...typedThread, author_name: DEFAULT_AUTHOR_NAME }
+    : typedThread
+  const publicPosts = (posts ?? []).map(post => {
+    const typedPost = post as Post
+    return shouldMaskAuthor(typedPost)
+      ? { ...typedPost, author_name: DEFAULT_AUTHOR_NAME }
+      : typedPost
+  })
   const totalPages = Math.max(1, Math.ceil((typedThread.post_count ?? 0) / POSTS_PER_PAGE))
   const visibleThreadNotices = (threadNotices as Notice[]).filter(notice => !isReviewModeHiddenNotice(notice))
 
@@ -183,7 +202,7 @@ export async function renderThreadPage(threadId: number, page: number) {
   // レスが1件以上ある場合のみ DiscussionForumPosting を生成する。
   // レス0件で comment プロパティが存在しないと Google が警告するため、
   // 表示可能なレスがないページでは構造化データを出力しない。
-  const visiblePosts = posts ?? []
+  const visiblePosts = publicPosts
   const discussionStructuredData = visiblePosts.length > 0
     ? removeEmptyStructuredData({
         "@context": "https://schema.org",
@@ -202,7 +221,7 @@ export async function renderThreadPage(threadId: number, page: number) {
         },
         "author": {
           "@type": "Person",
-          "name": cleanAuthorName(typedThread.author_name),
+          "name": cleanAuthorName(publicThread.author_name),
           "url": `${canonicalUrl}#post-1`,
         },
         "text": structuredText,
@@ -227,7 +246,7 @@ export async function renderThreadPage(threadId: number, page: number) {
             "text": cleanStructuredText(post.body, 'Comment'),
             "author": {
               "@type": "Person",
-              "name": cleanAuthorName(post.author_name),
+              "name": cleanAuthorName((post as Post).author_name),
               "url": postUrl,
             },
           }
@@ -322,9 +341,9 @@ export async function renderThreadPage(threadId: number, page: number) {
       )}
 
       <ThreadContent
-        posts={(posts ?? []) as Post[]}
+        posts={publicPosts}
         threadId={threadId}
-        thread={typedThread}
+        thread={publicThread}
         authorProfiles={authorProfiles}
         isArchived={typedThread.is_archived}
         page={page}

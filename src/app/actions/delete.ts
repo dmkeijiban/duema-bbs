@@ -10,11 +10,31 @@ async function getSessionId(): Promise<string | null> {
   return cookieStore.get('bbs_session')?.value ?? null
 }
 
+async function isCurrentUserWithdrawn(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<boolean> {
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  const user = userData.user
+  if (userError || !user) return false
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('withdrawn_at')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  return Boolean(profile?.withdrawn_at)
+}
+
 export async function deleteOwnThread(threadId: number) {
   const sessionId = await getSessionId()
   if (!sessionId) return { error: 'セッションが見つかりません' }
 
   const supabase = await createClient()
+  if (await isCurrentUserWithdrawn(supabase)) {
+    return { error: '退会済みアカウントでは削除できません' }
+  }
+
   const { data: thread } = await supabase
     .from('threads')
     .select('session_id')
@@ -55,6 +75,9 @@ export async function removeFavorite(threadId: number) {
 
 export async function deleteOwnPost(postId: number, threadId: number) {
   const supabase = await createClient()
+  if (await isCurrentUserWithdrawn(supabase)) {
+    return { error: '退会済みアカウントでは削除できません' }
+  }
 
   const { data: post } = await supabase
     .from('posts')
