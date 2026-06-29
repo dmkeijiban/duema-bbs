@@ -338,16 +338,20 @@ function NotificationListCard({ notifications }: { notifications: ActivityNotifi
       <ul className="divide-y divide-blue-100 bg-white">
         {notifications.map(notification => (
           <li key={notification.key} className="px-4 py-3">
-            <p className="text-xs font-bold text-blue-700">{notification.label}</p>
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <p className="text-xs font-bold text-blue-700">{notification.label}</p>
+              {notification.occurredAt && (
+                <time dateTime={notification.occurredAt} className="text-xs text-gray-500">
+                  {formatDateTime(notification.occurredAt)}
+                </time>
+              )}
+            </div>
             <Link
               href={notification.href}
               className="mt-1 block text-sm font-bold text-gray-900 hover:text-blue-700 hover:underline"
             >
               {notification.title}
             </Link>
-            {notification.occurredAt && (
-              <p className="mt-1 text-xs text-gray-500">{formatDateTime(notification.occurredAt)}</p>
-            )}
           </li>
         ))}
       </ul>
@@ -433,9 +437,9 @@ async function AnonMyPage() {
 
           {hasHistory ? (
             <div className="grid gap-4 lg:grid-cols-2">
-              <section className="rounded border border-gray-200">
-                <div className="border-b border-gray-200 px-4 py-3">
-                  <h2 className="text-sm font-bold text-gray-800">立てたスレッド</h2>
+              <section className="rounded border border-gray-200 bg-white">
+                <div className="border-b border-blue-100 bg-blue-50 px-4 py-3">
+                  <h2 className="text-sm font-bold text-blue-900">立てたスレッド</h2>
                 </div>
                 {anonThreads.length > 0 ? (
                   <ul className="divide-y divide-gray-100">
@@ -463,9 +467,9 @@ async function AnonMyPage() {
                 )}
               </section>
 
-              <section className="rounded border border-gray-200">
-                <div className="border-b border-gray-200 px-4 py-3">
-                  <h2 className="text-sm font-bold text-gray-800">自分のコメント</h2>
+              <section className="rounded border border-gray-200 bg-white">
+                <div className="border-b border-blue-100 bg-blue-50 px-4 py-3">
+                  <h2 className="text-sm font-bold text-blue-900">自分のコメント</h2>
                 </div>
                 {anonPosts.length > 0 ? (
                   <ul className="divide-y divide-gray-100">
@@ -631,9 +635,9 @@ export default async function MyPage({
           ) : null}
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <section className="rounded border border-gray-200">
-              <div className="border-b border-gray-200 px-4 py-3">
-                <h2 className="text-sm font-bold text-gray-800">立てたスレッド</h2>
+            <section className="rounded border border-gray-200 bg-white">
+              <div className="border-b border-blue-100 bg-blue-50 px-4 py-3">
+                <h2 className="text-sm font-bold text-blue-900">立てたスレッド</h2>
               </div>
               {myThreads.length > 0 ? (
                 <ul className="divide-y divide-gray-100">
@@ -661,9 +665,9 @@ export default async function MyPage({
               )}
             </section>
 
-            <section className="rounded border border-gray-200">
-              <div className="border-b border-gray-200 px-4 py-3">
-                <h2 className="text-sm font-bold text-gray-800">自分のコメント</h2>
+            <section className="rounded border border-gray-200 bg-white">
+              <div className="border-b border-blue-100 bg-blue-50 px-4 py-3">
+                <h2 className="text-sm font-bold text-blue-900">自分のコメント</h2>
               </div>
               {myPosts.length > 0 ? (
                 <ul className="divide-y divide-gray-100">
