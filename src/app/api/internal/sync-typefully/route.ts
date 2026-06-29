@@ -288,7 +288,7 @@ async function saveScheduledDrafts(
 
   const { error } = await supabase
     .from('x_posts')
-    .upsert(inserts, { onConflict: 'typefully_id', ignoreDuplicates: true })
+    .insert(inserts)
   if (error) {
     console.error('[sync-typefully] x_posts scheduled draft save error:', error.message)
     return { saved: 0, duplicates: existingIds.size, errors: inserts.length }
