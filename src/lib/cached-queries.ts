@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache'
 import { createPublicClient } from './supabase-public'
+import { createAdminClient } from './supabase-admin'
 import { withFallbackThumbnails } from './thumbnail'
 import {
   USER_RANKING_CARD_RATING_POINT,
@@ -322,7 +323,7 @@ export const getCachedPublicAuthorProfiles = (userIds: string[]) => {
     async (): Promise<Record<string, PublicAuthorProfile>> => {
       if (ids.length === 0) return {}
       try {
-        const supabase = createPublicClient()
+        const supabase = createAdminClient()
         const { data, error } = await supabase
           .from('profiles')
           .select('id, display_name, profile_slug, avatar_url, profile_hidden, account_suspended, withdrawn_at')
@@ -381,7 +382,7 @@ export const getCachedRestrictedAuthorNames = (authorNames: string[]) => {
     async (): Promise<string[]> => {
       if (names.length === 0) return []
       try {
-        const supabase = createPublicClient()
+        const supabase = createAdminClient()
         const { data, error } = await supabase
           .from('profiles')
           .select('display_name, profile_hidden, account_suspended, withdrawn_at')
