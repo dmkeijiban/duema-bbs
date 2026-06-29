@@ -18,6 +18,24 @@ type TypefullyOutcome =
   | { status: 'scheduled'; id: string; shareUrl: string; scheduledAt: string }
   | { status: 'error'; error: string }
 
+function summarizeDailyZukanResult(
+  result: Awaited<ReturnType<typeof runDailyZukanThread>>,
+  typefully?: TypefullyOutcome,
+) {
+  const isDuplicateSkip =
+    result.status === 'skipped' &&
+    ['already_posted_today', 'schedule_already_completed', 'race_already_posted'].includes(result.reason)
+  const typefullyError = typefully?.status === 'error' ? 1 : 0
+
+  return {
+    created: result.status === 'created' ? 1 : 0,
+    duplicate: isDuplicateSkip ? 1 : 0,
+    skipped: result.status === 'skipped' ? 1 : 0,
+    errors: (result.status === 'error' ? 1 : 0) + typefullyError,
+    results: [typefully ? { ...result, typefully } : result],
+  }
+}
+
 // 作成済み思い出図鑑スレを X/Typefully へ投稿する文面を組み立てる。
 function buildTypefullyText(cardName: string, threadUrl: string): string {
   return [
@@ -194,8 +212,12 @@ export async function GET(req: NextRequest) {
     // body の typefully フィールドで知らせるだけで、200のまま（スレ作成は成功している）。
     const httpStatus = result.status === 'error' ? 500 : 200
     return NextResponse.json(
-      typefully ? { ...result, typefully } : result,
-      { status: httpStatus }
+      {
+        ...(typefully ? { ...result, typefully } : result),
+        dryRun: false,
+        ...summarizeDailyZukanResult(result, typefully),
+      },
+      { status: httpStatus },
     )
   } catch (e) {
     const message = e instanceof Error ? e.message : 'unknown error'
