@@ -34,7 +34,7 @@ export type DailyZukanResult =
       threadId: number
       cycleNo: number
       postedDate: string
-      schedule: { status: 'used'; filled: DailyZukanScheduleFill | null }
+      schedule: { status: 'used' | 'fallback_without_schedule'; filled: DailyZukanScheduleFill | null }
     }
   | { status: 'skipped'; reason: string; postedDate: string; schedule?: DailyZukanScheduleFill | null }
   | { status: 'error'; error: string; schedule?: DailyZukanScheduleFill | null }
@@ -61,6 +61,10 @@ function pickRandom<T>(items: T[]): T {
 
 function shortenError(error: string): string {
   return error.length > 500 ? `${error.slice(0, 500)}...` : error
+}
+
+function isMissingScheduleTable(error: string): boolean {
+  return error.includes('daily_zukan_thread_schedule') && /Could not find the table|schema cache/i.test(error)
 }
 
 function buildBody(cardName: string, cardUrl: string): string {
@@ -219,6 +223,21 @@ async function getScheduleForDate(
   return { row: data as DailyZukanScheduleRow | null, error: null }
 }
 
+async function pickFallbackCardWithoutSchedule(
+  admin: ReturnType<typeof createAdminClient>,
+  cards: DailyZukanCard[],
+): Promise<{ card: DailyZukanCard | null; error: string | null }> {
+  const { data: usedRows, error } = await admin
+    .from('daily_zukan_thread_logs')
+    .select('card_slug')
+  if (error) {
+    return { card: null, error: `fallback-used: ${error.message}` }
+  }
+
+  const usedLogSlugs = new Set((usedRows ?? []).map((row) => row.card_slug as string))
+  return { card: chooseScheduleCard(cards, usedLogSlugs, new Set()), error: null }
+}
+
 async function markScheduleError(
   admin: ReturnType<typeof createAdminClient>,
   postedDate: string,
@@ -288,10 +307,17 @@ export async function runDailyZukanThread(): Promise<DailyZukanResult> {
 
   // 2. 今日の予定カードを取得。無ければ先30日分を補充してから再取得する。
   let scheduleResult = await getScheduleForDate(admin, postedDate)
+  let scheduleUnavailable = false
   if (scheduleResult.error) {
-    return { status: 'error', error: scheduleResult.error }
+    if (isMissingScheduleTable(scheduleResult.error)) {
+      scheduleUnavailable = true
+      scheduleResult = { row: null, error: null }
+      console.warn('[daily-zukan-thread] daily_zukan_thread_schedule is unavailable; using log-only fallback')
+    } else {
+      return { status: 'error', error: scheduleResult.error }
+    }
   }
-  if (!scheduleResult.row) {
+  if (!scheduleResult.row && !scheduleUnavailable) {
     scheduleFill = await fillDailyZukanThreadSchedule(admin, postedDate)
     if (scheduleFill.reason) {
       return { status: 'error', error: scheduleFill.reason, schedule: scheduleFill }
@@ -303,31 +329,40 @@ export async function runDailyZukanThread(): Promise<DailyZukanResult> {
   }
 
   const schedule = scheduleResult.row
-  if (!schedule) {
+  if (!schedule && !scheduleUnavailable) {
     return { status: 'skipped', reason: 'no_schedule_for_today', postedDate, schedule: scheduleFill }
   }
-  if (schedule.status === 'completed') {
+  if (schedule?.status === 'completed') {
     return { status: 'skipped', reason: 'schedule_already_completed', postedDate, schedule: scheduleFill }
   }
-  if (schedule.status === 'error' && schedule.thread_id != null) {
+  if (schedule?.status === 'error' && schedule.thread_id != null) {
     return { status: 'skipped', reason: 'schedule_error_has_thread_id', postedDate, schedule: scheduleFill }
   }
 
   // 3. 公開カードを全件取得し、今日の予定カードを解決する。
   const { cards, error: cardsError } = await fetchPublishedCards(admin)
   if (cardsError) {
-    await markScheduleError(admin, postedDate, cardsError)
+    if (schedule) await markScheduleError(admin, postedDate, cardsError)
     return { status: 'error', error: cardsError, schedule: scheduleFill }
   }
   if (!cards || cards.length === 0) {
-    await markScheduleError(admin, postedDate, 'no_published_cards')
+    if (schedule) await markScheduleError(admin, postedDate, 'no_published_cards')
     return { status: 'skipped', reason: 'no_published_cards', postedDate, schedule: scheduleFill }
   }
 
-  const card = cards.find((item) => item.slug === schedule.card_slug)
+  const fallbackPick = schedule
+    ? { card: null, error: null }
+    : await pickFallbackCardWithoutSchedule(admin, cards)
+  if (fallbackPick.error) {
+    return { status: 'error', error: fallbackPick.error, schedule: scheduleFill }
+  }
+
+  const card = schedule
+    ? cards.find((item) => item.slug === schedule.card_slug)
+    : fallbackPick.card
   if (!card) {
-    const error = `scheduled_card_not_found: ${schedule.card_slug}`
-    await markScheduleError(admin, postedDate, error)
+    const error = schedule ? `scheduled_card_not_found: ${schedule.card_slug}` : 'fallback_card_not_found'
+    if (schedule) await markScheduleError(admin, postedDate, error)
     return { status: 'error', error, schedule: scheduleFill }
   }
 
@@ -335,7 +370,7 @@ export async function runDailyZukanThread(): Promise<DailyZukanResult> {
   const cycleResult = await determineCycleNo(admin, cards)
   if (cycleResult.error || cycleResult.cycleNo == null) {
     const error = cycleResult.error ?? 'cycle: unknown'
-    await markScheduleError(admin, postedDate, error)
+    if (schedule) await markScheduleError(admin, postedDate, error)
     return { status: 'error', error, schedule: scheduleFill }
   }
   const cycleNo = cycleResult.cycleNo
@@ -357,7 +392,7 @@ export async function runDailyZukanThread(): Promise<DailyZukanResult> {
       return { status: 'skipped', reason: 'race_already_posted', postedDate, schedule: scheduleFill }
     }
     const error = `log: ${logError.message}`
-    await markScheduleError(admin, postedDate, error)
+    if (schedule) await markScheduleError(admin, postedDate, error)
     return { status: 'error', error, schedule: scheduleFill }
   }
 
@@ -389,7 +424,7 @@ export async function runDailyZukanThread(): Promise<DailyZukanResult> {
     // スレ作成に失敗したらログ行を削除し、同日の再試行でカードを消費しない。
     await admin.from('daily_zukan_thread_logs').delete().eq('id', logRow.id)
     const error = `thread: ${threadError?.message ?? 'unknown'}`
-    await markScheduleError(admin, postedDate, error)
+    if (schedule) await markScheduleError(admin, postedDate, error)
     return { status: 'error', error, schedule: scheduleFill }
   }
 
@@ -398,20 +433,22 @@ export async function runDailyZukanThread(): Promise<DailyZukanResult> {
     .from('daily_zukan_thread_logs')
     .update({ thread_id: thread.id })
     .eq('id', logRow.id)
-  const { error: scheduleUpdateError } = await admin
-    .from('daily_zukan_thread_schedule')
-    .update({
-      status: 'completed',
-      thread_id: thread.id,
-      completed_at: new Date().toISOString(),
-      error: null,
-    })
-    .eq('scheduled_date', postedDate)
-  if (scheduleUpdateError) {
-    return {
-      status: 'error',
-      error: `schedule-complete: ${scheduleUpdateError.message}`,
-      schedule: scheduleFill,
+  if (schedule) {
+    const { error: scheduleUpdateError } = await admin
+      .from('daily_zukan_thread_schedule')
+      .update({
+        status: 'completed',
+        thread_id: thread.id,
+        completed_at: new Date().toISOString(),
+        error: null,
+      })
+      .eq('scheduled_date', postedDate)
+    if (scheduleUpdateError) {
+      return {
+        status: 'error',
+        error: `schedule-complete: ${scheduleUpdateError.message}`,
+        schedule: scheduleFill,
+      }
     }
   }
 
@@ -422,7 +459,7 @@ export async function runDailyZukanThread(): Promise<DailyZukanResult> {
     threadId: thread.id,
     cycleNo,
     postedDate,
-    schedule: { status: 'used', filled: scheduleFill },
+    schedule: { status: schedule ? 'used' : 'fallback_without_schedule', filled: scheduleFill },
   }
 }
 
