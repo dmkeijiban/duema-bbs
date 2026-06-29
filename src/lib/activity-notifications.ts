@@ -58,16 +58,12 @@ function isAfter(value: string | null, baseline: string | null) {
   return new Date(value).getTime() > new Date(baseline).getTime()
 }
 
-function ownThreadLabel(identity: ViewerIdentity) {
-  return identity.userId
-    ? '自分が立てたスレに新しいコメント'
-    : 'この端末で立てたスレに新しいコメント'
+function ownThreadLabel() {
+  return '立てたスレッドが更新されました'
 }
 
-function commentedThreadLabel(identity: ViewerIdentity) {
-  return identity.userId
-    ? '自分がコメントしたスレが更新された'
-    : 'この端末でコメントしたスレが更新された'
+function commentedThreadLabel() {
+  return 'コメントしたスレッドが更新されました'
 }
 
 function latestByThread(posts: PostNotificationRow[]) {
@@ -156,7 +152,7 @@ export async function getActivityNotifications(
         threadId: thread.id,
         href: getPostHref(post),
         occurredAt: post.created_at,
-        label: ownThreadLabel(identity),
+        label: ownThreadLabel(),
       })
     }
   }
@@ -224,7 +220,7 @@ export async function getActivityNotifications(
         threadId: thread.id,
         href: getPostHref(latestPost),
         occurredAt: latestPost.created_at,
-        label: commentedThreadLabel(identity),
+        label: commentedThreadLabel(),
       })
     }
   }

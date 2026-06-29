@@ -30,14 +30,11 @@ export function TopActivityNotice() {
   if (!hasNotifications) return null
 
   return (
-    <div className="mb-1.5 flex flex-col gap-1.5 border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 sm:flex-row sm:items-center sm:justify-between">
-      <p className="font-bold leading-relaxed">新しいお知らせがあります</p>
-      <Link
-        href="/mypage"
-        className="inline-flex shrink-0 items-center justify-center rounded border border-blue-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100"
-      >
-        確認する
-      </Link>
-    </div>
+    <Link
+      href="/mypage"
+      className="inline-flex items-center justify-center rounded border border-green-700 bg-white px-2.5 py-1 text-xs font-bold text-green-800 transition-colors hover:bg-green-50"
+    >
+      🔔 新しいお知らせ
+    </Link>
   )
 }

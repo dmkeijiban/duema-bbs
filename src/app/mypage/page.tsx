@@ -333,7 +333,7 @@ function NotificationListCard({ notifications }: { notifications: ActivityNotifi
   return (
     <section className="rounded border border-blue-200 bg-blue-50">
       <div className="border-b border-blue-100 px-4 py-3">
-        <h2 className="text-sm font-bold text-blue-900">お知らせ</h2>
+        <h2 className="text-sm font-bold text-blue-900">🔔 お知らせ</h2>
       </div>
       <ul className="divide-y divide-blue-100 bg-white">
         {notifications.map(notification => (
@@ -435,7 +435,7 @@ async function AnonMyPage() {
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="rounded border border-gray-200">
                 <div className="border-b border-gray-200 px-4 py-3">
-                  <h2 className="text-sm font-bold text-gray-800">最近のスレッド</h2>
+                  <h2 className="text-sm font-bold text-gray-800">立てたスレッド</h2>
                 </div>
                 {anonThreads.length > 0 ? (
                   <ul className="divide-y divide-gray-100">
@@ -465,7 +465,7 @@ async function AnonMyPage() {
 
               <section className="rounded border border-gray-200">
                 <div className="border-b border-gray-200 px-4 py-3">
-                  <h2 className="text-sm font-bold text-gray-800">最近のコメント</h2>
+                  <h2 className="text-sm font-bold text-gray-800">自分のコメント</h2>
                 </div>
                 {anonPosts.length > 0 ? (
                   <ul className="divide-y divide-gray-100">
@@ -633,7 +633,7 @@ export default async function MyPage({
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="rounded border border-gray-200">
               <div className="border-b border-gray-200 px-4 py-3">
-                <h2 className="text-sm font-bold text-gray-800">最近のスレッド</h2>
+                <h2 className="text-sm font-bold text-gray-800">立てたスレッド</h2>
               </div>
               {myThreads.length > 0 ? (
                 <ul className="divide-y divide-gray-100">
@@ -663,7 +663,7 @@ export default async function MyPage({
 
             <section className="rounded border border-gray-200">
               <div className="border-b border-gray-200 px-4 py-3">
-                <h2 className="text-sm font-bold text-gray-800">最近のコメント</h2>
+                <h2 className="text-sm font-bold text-gray-800">自分のコメント</h2>
               </div>
               {myPosts.length > 0 ? (
                 <ul className="divide-y divide-gray-100">

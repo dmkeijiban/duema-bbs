@@ -248,6 +248,7 @@ function HomeGuideBanner() {
         >
           思い出図鑑を見る
         </Link>
+        <TopActivityNotice />
       </div>
     </div>
   )
@@ -358,8 +359,6 @@ export default async function Home({
         <Suspense fallback={<HomeBannerFallback />}>
           <HomeBannerServer />
         </Suspense>
-
-        <TopActivityNotice />
 
         <Suspense fallback={null}>
           <TopNoticesServer />
