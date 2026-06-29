@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { ZukanTabs, type ZukanTab } from '@/components/ZukanTabs'
 import { HallOfFameBody } from '@/components/HallOfFameBody'
@@ -78,6 +79,8 @@ function CardThumb({
         <img
           src={imageUrl}
           alt={`${name} カード画像`}
+          width={126}
+          height={176}
           loading="lazy"
           decoding="async"
           className="pointer-events-none h-full w-full object-cover"
@@ -120,6 +123,8 @@ function PackListCard({ pack }: { pack: ZukanPack }) {
           <img
             src={pack.image_url}
             alt={`${pack.code} ${pack.name} パック画像`}
+            width={96}
+            height={96}
             loading="lazy"
             decoding="async"
             className="h-full w-full object-contain p-1.5"
@@ -199,6 +204,55 @@ function ReviewHighlightSection({
   )
 }
 
+function ReviewHighlightsSkeleton() {
+  return (
+    <div className="grid gap-3 md:grid-cols-2" aria-hidden="true">
+      {[0, 1].map(section => (
+        <section key={section} className="border border-gray-300 bg-white">
+          <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
+            <div className="h-4 w-40 animate-pulse bg-gray-200" />
+          </div>
+          <div className="divide-y divide-gray-100">
+            {[0, 1, 2].map(item => (
+              <div key={item} className="grid grid-cols-[54px_minmax(0,1fr)_auto] gap-2 px-3 py-2.5">
+                <div className="animate-pulse bg-gray-100" style={{ aspectRatio: '63 / 88' }} />
+                <div className="min-w-0 py-1">
+                  <div className="h-4 w-32 animate-pulse bg-gray-200" />
+                  <div className="mt-2 h-3 w-44 max-w-full animate-pulse bg-gray-100" />
+                </div>
+                <div className="h-3 w-3 self-center animate-pulse bg-gray-100" />
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+async function ReviewHighlightsBlock({
+  highlightsPromise,
+}: {
+  highlightsPromise: Promise<Awaited<ReturnType<typeof fetchCardReviewHighlights>>>
+}) {
+  const reviewHighlights = await highlightsPromise
+
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <ReviewHighlightSection
+        title="最近思い出が投稿されたカード"
+        emptyText="まだ思い出が投稿されたカードはありません"
+        cards={reviewHighlights?.recent ?? []}
+      />
+      <ReviewHighlightSection
+        title="思い出が多いカード"
+        emptyText="まだ思い出は投稿されていません"
+        cards={reviewHighlights?.mostReviewed ?? []}
+      />
+    </div>
+  )
+}
+
 const DM01_PREVIEW_DEFS = [
   { slug: 'bolshack-dragon', name: 'ボルシャック・ドラゴン', civ: '火' },
   { slug: 'aqua-hulcus',     name: 'アクア・ハルカス',       civ: '水' },
@@ -208,10 +262,9 @@ const DM01_PREVIEW_DEFS = [
 ]
 
 async function MemoriesView() {
-  const [dbPacks, reviewHighlights] = await Promise.all([
-    fetchPublishedPacks(),
-    fetchCardReviewHighlights(),
-  ])
+  const dbPacksPromise = fetchPublishedPacks()
+  const reviewHighlightsPromise = fetchCardReviewHighlights()
+  const dbPacks = await dbPacksPromise
   const packs = dbPacks ?? MOCK_PACKS
   const isDbReady = dbPacks !== null
 
@@ -294,20 +347,13 @@ async function MemoriesView() {
       </section>
 
       {/* 下段2カラム */}
-      <div className="grid gap-3 md:grid-cols-2">
-        <ReviewHighlightSection
-          title="最近思い出が投稿されたカード"
-          emptyText="まだ思い出が投稿されたカードはありません"
-          cards={reviewHighlights?.recent ?? []}
-        />
-        <ReviewHighlightSection
-          title="思い出が多いカード"
-          emptyText="まだ思い出は投稿されていません"
-          cards={reviewHighlights?.mostReviewed ?? []}
-        />
-      </div>
+      <Suspense fallback={<ReviewHighlightsSkeleton />}>
+        <ReviewHighlightsBlock highlightsPromise={reviewHighlightsPromise} />
+      </Suspense>
 
-      <SnsCtaCard />
+      <Suspense fallback={null}>
+        <SnsCtaCard />
+      </Suspense>
     </>
   )
 }
