@@ -21,6 +21,8 @@ const DEFAULT_MAX_NEW_PER_RUN = 5
 const TYPEFULLY_API = 'https://api.typefully.com/v2'
 const SCHEDULED_DRAFT_LIMIT = 50
 const SCHEDULED_DRAFT_LOOKAHEAD_DAYS = 30
+const PUBLISHED_DRAFT_LIMIT = 50
+const PUBLISHED_DRAFT_LOOKBACK_HOURS = 48
 const ERROR_MAX_LENGTH = 500
 
 type SupabaseAdmin = ReturnType<typeof createAdminClient>
@@ -33,6 +35,8 @@ interface TypefullyDraft {
   scheduled_at?: string | null
   scheduled_date?: string | null
   schedule_date?: string | null
+  published_at?: string | null
+  published_date?: string | null
   typefully_url?: string | null
   share_url?: string | null
 }
@@ -43,6 +47,8 @@ interface TypefullyDraftDetail {
   scheduled_at?: string | null
   scheduled_date?: string | null
   schedule_date?: string | null
+  published_at?: string | null
+  published_date?: string | null
   platforms?: {
     x?: {
       posts?: Array<{ text?: string | null; media_ids?: string[] | null }>
@@ -105,6 +111,10 @@ function getDraftScheduledAt(draft: TypefullyDraft | TypefullyDraftDetail): stri
   return draft.scheduled_at ?? draft.scheduled_date ?? draft.schedule_date ?? null
 }
 
+function getDraftPublishedAt(draft: TypefullyDraft | TypefullyDraftDetail): string | null {
+  return draft.published_at ?? draft.published_date ?? null
+}
+
 function getDraftText(draft: TypefullyDraft, detail: TypefullyDraftDetail | null): string {
   const platformText = detail?.platforms?.x?.posts
     ?.map((post) => post.text?.trim())
@@ -138,6 +148,13 @@ function isWithinLookahead(isoDate: string): boolean {
   if (Number.isNaN(date.getTime())) return false
   const maxTime = Date.now() + SCHEDULED_DRAFT_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000
   return date.getTime() <= maxTime
+}
+
+function isWithinLookback(isoDate: string): boolean {
+  const date = new Date(isoDate)
+  if (Number.isNaN(date.getTime())) return false
+  const minTime = Date.now() - PUBLISHED_DRAFT_LOOKBACK_HOURS * 60 * 60 * 1000
+  return date.getTime() >= minTime && date.getTime() <= Date.now()
 }
 
 function getPrimaryText(lines: string[] | null): string {
@@ -247,10 +264,64 @@ async function fetchScheduledDrafts(
   return { drafts: records, fetched: json.results.length }
 }
 
+async function fetchPublishedDrafts(
+  apiKey: string,
+  socialSetId: string,
+): Promise<{ drafts: ScheduledDraftRecord[]; fetched: number; error?: string; status?: number }> {
+  const endpoint =
+    `${TYPEFULLY_API}/social-sets/${socialSetId}/drafts?status=published&order_by=-published_at&limit=${PUBLISHED_DRAFT_LIMIT}`
+
+  const res = await fetch(endpoint, {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+    next: { revalidate: 0 },
+  })
+
+  if (!res.ok) {
+    const body = await res.text()
+    console.error('[sync-typefully] Typefully published drafts API error:', res.status, body.slice(0, 300))
+    return { drafts: [], fetched: 0, error: 'Typefully published API error', status: res.status }
+  }
+
+  const json = await res.json()
+  const errField = json.detail ?? json.error ?? json.errors ?? json.message
+  if (errField) {
+    const message = String(errField).slice(0, 200)
+    console.error('[sync-typefully] Typefully published drafts response error:', message)
+    return { drafts: [], fetched: 0, error: message, status: 502 }
+  }
+  if (!Array.isArray(json.results)) {
+    console.error('[sync-typefully] Typefully published drafts unexpected response:', JSON.stringify(json).slice(0, 300))
+    return { drafts: [], fetched: 0, error: 'Typefully published API unexpected response', status: 502 }
+  }
+
+  const records: ScheduledDraftRecord[] = []
+  for (const draft of json.results as TypefullyDraft[]) {
+    const typefullyId = String(draft.id ?? '')
+    if (!typefullyId) continue
+
+    const detail = await fetchDraftDetail(apiKey, socialSetId, typefullyId)
+    const publishedAt = getDraftPublishedAt(draft) ?? (detail ? getDraftPublishedAt(detail) : null)
+    const text = getDraftText(draft, detail)
+    if (!publishedAt || !text.trim() || !isWithinLookback(publishedAt)) continue
+
+    records.push({
+      typefullyId,
+      sourceStatus: draft.status ?? 'published',
+      scheduledAt: publishedAt,
+      threadLines: textToThreadLines(text),
+      imageUrls: await fetchImageUrlsFromDetail(apiKey, socialSetId, detail),
+      shareUrl: draft.share_url ?? draft.typefully_url ?? null,
+    })
+  }
+
+  return { drafts: records, fetched: json.results.length }
+}
+
 async function saveScheduledDrafts(
   supabase: SupabaseAdmin,
   drafts: ScheduledDraftRecord[],
   dryRun: boolean,
+  logLabel = 'scheduled draft',
 ): Promise<{ saved: number; duplicates: number; errors: number }> {
   if (drafts.length === 0) return { saved: 0, duplicates: 0, errors: 0 }
 
@@ -290,7 +361,7 @@ async function saveScheduledDrafts(
     .from('x_posts')
     .insert(inserts)
   if (error) {
-    console.error('[sync-typefully] x_posts scheduled draft save error:', error.message)
+    console.error(`[sync-typefully] x_posts ${logLabel} save error:`, error.message)
     return { saved: 0, duplicates: existingIds.size, errors: inserts.length }
   }
 
@@ -477,22 +548,38 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const maxNewPerRun = parseMaxNew(req.nextUrl.searchParams.get('max_new'))
   const supabase = createAdminClient()
 
-  const fetched = await fetchScheduledDrafts(apiKey, socialSetId)
-  if (fetched.error) {
+  const fetchedScheduled = await fetchScheduledDrafts(apiKey, socialSetId)
+  if (fetchedScheduled.error) {
     return NextResponse.json(
-      { error: fetched.error, status: fetched.status ?? 502, dryRun },
-      { status: fetched.status ?? 502 },
+      { error: fetchedScheduled.error, status: fetchedScheduled.status ?? 502, dryRun },
+      { status: fetchedScheduled.status ?? 502 },
     )
   }
 
-  const saveResult = await saveScheduledDrafts(supabase, fetched.drafts, dryRun)
+  const fetchedPublished = await fetchPublishedDrafts(apiKey, socialSetId)
+  if (fetchedPublished.error) {
+    return NextResponse.json(
+      { error: fetchedPublished.error, status: fetchedPublished.status ?? 502, dryRun },
+      { status: fetchedPublished.status ?? 502 },
+    )
+  }
+
+  const saveScheduledResult = await saveScheduledDrafts(supabase, fetchedScheduled.drafts, dryRun, 'scheduled draft')
+  const savePublishedResult = await saveScheduledDrafts(supabase, fetchedPublished.drafts, dryRun, 'published draft')
   const dueFromSaved = await findDueXPosts(supabase, maxNewPerRun)
   if (dueFromSaved.error) {
     return NextResponse.json({ error: dueFromSaved.error, dryRun }, { status: 500 })
   }
 
+  const dryRunFetchedDrafts = [...fetchedScheduled.drafts, ...fetchedPublished.drafts]
+  const dryRunSeenTypefullyIds = new Set<string>()
   const dueFromFetchedDryRun: XPostDueRow[] = dryRun
-    ? fetched.drafts
+    ? dryRunFetchedDrafts
+        .filter((draft) => {
+          if (dryRunSeenTypefullyIds.has(draft.typefullyId)) return false
+          dryRunSeenTypefullyIds.add(draft.typefullyId)
+          return true
+        })
         .filter((draft) => isDue(draft.scheduledAt))
         .slice(0, maxNewPerRun)
         .map((draft, index) => ({
@@ -525,19 +612,24 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const skipped = results.filter((result) => result.status === 'skipped').length
 
   console.log(
-    `[sync-typefully] 完了: scheduled取得${fetched.fetched}件 / 保存予定${saveResult.saved}件` +
-    ` / 保存済み重複${saveResult.duplicates}件 / 期限到来${dueRows.length}件` +
+    `[sync-typefully] 完了: scheduled取得${fetchedScheduled.fetched}件 / scheduled保存予定${saveScheduledResult.saved}件` +
+    ` / published取得${fetchedPublished.fetched}件 / published保存予定${savePublishedResult.saved}件` +
+    ` / 保存済み重複${saveScheduledResult.duplicates + savePublishedResult.duplicates}件 / 期限到来${dueRows.length}件` +
     ` / 作成${created}件 / 重複${duplicate}件 / エラー${errors}件 / スキップ${skipped}件` +
     (dryRun ? ' [DRY RUN]' : ''),
   )
 
   return NextResponse.json({
     dryRun,
-    fetchedScheduledDrafts: fetched.fetched,
-    normalizedScheduledDrafts: fetched.drafts.length,
-    savedScheduledDrafts: saveResult.saved,
-    duplicateScheduledDrafts: saveResult.duplicates,
-    saveErrors: saveResult.errors,
+    fetchedScheduledDrafts: fetchedScheduled.fetched,
+    normalizedScheduledDrafts: fetchedScheduled.drafts.length,
+    savedScheduledDrafts: saveScheduledResult.saved,
+    duplicateScheduledDrafts: saveScheduledResult.duplicates,
+    fetchedPublishedDrafts: fetchedPublished.fetched,
+    normalizedPublishedDrafts: fetchedPublished.drafts.length,
+    savedPublishedDrafts: savePublishedResult.saved,
+    duplicatePublishedDrafts: savePublishedResult.duplicates,
+    saveErrors: saveScheduledResult.errors + savePublishedResult.errors,
     duePosts: dueRows.length,
     created,
     duplicate,
