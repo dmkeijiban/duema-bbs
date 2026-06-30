@@ -6,6 +6,8 @@ const TYPEFULLY_API_BASE = 'https://api.typefully.com/v2'
 export interface TypefullyDraftParams {
   /** スレッドの各ツイート文字列（配列） */
   threadLines: string[]
+  /** 1投稿目に添付する画像URL */
+  imageUrls?: string[]
   /** ISO8601形式のスケジュール日時（省略時は下書きとして保存） */
   scheduleDate?: string
   /** 自動リツイート（Typefully の auto_retweet_enabled 機能） */
@@ -86,7 +88,12 @@ export async function createTypefullyDraft(
     platforms: {
       x: {
         enabled: true,
-        posts: params.threadLines.map((text) => ({ text })),
+        posts: params.threadLines.map((text, index) => ({
+          text,
+          ...(index === 0 && params.imageUrls && params.imageUrls.length > 0
+            ? { media_urls: params.imageUrls }
+            : {}),
+        })),
       },
     },
   }
@@ -110,8 +117,12 @@ export async function createTypefullyDraft(
     }
 
     const data = (await res.json()) as TypefullyDraftResponse
+    const id = String(data.id ?? '')
+    if (!id) {
+      return { error: 'Typefully API response missing draft id' }
+    }
     return {
-      id: String(data.id ?? ''),
+      id,
       share_url: String(data.private_url ?? data.share_url ?? data.url ?? ''),
     }
   } catch (e) {
