@@ -19,6 +19,11 @@ type XPost = {
   typefully_share_url: string | null
   scheduled_at: string | null
   sent_at: string | null
+  thread_id: number | null
+  synced_at: string | null
+  sync_error: string | null
+  retry_count: number | null
+  source_status: string | null
   source_ref: string | null
   meta: Record<string, unknown>
   created_at: string
@@ -50,6 +55,20 @@ function toJSTTime(isoStr: string): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+function toJSTDateTime(isoStr: string): string {
+  return new Date(isoStr).toLocaleString('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function getStringMeta(meta: Record<string, unknown>, key: string): string | null {
+  const value = meta?.[key]
+  return typeof value === 'string' && value.length > 0 ? value : null
 }
 
 function groupByDate(posts: XPost[]): [string, XPost[]][] {
@@ -90,6 +109,8 @@ function PostCard({
   const needsExpand = allLines.length > PREVIEW_LINES
   const visibleLines = isExpanded ? allLines : allLines.slice(0, PREVIEW_LINES)
   const canSendTypefully = post.status === 'draft' || post.status === 'error'
+  const fetchedFromTypefullyAt = getStringMeta(post.meta, 'fetched_from_typefully_at')
+  const threadCreatedAt = getStringMeta(post.meta, 'thread_created_at')
 
   return (
     <div
@@ -176,6 +197,65 @@ function PostCard({
       {post.title && (
         <div className="px-3 pb-1">
           <p className="text-xs font-semibold text-gray-800 leading-tight">{post.title}</p>
+        </div>
+      )}
+
+      {(post.typefully_id || post.thread_id || post.synced_at || fetchedFromTypefullyAt || post.sync_error) && (
+        <div className="mx-3 mb-2 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1 rounded border border-gray-100 bg-gray-50 px-2 py-1.5 text-[10px] text-gray-600">
+          {post.typefully_id && (
+            <div className="min-w-0">
+              <span className="text-gray-400">Typefully ID: </span>
+              <code className="break-all">{post.typefully_id}</code>
+            </div>
+          )}
+          {post.scheduled_at && (
+            <div>
+              <span className="text-gray-400">scheduled_at: </span>
+              {toJSTDateTime(post.scheduled_at)}
+            </div>
+          )}
+          {post.source_status && (
+            <div>
+              <span className="text-gray-400">source_status: </span>
+              {post.source_status}
+            </div>
+          )}
+          {fetchedFromTypefullyAt && (
+            <div>
+              <span className="text-gray-400">fetched: </span>
+              {toJSTDateTime(fetchedFromTypefullyAt)}
+            </div>
+          )}
+          {post.thread_id && (
+            <div>
+              <span className="text-gray-400">thread_id: </span>
+              <Link href={`/thread/${post.thread_id}`} className="text-blue-600 hover:underline">
+                {post.thread_id}
+              </Link>
+            </div>
+          )}
+          {threadCreatedAt && (
+            <div>
+              <span className="text-gray-400">thread_created_at: </span>
+              {toJSTDateTime(threadCreatedAt)}
+            </div>
+          )}
+          {post.synced_at && (
+            <div>
+              <span className="text-gray-400">synced_at: </span>
+              {toJSTDateTime(post.synced_at)}
+            </div>
+          )}
+          <div>
+            <span className="text-gray-400">sync_attempts: </span>
+            {post.retry_count ?? 0}
+          </div>
+          {post.sync_error && (
+            <div className="sm:col-span-2 text-red-600">
+              <span className="text-red-400">sync_error: </span>
+              {post.sync_error}
+            </div>
+          )}
         </div>
       )}
 

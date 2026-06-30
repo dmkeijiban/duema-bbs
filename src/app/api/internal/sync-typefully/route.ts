@@ -1,8 +1,8 @@
 /**
  * GET /api/internal/sync-typefully
- * Typefully の予約済み投稿を x_posts に保存し、scheduled_at 到来後に掲示板スレ化する。
- * GitHub Actions から呼ばれる（既存 schedule は維持）。
- * 手動実行: Authorization: Bearer ${INTERNAL_POST_SECRET}
+ *
+ * Typefully API だけを見て、今日分の予約投稿を x_posts に保存する。
+ * 掲示板スレ化は x_posts.scheduled_at が到来した行だけを処理する。
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -11,40 +11,30 @@ import { notifyNewThread } from '@/lib/discord'
 import {
   generateTitleFromXPost,
   hashText,
-  sanitizeXPostForForumBody,
 } from '@/lib/x-post-to-thread'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-const DEFAULT_MAX_NEW_PER_RUN = 5
 const TYPEFULLY_API = 'https://api.typefully.com/v2'
-const SCHEDULED_DRAFT_LIMIT = 50
-const SCHEDULED_DRAFT_LOOKAHEAD_DAYS = 30
-const PUBLISHED_DRAFT_LIMIT = 50
-const PUBLISHED_DRAFT_LOOKBACK_HOURS = 48
+const TYPEFULLY_DRAFT_LIMIT = 50
+const DEFAULT_MAX_NEW_PER_RUN = 5
+const DUE_LOOKBACK_HOURS = 24
 const ERROR_MAX_LENGTH = 500
-const DUE_SCAN_MIN_LIMIT = 50
-const ELIGIBLE_DUE_STATUSES = [
-  'scheduled',
-  'posted',
-  'published',
-  'sent',
-  'typefully_drafted',
-]
+const CANCELLED_SOURCE_STATUSES = new Set(['cancelled', 'canceled', 'deleted'])
+const ELIGIBLE_X_POST_STATUSES = ['scheduled', 'posted', 'published', 'sent', 'typefully_drafted']
 
 type SupabaseAdmin = ReturnType<typeof createAdminClient>
+type SyncMode = 'fetch_today' | 'sync_due' | 'fetch_and_sync'
 
 interface TypefullyDraft {
-  id: number | string
+  id?: number | string | null
   preview?: string | null
   content?: string | null
   status?: string | null
   scheduled_at?: string | null
   scheduled_date?: string | null
   schedule_date?: string | null
-  published_at?: string | null
-  published_date?: string | null
   typefully_url?: string | null
   share_url?: string | null
 }
@@ -55,30 +45,26 @@ interface TypefullyDraftDetail {
   scheduled_at?: string | null
   scheduled_date?: string | null
   schedule_date?: string | null
-  published_at?: string | null
-  published_date?: string | null
   platforms?: {
     x?: {
-      posts?: Array<{ text?: string | null; media_ids?: string[] | null }>
+      posts?: Array<{ text?: string | null }>
     }
   }
 }
 
-interface TypefullyMediaStatus {
-  media_urls?: {
-    medium?: string
-    large?: string
-    original?: string
-  }
-}
-
-interface ScheduledDraftRecord {
+interface TodayTypefullyPost {
   typefullyId: string
   sourceStatus: string
   scheduledAt: string
-  threadLines: string[]
-  imageUrls: string[]
+  body: string
   shareUrl: string | null
+}
+
+interface ExistingXPost {
+  id: number
+  typefully_id: string | null
+  thread_id: number | null
+  meta: Record<string, unknown> | null
 }
 
 interface XPostDueRow {
@@ -86,9 +72,12 @@ interface XPostDueRow {
   typefully_id: string | null
   scheduled_at: string | null
   thread_lines: string[] | null
-  image_urls: string[] | null
   status: string
+  source_status: string | null
+  source_ref: string | null
   retry_count: number | null
+  thread_id: number | null
+  meta: Record<string, unknown> | null
 }
 
 interface ThreadSyncResult {
@@ -98,6 +87,14 @@ interface ThreadSyncResult {
   threadId?: number
   threadUrl?: string
   error?: string
+}
+
+interface TypefullyPostSummary {
+  typefullyId: string
+  scheduledAt: string
+  scheduledAtJst: string
+  sourceStatus: string
+  bodyPreview: string
 }
 
 function sanitizeSecretValue(value: string | undefined): string | undefined {
@@ -115,12 +112,38 @@ function parseMaxNew(value: string | null): number {
   return parsed
 }
 
-function getDraftScheduledAt(draft: TypefullyDraft | TypefullyDraftDetail): string | null {
-  return draft.scheduled_at ?? draft.scheduled_date ?? draft.schedule_date ?? null
+function parseMode(value: string | null): SyncMode {
+  if (value === 'fetch_today' || value === 'sync_due' || value === 'fetch_and_sync') return value
+  return 'fetch_and_sync'
 }
 
-function getDraftPublishedAt(draft: TypefullyDraft | TypefullyDraftDetail): string | null {
-  return draft.published_at ?? draft.published_date ?? null
+function formatJstDate(date: Date): string {
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
+}
+
+function isTodayInJst(isoDate: string, now = new Date()): boolean {
+  const date = new Date(isoDate)
+  return !Number.isNaN(date.getTime()) && formatJstDate(date) === formatJstDate(now)
+}
+
+function formatJstDateTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleString('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function getDraftScheduledAt(draft: TypefullyDraft | TypefullyDraftDetail): string | null {
+  return draft.scheduled_at ?? draft.scheduled_date ?? draft.schedule_date ?? null
 }
 
 function getDraftText(draft: TypefullyDraft, detail: TypefullyDraftDetail | null): string {
@@ -136,7 +159,7 @@ function getDraftText(draft: TypefullyDraft, detail: TypefullyDraftDetail | null
     draft.content?.trim() ??
     draft.preview?.trim() ??
     ''
-  )
+  ).trim()
 }
 
 function textToThreadLines(text: string): string[] {
@@ -146,27 +169,18 @@ function textToThreadLines(text: string): string[] {
     .filter(Boolean)
 }
 
-function isDue(isoDate: string): boolean {
-  const date = new Date(isoDate)
-  return !Number.isNaN(date.getTime()) && date.getTime() <= Date.now()
-}
-
-function isWithinLookahead(isoDate: string): boolean {
-  const date = new Date(isoDate)
-  if (Number.isNaN(date.getTime())) return false
-  const maxTime = Date.now() + SCHEDULED_DRAFT_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000
-  return date.getTime() <= maxTime
-}
-
-function isWithinLookback(isoDate: string): boolean {
-  const date = new Date(isoDate)
-  if (Number.isNaN(date.getTime())) return false
-  const minTime = Date.now() - PUBLISHED_DRAFT_LOOKBACK_HOURS * 60 * 60 * 1000
-  return date.getTime() >= minTime && date.getTime() <= Date.now()
-}
-
 function getPrimaryText(lines: string[] | null): string {
   return (lines ?? []).join('\n\n').trim()
+}
+
+function summarizeTypefullyPosts(posts: TodayTypefullyPost[]): TypefullyPostSummary[] {
+  return posts.map((post) => ({
+    typefullyId: post.typefullyId,
+    scheduledAt: post.scheduledAt,
+    scheduledAtJst: formatJstDateTime(post.scheduledAt),
+    sourceStatus: post.sourceStatus,
+    bodyPreview: post.body.slice(0, 80),
+  }))
 }
 
 async function fetchDraftDetail(
@@ -186,45 +200,12 @@ async function fetchDraftDetail(
   }
 }
 
-async function fetchMediaUrl(
+async function fetchTodayTypefullyPosts(
   apiKey: string,
   socialSetId: string,
-  mediaId: string,
-): Promise<string | null> {
-  try {
-    const res = await fetch(`${TYPEFULLY_API}/social-sets/${socialSetId}/media/${mediaId}`, {
-      headers: { 'Authorization': `Bearer ${apiKey}` },
-      next: { revalidate: 0 },
-    })
-    if (!res.ok) return null
-    const media: TypefullyMediaStatus = await res.json()
-    return media.media_urls?.medium ?? media.media_urls?.large ?? media.media_urls?.original ?? null
-  } catch {
-    return null
-  }
-}
-
-async function fetchImageUrlsFromDetail(
-  apiKey: string,
-  socialSetId: string,
-  detail: TypefullyDraftDetail | null,
-): Promise<string[]> {
-  const mediaIds = detail?.platforms?.x?.posts
-    ?.flatMap((post) => post.media_ids ?? [])
-    .filter((id): id is string => Boolean(id)) ?? []
-  const uniqueMediaIds = Array.from(new Set(mediaIds))
-  const urls = await Promise.all(
-    uniqueMediaIds.map((mediaId) => fetchMediaUrl(apiKey, socialSetId, mediaId)),
-  )
-  return urls.filter((url): url is string => Boolean(url))
-}
-
-async function fetchScheduledDrafts(
-  apiKey: string,
-  socialSetId: string,
-): Promise<{ drafts: ScheduledDraftRecord[]; fetched: number; error?: string; status?: number }> {
+): Promise<{ posts: TodayTypefullyPost[]; fetched: number; error?: string; status?: number }> {
   const endpoint =
-    `${TYPEFULLY_API}/social-sets/${socialSetId}/drafts?status=scheduled&order_by=scheduled_date&limit=${SCHEDULED_DRAFT_LIMIT}`
+    `${TYPEFULLY_API}/social-sets/${socialSetId}/drafts?status=scheduled&order_by=scheduled_date&limit=${TYPEFULLY_DRAFT_LIMIT}`
 
   const res = await fetch(endpoint, {
     headers: { 'Authorization': `Bearer ${apiKey}` },
@@ -234,7 +215,7 @@ async function fetchScheduledDrafts(
   if (!res.ok) {
     const body = await res.text()
     console.error('[sync-typefully] Typefully scheduled drafts API error:', res.status, body.slice(0, 300))
-    return { drafts: [], fetched: 0, error: 'Typefully API error', status: res.status }
+    return { posts: [], fetched: 0, error: 'Typefully API error', status: res.status }
   }
 
   const json = await res.json()
@@ -242,159 +223,175 @@ async function fetchScheduledDrafts(
   if (errField) {
     const message = String(errField).slice(0, 200)
     console.error('[sync-typefully] Typefully scheduled drafts response error:', message)
-    return { drafts: [], fetched: 0, error: message, status: 502 }
+    return { posts: [], fetched: 0, error: message, status: 502 }
   }
   if (!Array.isArray(json.results)) {
     console.error('[sync-typefully] Typefully scheduled drafts unexpected response:', JSON.stringify(json).slice(0, 300))
-    return { drafts: [], fetched: 0, error: 'Typefully API unexpected response', status: 502 }
+    return { posts: [], fetched: 0, error: 'Typefully API unexpected response', status: 502 }
   }
 
-  const records: ScheduledDraftRecord[] = []
+  const posts: TodayTypefullyPost[] = []
   for (const draft of json.results as TypefullyDraft[]) {
-    const typefullyId = String(draft.id ?? '')
-    if (!typefullyId) continue
-
-    const detail = await fetchDraftDetail(apiKey, socialSetId, typefullyId)
+    const draftId = draft.id != null ? String(draft.id) : ''
+    const detail = draftId ? await fetchDraftDetail(apiKey, socialSetId, draftId) : null
     const scheduledAt = getDraftScheduledAt(draft) ?? (detail ? getDraftScheduledAt(detail) : null)
-    const text = getDraftText(draft, detail)
-    if (!scheduledAt || !text.trim() || !isWithinLookahead(scheduledAt)) continue
+    const body = getDraftText(draft, detail)
+    if (!scheduledAt || !isTodayInJst(scheduledAt)) continue
 
-    records.push({
+    const typefullyId = draftId || `scheduled:${scheduledAt}:${hashText(body)}`
+    posts.push({
       typefullyId,
       sourceStatus: draft.status ?? 'scheduled',
       scheduledAt,
-      threadLines: textToThreadLines(text),
-      imageUrls: await fetchImageUrlsFromDetail(apiKey, socialSetId, detail),
+      body,
       shareUrl: draft.share_url ?? draft.typefully_url ?? null,
     })
   }
 
-  return { drafts: records, fetched: json.results.length }
+  return { posts, fetched: json.results.length }
 }
 
-async function fetchPublishedDrafts(
-  apiKey: string,
-  socialSetId: string,
-): Promise<{ drafts: ScheduledDraftRecord[]; fetched: number; error?: string; status?: number }> {
-  const endpoint =
-    `${TYPEFULLY_API}/social-sets/${socialSetId}/drafts?status=published&order_by=-published_at&limit=${PUBLISHED_DRAFT_LIMIT}`
-
-  const res = await fetch(endpoint, {
-    headers: { 'Authorization': `Bearer ${apiKey}` },
-    next: { revalidate: 0 },
-  })
-
-  if (!res.ok) {
-    const body = await res.text()
-    console.error('[sync-typefully] Typefully published drafts API error:', res.status, body.slice(0, 300))
-    return { drafts: [], fetched: 0, error: 'Typefully published API error', status: res.status }
-  }
-
-  const json = await res.json()
-  const errField = json.detail ?? json.error ?? json.errors ?? json.message
-  if (errField) {
-    const message = String(errField).slice(0, 200)
-    console.error('[sync-typefully] Typefully published drafts response error:', message)
-    return { drafts: [], fetched: 0, error: message, status: 502 }
-  }
-  if (!Array.isArray(json.results)) {
-    console.error('[sync-typefully] Typefully published drafts unexpected response:', JSON.stringify(json).slice(0, 300))
-    return { drafts: [], fetched: 0, error: 'Typefully published API unexpected response', status: 502 }
-  }
-
-  const records: ScheduledDraftRecord[] = []
-  for (const draft of json.results as TypefullyDraft[]) {
-    const typefullyId = String(draft.id ?? '')
-    if (!typefullyId) continue
-
-    const detail = await fetchDraftDetail(apiKey, socialSetId, typefullyId)
-    const publishedAt = getDraftPublishedAt(draft) ?? (detail ? getDraftPublishedAt(detail) : null)
-    const text = getDraftText(draft, detail)
-    if (!publishedAt || !text.trim() || !isWithinLookback(publishedAt)) continue
-
-    records.push({
-      typefullyId,
-      sourceStatus: draft.status ?? 'published',
-      scheduledAt: publishedAt,
-      threadLines: textToThreadLines(text),
-      imageUrls: await fetchImageUrlsFromDetail(apiKey, socialSetId, detail),
-      shareUrl: draft.share_url ?? draft.typefully_url ?? null,
-    })
-  }
-
-  return { drafts: records, fetched: json.results.length }
-}
-
-async function saveScheduledDrafts(
+async function upsertTodayTypefullyPosts(
   supabase: SupabaseAdmin,
-  drafts: ScheduledDraftRecord[],
+  posts: TodayTypefullyPost[],
   dryRun: boolean,
-  logLabel = 'scheduled draft',
-): Promise<{ saved: number; duplicates: number; errors: number }> {
-  if (drafts.length === 0) return { saved: 0, duplicates: 0, errors: 0 }
+): Promise<{ saved: number; updated: number; locked: number; errors: number; duplicate: number }> {
+  if (posts.length === 0) return { saved: 0, updated: 0, locked: 0, errors: 0, duplicate: 0 }
 
-  const typefullyIds = drafts.map((draft) => draft.typefullyId)
-  const { data: existingRows, error: existingError } = await supabase
+  const fetchedAt = new Date().toISOString()
+  const typefullyIds = posts.map((post) => post.typefullyId)
+  const { data, error } = await supabase
     .from('x_posts')
-    .select('typefully_id')
+    .select('id, typefully_id, thread_id, meta')
     .in('typefully_id', typefullyIds)
-  if (existingError) {
-    console.error('[sync-typefully] x_posts existing check error:', existingError.message)
-    return { saved: 0, duplicates: 0, errors: drafts.length }
-  }
 
-  const existingIds = new Set((existingRows ?? []).map((row) => String(row.typefully_id)))
-  const inserts = drafts
-    .filter((draft) => !existingIds.has(draft.typefullyId))
-    .map((draft) => ({
-      post_type: 'custom',
-      status: 'scheduled',
-      title: generateTitleFromXPost(draft.threadLines.join('\n\n')),
-      thread_lines: draft.threadLines,
-      image_urls: draft.imageUrls,
-      typefully_id: draft.typefullyId,
-      typefully_share_url: draft.shareUrl,
-      scheduled_at: draft.scheduledAt,
-      source_ref: `typefully:${draft.typefullyId}`,
-      source_status: draft.sourceStatus,
-      sync_error: null,
-      retry_count: 0,
-    }))
-
-  if (dryRun || inserts.length === 0) {
-    return { saved: dryRun ? inserts.length : 0, duplicates: existingIds.size, errors: 0 }
-  }
-
-  const { error } = await supabase
-    .from('x_posts')
-    .insert(inserts)
   if (error) {
-    console.error(`[sync-typefully] x_posts ${logLabel} save error:`, error.message)
-    return { saved: 0, duplicates: existingIds.size, errors: inserts.length }
+    console.error('[sync-typefully] x_posts existing check error:', error.message)
+    return { saved: 0, updated: 0, locked: 0, errors: posts.length, duplicate: 0 }
   }
 
-  return { saved: inserts.length, duplicates: existingIds.size, errors: 0 }
+  const existingByTypefullyId = new Map(
+    ((data ?? []) as ExistingXPost[]).map((row) => [String(row.typefully_id), row]),
+  )
+
+  let saved = 0
+  let updated = 0
+  let locked = 0
+  let errors = 0
+  let duplicate = 0
+
+  for (const post of posts) {
+    const existing = existingByTypefullyId.get(post.typefullyId)
+    const threadLines = textToThreadLines(post.body)
+    const nextMeta = {
+      ...(existing?.meta ?? {}),
+      fetched_from_typefully_at: fetchedAt,
+    }
+
+    if (dryRun) {
+      if (!existing) saved++
+      else if (existing.thread_id == null) updated++
+      else locked++
+      continue
+    }
+
+    if (!existing) {
+      const { error: insertError } = await supabase
+        .from('x_posts')
+        .insert({
+          post_type: 'custom',
+          status: 'scheduled',
+          title: generateTitleFromXPost(post.body) || 'デュエマ掲示板投稿',
+          thread_lines: threadLines,
+          image_urls: [],
+          typefully_id: post.typefullyId,
+          typefully_share_url: post.shareUrl,
+          scheduled_at: post.scheduledAt,
+          source_ref: `typefully:${post.typefullyId}`,
+          source_status: post.sourceStatus,
+          sync_error: null,
+          retry_count: 0,
+          meta: nextMeta,
+        })
+      if (insertError) {
+        errors++
+        console.error('[sync-typefully] x_posts insert error:', insertError.message)
+      } else {
+        saved++
+      }
+      continue
+    }
+
+    duplicate++
+    if (existing.thread_id != null) {
+      locked++
+      const { error: updateMetaError } = await supabase
+        .from('x_posts')
+        .update({
+          source_status: post.sourceStatus,
+          meta: nextMeta,
+        })
+        .eq('id', existing.id)
+      if (updateMetaError) {
+        errors++
+        console.error('[sync-typefully] x_posts locked meta update error:', updateMetaError.message)
+      }
+      continue
+    }
+
+    const { error: updateError } = await supabase
+      .from('x_posts')
+      .update({
+        status: 'scheduled',
+        title: generateTitleFromXPost(post.body) || 'デュエマ掲示板投稿',
+        thread_lines: threadLines,
+        image_urls: [],
+        typefully_share_url: post.shareUrl,
+        scheduled_at: post.scheduledAt,
+        source_ref: `typefully:${post.typefullyId}`,
+        source_status: post.sourceStatus,
+        sync_error: null,
+        meta: nextMeta,
+      })
+      .eq('id', existing.id)
+      .is('thread_id', null)
+
+    if (updateError) {
+      errors++
+      console.error('[sync-typefully] x_posts update error:', updateError.message)
+    } else {
+      updated++
+    }
+  }
+
+  return { saved, updated, locked, errors, duplicate }
 }
 
 async function findDueXPosts(
   supabase: SupabaseAdmin,
   limit: number,
 ): Promise<{ rows: XPostDueRow[]; error?: string }> {
+  const now = new Date()
+  const minScheduledAt = new Date(now.getTime() - DUE_LOOKBACK_HOURS * 60 * 60 * 1000).toISOString()
   const { data, error } = await supabase
     .from('x_posts')
-    .select('id, typefully_id, scheduled_at, thread_lines, image_urls, status, retry_count')
+    .select('id, typefully_id, scheduled_at, thread_lines, status, source_status, source_ref, retry_count, thread_id, meta')
     .is('thread_id', null)
-    .is('synced_at', null)
     .not('scheduled_at', 'is', null)
-    .lte('scheduled_at', new Date().toISOString())
-    .in('status', ELIGIBLE_DUE_STATUSES)
+    .gte('scheduled_at', minScheduledAt)
+    .lte('scheduled_at', now.toISOString())
+    .in('status', ELIGIBLE_X_POST_STATUSES)
     .order('scheduled_at', { ascending: true })
     .limit(limit)
 
-  if (error) {
-    return { rows: [], error: error.message }
-  }
-  return { rows: (data ?? []) as XPostDueRow[] }
+  if (error) return { rows: [], error: error.message }
+
+  const rows = ((data ?? []) as XPostDueRow[]).filter((row) => {
+    const sourceStatus = row.source_status?.toLowerCase()
+    const isTypefullySource = Boolean(row.typefully_id) || row.source_ref?.startsWith('typefully:')
+    return isTypefullySource && (!sourceStatus || !CANCELLED_SOURCE_STATUSES.has(sourceStatus))
+  })
+  return { rows }
 }
 
 async function getChatCategory(supabase: SupabaseAdmin): Promise<{ id: number | null; name: string | null }> {
@@ -409,7 +406,7 @@ async function getChatCategory(supabase: SupabaseAdmin): Promise<{ id: number | 
 
 async function markXPostSynced(
   supabase: SupabaseAdmin,
-  xPostId: number,
+  row: XPostDueRow,
   threadId: number,
 ): Promise<string | null> {
   const now = new Date().toISOString()
@@ -421,16 +418,17 @@ async function markXPostSynced(
       synced_at: now,
       last_attempt_at: now,
       sync_error: null,
+      meta: {
+        ...(row.meta ?? {}),
+        thread_created_at: now,
+      },
     })
-    .eq('id', xPostId)
+    .eq('id', row.id)
+    .is('thread_id', null)
 
   if (error) {
     const message = `mark_synced_failed: ${error.message}`
-    console.error('[sync-typefully] x_posts mark synced error:', {
-      xPostId,
-      threadId,
-      error: error.message,
-    })
+    console.error('[sync-typefully] x_posts mark synced error:', { xPostId: row.id, threadId, error: error.message })
     return message
   }
 
@@ -451,6 +449,7 @@ async function markXPostError(
       retry_count: (row.retry_count ?? 0) + 1,
     })
     .eq('id', row.id)
+    .is('thread_id', null)
 }
 
 async function createThreadFromXPost(
@@ -460,11 +459,24 @@ async function createThreadFromXPost(
   categoryName: string | null,
   dryRun: boolean,
 ): Promise<ThreadSyncResult> {
-  const rawText = getPrimaryText(row.thread_lines)
-  const body = sanitizeXPostForForumBody(rawText)
+  const rawBody = getPrimaryText(row.thread_lines)
+  const body = rawBody.trim()
   if (!body) {
     if (!dryRun) await markXPostError(supabase, row, 'empty_body')
     return { xPostId: row.id, typefullyId: row.typefully_id, status: 'skipped', error: 'empty_body' }
+  }
+
+  const { data: latestRow, error: latestError } = await supabase
+    .from('x_posts')
+    .select('thread_id')
+    .eq('id', row.id)
+    .maybeSingle()
+  if (latestError) {
+    if (!dryRun) await markXPostError(supabase, row, latestError.message)
+    return { xPostId: row.id, typefullyId: row.typefully_id, status: 'error', error: latestError.message }
+  }
+  if (latestRow?.thread_id) {
+    return { xPostId: row.id, typefullyId: row.typefully_id, status: 'duplicate', threadId: latestRow.thread_id }
   }
 
   const textHash = hashText(body)
@@ -476,10 +488,8 @@ async function createThreadFromXPost(
     .eq('source_id', sourceId)
     .maybeSingle()
   if (existingById) {
-    const markError = dryRun ? null : await markXPostSynced(supabase, row.id, existingById.id)
-    if (markError) {
-      return { xPostId: row.id, typefullyId: row.typefully_id, status: 'error', error: markError }
-    }
+    const markError = dryRun ? null : await markXPostSynced(supabase, row, existingById.id)
+    if (markError) return { xPostId: row.id, typefullyId: row.typefully_id, status: 'error', error: markError }
     return {
       xPostId: row.id,
       typefullyId: row.typefully_id,
@@ -495,10 +505,8 @@ async function createThreadFromXPost(
     .eq('source_text_hash', textHash)
     .maybeSingle()
   if (existingByHash) {
-    const markError = dryRun ? null : await markXPostSynced(supabase, row.id, existingByHash.id)
-    if (markError) {
-      return { xPostId: row.id, typefullyId: row.typefully_id, status: 'error', error: markError }
-    }
+    const markError = dryRun ? null : await markXPostSynced(supabase, row, existingByHash.id)
+    if (markError) return { xPostId: row.id, typefullyId: row.typefully_id, status: 'error', error: markError }
     return {
       xPostId: row.id,
       typefullyId: row.typefully_id,
@@ -508,17 +516,9 @@ async function createThreadFromXPost(
     }
   }
 
-  const title = generateTitleFromXPost(body)
-  const imageUrl = row.image_urls?.[0] ?? null
-
+  const title = generateTitleFromXPost(body) || 'デュエマ掲示板投稿'
   if (dryRun) {
-    return {
-      xPostId: row.id,
-      typefullyId: row.typefully_id,
-      status: 'created',
-      threadId: -1,
-      threadUrl: '(dry-run)',
-    }
+    return { xPostId: row.id, typefullyId: row.typefully_id, status: 'created', threadId: -1, threadUrl: '(dry-run)' }
   }
 
   const { data: thread, error } = await supabase
@@ -528,7 +528,6 @@ async function createThreadFromXPost(
       body,
       category_id: categoryId,
       author_name: '名無しのデュエリスト',
-      ...(imageUrl ? { image_url: imageUrl } : {}),
       source: 'typefully',
       source_id: sourceId,
       source_text_hash: textHash,
@@ -542,10 +541,8 @@ async function createThreadFromXPost(
     return { xPostId: row.id, typefullyId: row.typefully_id, status: 'error', error: message }
   }
 
-  const markError = await markXPostSynced(supabase, row.id, thread.id)
-  if (markError) {
-    return { xPostId: row.id, typefullyId: row.typefully_id, status: 'error', threadId: thread.id, error: markError }
-  }
+  const markError = await markXPostSynced(supabase, row, thread.id)
+  if (markError) return { xPostId: row.id, typefullyId: row.typefully_id, status: 'error', threadId: thread.id, error: markError }
   await notifyNewThread({ threadId: thread.id, title, categoryName })
 
   return {
@@ -567,104 +564,96 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const apiKey = sanitizeSecretValue(process.env.TYPEFULLY_API_KEY)
-  const socialSetId = sanitizeSecretValue(process.env.TYPEFULLY_SOCIAL_SET_ID)
-  if (!apiKey || !socialSetId) {
-    console.error('[sync-typefully] TYPEFULLY_API_KEY または TYPEFULLY_SOCIAL_SET_ID が未設定')
-    return NextResponse.json({ error: 'Missing Typefully config' }, { status: 500 })
-  }
-
+  const mode = parseMode(req.nextUrl.searchParams.get('mode'))
   const dryRun = req.nextUrl.searchParams.get('dry_run') === '1'
   const maxNewPerRun = parseMaxNew(req.nextUrl.searchParams.get('max_new'))
   const supabase = createAdminClient()
 
-  const fetchedScheduled = await fetchScheduledDrafts(apiKey, socialSetId)
-  if (fetchedScheduled.error) {
-    return NextResponse.json(
-      { error: fetchedScheduled.error, status: fetchedScheduled.status ?? 502, dryRun },
-      { status: fetchedScheduled.status ?? 502 },
-    )
+  let fetchedTodayPosts = 0
+  let normalizedTodayPosts = 0
+  let savedTodayPosts = 0
+  let updatedTodayPosts = 0
+  let lockedThreadedPosts = 0
+  let duplicateTodayPosts = 0
+  let saveErrors = 0
+  let todayTypefullyPosts: TypefullyPostSummary[] = []
+
+  if (mode === 'fetch_today' || mode === 'fetch_and_sync') {
+    const apiKey = sanitizeSecretValue(process.env.TYPEFULLY_API_KEY)
+    const socialSetId = sanitizeSecretValue(process.env.TYPEFULLY_SOCIAL_SET_ID)
+    if (!apiKey || !socialSetId) {
+      console.error('[sync-typefully] TYPEFULLY_API_KEY または TYPEFULLY_SOCIAL_SET_ID が未設定')
+      return NextResponse.json({ error: 'Missing Typefully config', mode, dryRun }, { status: 500 })
+    }
+
+    const fetched = await fetchTodayTypefullyPosts(apiKey, socialSetId)
+    if (fetched.error) {
+      return NextResponse.json(
+        { error: fetched.error, status: fetched.status ?? 502, mode, dryRun },
+        { status: fetched.status ?? 502 },
+      )
+    }
+
+    fetchedTodayPosts = fetched.fetched
+    normalizedTodayPosts = fetched.posts.length
+    todayTypefullyPosts = summarizeTypefullyPosts(fetched.posts)
+    const saveResult = await upsertTodayTypefullyPosts(supabase, fetched.posts, dryRun)
+    savedTodayPosts = saveResult.saved
+    updatedTodayPosts = saveResult.updated
+    lockedThreadedPosts = saveResult.locked
+    duplicateTodayPosts = saveResult.duplicate
+    saveErrors = saveResult.errors
   }
 
-  const fetchedPublished = await fetchPublishedDrafts(apiKey, socialSetId)
-  if (fetchedPublished.error) {
-    return NextResponse.json(
-      { error: fetchedPublished.error, status: fetchedPublished.status ?? 502, dryRun },
-      { status: fetchedPublished.status ?? 502 },
-    )
-  }
-
-  const saveScheduledResult = await saveScheduledDrafts(supabase, fetchedScheduled.drafts, dryRun, 'scheduled draft')
-  const savePublishedResult = await saveScheduledDrafts(supabase, fetchedPublished.drafts, dryRun, 'published draft')
-  const dueScanLimit = Math.max(DUE_SCAN_MIN_LIMIT, maxNewPerRun * 10)
-  const dueFromSaved = await findDueXPosts(supabase, dueScanLimit)
-  if (dueFromSaved.error) {
-    return NextResponse.json({ error: dueFromSaved.error, dryRun }, { status: 500 })
-  }
-
-  const dryRunFetchedDrafts = [...fetchedScheduled.drafts, ...fetchedPublished.drafts]
-  const dryRunSeenTypefullyIds = new Set<string>()
-  const dueFromFetchedDryRun: XPostDueRow[] = dryRun
-    ? dryRunFetchedDrafts
-        .filter((draft) => {
-          if (dryRunSeenTypefullyIds.has(draft.typefullyId)) return false
-          dryRunSeenTypefullyIds.add(draft.typefullyId)
-          return true
-        })
-        .filter((draft) => isDue(draft.scheduledAt))
-        .slice(0, maxNewPerRun)
-        .map((draft, index) => ({
-          id: -1 - index,
-          typefully_id: draft.typefullyId,
-          scheduled_at: draft.scheduledAt,
-          thread_lines: draft.threadLines,
-          image_urls: draft.imageUrls,
-          status: 'scheduled',
-          retry_count: 0,
-        }))
-    : []
-
-  const dueRows = dryRun
-    ? [...dueFromSaved.rows, ...dueFromFetchedDryRun]
-    : dueFromSaved.rows
-
-  const { id: categoryId, name: categoryName } = await getChatCategory(supabase)
+  let dueRows: XPostDueRow[] = []
+  let created = 0
+  let duplicate = 0
+  let errors = 0
+  let skipped = 0
   const results: ThreadSyncResult[] = []
 
-  for (const row of dueRows.slice(0, maxNewPerRun)) {
-    const createdSoFar = results.filter((result) => result.status === 'created').length
-    if (createdSoFar >= maxNewPerRun) break
-    results.push(await createThreadFromXPost(supabase, row, categoryId, categoryName, dryRun))
+  if (mode === 'sync_due' || mode === 'fetch_and_sync') {
+    const due = await findDueXPosts(supabase, maxNewPerRun * 5)
+    if (due.error) {
+      return NextResponse.json({ error: due.error, mode, dryRun }, { status: 500 })
+    }
+    dueRows = due.rows
+
+    const { id: categoryId, name: categoryName } = await getChatCategory(supabase)
+    for (const row of dueRows.slice(0, maxNewPerRun)) {
+      const result = await createThreadFromXPost(supabase, row, categoryId, categoryName, dryRun)
+      results.push(result)
+    }
+
+    created = results.filter((result) => result.status === 'created').length
+    duplicate = results.filter((result) => result.status === 'duplicate').length
+    errors = results.filter((result) => result.status === 'error').length
+    skipped = results.filter((result) => result.status === 'skipped').length
   }
 
-  const created = results.filter((result) => result.status === 'created').length
-  const duplicate = results.filter((result) => result.status === 'duplicate').length
-  const errors = results.filter((result) => result.status === 'error').length
-  const skipped = results.filter((result) => result.status === 'skipped').length
-
   console.log(
-    `[sync-typefully] 完了: scheduled取得${fetchedScheduled.fetched}件 / scheduled保存予定${saveScheduledResult.saved}件` +
-    ` / published取得${fetchedPublished.fetched}件 / published保存予定${savePublishedResult.saved}件` +
-    ` / 保存済み重複${saveScheduledResult.duplicates + savePublishedResult.duplicates}件 / 期限到来${dueRows.length}件` +
-    ` / dueScanLimit${dueScanLimit}` +
-    ` / 作成${created}件 / 重複${duplicate}件 / エラー${errors}件 / スキップ${skipped}件` +
-    (dryRun ? ' [DRY RUN]' : ''),
+    `[sync-typefully] mode=${mode} dryRun=${dryRun}` +
+    ` fetchedToday=${fetchedTodayPosts} normalizedToday=${normalizedTodayPosts}` +
+    ` saved=${savedTodayPosts} updated=${updatedTodayPosts} duplicateToday=${duplicateTodayPosts}` +
+    ` lockedThreaded=${lockedThreadedPosts} saveErrors=${saveErrors}` +
+    ` duePosts=${dueRows.length} created=${created} duplicate=${duplicate} skipped=${skipped} errors=${errors}`,
   )
 
   return NextResponse.json({
+    mode,
     dryRun,
-    fetchedScheduledDrafts: fetchedScheduled.fetched,
-    normalizedScheduledDrafts: fetchedScheduled.drafts.length,
-    savedScheduledDrafts: saveScheduledResult.saved,
-    duplicateScheduledDrafts: saveScheduledResult.duplicates,
-    fetchedPublishedDrafts: fetchedPublished.fetched,
-    normalizedPublishedDrafts: fetchedPublished.drafts.length,
-    savedPublishedDrafts: savePublishedResult.saved,
-    duplicatePublishedDrafts: savePublishedResult.duplicates,
-    saveErrors: saveScheduledResult.errors + savePublishedResult.errors,
+    fetchedTodayTypefullyPosts: fetchedTodayPosts,
+    normalizedTodayTypefullyPosts: normalizedTodayPosts,
+    savedTodayTypefullyPosts: savedTodayPosts,
+    updatedTodayTypefullyPosts: updatedTodayPosts,
+    duplicateTodayTypefullyPosts: duplicateTodayPosts,
+    todayTypefullyPosts,
+    lockedThreadedPosts,
+    saveErrors,
     duePosts: dueRows.length,
-    dueScanLimit,
-    eligibleDueStatuses: ELIGIBLE_DUE_STATUSES,
+    dueLookbackHours: DUE_LOOKBACK_HOURS,
+    eligibleDueStatuses: ELIGIBLE_X_POST_STATUSES,
+    cancelledSourceStatuses: Array.from(CANCELLED_SOURCE_STATUSES),
     created,
     duplicate,
     errors,

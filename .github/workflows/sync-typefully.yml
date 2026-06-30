@@ -1,14 +1,14 @@
 name: Sync Typefully
 
-# Typefully 投稿 → 掲示板スレ化の自動同期。
+# Typefully 予約投稿 → 掲示板スレ化の自動同期。
 # Vercel Hobby/Free の Cron 制約を避けるため、Vercel Cron ではなく
 # GitHub Actions から /api/internal/sync-typefully を叩く。
 #
-# 【再発防止】GitHub Actions の schedule は「ベストエフォート」で、遅延・未発火（ドロップ）が起こり得る。
-# 1スロット1回だと未発火でその時間帯の同期が丸ごと欠落する（実際に JST 12:20 の回が未発火だった）。
-# そのため日中〜夜は1時間ごとに実行し、主要スロットには50分後の救済実行も残す。
-# sync-typefully 側は source_id / source_text_hash で重複排除するため、
-# 2回目以降に既存分があっても新規スレは作られない（冪等）。
+# 方針:
+#   - JST 7時台の最初の実行で Typefully から「今日分の予約投稿」を取得して x_posts に保存/更新する。
+#   - それ以外の定期実行では Typefully API を叩かず、x_posts の scheduled_at 到来分だけをスレ化する。
+#   - thread_id がある x_posts は本文を上書きしない。
+#   - sync-typefully 側は source_id / source_text_hash / thread_id で重複排除するため冪等。
 #
 # 実行時刻（JST → UTC 変換）:
 #   毎時20分: JST 07:20〜23:20 = UTC 22,23,0-14時
@@ -23,10 +23,22 @@ on:
         description: "ドライラン（true=本番スレ作成なしの確認実行）。安全のため初期値 true"
         type: boolean
         default: true
+      mode:
+        description: "fetch_and_sync=今日分取得+期限到来スレ化 / fetch_today=取得のみ / sync_due=期限到来スレ化のみ"
+        type: choice
+        options:
+          - fetch_and_sync
+          - fetch_today
+          - sync_due
+        default: fetch_and_sync
       max_new:
         description: "1回の実行で新規作成する最大スレッド数"
         type: string
         default: "5"
+      base_url:
+        description: "手動検証用の呼び出し先ベースURL。通常は本番URLのまま"
+        type: string
+        default: "https://www.duema-bbs.com"
 
 jobs:
   sync:
@@ -38,27 +50,44 @@ jobs:
           # schedule 実行では inputs が空 → 本番同期(dry_run=false)・max_new=5。
           # workflow_dispatch では入力値を使用（初期値は dry_run=true の安全側）。
           DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          INPUT_MODE: ${{ github.event.inputs.mode || '' }}
           MAX_NEW: ${{ github.event.inputs.max_new || '5' }}
+          BASE_URL: ${{ github.event.inputs.base_url || 'https://www.duema-bbs.com' }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
           set -uo pipefail
 
-          BASE="https://www.duema-bbs.com/api/internal/sync-typefully"
-          if [ "${DRY_RUN}" = "true" ]; then
-            URL="${BASE}?max_new=${MAX_NEW}&dry_run=1"
-            MODE="DRY RUN（本番スレ作成なし）"
+          BASE="${BASE_URL%/}/api/internal/sync-typefully"
+          JST_HOUR="$(TZ=Asia/Tokyo date '+%H')"
+          if [ -n "${INPUT_MODE}" ]; then
+            MODE="${INPUT_MODE}"
+          elif [ "${JST_HOUR}" = "07" ]; then
+            MODE="fetch_and_sync"
           else
-            URL="${BASE}?max_new=${MAX_NEW}"
-            MODE="LIVE（本番同期）"
+            MODE="sync_due"
+          fi
+
+          if [ "${DRY_RUN}" = "true" ]; then
+            URL="${BASE}?mode=${MODE}&max_new=${MAX_NEW}&dry_run=1"
+            MODE_LABEL="DRY RUN（本番スレ作成なし）"
+          else
+            URL="${BASE}?mode=${MODE}&max_new=${MAX_NEW}"
+            MODE_LABEL="LIVE（本番同期）"
+          fi
+          LOG_URL="${BASE}?mode=${MODE}&max_new=${MAX_NEW}"
+          if [ "${DRY_RUN}" = "true" ]; then
+            LOG_URL="${LOG_URL}&dry_run=1"
           fi
 
           echo "==== sync-typefully 実行 ===="
           echo "実行時刻 UTC : $(date -u '+%Y-%m-%d %H:%M:%S')"
           echo "実行時刻 JST : $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S')"
           echo "トリガー     : ${EVENT_NAME}"
-          echo "モード       : ${MODE}"
+          echo "モード       : ${MODE_LABEL:-${MODE}}"
+          echo "sync mode    : ${MODE}"
           echo "max_new      : ${MAX_NEW}"
-          echo "URL          : ${URL}"   # クエリは max_new/dry_run のみ。secret は含めない
+          echo "base_url     : ${BASE_URL}"
+          echo "URL          : ${LOG_URL}"
           echo "============================"
 
           # -f は HTTP エラー時に本文を隠すため使わない。本文と HTTP status を取得し、
@@ -66,6 +95,7 @@ jobs:
           # secret は Authorization ヘッダで渡し、ログには一切出さない。
           set +e
           HTTP_CODE=$(curl -sS \
+            -L \
             --retry 2 --retry-delay 10 --max-time 60 \
             -H "Authorization: Bearer ${CRON_SECRET}" \
             -o response_body.txt -w '%{http_code}' \
@@ -93,7 +123,12 @@ jobs:
           DUPLICATE=$(jq -r '.duplicate // 0' response_body.txt 2>/dev/null || echo "0")
           SKIPPED=$(jq -r '.skipped // 0' response_body.txt 2>/dev/null || echo "0")
           DUE_POSTS=$(jq -r '.duePosts // 0' response_body.txt 2>/dev/null || echo "0")
-          echo "summary      : created=${CREATED} duplicate=${DUPLICATE} skipped=${SKIPPED} errors=${ERRORS} duePosts=${DUE_POSTS}"
+          FETCHED=$(jq -r '.fetchedTodayTypefullyPosts // 0' response_body.txt 2>/dev/null || echo "0")
+          NORMALIZED=$(jq -r '.normalizedTodayTypefullyPosts // 0' response_body.txt 2>/dev/null || echo "0")
+          SAVED=$(jq -r '.savedTodayTypefullyPosts // 0' response_body.txt 2>/dev/null || echo "0")
+          UPDATED=$(jq -r '.updatedTodayTypefullyPosts // 0' response_body.txt 2>/dev/null || echo "0")
+          LOCKED=$(jq -r '.lockedThreadedPosts // 0' response_body.txt 2>/dev/null || echo "0")
+          echo "summary      : fetchedToday=${FETCHED} normalizedToday=${NORMALIZED} saved=${SAVED} updated=${UPDATED} lockedThreaded=${LOCKED} created=${CREATED} duplicate=${DUPLICATE} skipped=${SKIPPED} errors=${ERRORS} duePosts=${DUE_POSTS}"
 
           if [ "${ERRORS}" = "parse_error" ]; then
             echo "::error::レスポンスJSONを解析できません"
