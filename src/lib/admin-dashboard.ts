@@ -1,5 +1,8 @@
 import { createSign } from 'crypto'
+import { unstable_cache } from 'next/cache'
 import type { SupabaseClient } from '@supabase/supabase-js'
+
+export const ADMIN_DASHBOARD_CACHE_SECONDS = 21600
 
 export type DashboardThread = {
   id: number
@@ -39,6 +42,12 @@ export type Ga4MetricSummary = {
   sevenDayUsers: number
 }
 
+export type Ga4DailyPoint = {
+  date: string
+  views: number
+  users: number
+}
+
 export type Ga4PageRow = {
   path: string
   views: number
@@ -48,6 +57,13 @@ export type Ga4PageRow = {
 export type Ga4DashboardData = {
   ok: true
   propertyId: string
+  trendDays: 7 | 28 | 90
+  trendSummary: {
+    totalViews: number
+    totalUsers: number
+    viewsPerUser: number
+  }
+  dailyTrend: Ga4DailyPoint[]
   summary: Ga4MetricSummary
   topPages: Ga4PageRow[]
   topThreadPages: Ga4PageRow[]
@@ -72,6 +88,12 @@ function toNumber(value: unknown) {
 
 function toStringOrNull(value: unknown) {
   return typeof value === 'string' ? value : null
+}
+
+function normalizeAnalyticsDays(value: number): 7 | 28 | 90 {
+  if (value === 7) return 7
+  if (value === 90) return 90
+  return 28
 }
 
 function mapThread(row: Record<string, unknown>): DashboardThread {
@@ -345,6 +367,50 @@ async function getRangeMetrics(config: Ga4Config, token: string, startDate: stri
   }
 }
 
+function formatGaDate(value: string) {
+  if (!/^\d{8}$/.test(value)) return value
+  return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`
+}
+
+function ymd(date: Date) {
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(date.getUTCDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function fillDailyTrend(points: Ga4DailyPoint[], days: 7 | 28 | 90) {
+  const byDate = new Map(points.map(point => [point.date, point]))
+  const now = new Date()
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  start.setUTCDate(start.getUTCDate() - (days - 1))
+
+  return Array.from({ length: days }, (_, index) => {
+    const date = new Date(start)
+    date.setUTCDate(start.getUTCDate() + index)
+    const key = ymd(date)
+    return byDate.get(key) ?? { date: key, views: 0, users: 0 }
+  })
+}
+
+async function getDailyTrend(config: Ga4Config, token: string, days: 7 | 28 | 90) {
+  const json = await runGa4Report(config, token, {
+    dateRanges: [{ startDate: `${days - 1}daysAgo`, endDate: 'today' }],
+    dimensions: [{ name: 'date' }],
+    metrics: [{ name: 'screenPageViews' }, { name: 'activeUsers' }],
+    orderBys: [{ dimension: { dimensionName: 'date' } }],
+    limit: days,
+  })
+
+  const points = (json.rows ?? []).map(row => ({
+    date: formatGaDate(row.dimensionValues?.[0]?.value ?? ''),
+    views: toNumber(row.metricValues?.[0]?.value),
+    users: toNumber(row.metricValues?.[1]?.value),
+  })).filter(point => point.date)
+
+  return fillDailyTrend(points, days)
+}
+
 async function getPageRows(
   config: Ga4Config,
   token: string,
@@ -379,7 +445,8 @@ async function getPageRows(
   }))
 }
 
-export async function getGa4DashboardData(): Promise<Ga4DashboardData> {
+async function fetchGa4DashboardData(daysValue = 28): Promise<Ga4DashboardData> {
+  const trendDays = normalizeAnalyticsDays(daysValue)
   const { config, missing } = getGa4Config()
   if (!config) {
     return {
@@ -396,6 +463,8 @@ export async function getGa4DashboardData(): Promise<Ga4DashboardData> {
       yesterday,
       sevenDays,
       twentyEightDays,
+      trendRange,
+      dailyTrend,
       topPages,
       topThreadPages,
       topZukanPages,
@@ -404,6 +473,12 @@ export async function getGa4DashboardData(): Promise<Ga4DashboardData> {
       getRangeMetrics(config, token, 'yesterday', 'yesterday'),
       getRangeMetrics(config, token, '6daysAgo', 'today'),
       getRangeMetrics(config, token, '27daysAgo', 'today'),
+      trendDays === 7
+        ? getRangeMetrics(config, token, '6daysAgo', 'today')
+        : trendDays === 28
+          ? getRangeMetrics(config, token, '27daysAgo', 'today')
+          : getRangeMetrics(config, token, '89daysAgo', 'today'),
+      getDailyTrend(config, token, trendDays),
       getPageRows(config, token, 10),
       getPageRows(config, token, 10, '/thread/'),
       getPageRows(config, token, 10, '/zukan'),
@@ -412,6 +487,13 @@ export async function getGa4DashboardData(): Promise<Ga4DashboardData> {
     return {
       ok: true,
       propertyId: config.propertyId,
+      trendDays,
+      trendSummary: {
+        totalViews: trendRange.views,
+        totalUsers: trendRange.users,
+        viewsPerUser: trendRange.users > 0 ? trendRange.views / trendRange.users : 0,
+      },
+      dailyTrend,
       summary: {
         todayViews: today.views,
         yesterdayViews: yesterday.views,
@@ -431,3 +513,9 @@ export async function getGa4DashboardData(): Promise<Ga4DashboardData> {
     }
   }
 }
+
+export const getGa4DashboardData = unstable_cache(
+  fetchGa4DashboardData,
+  ['admin-ga4-dashboard'],
+  { revalidate: ADMIN_DASHBOARD_CACHE_SECONDS, tags: ['admin-ga4-dashboard'] },
+)

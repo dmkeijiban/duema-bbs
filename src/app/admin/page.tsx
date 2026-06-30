@@ -15,9 +15,11 @@ import { getAllSettings } from '@/lib/settings'
 import { Notice } from '@/components/NoticeBlock'
 import { verifyAdminCookie } from '@/lib/admin-auth'
 import {
+  ADMIN_DASHBOARD_CACHE_SECONDS,
   getGa4DashboardData,
   getInternalDashboardData,
   type DashboardThread,
+  type Ga4DailyPoint,
   type Ga4PageRow,
   type RecentThreadActivity,
 } from '@/lib/admin-dashboard'
@@ -42,6 +44,12 @@ function adminThreadsUrl({ page, q, sort, order }: { page?: number; q: string; s
   if (page && page > 1) p.set('threadPage', String(page))
   if (sort !== 'last_posted_at' || order !== 'desc') { p.set('sort', sort); p.set('order', order) }
   return `/admin${p.toString() ? '?' + p.toString() : ''}`
+}
+
+function normalizeAnalyticsDays(v: string | undefined): 7 | 28 | 90 {
+  if (v === '7') return 7
+  if (v === '90') return 90
+  return 28
 }
 
 type ModerationNgWord = {
@@ -87,6 +95,18 @@ function formatNumber(value: number) {
   return value.toLocaleString('ja-JP')
 }
 
+function formatDecimal(value: number) {
+  return value.toLocaleString('ja-JP', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })
+}
+
+function formatDateLabel(date: string) {
+  const [, month, day] = date.split('-')
+  return `${Number(month)}/${Number(day)}`
+}
+
 function formatDateTime(value: string | null) {
   if (!value) return '-'
   return new Intl.DateTimeFormat('ja-JP', {
@@ -107,6 +127,106 @@ function MetricCard({ label, value, note }: { label: string; value: number | str
       </p>
       {note && <p className="mt-1 text-[10px] text-gray-400">{note}</p>}
     </div>
+  )
+}
+
+function AccessTrendCard({
+  days,
+  totalViews,
+  totalUsers,
+  viewsPerUser,
+  points,
+}: {
+  days: 7 | 28 | 90
+  totalViews: number
+  totalUsers: number
+  viewsPerUser: number
+  points: Ga4DailyPoint[]
+}) {
+  const chartWidth = 680
+  const chartHeight = 180
+  const maxViews = Math.max(...points.map(point => point.views), 1)
+  const path = points.map((point, index) => {
+    const x = points.length <= 1 ? 0 : (index / (points.length - 1)) * chartWidth
+    const y = chartHeight - (point.views / maxViews) * chartHeight
+    return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
+  }).join(' ')
+  const first = points[0]
+  const middle = points[Math.floor((points.length - 1) / 2)]
+  const latest = points[points.length - 1]
+
+  return (
+    <section className="rounded border border-gray-200 bg-white p-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 className="text-sm font-bold text-gray-700">アクセス推移</h3>
+          <p className="mt-0.5 text-[11px] text-gray-500">
+            GA4の表示回数（screenPageViews）を日別に表示します。
+          </p>
+        </div>
+        <div className="inline-flex w-fit rounded border border-gray-300 bg-gray-50 p-0.5">
+          {([7, 28, 90] as const).map(value => (
+            <Link
+              key={value}
+              href={`/admin?analyticsDays=${value}`}
+              className="rounded px-3 py-1 text-xs font-bold"
+              style={days === value ? { background: '#1a73e8', color: '#fff' } : { color: '#4b5563' }}
+            >
+              {value}日
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <MetricCard label="期間内の表示回数合計" value={totalViews} />
+        <MetricCard label="期間内のユーザー数合計" value={totalUsers} />
+        <MetricCard label="1ユーザーあたり表示回数" value={formatDecimal(viewsPerUser)} />
+      </div>
+
+      <div className="mt-3 h-64 w-full overflow-hidden sm:h-72">
+        <svg viewBox="0 0 760 240" role="img" aria-label="表示回数の日別推移" className="h-full w-full">
+          <g transform="translate(56 20)">
+            {[0, 0.25, 0.5, 0.75, 1].map(rate => {
+              const y = chartHeight * rate
+              const value = Math.round(maxViews * (1 - rate))
+              return (
+                <g key={rate}>
+                  <line x1="0" y1={y} x2={chartWidth} y2={y} stroke="#e5e7eb" strokeWidth="1" />
+                  <text x="-10" y={y + 4} textAnchor="end" fontSize="11" fill="#6b7280">
+                    {formatNumber(value)}
+                  </text>
+                </g>
+              )
+            })}
+            <path d={path} fill="none" stroke="#1a73e8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            {points.map((point, index) => {
+              if (points.length > 45 && index % 3 !== 0 && index !== points.length - 1) return null
+              const x = points.length <= 1 ? 0 : (index / (points.length - 1)) * chartWidth
+              const y = chartHeight - (point.views / maxViews) * chartHeight
+              return <circle key={point.date} cx={x} cy={y} r="2.5" fill="#1a73e8" />
+            })}
+            <line x1="0" y1={chartHeight} x2={chartWidth} y2={chartHeight} stroke="#d1d5db" strokeWidth="1.5" />
+            {[first, middle, latest].filter(Boolean).map((point, index) => {
+              const pointIndex = points.findIndex(item => item.date === point.date)
+              const x = points.length <= 1 ? 0 : (pointIndex / (points.length - 1)) * chartWidth
+              return (
+                <text
+                  key={`${point.date}-${index}`}
+                  x={x}
+                  y="208"
+                  textAnchor={index === 0 ? 'start' : index === 2 ? 'end' : 'middle'}
+                  fontSize="12"
+                  fill="#6b7280"
+                >
+                  {formatDateLabel(point.date)}
+                </text>
+              )
+            })}
+          </g>
+        </svg>
+      </div>
+    </section>
   )
 }
 
@@ -232,6 +352,7 @@ export default async function AdminPage({
     q?: string
     sort?: string
     order?: string
+    analyticsDays?: string
   }>
 }) {
   const sp = await searchParams
@@ -246,6 +367,7 @@ export default async function AdminPage({
   const isSearching = searchQ.length > 0
   const sort = normalizeSort(sp.sort)
   const order = normalizeOrder(sp.order)
+  const analyticsDays = normalizeAnalyticsDays(sp.analyticsDays)
 
   const threadPage = isSearching ? 1 : Math.max(1, parseInt(sp.threadPage ?? '1') || 1)
   const threadOffset = (threadPage - 1) * THREADS_PER_PAGE
@@ -289,7 +411,7 @@ export default async function AdminPage({
   const { data: notices } = await supabase.from('notices').select('*').order('position').order('sort_order')
 
   const [ga4Dashboard, internalDashboard] = await Promise.all([
-    getGa4DashboardData(),
+    getGa4DashboardData(analyticsDays),
     getInternalDashboardData(adminSupabase),
   ])
 
@@ -527,6 +649,18 @@ export default async function AdminPage({
 
         <div className="space-y-4 p-3">
           <div>
+            {ga4Dashboard.ok && (
+              <div className="mb-4">
+                <AccessTrendCard
+                  days={ga4Dashboard.trendDays}
+                  totalViews={ga4Dashboard.trendSummary.totalViews}
+                  totalUsers={ga4Dashboard.trendSummary.totalUsers}
+                  viewsPerUser={ga4Dashboard.trendSummary.viewsPerUser}
+                  points={ga4Dashboard.dailyTrend}
+                />
+              </div>
+            )}
+
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <h3 className="text-sm font-bold text-gray-700">サイト全体のアクセス概要</h3>
               <span className="rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] text-blue-700">
@@ -544,7 +678,7 @@ export default async function AdminPage({
                   <MetricCard label="過去7日間のユーザー数" value={ga4Dashboard.summary.sevenDayUsers} />
                 </div>
                 <p className="mt-2 text-[10px] text-gray-400">
-                  GA4 property: {ga4Dashboard.propertyId} / イベント数はPVとして扱っていません。
+                  GA4 property: {ga4Dashboard.propertyId} / イベント数はPVとして扱っていません。/ {ADMIN_DASHBOARD_CACHE_SECONDS / 3600}時間キャッシュ
                 </p>
               </>
             ) : (
