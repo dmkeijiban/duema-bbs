@@ -9,6 +9,8 @@ type BanRow = {
   id: number
 }
 
+const POSTING_BAN_REASON_PREFIX = 'posting_ban:'
+
 function normalizeForModeration(text: string) {
   return text
     .normalize('NFKC')
@@ -17,7 +19,7 @@ function normalizeForModeration(text: string) {
 }
 
 function isMissingModerationTable(error: { code?: string; message?: string } | null) {
-  return error?.code === '42P01' || error?.message?.includes('moderation_')
+  return error?.code === '42P01' || error?.code === 'PGRST205' || error?.message?.includes('moderation_')
 }
 
 function isMissingColumn(error: { code?: string; message?: string } | null, column: string) {
@@ -119,9 +121,46 @@ async function hasActiveBan(
     error = fallback.error
   }
 
+  if (error && isMissingModerationTable(error)) {
+    const fallback = await hasPostingBanMute(supabase, banType, value)
+    return fallback
+  }
+
   if (error) {
     if (isMissingModerationTable(error)) return false
     console.error('[moderation] Posting ban check failed:', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      banType,
+    })
+    return false
+  }
+
+  return ((data ?? []) as BanRow[]).length > 0
+}
+
+async function hasPostingBanMute(
+  supabase: SupabaseClient,
+  banType: 'session' | 'user',
+  banValue: string,
+): Promise<boolean> {
+  let query = supabase
+    .from('report_mutes')
+    .select('id')
+    .eq('is_active', true)
+    .like('reason', `${POSTING_BAN_REASON_PREFIX}%`)
+    .limit(1)
+
+  query = banType === 'user'
+    ? query.eq('user_id', banValue)
+    : query.eq('session_id', banValue)
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('[moderation] Posting ban fallback check failed:', {
       code: error.code,
       message: error.message,
       details: error.details,

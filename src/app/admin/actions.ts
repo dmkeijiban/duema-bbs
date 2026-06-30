@@ -11,6 +11,7 @@ import { createAdminCookieValue, isAdminPassword, verifyAdminCookie } from '@/li
 const ADMIN_COOKIE = 'admin_auth'
 type AdminClient = ReturnType<typeof createAdminClient>
 type BanType = 'session' | 'user'
+const POSTING_BAN_REASON_PREFIX = 'posting_ban:'
 
 async function checkAdmin() {
   const cookieStore = await cookies()
@@ -43,6 +44,10 @@ function isMissingColumn(error: { code?: string; message?: string } | null, colu
   return error?.code === '42703' || error?.message?.includes(column)
 }
 
+function isMissingTable(error: { code?: string; message?: string } | null, table: string) {
+  return error?.code === '42P01' || error?.code === 'PGRST205' || error?.message?.includes(table)
+}
+
 function isMissingBanKeyColumn(error: { code?: string; message?: string } | null) {
   return isMissingColumn(error, 'ban_type') || isMissingColumn(error, 'ban_value')
 }
@@ -61,6 +66,9 @@ async function upsertModerationBan(
     .limit(1)
 
   if (fetchError) {
+    if (isMissingTable(fetchError, 'moderation_bans')) {
+      return upsertPostingBanMute(supabase, banType, banValue, reason)
+    }
     if (banType === 'session' && isMissingBanKeyColumn(fetchError)) {
       return upsertLegacySessionBan(supabase, banValue, reason)
     }
@@ -109,7 +117,56 @@ async function upsertModerationBan(
   }
 
   if (result.error) {
+    if (isMissingTable(result.error, 'moderation_bans')) {
+      return upsertPostingBanMute(supabase, banType, banValue, reason)
+    }
     logBanError('write failed', result.error, banType)
+  }
+
+  return { error: result.error }
+}
+
+async function upsertPostingBanMute(
+  supabase: AdminClient,
+  banType: BanType,
+  banValue: string,
+  reason: string,
+) {
+  const prefixedReason = `${POSTING_BAN_REASON_PREFIX}${reason}`
+  let query = supabase
+    .from('report_mutes')
+    .select('id')
+    .eq('is_active', true)
+    .like('reason', `${POSTING_BAN_REASON_PREFIX}%`)
+    .limit(1)
+
+  query = banType === 'user'
+    ? query.eq('user_id', banValue)
+    : query.eq('session_id', banValue)
+
+  const { data: existing, error: fetchError } = await query
+
+  if (fetchError) {
+    logBanError('report_mutes fallback fetch failed', fetchError, banType)
+    return { error: fetchError }
+  }
+
+  const existingId = Array.isArray(existing) ? existing[0]?.id : null
+  const payload = banType === 'user'
+    ? { user_id: banValue, session_id: null, reason: prefixedReason, is_active: true }
+    : { user_id: null, session_id: banValue, reason: prefixedReason, is_active: true }
+
+  const result = existingId
+    ? await supabase
+      .from('report_mutes')
+      .update(payload)
+      .eq('id', existingId)
+    : await supabase
+      .from('report_mutes')
+      .insert(payload)
+
+  if (result.error) {
+    logBanError('report_mutes fallback write failed', result.error, banType)
   }
 
   return { error: result.error }
