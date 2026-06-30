@@ -14,6 +14,13 @@ import { SettingEditFormClient } from './SettingEditFormClient'
 import { getAllSettings } from '@/lib/settings'
 import { Notice } from '@/components/NoticeBlock'
 import { verifyAdminCookie } from '@/lib/admin-auth'
+import {
+  getGa4DashboardData,
+  getInternalDashboardData,
+  type DashboardThread,
+  type Ga4PageRow,
+  type RecentThreadActivity,
+} from '@/lib/admin-dashboard'
 import { AdminSubmitButton } from './AdminSubmitButton'
 
 const ADMIN_COOKIE = 'admin_auth'
@@ -72,6 +79,140 @@ function LoginPage({ error }: { error?: string }) {
         </form>
       </div>
     </div>
+  )
+}
+
+function formatNumber(value: number) {
+  return value.toLocaleString('ja-JP')
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) return '-'
+  return new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+function MetricCard({ label, value, note }: { label: string; value: number | string; note?: string }) {
+  return (
+    <div className="rounded border border-gray-200 bg-white px-3 py-3">
+      <p className="text-[11px] font-bold text-gray-500">{label}</p>
+      <p className="mt-1 text-xl font-bold tabular-nums text-gray-900">
+        {typeof value === 'number' ? formatNumber(value) : value}
+      </p>
+      {note && <p className="mt-1 text-[10px] text-gray-400">{note}</p>}
+    </div>
+  )
+}
+
+function ThreadRankingCard({
+  title,
+  rows,
+  valueLabel,
+  getValue,
+}: {
+  title: string
+  rows: DashboardThread[]
+  valueLabel: string
+  getValue: (row: DashboardThread) => number
+}) {
+  return (
+    <section className="rounded border border-gray-200 bg-white">
+      <div className="border-b border-gray-100 px-3 py-2">
+        <h3 className="text-xs font-bold text-gray-700">{title}</h3>
+      </div>
+      <ol className="divide-y divide-gray-100">
+        {rows.length === 0 ? (
+          <li className="px-3 py-4 text-xs text-gray-400">対象データがありません。</li>
+        ) : rows.map((row, index) => (
+          <li key={row.id} className="flex items-start gap-2 px-3 py-2 text-xs">
+            <span className="mt-0.5 w-5 shrink-0 text-right tabular-nums text-gray-400">{index + 1}</span>
+            <div className="min-w-0 flex-1">
+              <Link href={`/thread/${row.id}`} className="line-clamp-2 font-bold text-blue-700 hover:underline">
+                {row.title}
+              </Link>
+              <p className="mt-0.5 text-[10px] text-gray-400">
+                ID {row.id} / 閲覧 {formatNumber(row.viewCount)} / コメント {formatNumber(row.postCount)}
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="font-bold tabular-nums text-gray-800">{formatNumber(getValue(row))}</p>
+              <p className="text-[10px] text-gray-400">{valueLabel}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
+function RecentRankingCard({
+  title,
+  rows,
+  note,
+}: {
+  title: string
+  rows: RecentThreadActivity[]
+  note?: string
+}) {
+  return (
+    <section className="rounded border border-gray-200 bg-white">
+      <div className="border-b border-gray-100 px-3 py-2">
+        <h3 className="text-xs font-bold text-gray-700">{title}</h3>
+        {note && <p className="mt-0.5 text-[10px] text-gray-400">{note}</p>}
+      </div>
+      <ol className="divide-y divide-gray-100">
+        {rows.length === 0 ? (
+          <li className="px-3 py-4 text-xs text-gray-400">直近24時間のコメント増加はありません。</li>
+        ) : rows.map((row, index) => (
+          <li key={row.id} className="flex items-start gap-2 px-3 py-2 text-xs">
+            <span className="mt-0.5 w-5 shrink-0 text-right tabular-nums text-gray-400">{index + 1}</span>
+            <div className="min-w-0 flex-1">
+              <Link href={`/thread/${row.id}`} className="line-clamp-2 font-bold text-blue-700 hover:underline">
+                {row.title}
+              </Link>
+              <p className="mt-0.5 text-[10px] text-gray-400">
+                最新 {formatDateTime(row.latestCommentAt)} / 累計コメント {formatNumber(row.postCount)}
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="font-bold tabular-nums text-gray-800">{formatNumber(row.recentComments)}</p>
+              <p className="text-[10px] text-gray-400">直近コメント</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
+function Ga4PageRankingCard({ title, rows }: { title: string; rows: Ga4PageRow[] }) {
+  return (
+    <section className="rounded border border-gray-200 bg-white">
+      <div className="border-b border-gray-100 px-3 py-2">
+        <h3 className="text-xs font-bold text-gray-700">{title}</h3>
+      </div>
+      <ol className="divide-y divide-gray-100">
+        {rows.length === 0 ? (
+          <li className="px-3 py-4 text-xs text-gray-400">GA4上の対象ページはありません。</li>
+        ) : rows.map((row, index) => (
+          <li key={`${row.path}-${index}`} className="flex items-start gap-2 px-3 py-2 text-xs">
+            <span className="mt-0.5 w-5 shrink-0 text-right tabular-nums text-gray-400">{index + 1}</span>
+            <Link href={row.path} className="min-w-0 flex-1 truncate font-bold text-blue-700 hover:underline">
+              {row.path}
+            </Link>
+            <div className="shrink-0 text-right">
+              <p className="font-bold tabular-nums text-gray-800">{formatNumber(row.views)}</p>
+              <p className="text-[10px] text-gray-400">表示回数</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
   )
 }
 
@@ -146,36 +287,10 @@ export default async function AdminPage({
   // お知らせ一覧
   const { data: notices } = await supabase.from('notices').select('*').order('position').order('sort_order')
 
-  // 📊 アクセス概要（簡易指標）
-  // 既存の個別スレ閲覧数（threads.view_count）とコメント（posts）から集計。
-  // GA/GA4/Analytics API・新規テーブルは使わず、DB変更なしで取得できる範囲のみ。閲覧数カウント処理は変更しない。
-  const [
-    statThreadCountRes,
-    statCommentCountRes,
-    statTopThreadsRes,
-  ] = await Promise.all([
-    adminSupabase.from('threads').select('id', { count: 'exact', head: true }),
-    adminSupabase.from('posts').select('id', { count: 'exact', head: true }).eq('is_deleted', false),
-    adminSupabase.from('threads').select('id, title, view_count').order('view_count', { ascending: false }).limit(5),
+  const [ga4Dashboard, internalDashboard] = await Promise.all([
+    getGa4DashboardData(),
+    getInternalDashboardData(adminSupabase),
   ])
-  const statThreadCount = statThreadCountRes.count ?? 0
-  const statCommentCount = statCommentCountRes.count ?? 0
-  const statTopThreads = statTopThreadsRes.data ?? []
-
-  // スレ総閲覧数：固定上限を設けず range() で全スレを全件ページングして合計する
-  // （スレ数が大きくても過少集計にならないように）。1000件ずつ取得し、満たない/0件で終了。
-  const STAT_PAGE = 1000
-  let statTotalViews = 0
-  for (let offset = 0; offset < 5_000_000; offset += STAT_PAGE) {
-    const { data: viewRows } = await adminSupabase
-      .from('threads')
-      .select('view_count')
-      .range(offset, offset + STAT_PAGE - 1)
-    if (!viewRows || viewRows.length === 0) break
-    statTotalViews += viewRows.reduce((sum, r) => sum + (r.view_count ?? 0), 0)
-    if (viewRows.length < STAT_PAGE) break
-  }
-  const statAvgViews = statThreadCount > 0 ? Math.round(statTotalViews / statThreadCount) : 0
 
   // サイト設定
   const settings = await getAllSettings()
@@ -344,45 +459,119 @@ export default async function AdminPage({
         </div>
       </details>
 
-      {/* ─── 📊 アクセス概要（管理メニュー直下・モデレーションの上）。スレ閲覧数ベースの簡易指標 ─── */}
-      <section className="mb-4 border border-gray-200 bg-white rounded">
-        <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-2">
-          <span className="font-bold text-gray-700">📊 アクセス概要</span>
-          <span className="text-[10px] text-gray-400">スレ閲覧数ベース（簡易指標・GA等は未使用）</span>
+      <section className="mb-4 rounded border border-gray-200 bg-gray-50">
+        <div className="border-b border-gray-200 px-3 py-2">
+          <h2 className="font-bold text-gray-800">📊 アクセス・人気ダッシュボード</h2>
+          <p className="mt-0.5 text-[11px] text-gray-500">
+            GA4の表示回数（screenPageViews）と、掲示板内部のスレ閲覧数・コメント数を分けて確認します。
+          </p>
         </div>
-        <div className="px-3 py-3">
-          {/* 指標小カード：PC=横並び4列 / スマホ=2列で折り返し（横スクロールなし） */}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {[
-              { label: 'スレ総閲覧数', value: statTotalViews },
-              { label: 'スレ数', value: statThreadCount },
-              { label: 'コメント数', value: statCommentCount },
-              { label: '平均閲覧数', value: statAvgViews },
-            ].map(s => (
-              <div key={s.label} className="rounded border border-gray-200 bg-gray-50 px-2 py-2 text-center">
-                <div className="text-sm font-bold tabular-nums text-gray-800">{s.value.toLocaleString()}</div>
-                <div className="mt-0.5 text-[10px] text-gray-500">{s.label}</div>
+
+        <div className="space-y-4 p-3">
+          <div>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <h3 className="text-sm font-bold text-gray-700">サイト全体のアクセス概要</h3>
+              <span className="rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] text-blue-700">
+                GA4 / screenPageViews
+              </span>
+            </div>
+            {ga4Dashboard.ok ? (
+              <>
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+                  <MetricCard label="今日の表示回数" value={ga4Dashboard.summary.todayViews} />
+                  <MetricCard label="昨日の表示回数" value={ga4Dashboard.summary.yesterdayViews} />
+                  <MetricCard label="過去7日間の表示回数" value={ga4Dashboard.summary.sevenDayViews} />
+                  <MetricCard label="過去28日間の表示回数" value={ga4Dashboard.summary.twentyEightDayViews} />
+                  <MetricCard label="今日のユーザー数" value={ga4Dashboard.summary.todayUsers} />
+                  <MetricCard label="過去7日間のユーザー数" value={ga4Dashboard.summary.sevenDayUsers} />
+                </div>
+                <p className="mt-2 text-[10px] text-gray-400">
+                  GA4 property: {ga4Dashboard.propertyId} / イベント数はPVとして扱っていません。
+                </p>
+              </>
+            ) : (
+              <div className="rounded border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-800">
+                <p className="font-bold">GA4 Data API から取得できませんでした。</p>
+                <p className="mt-1">{ga4Dashboard.error}</p>
+                {ga4Dashboard.missing && ga4Dashboard.missing.length > 0 && (
+                  <p className="mt-1">未設定: {ga4Dashboard.missing.join(', ')}</p>
+                )}
               </div>
-            ))}
+            )}
           </div>
 
-          {/* 閲覧数上位スレ5件 */}
-          {statTopThreads.length > 0 && (
-            <div className="mt-3">
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">閲覧数上位スレ</p>
-              <ol className="space-y-1 text-xs">
-                {statTopThreads.map((t, i) => (
-                  <li key={t.id} className="flex items-center gap-2">
-                    <span className="shrink-0 text-gray-400">{i + 1}.</span>
-                    <Link href={`/thread/${t.id}`} className="min-w-0 flex-1 truncate text-blue-600 hover:underline">
-                      {t.title}
-                    </Link>
-                    <span className="shrink-0 tabular-nums text-gray-500">{(t.view_count ?? 0).toLocaleString()}</span>
-                  </li>
-                ))}
-              </ol>
+          <div>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <h3 className="text-sm font-bold text-gray-700">掲示板内部の累計指標</h3>
+              <span className="rounded border border-gray-200 bg-white px-2 py-0.5 text-[10px] text-gray-500">
+                threads.view_count / posts
+              </span>
             </div>
-          )}
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+              <MetricCard label="スレ総閲覧数" value={internalDashboard.totals.totalViews} note="内部累計" />
+              <MetricCard label="スレ数" value={internalDashboard.totals.threadCount} />
+              <MetricCard label="コメント数" value={internalDashboard.totals.commentCount} />
+              <MetricCard label="平均閲覧数" value={internalDashboard.totals.avgViews} note="内部累計 ÷ スレ数" />
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-sm font-bold text-gray-700">伸びているコンテンツ</h3>
+            <div className="grid gap-3 xl:grid-cols-3">
+              {ga4Dashboard.ok ? (
+                <>
+                  <Ga4PageRankingCard title="GA4 直近7日のページ" rows={ga4Dashboard.topPages} />
+                  <Ga4PageRankingCard title="GA4 直近7日のスレページ" rows={ga4Dashboard.topThreadPages} />
+                  <Ga4PageRankingCard title="GA4 直近7日の思い出図鑑" rows={ga4Dashboard.topZukanPages} />
+                </>
+              ) : (
+                <ThreadRankingCard
+                  title="累計閲覧数が多いスレ"
+                  rows={internalDashboard.topViewedThreads}
+                  valueLabel="閲覧"
+                  getValue={row => row.viewCount}
+                />
+              )}
+              <ThreadRankingCard
+                title="コメント数が多いスレ"
+                rows={internalDashboard.topCommentedThreads}
+                valueLabel="コメント"
+                getValue={row => row.postCount}
+              />
+              <RecentRankingCard
+                title="最近コメントが増えたスレ"
+                rows={internalDashboard.recentCommentThreads}
+                note="直近24時間のコメント増加"
+              />
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-sm font-bold text-gray-700">管理者向けチェック</h3>
+            <div className="grid gap-3 xl:grid-cols-4">
+              <ThreadRankingCard
+                title="コメント0のスレ"
+                rows={internalDashboard.zeroCommentThreads}
+                valueLabel="閲覧"
+                getValue={row => row.viewCount}
+              />
+              <ThreadRankingCard
+                title="閲覧は多いがコメントが少ないスレ"
+                rows={internalDashboard.highViewLowCommentThreads}
+                valueLabel="閲覧"
+                getValue={row => row.viewCount}
+              />
+              <RecentRankingCard
+                title="荒れやすそうな急伸スレ"
+                rows={internalDashboard.riskThreads}
+                note="直近24時間のコメント増加が多いスレ"
+              />
+              <RecentRankingCard
+                title="最新コメントが多いスレ"
+                rows={internalDashboard.recentCommentThreads}
+              />
+            </div>
+          </div>
         </div>
       </section>
 
