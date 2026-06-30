@@ -11,7 +11,7 @@ import { uploadImage, validateImageFile } from '@/lib/upload'
 import { sendPushNotifications } from '@/app/actions/push-subscription'
 import { notifyNewThread } from '@/lib/discord'
 import { verifyAdminCookie } from '@/lib/admin-auth'
-import { checkNgWords, checkSessionBan } from '@/lib/moderation'
+import { checkNgWords, checkPostingBan } from '@/lib/moderation'
 
 function hasHoneypotValue(formData: FormData): boolean {
   const value = formData.get('website')
@@ -58,6 +58,14 @@ async function getActiveProfileUserId(
   return user.id
 }
 
+async function getAuthenticatedUserId(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<string | null> {
+  const { data, error } = await supabase.auth.getUser()
+  if (error || !data.user) return null
+  return data.user.id
+}
+
 export async function createThread(formData: FormData) {
   if (hasHoneypotValue(formData)) return { error: '投稿に失敗しました' }
 
@@ -93,8 +101,9 @@ export async function createThread(formData: FormData) {
   }
 
   const sessionId = await getOrCreateSessionId()
+  const authUserId = await getAuthenticatedUserId(supabase)
   const userId = await getActiveProfileUserId(supabase)
-  if (await checkSessionBan(supabase, sessionId)) {
+  if (await checkPostingBan({ sessionId, userId: authUserId })) {
     return { error: 'Posting is restricted.' }
   }
   const ngWord = await checkNgWords(supabase, [title, body, authorName])
@@ -232,8 +241,9 @@ export async function createPost(formData: FormData) {
   const supabase = await createClient()
 
   const sessionId = await getOrCreateSessionId()
+  const authUserId = await getAuthenticatedUserId(supabase)
   const userId = await getActiveProfileUserId(supabase)
-  if (await checkSessionBan(supabase, sessionId)) {
+  if (await checkPostingBan({ sessionId, userId: authUserId })) {
     return { error: 'Posting is restricted.' }
   }
   const ngWord = await checkNgWords(supabase, [body, authorName])

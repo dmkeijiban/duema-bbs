@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase-admin'
 
 type NgWordRow = {
   word: string
@@ -17,6 +18,10 @@ function normalizeForModeration(text: string) {
 
 function isMissingModerationTable(error: { code?: string; message?: string } | null) {
   return error?.code === '42P01' || error?.message?.includes('moderation_')
+}
+
+function isMissingColumn(error: { code?: string; message?: string } | null, column: string) {
+  return error?.code === '42703' || error?.message?.includes(column)
 }
 
 export async function checkNgWords(
@@ -65,4 +70,61 @@ export async function checkSessionBan(
   }
 
   return ((data ?? []) as BanRow[]).length > 0
+}
+
+async function hasActiveBan(
+  supabase: SupabaseClient,
+  banType: 'session' | 'user',
+  banValue: string | null | undefined,
+): Promise<boolean> {
+  const value = banValue?.trim()
+  if (!value) return false
+
+  const now = new Date().toISOString()
+  const query = () => supabase
+    .from('moderation_bans')
+    .select('id')
+    .eq('ban_type', banType)
+    .eq('ban_value', value)
+    .eq('is_active', true)
+    .or(`expires_at.is.null,expires_at.gt.${now}`)
+    .limit(1)
+
+  let { data, error } = await query()
+
+  if (error && isMissingColumn(error, 'expires_at')) {
+    const fallback = await supabase
+      .from('moderation_bans')
+      .select('id')
+      .eq('ban_type', banType)
+      .eq('ban_value', value)
+      .eq('is_active', true)
+      .limit(1)
+    data = fallback.data
+    error = fallback.error
+  }
+
+  if (error) {
+    if (isMissingModerationTable(error)) return false
+    console.error('[moderation] Posting ban check failed:', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      banType,
+    })
+    return false
+  }
+
+  return ((data ?? []) as BanRow[]).length > 0
+}
+
+export async function checkPostingBan(params: {
+  sessionId?: string | null
+  userId?: string | null
+}): Promise<boolean> {
+  const admin = createAdminClient()
+  if (await hasActiveBan(admin, 'session', params.sessionId)) return true
+  if (await hasActiveBan(admin, 'user', params.userId)) return true
+  return false
 }
