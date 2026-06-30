@@ -19,6 +19,8 @@ type ProfileHeaderCardProps = {
   campaignRank?: number | null
   campaignPoints?: number | null
   actions?: ReactNode
+  mobileCompact?: boolean
+  mobileEditHref?: string
 }
 
 function XIcon() {
@@ -53,6 +55,10 @@ function DefaultAvatarIcon({ size }: { size: string }) {
   )
 }
 
+function compactCountLabel(value: string) {
+  return value.replace(/件$/, '')
+}
+
 export function ProfileHeaderCard({
   displayName,
   slug,
@@ -70,52 +76,81 @@ export function ProfileHeaderCard({
   campaignRank,
   campaignPoints,
   actions,
+  mobileCompact = false,
+  mobileEditHref,
 }: ProfileHeaderCardProps) {
+  const avatarSize = mobileCompact ? 'lg' : 'xl'
+  const defaultAvatarSize = mobileCompact ? 'h-14 w-14 sm:h-20 sm:w-20' : 'h-20 w-20'
+  const titleClassName = mobileCompact
+    ? 'text-base font-bold text-gray-900 break-words leading-tight sm:text-2xl'
+    : 'text-2xl font-bold text-gray-900 break-words leading-tight'
+  const subtleTextClassName = mobileCompact
+    ? 'text-xs text-gray-500 mt-0.5 sm:text-sm'
+    : 'text-sm text-gray-500 mt-0.5'
+
   return (
     <section className="bg-white border border-gray-300 rounded-sm overflow-hidden">
-      <div className="px-4 pt-5 pb-4">
-        <div className="flex flex-col sm:flex-row gap-4">
+      <div className={mobileCompact ? 'px-3 py-3 sm:px-4 sm:pt-5 sm:pb-4' : 'px-4 pt-5 pb-4'}>
+        <div className={mobileCompact ? 'flex flex-row gap-3 sm:gap-4' : 'flex flex-col sm:flex-row gap-4'}>
           {avatarUrl ? (
-            <ProfileAvatar src={avatarUrl} alt={`${displayName}のアイコン`} size="xl" />
+            <ProfileAvatar src={avatarUrl} alt={`${displayName}のアイコン`} size={avatarSize} />
           ) : (
-            <DefaultAvatarIcon size="h-20 w-20" />
+            <DefaultAvatarIcon size={defaultAvatarSize} />
           )}
 
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-baseline gap-2">
-              <h1 className="text-2xl font-bold text-gray-900 break-words leading-tight">
-                {displayName}
-              </h1>
-              {honorTitle && (
-                <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-300">
-                  {honorTitle.icon} {honorTitle.label}
-                </span>
-              )}
-              {(monthlyRank === 1 || totalRank === 1) && (
-                <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 border border-yellow-300">
-                  🏆 1位
-                </span>
-              )}
-              {campaignTitle && (
-                <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-300">
-                  {campaignRank != null
-                    ? `🏆 ${campaignTitle} ${campaignRank}位 / ${campaignPoints}pt`
-                    : `🏆 キャンペーン参加中 / ${campaignPoints ?? 0}pt`}
-                </span>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <h1 className={titleClassName}>{displayName}</h1>
+                  {honorTitle && (
+                    <span className={mobileCompact ? 'hidden text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-300 sm:inline-block' : 'inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-300'}>
+                      {honorTitle.icon} {honorTitle.label}
+                    </span>
+                  )}
+                  {(monthlyRank === 1 || totalRank === 1) && (
+                    <span className={mobileCompact ? 'hidden text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 border border-yellow-300 sm:inline-block' : 'inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 border border-yellow-300'}>
+                      🏆 1位
+                    </span>
+                  )}
+                  {campaignTitle && (
+                    <span className={mobileCompact ? 'hidden text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-300 sm:inline-block' : 'inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-300'}>
+                      {campaignRank != null
+                        ? `🏆 ${campaignTitle} ${campaignRank}位 / ${campaignPoints}pt`
+                        : `🏆 キャンペーン参加中 / ${campaignPoints ?? 0}pt`}
+                    </span>
+                  )}
+                </div>
+                <p className={subtleTextClassName}>@{slug}</p>
+              </div>
+
+              {mobileCompact && mobileEditHref && (
+                <Link
+                  href={mobileEditHref}
+                  className="shrink-0 rounded border border-blue-300 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50 sm:hidden"
+                >
+                  編集
+                </Link>
               )}
             </div>
-            <p className="text-sm text-gray-500 mt-0.5">@{slug}</p>
+
+            <div className={mobileCompact ? 'mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold text-gray-700 sm:hidden' : 'hidden'}>
+              <span>{compactCountLabel(threadCountLabel)}スレッド</span>
+              <span>{compactCountLabel(postCountLabel)}コメント</span>
+            </div>
 
             {bio ? (
-              <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6">
+              <p className={mobileCompact ? 'hidden text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6 sm:block' : 'text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6'}>
                 {bio}
               </p>
             ) : (
-              <p className="text-sm text-gray-400 mt-2 italic">自己紹介はまだありません。</p>
+              <p className={mobileCompact ? 'hidden text-sm text-gray-400 mt-2 italic sm:block' : 'text-sm text-gray-400 mt-2 italic'}>
+                自己紹介はまだありません。
+              </p>
             )}
 
             {(xUrl || youtubeUrl) && (
-              <div className="flex flex-wrap gap-2 mt-3">
+              <div className={mobileCompact ? 'hidden flex-wrap gap-2 mt-3 sm:flex' : 'flex flex-wrap gap-2 mt-3'}>
                 {xUrl && (
                   <a
                     href={xUrl}
@@ -144,7 +179,7 @@ export function ProfileHeaderCard({
         </div>
       </div>
 
-      <div className="border-t border-gray-200 grid grid-cols-2 bg-gray-50 text-center sm:grid-cols-4 sm:divide-x sm:divide-gray-200">
+      <div className={mobileCompact ? 'hidden border-t border-gray-200 bg-gray-50 text-center sm:grid sm:grid-cols-4 sm:divide-x sm:divide-gray-200' : 'border-t border-gray-200 grid grid-cols-2 bg-gray-50 text-center sm:grid-cols-4 sm:divide-x sm:divide-gray-200'}>
         <div className="border-b border-gray-200 px-3 py-3 sm:border-b-0">
           <p className="text-lg font-bold text-gray-900 leading-none">{threadCountLabel}</p>
           <p className="text-xs text-gray-500 mt-1">スレッド</p>
@@ -178,12 +213,12 @@ export function ProfileHeaderCard({
       </div>
 
       {actions && (
-        <div className="border-t border-gray-100 px-4 py-3">
+        <div className={mobileCompact ? 'hidden border-t border-gray-100 px-4 py-3 sm:block' : 'border-t border-gray-100 px-4 py-3'}>
           {actions}
         </div>
       )}
 
-      <div className="border-t border-gray-100 px-4 py-2 text-xs text-gray-400">
+      <div className={mobileCompact ? 'hidden border-t border-gray-100 px-4 py-2 text-xs text-gray-400 sm:block' : 'border-t border-gray-100 px-4 py-2 text-xs text-gray-400'}>
         {createdAtLabel} 登録
       </div>
     </section>

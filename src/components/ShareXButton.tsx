@@ -23,11 +23,11 @@ export function ShareXButton({ title }: Props) {
   return (
     <button
       onClick={handleShare}
-      className="inline-flex h-6 min-w-6 items-center justify-center rounded bg-gray-900 px-1.5 text-xs font-bold leading-none text-white transition-colors hover:bg-gray-800 active:scale-[0.98]"
+      className="inline-flex items-center justify-center rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-gray-800 transition-all duration-100 hover:bg-gray-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
       title="Xでシェア"
       type="button"
     >
-      X
+      Xでシェア
     </button>
   )
 }
