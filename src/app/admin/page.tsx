@@ -53,6 +53,7 @@ type ModerationNgWord = {
 
 type ModerationBan = {
   id: number
+  ban_type: string
   ban_value: string
   reason: string | null
   created_at: string
@@ -251,7 +252,7 @@ export default async function AdminPage({
 
   let threadsQuery = supabase
     .from('threads')
-    .select('id, title, body, post_count, view_count, is_archived, category_id, session_id, created_at, last_posted_at, categories(name)', { count: 'exact' })
+    .select('id, title, body, post_count, view_count, is_archived, category_id, session_id, user_id, created_at, last_posted_at, categories(name)', { count: 'exact' })
     .eq('is_archived', false)
     .order(sort, { ascending: order === 'asc', nullsFirst: false })
 
@@ -304,8 +305,7 @@ export default async function AdminPage({
       .then(result => result.error ? { data: [] as ModerationNgWord[] } : result),
     adminSupabase
       .from('moderation_bans')
-      .select('id, ban_value, reason, created_at, expires_at')
-      .eq('ban_type', 'session')
+      .select('id, ban_type, ban_value, reason, created_at, expires_at')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(30)
@@ -393,7 +393,7 @@ export default async function AdminPage({
       )}
       {sp.adminError === 'missing_session' && (
         <div className="mb-3 border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">
-          session_id がないためBANできませんでした。
+          session_id / user_id がないためBANできませんでした。
         </div>
       )}
 
@@ -671,14 +671,17 @@ export default async function AdminPage({
           </section>
 
           <section>
-            <h3 className="font-bold text-gray-700 mb-2 text-xs">BAN中のセッション</h3>
+            <h3 className="font-bold text-gray-700 mb-2 text-xs">BAN中の投稿者</h3>
             <div className="space-y-1 max-h-52 overflow-y-auto">
               {(sessionBans as ModerationBan[]).length === 0 ? (
-                <p className="text-xs text-gray-400">BAN中のセッションなし</p>
+                <p className="text-xs text-gray-400">BAN中の投稿者なし</p>
               ) : (
                 (sessionBans as ModerationBan[]).map(ban => (
                   <div key={ban.id} className="flex items-center gap-2 border border-red-100 bg-red-50/40 px-2 py-1 rounded">
                     <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-bold text-red-700">
+                        {ban.ban_type === 'user' ? 'user_id' : 'session_id'}
+                      </p>
                       <p className="text-[10px] text-gray-600 break-all font-mono">{ban.ban_value}</p>
                       {ban.reason && <p className="text-[10px] text-gray-400">理由: {ban.reason}</p>}
                     </div>
@@ -883,9 +886,10 @@ export default async function AdminPage({
                               className="px-2 py-1 text-[10px] text-green-700 border border-green-400 hover:bg-green-50 rounded leading-none">
                               編集
                             </a>
-                            {t.session_id && (
+                            {(t.session_id || (t as typeof t & { user_id?: string | null }).user_id) && (
                               <form action={adminBanSession} className="inline-flex">
-                                <input type="hidden" name="sessionId" value={t.session_id} />
+                                <input type="hidden" name="sessionId" value={t.session_id ?? ''} />
+                                <input type="hidden" name="userId" value={(t as typeof t & { user_id?: string | null }).user_id ?? ''} />
                                 <input type="hidden" name="reason" value={`thread:${t.id}`} />
                                 <input type="hidden" name="threadPage" value={threadPage} />
                                 <AdminSubmitButton
@@ -993,9 +997,10 @@ export default async function AdminPage({
                           削除
                         </AdminSubmitButton>
                       </form>
-                      {p.session_id && (
+                      {(p.session_id || (p as typeof p & { user_id?: string | null }).user_id) && (
                         <form action={adminBanSession} className="inline-flex">
-                          <input type="hidden" name="sessionId" value={p.session_id} />
+                          <input type="hidden" name="sessionId" value={p.session_id ?? ''} />
+                          <input type="hidden" name="userId" value={(p as typeof p & { user_id?: string | null }).user_id ?? ''} />
                           <input type="hidden" name="reason" value={`post:${p.id}`} />
                           <input type="hidden" name="returnToThread" value={selectedThread.id} />
                           <AdminSubmitButton

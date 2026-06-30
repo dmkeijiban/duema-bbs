@@ -9,6 +9,8 @@ import { NoticeItem } from '@/components/NoticeBlock'
 import { createAdminCookieValue, isAdminPassword, verifyAdminCookie } from '@/lib/admin-auth'
 
 const ADMIN_COOKIE = 'admin_auth'
+type AdminClient = ReturnType<typeof createAdminClient>
+type BanType = 'session' | 'user'
 
 async function checkAdmin() {
   const cookieStore = await cookies()
@@ -16,6 +18,92 @@ async function checkAdmin() {
   if (!verifyAdminCookie(val)) {
     throw new Error('Unauthorized')
   }
+}
+
+function appendAdminStatus(returnPath: string, key: string, value: string) {
+  return `${returnPath}${returnPath.includes('?') ? '&' : '?'}${key}=${value}`
+}
+
+function logBanError(context: string, error: {
+  code?: string
+  message?: string
+  details?: string
+  hint?: string
+} | null, banType: BanType) {
+  console.error(`[adminBanSession] ${context}`, {
+    code: error?.code,
+    message: error?.message,
+    details: error?.details,
+    hint: error?.hint,
+    banType,
+  })
+}
+
+function isMissingColumn(error: { code?: string; message?: string } | null, column: string) {
+  return error?.code === '42703' || error?.message?.includes(column)
+}
+
+async function upsertModerationBan(
+  supabase: AdminClient,
+  banType: BanType,
+  banValue: string,
+  reason: string,
+) {
+  const { data: existing, error: fetchError } = await supabase
+    .from('moderation_bans')
+    .select('id')
+    .eq('ban_type', banType)
+    .eq('ban_value', banValue)
+    .maybeSingle()
+
+  if (fetchError) {
+    logBanError('fetch failed', fetchError, banType)
+    return { error: fetchError }
+  }
+
+  const payload = {
+    reason,
+    is_active: true,
+    expires_at: null,
+  }
+  const fallbackPayload = {
+    reason,
+    is_active: true,
+  }
+
+  let result = existing?.id
+    ? await supabase
+      .from('moderation_bans')
+      .update(payload)
+      .eq('id', existing.id)
+    : await supabase
+      .from('moderation_bans')
+      .insert({
+        ban_type: banType,
+        ban_value: banValue,
+        ...payload,
+      })
+
+  if (result.error && isMissingColumn(result.error, 'expires_at')) {
+    result = existing?.id
+      ? await supabase
+        .from('moderation_bans')
+        .update(fallbackPayload)
+        .eq('id', existing.id)
+      : await supabase
+        .from('moderation_bans')
+        .insert({
+          ban_type: banType,
+          ban_value: banValue,
+          ...fallbackPayload,
+        })
+  }
+
+  if (result.error) {
+    logBanError('write failed', result.error, banType)
+  }
+
+  return { error: result.error }
 }
 
 export async function adminLogin(formData: FormData) {
@@ -173,6 +261,7 @@ export async function adminDisableNgWord(formData: FormData) {
 export async function adminBanSession(formData: FormData) {
   await checkAdmin()
   const sessionId = (formData.get('sessionId') as string)?.trim()
+  const userId = (formData.get('userId') as string)?.trim()
   const reason = (formData.get('reason') as string)?.trim() || 'admin'
   const returnToThread = formData.get('returnToThread') as string | null
   const threadPage = Math.max(1, parseInt(formData.get('threadPage') as string) || 1)
@@ -182,45 +271,23 @@ export async function adminBanSession(formData: FormData) {
       ? `/admin?threadPage=${threadPage}`
       : '/admin'
 
-  if (!sessionId) redirect(`${returnPath}${returnPath.includes('?') ? '&' : '?'}adminError=missing_session`)
+  if (!sessionId && !userId) redirect(appendAdminStatus(returnPath, 'adminError', 'missing_session'))
 
   const supabase = createAdminClient()
-  const { data: existing, error: fetchError } = await supabase
-    .from('moderation_bans')
-    .select('id')
-    .eq('ban_type', 'session')
-    .eq('ban_value', sessionId)
-    .maybeSingle()
-
-  if (fetchError) {
-    redirect(`${returnPath}${returnPath.includes('?') ? '&' : '?'}adminError=ban_failed`)
+  const results = []
+  if (sessionId) {
+    results.push(await upsertModerationBan(supabase, 'session', sessionId, reason))
+  }
+  if (userId) {
+    results.push(await upsertModerationBan(supabase, 'user', userId, reason))
   }
 
-  const payload = {
-    reason,
-    is_active: true,
-    expires_at: null,
-  }
-
-  const { error } = existing?.id
-    ? await supabase
-      .from('moderation_bans')
-      .update(payload)
-      .eq('id', existing.id)
-    : await supabase
-      .from('moderation_bans')
-      .insert({
-      ban_type: 'session',
-      ban_value: sessionId,
-      ...payload,
-    })
-
-  if (error) {
-    redirect(`${returnPath}${returnPath.includes('?') ? '&' : '?'}adminError=ban_failed`)
+  if (results.some(result => result.error)) {
+    redirect(appendAdminStatus(returnPath, 'adminError', 'ban_failed'))
   }
 
   revalidatePath('/admin')
-  redirect(`${returnPath}${returnPath.includes('?') ? '&' : '?'}ban=1`)
+  redirect(appendAdminStatus(returnPath, 'ban', '1'))
 }
 
 export async function adminUnbanSession(formData: FormData) {

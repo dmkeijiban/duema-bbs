@@ -5,7 +5,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { v4 as uuidv4 } from 'uuid'
 import { createClient } from '@/lib/supabase-server'
 import { hasJapanese } from '@/lib/spam'
-import { checkNgWords, checkSessionBan } from '@/lib/moderation'
+import { checkNgWords, checkPostingBan } from '@/lib/moderation'
 
 const SUMMARY_COMMENT_PREFIX = '[summary-comment]'
 
@@ -45,7 +45,7 @@ export async function createSummaryComment(formData: FormData) {
   const supabase = await createClient()
   const sessionId = await getOrCreateSessionId()
 
-  if (await checkSessionBan(supabase, sessionId)) {
+  if (await checkPostingBan({ sessionId })) {
     return { error: 'Posting is restricted.' }
   }
   const ngWord = await checkNgWords(supabase, [body, authorName])
