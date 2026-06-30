@@ -235,16 +235,16 @@ function HomeGuideBanner() {
         </Link>
         をご確認ください。
       </p>
-      <div className="grid w-full shrink-0 grid-cols-[repeat(auto-fit,minmax(0,1fr))] gap-1.5 md:flex md:w-auto md:flex-wrap">
+      <div className="grid w-full shrink-0 grid-cols-3 gap-1 md:flex md:w-auto md:flex-wrap md:gap-1.5">
         <Link
           href="/login?mode=signup"
-          className="inline-flex min-h-8 min-w-0 items-center justify-center rounded border border-green-700 bg-white px-2 py-1 text-center text-xs font-bold leading-tight text-green-800 transition-colors hover:bg-green-50 md:min-h-0 md:px-2.5"
+          className="inline-flex min-h-8 min-w-0 items-center justify-center rounded border border-green-700 bg-white px-1.5 py-1 text-center text-[11px] font-bold leading-tight whitespace-nowrap text-green-800 transition-colors hover:bg-green-50 md:min-h-0 md:px-2.5 md:text-xs"
         >
           アカウント作成
         </Link>
         <Link
           href="/zukan"
-          className="inline-flex min-h-8 min-w-0 items-center justify-center rounded border border-green-700 bg-white px-2 py-1 text-center text-xs font-bold leading-tight text-green-800 transition-colors hover:bg-green-50 md:min-h-0 md:px-2.5"
+          className="inline-flex min-h-8 min-w-0 items-center justify-center rounded border border-green-700 bg-white px-1.5 py-1 text-center text-[11px] font-bold leading-tight whitespace-nowrap text-green-800 transition-colors hover:bg-green-50 md:min-h-0 md:px-2.5 md:text-xs"
         >
           思い出図鑑を見る
         </Link>

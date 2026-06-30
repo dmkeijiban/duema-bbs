@@ -12,6 +12,7 @@ import { sendPushNotifications } from '@/app/actions/push-subscription'
 import { notifyNewThread } from '@/lib/discord'
 import { verifyAdminCookie } from '@/lib/admin-auth'
 import { checkNgWords, checkPostingBan } from '@/lib/moderation'
+import { AUTO_CLOSE_MESSAGE, isThreadAutoClosed } from '@/lib/thread-auto-close'
 
 function hasHoneypotValue(formData: FormData): boolean {
   const value = formData.get('website')
@@ -239,6 +240,22 @@ export async function createPost(formData: FormData) {
   }
 
   const supabase = await createClient()
+
+  const { data: threadForCloseCheck, error: threadCheckError } = await supabase
+    .from('threads')
+    .select('id, title, body, post_count, is_archived, created_at, category_id, categories(name,slug)')
+    .eq('id', threadId)
+    .single()
+
+  if (threadCheckError || !threadForCloseCheck) {
+    return { error: 'スレッドが見つかりません' }
+  }
+  if (threadForCloseCheck.is_archived) {
+    return { error: 'このスレッドは過去ログです。コメントはできません。' }
+  }
+  if (isThreadAutoClosed(threadForCloseCheck)) {
+    return { error: AUTO_CLOSE_MESSAGE }
+  }
 
   const sessionId = await getOrCreateSessionId()
   const authUserId = await getAuthenticatedUserId(supabase)

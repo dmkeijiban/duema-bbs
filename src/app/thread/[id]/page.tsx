@@ -14,6 +14,7 @@ import { NextReadNav } from '@/components/NextReadNav'
 import { AdBanner } from '@/components/AdBanner'
 import { getDisplayCategory } from '@/lib/categories'
 import { isThinThreadForAdSenseReview, isPrNoticeForAdSenseReview } from '@/lib/adsense-review-mode'
+import { isThreadAutoClosed } from '@/lib/thread-auto-close'
 
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
@@ -183,6 +184,7 @@ export async function renderThreadPage(threadId: number, page: number) {
       ? { ...typedPost, author_name: DEFAULT_AUTHOR_NAME }
       : typedPost
   })
+  const isAutoClosed = isThreadAutoClosed(typedThread)
   const totalPages = Math.max(1, Math.ceil((typedThread.post_count ?? 0) / POSTS_PER_PAGE))
   const visibleThreadNotices = (threadNotices as Notice[]).filter(notice => !isReviewModeHiddenNotice(notice))
 
@@ -350,6 +352,7 @@ export async function renderThreadPage(threadId: number, page: number) {
         starterImageUrl={starterImageUrl}
         authorProfiles={authorProfiles}
         isArchived={typedThread.is_archived}
+        isAutoClosed={isAutoClosed}
         page={page}
         totalPages={totalPages}
         threadRules={threadRules}
