@@ -24,6 +24,10 @@ function isMissingColumn(error: { code?: string; message?: string } | null, colu
   return error?.code === '42703' || error?.message?.includes(column)
 }
 
+function isMissingBanKeyColumn(error: { code?: string; message?: string } | null) {
+  return isMissingColumn(error, 'ban_type') || isMissingColumn(error, 'ban_value')
+}
+
 export async function checkNgWords(
   supabase: SupabaseClient,
   fields: string[],
@@ -98,6 +102,17 @@ async function hasActiveBan(
       .select('id')
       .eq('ban_type', banType)
       .eq('ban_value', value)
+      .eq('is_active', true)
+      .limit(1)
+    data = fallback.data
+    error = fallback.error
+  }
+
+  if (error && banType === 'session' && isMissingBanKeyColumn(error)) {
+    const fallback = await supabase
+      .from('moderation_bans')
+      .select('id')
+      .eq('session_id', value)
       .eq('is_active', true)
       .limit(1)
     data = fallback.data
