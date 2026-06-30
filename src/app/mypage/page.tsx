@@ -469,7 +469,7 @@ async function AnonMyPage() {
 
               <section className="rounded border border-gray-200 bg-white">
                 <div className="border-b border-blue-100 bg-blue-50 px-4 py-3">
-                  <h2 className="text-sm font-bold text-blue-900">自分のコメント</h2>
+                  <h2 className="text-sm font-bold text-blue-900">コメントしたスレッド</h2>
                 </div>
                 {anonPosts.length > 0 ? (
                   <ul className="divide-y divide-gray-100">
@@ -575,23 +575,23 @@ export default async function MyPage({
   const totalRank = totalRankIndex >= 0 ? totalRankIndex + 1 : null
 
   return (
-    <main className="mx-auto w-full max-w-screen-xl px-3 py-4">
+    <main className="mx-auto w-full max-w-screen-xl px-2 py-2 sm:px-3 sm:py-4">
       <div className="w-full border border-gray-300 bg-white">
-        <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
+        <div className="border-b border-gray-300 bg-gray-100 px-3 py-2 sm:px-4 sm:py-3">
           <h1 className="text-lg font-bold text-gray-900">マイページ</h1>
           <p className="mt-1 text-sm leading-relaxed text-gray-600">
             ログイン中の投稿者ページ情報を確認できます。
           </p>
         </div>
 
-        <div className="space-y-5 p-4">
+        <div className="space-y-3 p-3 sm:space-y-5 sm:p-4">
           {params.profileUpdated === '1' && (
             <div className="rounded border border-green-300 bg-green-50 px-3 py-2 text-sm font-bold text-green-800">
               プロフィールを保存しました。
             </div>
           )}
 
-          <div className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          <div className="hidden rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800 sm:block">
             ログイン中です。
           </div>
 
@@ -613,6 +613,8 @@ export default async function MyPage({
             postCountLabel={formatCount(activityCounts.postCount)}
             monthlyRank={monthlyRank}
             totalRank={totalRank}
+            mobileCompact
+            mobileEditHref="/mypage/edit"
             actions={
               <div className="flex flex-col gap-2 sm:flex-row">
                 <ProfileHeaderActionLink href={profilePath} variant="primary">
@@ -667,7 +669,7 @@ export default async function MyPage({
 
             <section className="rounded border border-gray-200 bg-white">
               <div className="border-b border-blue-100 bg-blue-50 px-4 py-3">
-                <h2 className="text-sm font-bold text-blue-900">自分のコメント</h2>
+                <h2 className="text-sm font-bold text-blue-900">コメントしたスレッド</h2>
               </div>
               {myPosts.length > 0 ? (
                 <ul className="divide-y divide-gray-100">

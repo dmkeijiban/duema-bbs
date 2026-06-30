@@ -32,7 +32,7 @@ export function TopActivityNotice() {
   return (
     <Link
       href="/mypage"
-      className="inline-flex items-center justify-center rounded border border-green-700 bg-white px-2.5 py-1 text-xs font-bold text-green-800 transition-colors hover:bg-green-50"
+      className="inline-flex min-h-8 min-w-0 items-center justify-center rounded border border-green-700 bg-white px-2 py-1 text-center text-xs font-bold leading-tight text-green-800 transition-colors hover:bg-green-50 md:min-h-0 md:px-2.5"
     >
       🔔 新しいお知らせ
     </Link>
