@@ -311,6 +311,32 @@ export default async function AdminPage({
       .limit(30)
       .then(async result => {
         if (!result.error) return result
+        if (result.error.code === 'PGRST205' || result.error.code === '42P01' || result.error.message?.includes('moderation_bans')) {
+          const fallback = await adminSupabase
+            .from('report_mutes')
+            .select('id, user_id, session_id, reason, created_at, revoked_at')
+            .eq('is_active', true)
+            .like('reason', 'posting_ban:%')
+            .order('created_at', { ascending: false })
+            .limit(30)
+          if (fallback.error) {
+            console.error('[admin] Failed to load posting ban fallback:', {
+              code: fallback.error.code,
+              message: fallback.error.message,
+            })
+            return { data: [] as ModerationBan[] }
+          }
+          return {
+            data: (fallback.data ?? []).map(row => ({
+              id: row.id,
+              ban_type: row.user_id ? 'user' : 'session',
+              ban_value: row.user_id ?? row.session_id,
+              reason: row.reason?.replace(/^posting_ban:/, '') ?? null,
+              created_at: row.created_at,
+              expires_at: null,
+            })).filter(row => row.ban_value) as ModerationBan[],
+          }
+        }
         if (result.error.code !== '42703' && !result.error.message?.includes('ban_type') && !result.error.message?.includes('ban_value')) {
           console.error('[admin] Failed to load moderation_bans:', {
             code: result.error.code,
