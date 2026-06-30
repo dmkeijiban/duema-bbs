@@ -297,6 +297,25 @@ export const getCachedThread = (threadId: number) =>
     { revalidate: THREAD_CACHE_SECONDS, tags: [`thread-${threadId}`] }
   )()
 
+export const getCachedThreadStarterImageUrl = (threadId: number, threadImageUrl: string | null) =>
+  unstable_cache(
+    async () => {
+      if (!threadImageUrl) return null
+
+      const supabase = createPublicClient()
+      const { data } = await supabase
+        .from('posts')
+        .select('id')
+        .eq('thread_id', threadId)
+        .eq('image_url', threadImageUrl)
+        .limit(1)
+
+      return data && data.length > 0 ? null : threadImageUrl
+    },
+    [`thread-starter-image-${threadId}-${threadImageUrl ?? 'none'}`],
+    { revalidate: THREAD_CACHE_SECONDS, tags: [`thread-${threadId}`] }
+  )()
+
 export const getCachedThreadPosts = (threadId: number, page: number) =>
   unstable_cache(
     async () => {

@@ -21,6 +21,7 @@ interface Props {
   posts: Post[]
   threadId: number
   thread: Thread & { categories: Category | null }
+  starterImageUrl?: string | null
   authorProfiles?: Record<string, PublicAuthorProfile>
   currentUserId?: string
   isArchived: boolean
@@ -79,6 +80,7 @@ export function ThreadContent({
   posts,
   threadId,
   thread,
+  starterImageUrl = null,
   authorProfiles = {},
   currentUserId = '',
   isArchived,
@@ -156,9 +158,9 @@ export function ThreadContent({
           <div className="px-3 pt-1.5 pb-7 text-base text-gray-800 break-words leading-relaxed">
             {threadBodyNodes}
           </div>
-          {thread.image_url && (
+          {starterImageUrl && (
             <div className="px-3 pb-2">
-              <ImageViewer src={resolveImageUrl(thread.image_url)!} alt={thread.title} priority />
+              <ImageViewer src={resolveImageUrl(starterImageUrl)!} alt={thread.title} priority />
             </div>
           )}
         </div>

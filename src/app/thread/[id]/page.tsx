@@ -5,7 +5,7 @@ import { ShareXButton } from '@/components/ShareXButton'
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { Thread, Post, Category } from '@/types'
 import Link from 'next/link'
-import { DEFAULT_PUBLIC_AUTHOR_NAME, getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, getCachedRelatedThreads, getCachedPublicAuthorProfiles, getCachedRestrictedAuthorNames, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
+import { DEFAULT_PUBLIC_AUTHOR_NAME, getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, getCachedThreadStarterImageUrl, getCachedRelatedThreads, getCachedPublicAuthorProfiles, getCachedRestrictedAuthorNames, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
@@ -159,6 +159,7 @@ export async function renderThreadPage(threadId: number, page: number) {
   const posts = postsResult.data
   const typedThread = thread as unknown as Thread & { categories: Category | null }
   const displayCategory = getDisplayCategory(typedThread.categories)
+  const starterImageUrl = await getCachedThreadStarterImageUrl(threadId, typedThread.image_url)
   const authorProfiles = await getCachedPublicAuthorProfiles([
     typedThread.user_id ?? '',
     ...(posts ?? []).map(post => (post as Post).user_id ?? ''),
@@ -346,6 +347,7 @@ export async function renderThreadPage(threadId: number, page: number) {
         posts={publicPosts}
         threadId={threadId}
         thread={publicThread}
+        starterImageUrl={starterImageUrl}
         authorProfiles={authorProfiles}
         isArchived={typedThread.is_archived}
         page={page}
