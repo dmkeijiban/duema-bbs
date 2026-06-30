@@ -53,7 +53,7 @@ type ModerationNgWord = {
 
 type ModerationBan = {
   id: number
-  ban_type: string
+  ban_type?: string
   ban_value: string
   reason: string | null
   created_at: string
@@ -309,7 +309,39 @@ export default async function AdminPage({
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(30)
-      .then(result => result.error ? { data: [] as ModerationBan[] } : result),
+      .then(async result => {
+        if (!result.error) return result
+        if (result.error.code !== '42703' && !result.error.message?.includes('ban_type') && !result.error.message?.includes('ban_value')) {
+          console.error('[admin] Failed to load moderation_bans:', {
+            code: result.error.code,
+            message: result.error.message,
+          })
+          return { data: [] as ModerationBan[] }
+        }
+        const legacy = await adminSupabase
+          .from('moderation_bans')
+          .select('id, session_id, reason, created_at, expires_at')
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(30)
+        if (legacy.error) {
+          console.error('[admin] Failed to load legacy moderation_bans:', {
+            code: legacy.error.code,
+            message: legacy.error.message,
+          })
+          return { data: [] as ModerationBan[] }
+        }
+        return {
+          data: (legacy.data ?? []).map(row => ({
+            id: row.id,
+            ban_type: 'session',
+            ban_value: row.session_id,
+            reason: row.reason,
+            created_at: row.created_at,
+            expires_at: row.expires_at,
+          })) as ModerationBan[],
+        }
+      }),
   ])
 
   const SETTING_LABELS: Record<string, string> = {

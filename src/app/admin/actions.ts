@@ -43,6 +43,10 @@ function isMissingColumn(error: { code?: string; message?: string } | null, colu
   return error?.code === '42703' || error?.message?.includes(column)
 }
 
+function isMissingBanKeyColumn(error: { code?: string; message?: string } | null) {
+  return isMissingColumn(error, 'ban_type') || isMissingColumn(error, 'ban_value')
+}
+
 async function upsertModerationBan(
   supabase: AdminClient,
   banType: BanType,
@@ -54,9 +58,12 @@ async function upsertModerationBan(
     .select('id')
     .eq('ban_type', banType)
     .eq('ban_value', banValue)
-    .maybeSingle()
+    .limit(1)
 
   if (fetchError) {
+    if (banType === 'session' && isMissingBanKeyColumn(fetchError)) {
+      return upsertLegacySessionBan(supabase, banValue, reason)
+    }
     logBanError('fetch failed', fetchError, banType)
     return { error: fetchError }
   }
@@ -71,11 +78,13 @@ async function upsertModerationBan(
     is_active: true,
   }
 
-  let result = existing?.id
+  const existingId = Array.isArray(existing) ? existing[0]?.id : null
+
+  let result = existingId
     ? await supabase
       .from('moderation_bans')
       .update(payload)
-      .eq('id', existing.id)
+      .eq('id', existingId)
     : await supabase
       .from('moderation_bans')
       .insert({
@@ -85,11 +94,11 @@ async function upsertModerationBan(
       })
 
   if (result.error && isMissingColumn(result.error, 'expires_at')) {
-    result = existing?.id
+    result = existingId
       ? await supabase
         .from('moderation_bans')
         .update(fallbackPayload)
-        .eq('id', existing.id)
+        .eq('id', existingId)
       : await supabase
         .from('moderation_bans')
         .insert({
@@ -101,6 +110,43 @@ async function upsertModerationBan(
 
   if (result.error) {
     logBanError('write failed', result.error, banType)
+  }
+
+  return { error: result.error }
+}
+
+async function upsertLegacySessionBan(
+  supabase: AdminClient,
+  sessionId: string,
+  reason: string,
+) {
+  const { data: existing, error: fetchError } = await supabase
+    .from('moderation_bans')
+    .select('id')
+    .eq('session_id', sessionId)
+    .limit(1)
+
+  if (fetchError) {
+    logBanError('legacy fetch failed', fetchError, 'session')
+    return { error: fetchError }
+  }
+
+  const existingId = Array.isArray(existing) ? existing[0]?.id : null
+  const payload = { reason, is_active: true }
+  const result = existingId
+    ? await supabase
+      .from('moderation_bans')
+      .update(payload)
+      .eq('id', existingId)
+    : await supabase
+      .from('moderation_bans')
+      .insert({
+        session_id: sessionId,
+        ...payload,
+      })
+
+  if (result.error) {
+    logBanError('legacy write failed', result.error, 'session')
   }
 
   return { error: result.error }
