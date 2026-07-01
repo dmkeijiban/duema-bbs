@@ -14,7 +14,11 @@ import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { resolveCampaignState, toDisplayJst } from '@/lib/campaign-ranking'
 import { getHonorTitle, HONOR_TITLE_ENABLED } from '@/lib/honor-title'
-import { filterPublicVisibleUserContent, getCachedPublicHiddenUserIds } from '@/lib/public-visibility'
+import {
+  filterPublicVisibleUserContent,
+  getCachedPublicHiddenUserIds,
+  getPublicVisibleUserContentOrFilter,
+} from '@/lib/public-visibility'
 
 export const revalidate = 3600
 
@@ -405,13 +409,15 @@ function ThreadRankingMobile({ threads, offset }: { threads: TypedThread[]; offs
 async function RankingList({ page, period }: { page: number; period: ThreadPeriod }) {
   const supabase = createPublicClient()
   const offset = (page - 1) * PAGE_SIZE
+  const hiddenUserIds = await getCachedPublicHiddenUserIds()
+  const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
 
   let dataQuery = supabase
     .from('threads')
     .select('*, categories(id,name,slug,color,description,sort_order)')
     .eq('is_archived', false)
-    .order('post_count', { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1)
+
+  if (publicUserFilter) dataQuery = dataQuery.or(publicUserFilter)
 
   if (period !== 'all') {
     const since = new Date()
@@ -419,8 +425,11 @@ async function RankingList({ page, period }: { page: number; period: ThreadPerio
     dataQuery = dataQuery.gte('last_posted_at', since.toISOString())
   }
 
+  dataQuery = dataQuery
+    .order('post_count', { ascending: false })
+    .range(offset, offset + PAGE_SIZE - 1)
+
   const { data: rawThreads } = await dataQuery
-  const hiddenUserIds = await getCachedPublicHiddenUserIds()
   const visibleThreads = filterPublicVisibleUserContent(rawThreads, hiddenUserIds)
 
   const withImages = visibleThreads.length > 0

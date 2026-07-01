@@ -20,7 +20,11 @@ import {
 import type { NavPage, FixedPage } from '@/types/fixed-pages'
 import { parseBlocks } from '@/types/fixed-pages'
 import type { PublicAuthorProfile } from '@/types'
-import { filterPublicVisibleUserContent, getCachedPublicHiddenUserIds } from './public-visibility'
+import {
+  filterPublicVisibleUserContent,
+  getCachedPublicHiddenUserIds,
+  getPublicVisibleUserContentOrFilter,
+} from './public-visibility'
 
 export type { NavPage, FixedPage }
 
@@ -177,14 +181,19 @@ export const getCachedTopThreads = unstable_cache(
   async () => {
     try {
       const supabase = createPublicClient()
-      const { data: raw } = await supabase
+      const hiddenUserIds = await getCachedPublicHiddenUserIds()
+      const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
+      let query = supabase
         .from('threads')
         .select('id, title, user_id, image_url, post_count')
         .eq('is_archived', false)
+
+      if (publicUserFilter) query = query.or(publicUserFilter)
+
+      const { data: raw } = await query
         .order('post_count', { ascending: false })
         .limit(20)
       if (!raw || raw.length === 0) return []
-      const hiddenUserIds = await getCachedPublicHiddenUserIds()
       return withFallbackThumbnails(supabase, filterPublicVisibleUserContent(raw as ThreadRow[], hiddenUserIds))
     } catch (error) {
       console.warn('top threads fetch failed:', error)
@@ -256,25 +265,38 @@ export function getCachedRelatedThreads(
   return unstable_cache(
     async () => {
       const supabase = createPublicClient()
+      const hiddenUserIds = await getCachedPublicHiddenUserIds()
+      const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
       const keywords = extractRecommendKeywords(title)
       const select = 'id, title, user_id, image_url, post_count, category_id, created_at, last_posted_at'
 
-      const sameCategoryQuery = categoryId === null
-        ? Promise.resolve({ data: [] })
-        : supabase
-            .from('threads')
-            .select(select)
-            .eq('is_archived', false)
-            .eq('category_id', categoryId)
-            .neq('id', threadId)
-            .order('last_posted_at', { ascending: false })
-            .limit(80)
+      let sameCategoryQuery: PromiseLike<{ data: unknown[] | null }>
+      if (categoryId === null) {
+        sameCategoryQuery = Promise.resolve({ data: [] })
+      } else {
+        let query = supabase
+          .from('threads')
+          .select(select)
+          .eq('is_archived', false)
+          .eq('category_id', categoryId)
+          .neq('id', threadId)
 
-      const popularQuery = supabase
+        if (publicUserFilter) query = query.or(publicUserFilter)
+
+        sameCategoryQuery = query
+          .order('last_posted_at', { ascending: false })
+          .limit(80)
+      }
+
+      let popularQuery = supabase
         .from('threads')
         .select(select)
         .eq('is_archived', false)
         .neq('id', threadId)
+
+      if (publicUserFilter) popularQuery = popularQuery.or(publicUserFilter)
+
+      popularQuery = popularQuery
         .order('post_count', { ascending: false })
         .limit(40)
 
@@ -284,7 +306,6 @@ export function getCachedRelatedThreads(
       ])
 
       const byId = new Map<number, RelatedThreadRow>()
-      const hiddenUserIds = await getCachedPublicHiddenUserIds()
       for (const thread of filterPublicVisibleUserContent([...(sameCategory ?? []), ...(popular ?? [])] as RelatedThreadRow[], hiddenUserIds)) {
         byId.set(thread.id, thread)
       }
@@ -800,6 +821,8 @@ export function getCachedThreadList(
     async () => {
       const supabase = createPublicClient()
       const offset = (page - 1) * pageSize
+      const hiddenUserIds = await getCachedPublicHiddenUserIds()
+      const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
 
       let countQuery = supabase
         .from('threads')
@@ -809,6 +832,11 @@ export function getCachedThreadList(
         .from('threads')
         .select('id, title, user_id, image_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
         .eq('is_archived', isArchived)
+
+      if (publicUserFilter) {
+        countQuery = countQuery.or(publicUserFilter)
+        dataQuery = dataQuery.or(publicUserFilter)
+      }
 
       if (categoryId !== null) {
         const categoryIds = Array.isArray(categoryId) ? categoryId : [categoryId]
@@ -832,13 +860,12 @@ export function getCachedThreadList(
       dataQuery = dataQuery.range(offset, offset + pageSize - 1)
 
       const [{ count }, { data: raw }] = await Promise.all([countQuery, dataQuery])
-      const hiddenUserIds = await getCachedPublicHiddenUserIds()
       const visibleRaw = filterPublicVisibleUserContent(raw as ThreadRow[] | null, hiddenUserIds)
       const threads = visibleRaw.length > 0 ? await withFallbackThumbnails(supabase, visibleRaw) : []
 
       return {
         threads,
-        count: Math.max(0, (count ?? 0) - ((raw?.length ?? 0) - visibleRaw.length)),
+        count: count ?? 0,
         totalPages: Math.max(1, Math.ceil((count ?? 0) / pageSize)),
       }
     },

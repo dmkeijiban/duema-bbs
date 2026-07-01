@@ -45,3 +45,8 @@ export function filterPublicVisibleUserContent<T extends { user_id?: string | nu
   if (hiddenUserIds.length === 0) return [...rows]
   return rows.filter(row => isPublicVisibleUserContent(row, hiddenUserIds))
 }
+
+export function getPublicVisibleUserContentOrFilter(hiddenUserIds: readonly string[]): string | null {
+  if (hiddenUserIds.length === 0) return null
+  return `user_id.is.null,user_id.not.in.(${hiddenUserIds.join(',')})`
+}
