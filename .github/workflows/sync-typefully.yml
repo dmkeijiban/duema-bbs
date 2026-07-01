@@ -5,16 +5,20 @@ name: Sync Typefully
 # GitHub Actions から /api/internal/sync-typefully を叩く。
 #
 # 方針:
-#   - JST 7時台の最初の実行で Typefully から「今日分の予約投稿」を取得して x_posts に保存/更新する。
+#   - JST 6:35 / 6:50 / 7:05 の朝枠で Typefully から「今日分の予約投稿」を取得して x_posts に保存/更新する。
 #   - それ以外の定期実行では Typefully API を叩かず、x_posts の scheduled_at 到来分だけをスレ化する。
 #   - thread_id がある x_posts は本文を上書きしない。
 #   - sync-typefully 側は source_id / source_text_hash / thread_id で重複排除するため冪等。
 #
 # 実行時刻（JST → UTC 変換）:
+#   朝取り込み: JST 06:35 / 06:50 / 07:05 = UTC 21:35 / 21:50 / 22:05
 #   毎時20分: JST 07:20〜23:20 = UTC 22,23,0-14時
 #   救済50分: JST 07:50 / 12:50 / 19:50 / 22:50 = UTC 22:50 / 03:50 / 10:50 / 13:50
 on:
   schedule:
+    - cron: "35 21 * * *"
+    - cron: "50 21 * * *"
+    - cron: "5 22 * * *"
     - cron: "20 22,23,0-14 * * *"
     - cron: "50 22,3,10,13 * * *"
   workflow_dispatch:
@@ -54,15 +58,15 @@ jobs:
           MAX_NEW: ${{ github.event.inputs.max_new || '5' }}
           BASE_URL: ${{ github.event.inputs.base_url || 'https://www.duema-bbs.com' }}
           EVENT_NAME: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule || '' }}
         run: |
           set -uo pipefail
 
           BASE="${BASE_URL%/}/api/internal/sync-typefully"
-          JST_HOUR="$(TZ=Asia/Tokyo date '+%H')"
           if [ -n "${INPUT_MODE}" ]; then
             MODE="${INPUT_MODE}"
-          elif [ "${JST_HOUR}" = "07" ]; then
-            MODE="fetch_and_sync"
+          elif [ "${SCHEDULE}" = "35 21 * * *" ] || [ "${SCHEDULE}" = "50 21 * * *" ] || [ "${SCHEDULE}" = "5 22 * * *" ]; then
+            MODE="fetch_today"
           else
             MODE="sync_due"
           fi
@@ -83,6 +87,7 @@ jobs:
           echo "実行時刻 UTC : $(date -u '+%Y-%m-%d %H:%M:%S')"
           echo "実行時刻 JST : $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S')"
           echo "トリガー     : ${EVENT_NAME}"
+          echo "schedule     : ${SCHEDULE:-manual}"
           echo "モード       : ${MODE_LABEL:-${MODE}}"
           echo "sync mode    : ${MODE}"
           echo "max_new      : ${MAX_NEW}"
