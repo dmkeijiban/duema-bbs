@@ -224,6 +224,7 @@ export default async function ZukanDm01Page({
     avatar_url: string | null
     profile_slug: string | null
     is_withdrawn: boolean
+    is_suspended: boolean
   }
 
   let packReviews: AdminPackReview[] | null = null
@@ -450,6 +451,7 @@ export default async function ZukanDm01Page({
                   />
                   <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}</time>
                   {r.is_hidden && <span className="text-red-500 font-bold">[非表示]</span>}
+                  {r.is_suspended && <span className="text-red-600 font-bold">[停止中ユーザー]</span>}
                 </div>
                 <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
                 {isAdmin && (
@@ -479,6 +481,7 @@ export default async function ZukanDm01Page({
                         />
                         <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}</time>
                         {r.is_hidden && <span className="text-red-500 font-bold">[非表示]</span>}
+                        {r.is_suspended && <span className="text-red-600 font-bold">[停止中ユーザー]</span>}
                       </div>
                       <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{r.body}</p>
                       {isAdmin && (

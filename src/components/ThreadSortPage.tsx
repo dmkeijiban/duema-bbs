@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { SITE_URL } from '@/lib/site-config'
 import { ThreadListHeader } from '@/components/ThreadListHeader'
 import { ThreadListTopContent } from '@/components/ThreadListTopContent'
+import { filterPublicVisibleUserContent, getCachedPublicHiddenUserIds } from '@/lib/public-visibility'
 
 const PAGE_SIZE = 60
 
@@ -40,7 +41,8 @@ async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
       .select('*, categories(id,name,slug,color,description,sort_order)')
       .eq('is_archived', false)
       .limit(500)
-    const all = rawThreads ? await withFallbackThumbnails(supabase, rawThreads) : []
+    const hiddenUserIds = await getCachedPublicHiddenUserIds()
+    const all = rawThreads ? await withFallbackThumbnails(supabase, filterPublicVisibleUserContent(rawThreads, hiddenUserIds)) : []
     const threads = seededShuffle(all).slice(0, PAGE_SIZE) as (Thread & { categories: Category | null })[]
     if (threads.length === 0) {
       return (
@@ -100,7 +102,8 @@ async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
 
   query = query.range(offset, offset + PAGE_SIZE - 1)
   const { data: rawThreads } = await query
-  const threads = rawThreads ? await withFallbackThumbnails(supabase, rawThreads) : []
+  const hiddenUserIds = await getCachedPublicHiddenUserIds()
+  const threads = rawThreads ? await withFallbackThumbnails(supabase, filterPublicVisibleUserContent(rawThreads, hiddenUserIds)) : []
 
   if (threads.length === 0) {
     return (

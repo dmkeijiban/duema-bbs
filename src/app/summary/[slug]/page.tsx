@@ -14,6 +14,7 @@ import { SummaryViewPing } from '@/components/SummaryViewPing'
 import { SummaryCommentSection, SummaryComment } from '@/components/SummaryCommentSection'
 import { summaryTextExcerpt, sanitizeSummaryHtml } from '@/lib/summary-content'
 import { getCachedCategories } from '@/lib/cached-queries'
+import { filterPublicVisibleUserContent, getCachedPublicHiddenUserIds } from '@/lib/public-visibility'
 
 export const revalidate = 3600
 
@@ -177,13 +178,14 @@ async function getSummaryComments(slug: string): Promise<{ comments: SummaryComm
 
     const { data, error } = await supabase
       .from('posts')
-      .select('id, post_number, body, author_name, created_at')
+      .select('id, post_number, body, author_name, user_id, created_at')
       .eq('thread_id', thread.id)
       .eq('is_deleted', false)
       .order('post_number', { ascending: true })
       .limit(100)
     if (error) return { comments: [], enabled: false }
-    const comments = (data ?? []).map(post => ({
+    const hiddenUserIds = await getCachedPublicHiddenUserIds()
+    const comments = filterPublicVisibleUserContent(data ?? [], hiddenUserIds).map(post => ({
       id: post.id,
       comment_number: post.post_number,
       body: post.body,

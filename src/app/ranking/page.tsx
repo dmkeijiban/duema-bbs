@@ -14,6 +14,7 @@ import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { resolveCampaignState, toDisplayJst } from '@/lib/campaign-ranking'
 import { getHonorTitle, HONOR_TITLE_ENABLED } from '@/lib/honor-title'
+import { filterPublicVisibleUserContent, getCachedPublicHiddenUserIds } from '@/lib/public-visibility'
 
 export const revalidate = 3600
 
@@ -419,9 +420,11 @@ async function RankingList({ page, period }: { page: number; period: ThreadPerio
   }
 
   const { data: rawThreads } = await dataQuery
+  const hiddenUserIds = await getCachedPublicHiddenUserIds()
+  const visibleThreads = filterPublicVisibleUserContent(rawThreads, hiddenUserIds)
 
-  const withImages = rawThreads && rawThreads.length > 0
-    ? await withFallbackThumbnails(supabase, rawThreads)
+  const withImages = visibleThreads.length > 0
+    ? await withFallbackThumbnails(supabase, visibleThreads)
     : []
 
   if (withImages.length === 0) {

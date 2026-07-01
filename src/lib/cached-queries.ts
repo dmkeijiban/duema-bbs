@@ -20,6 +20,7 @@ import {
 import type { NavPage, FixedPage } from '@/types/fixed-pages'
 import { parseBlocks } from '@/types/fixed-pages'
 import type { PublicAuthorProfile } from '@/types'
+import { filterPublicVisibleUserContent, getCachedPublicHiddenUserIds } from './public-visibility'
 
 export type { NavPage, FixedPage }
 
@@ -147,7 +148,7 @@ export const getCachedSetting = unstable_cache(
   { revalidate: STANDARD_CACHE_SECONDS, tags: ['settings'] }
 )
 
-type ThreadRow = { id: number; title: string; image_url: string | null; post_count: number }
+type ThreadRow = { id: number; title: string; user_id?: string | null; image_url: string | null; post_count: number }
 type RelatedThreadRow = ThreadRow & {
   category_id: number | null
   created_at: string | null
@@ -178,12 +179,13 @@ export const getCachedTopThreads = unstable_cache(
       const supabase = createPublicClient()
       const { data: raw } = await supabase
         .from('threads')
-        .select('id, title, image_url, post_count')
+        .select('id, title, user_id, image_url, post_count')
         .eq('is_archived', false)
         .order('post_count', { ascending: false })
         .limit(20)
       if (!raw || raw.length === 0) return []
-      return withFallbackThumbnails(supabase, raw as ThreadRow[])
+      const hiddenUserIds = await getCachedPublicHiddenUserIds()
+      return withFallbackThumbnails(supabase, filterPublicVisibleUserContent(raw as ThreadRow[], hiddenUserIds))
     } catch (error) {
       console.warn('top threads fetch failed:', error)
       return []
@@ -255,7 +257,7 @@ export function getCachedRelatedThreads(
     async () => {
       const supabase = createPublicClient()
       const keywords = extractRecommendKeywords(title)
-      const select = 'id, title, image_url, post_count, category_id, created_at, last_posted_at'
+      const select = 'id, title, user_id, image_url, post_count, category_id, created_at, last_posted_at'
 
       const sameCategoryQuery = categoryId === null
         ? Promise.resolve({ data: [] })
@@ -282,7 +284,8 @@ export function getCachedRelatedThreads(
       ])
 
       const byId = new Map<number, RelatedThreadRow>()
-      for (const thread of [...(sameCategory ?? []), ...(popular ?? [])] as RelatedThreadRow[]) {
+      const hiddenUserIds = await getCachedPublicHiddenUserIds()
+      for (const thread of filterPublicVisibleUserContent([...(sameCategory ?? []), ...(popular ?? [])] as RelatedThreadRow[], hiddenUserIds)) {
         byId.set(thread.id, thread)
       }
 
@@ -357,7 +360,8 @@ export const getCachedThreadPosts = (threadId: number, page: number) =>
         .or('is_deleted.eq.false,deleted_by.eq.registered_user')
         .order('post_number', { ascending: true })
         .range(offset, offset + THREAD_POSTS_PER_PAGE - 1)
-      return { data: data ?? [] }
+      const hiddenUserIds = await getCachedPublicHiddenUserIds()
+      return { data: filterPublicVisibleUserContent(data ?? [], hiddenUserIds) }
     },
     [`thread-posts-${threadId}-p${page}`],
     { revalidate: THREAD_CACHE_SECONDS, tags: [`thread-${threadId}`] }
@@ -803,7 +807,7 @@ export function getCachedThreadList(
         .eq('is_archived', isArchived)
       let dataQuery = supabase
         .from('threads')
-        .select('id, title, image_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
+        .select('id, title, user_id, image_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
         .eq('is_archived', isArchived)
 
       if (categoryId !== null) {
@@ -828,11 +832,13 @@ export function getCachedThreadList(
       dataQuery = dataQuery.range(offset, offset + pageSize - 1)
 
       const [{ count }, { data: raw }] = await Promise.all([countQuery, dataQuery])
-      const threads = raw ? await withFallbackThumbnails(supabase, raw as ThreadRow[]) : []
+      const hiddenUserIds = await getCachedPublicHiddenUserIds()
+      const visibleRaw = filterPublicVisibleUserContent(raw as ThreadRow[] | null, hiddenUserIds)
+      const threads = visibleRaw.length > 0 ? await withFallbackThumbnails(supabase, visibleRaw) : []
 
       return {
         threads,
-        count: count ?? 0,
+        count: Math.max(0, (count ?? 0) - ((raw?.length ?? 0) - visibleRaw.length)),
         totalPages: Math.max(1, Math.ceil((count ?? 0) / pageSize)),
       }
     },
