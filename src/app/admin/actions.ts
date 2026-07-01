@@ -393,6 +393,28 @@ export async function adminBanSession(formData: FormData) {
   redirect(appendAdminStatus(returnPath, 'ban', '1'))
 }
 
+export async function adminBanIpHash(formData: FormData) {
+  await checkAdmin()
+  const ipHash = (formData.get('ipHash') as string)?.trim()
+  const reason = (formData.get('reason') as string)?.trim() || 'admin'
+  const returnToThread = formData.get('returnToThread') as string | null
+  if (!ipHash) redirect(returnToThread ? `/admin?thread=${returnToThread}` : '/admin')
+
+  const supabase = createAdminClient()
+  await supabase
+    .from('moderation_bans')
+    .upsert({
+      ban_type: 'ip_hash',
+      ban_value: ipHash,
+      reason,
+      is_active: true,
+      expires_at: null,
+    }, { onConflict: 'ban_type,ban_value' })
+
+  revalidatePath('/admin')
+  redirect(returnToThread ? `/admin?thread=${returnToThread}` : '/admin')
+}
+
 export async function adminUnbanSession(formData: FormData) {
   await checkAdmin()
   const id = parseInt(formData.get('id') as string)
@@ -401,6 +423,89 @@ export async function adminUnbanSession(formData: FormData) {
 
   revalidatePath('/admin')
   redirect('/admin')
+}
+
+export async function adminToggleThreadCommentLock(formData: FormData) {
+  await checkAdmin()
+  const threadId = parseInt(formData.get('threadId') as string)
+  const current = formData.get('commentLocked') === 'true'
+  const returnToThread = formData.get('returnToThread') === 'true'
+  const supabase = createAdminClient()
+
+  const { error } = await supabase
+    .from('threads')
+    .update({ comment_locked: !current })
+    .eq('id', threadId)
+
+  if (error) {
+    const message = error.code === '42703'
+      ? 'comment_lockedカラムが未適用です。20260701_comment_spam_controls.sql を適用してください。'
+      : error.message
+    redirect(`/admin?error=${encodeURIComponent(message)}`)
+  }
+
+  revalidateTag(`thread-${threadId}`, { expire: 0 })
+  revalidatePath(`/thread/${threadId}`)
+  revalidatePath('/admin')
+  redirect(returnToThread ? `/admin?thread=${threadId}` : '/admin')
+}
+
+export async function adminHidePostsBySession(formData: FormData) {
+  await checkAdmin()
+  const threadId = parseInt(formData.get('threadId') as string)
+  const sessionId = (formData.get('sessionId') as string)?.trim()
+  if (!threadId || !sessionId) redirect(threadId ? `/admin?thread=${threadId}` : '/admin')
+
+  const supabase = createAdminClient()
+  await supabase
+    .from('posts')
+    .update({
+      is_deleted: true,
+      deleted_at: new Date().toISOString(),
+      deleted_by: 'admin-session-bulk',
+    })
+    .eq('thread_id', threadId)
+    .eq('session_id', sessionId)
+    .eq('is_deleted', false)
+  await supabase.rpc('recalculate_post_count', { p_thread_id: threadId })
+
+  revalidateTag(`thread-${threadId}`, { expire: 0 })
+  revalidatePath(`/thread/${threadId}`)
+  revalidatePath('/admin')
+  redirect(`/admin?thread=${threadId}`)
+}
+
+export async function adminHidePostsByIpHash(formData: FormData) {
+  await checkAdmin()
+  const threadId = parseInt(formData.get('threadId') as string)
+  const ipHash = (formData.get('ipHash') as string)?.trim()
+  if (!threadId || !ipHash) redirect(threadId ? `/admin?thread=${threadId}` : '/admin')
+
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('posts')
+    .update({
+      is_deleted: true,
+      deleted_at: new Date().toISOString(),
+      deleted_by: 'admin-ip-bulk',
+    })
+    .eq('thread_id', threadId)
+    .eq('ip_hash', ipHash)
+    .eq('is_deleted', false)
+
+  if (error) {
+    const message = error.code === '42703'
+      ? 'ip_hashカラムが未適用です。20260701_comment_spam_controls.sql を適用してください。'
+      : error.message
+    redirect(`/admin?thread=${threadId}&error=${encodeURIComponent(message)}`)
+  }
+
+  await supabase.rpc('recalculate_post_count', { p_thread_id: threadId })
+
+  revalidateTag(`thread-${threadId}`, { expire: 0 })
+  revalidatePath(`/thread/${threadId}`)
+  revalidatePath('/admin')
+  redirect(`/admin?thread=${threadId}`)
 }
 
 export async function adminToggleArchive(formData: FormData) {

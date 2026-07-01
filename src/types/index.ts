@@ -18,6 +18,7 @@ export interface Thread {
   view_count: number
   post_count: number
   is_archived: boolean
+  comment_locked?: boolean
   created_at: string
   last_posted_at: string
   categories?: Category | null
@@ -31,6 +32,7 @@ export interface Post {
   author_name: string
   user_id?: string | null
   image_url: string | null
+  ip_hash?: string | null
   created_at: string
   is_deleted?: boolean | null
   deleted_by?: string | null

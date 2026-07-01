@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 type RateLimitTable = 'threads' | 'posts'
+type RateLimitColumn = 'session_id' | 'ip_hash'
 
 type CheckSessionRateLimitOptions = {
   table: RateLimitTable
@@ -11,20 +12,30 @@ type CheckSessionRateLimitOptions = {
   label: string
 }
 
-export async function checkSessionRateLimit(
+type CheckValueRateLimitOptions = Omit<CheckSessionRateLimitOptions, 'sessionId'> & {
+  column: RateLimitColumn
+  value: string
+}
+
+function isMissingColumn(error: { code?: string; message?: string } | null) {
+  return error?.code === '42703' || error?.message?.includes('column')
+}
+
+export async function checkValueRateLimit(
   supabase: SupabaseClient,
-  options: CheckSessionRateLimitOptions,
+  options: CheckValueRateLimitOptions,
 ): Promise<string | null> {
   const since = new Date(Date.now() - options.windowSeconds * 1000).toISOString()
   const { data, error } = await supabase
     .from(options.table)
     .select('created_at')
-    .eq('session_id', options.sessionId)
+    .eq(options.column, options.value)
     .gte('created_at', since)
     .order('created_at', { ascending: false })
     .limit(options.maxInWindow)
 
   if (error) {
+    if (isMissingColumn(error)) return null
     console.warn(`rate limit check failed for ${options.table}:`, error.message)
     return null
   }
@@ -46,4 +57,15 @@ export async function checkSessionRateLimit(
   }
 
   return null
+}
+
+export async function checkSessionRateLimit(
+  supabase: SupabaseClient,
+  options: CheckSessionRateLimitOptions,
+): Promise<string | null> {
+  return checkValueRateLimit(supabase, {
+    ...options,
+    column: 'session_id',
+    value: options.sessionId,
+  })
 }

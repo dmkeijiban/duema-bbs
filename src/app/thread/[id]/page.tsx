@@ -358,6 +358,7 @@ export async function renderThreadPage(threadId: number, page: number) {
         authorProfiles={authorProfiles}
         isArchived={typedThread.is_archived}
         isAutoClosed={isAutoClosed}
+        isCommentLocked={Boolean(typedThread.comment_locked)}
         page={page}
         totalPages={totalPages}
         threadRules={threadRules}

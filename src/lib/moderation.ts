@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { createHash } from 'node:crypto'
 
 type NgWordRow = {
   word: string
@@ -58,13 +59,21 @@ export async function checkSessionBan(
   supabase: SupabaseClient,
   sessionId: string,
 ): Promise<boolean> {
-  if (!sessionId) return false
+  return checkModerationBan(supabase, 'session', sessionId)
+}
+
+export async function checkModerationBan(
+  supabase: SupabaseClient,
+  banType: string,
+  banValue: string | null | undefined,
+): Promise<boolean> {
+  if (!banValue) return false
 
   const { data, error } = await supabase
     .from('moderation_bans')
     .select('id')
-    .eq('ban_type', 'session')
-    .eq('ban_value', sessionId)
+    .eq('ban_type', banType)
+    .eq('ban_value', banValue)
     .eq('is_active', true)
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
     .limit(1)
@@ -181,4 +190,8 @@ export async function checkPostingBan(params: {
   if (await hasActiveBan(admin, 'session', params.sessionId)) return true
   if (await hasActiveBan(admin, 'user', params.userId)) return true
   return false
+}
+
+export function hashModerationValue(value: string): string {
+  return createHash('sha256').update(value.trim().toLowerCase()).digest('hex')
 }
