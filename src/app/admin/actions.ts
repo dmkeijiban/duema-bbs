@@ -407,13 +407,28 @@ export async function adminToggleArchive(formData: FormData) {
   await checkAdmin()
   const threadId = parseInt(formData.get('threadId') as string)
   const current = formData.get('isArchived') === 'true'
+  const threadPage = Math.max(1, parseInt(formData.get('threadPage') as string) || 1)
+  const q = (formData.get('q') as string | null)?.trim()
   const supabase = createAdminClient()
 
   await supabase.from('threads').update({ is_archived: !current }).eq('id', threadId)
 
+  revalidateTag(`thread-${threadId}`, { expire: 0 })
+  revalidateTag('threads', { expire: 0 })
+  revalidatePath(`/thread/${threadId}`)
   revalidatePath('/')
+  revalidatePath('/category', 'layout')
+  revalidatePath('/ranking')
+  revalidatePath('/summary', 'layout')
+  revalidatePath('/feed.xml')
+  revalidatePath('/sitemap.xml')
   revalidatePath('/admin')
-  redirect('/admin')
+
+  const params = new URLSearchParams()
+  if (threadPage > 1) params.set('threadPage', String(threadPage))
+  if (q) params.set('q', q)
+  params.set(current ? 'unhidden' : 'hidden', '1')
+  redirect(`/admin?${params.toString()}`)
 }
 
 export async function saveNotice(data: {

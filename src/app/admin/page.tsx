@@ -9,6 +9,7 @@ import {
   adminLogin,
   adminAddNgWord, adminDisableNgWord,
   adminBanSession, adminUnbanSession,
+  adminToggleArchive,
 } from './actions'
 import { SettingEditFormClient } from './SettingEditFormClient'
 import { getAllSettings } from '@/lib/settings'
@@ -353,6 +354,8 @@ export default async function AdminPage({
     sort?: string
     order?: string
     analyticsDays?: string
+    hidden?: string
+    unhidden?: string
   }>
 }) {
   const sp = await searchParams
@@ -375,7 +378,6 @@ export default async function AdminPage({
   let threadsQuery = supabase
     .from('threads')
     .select('id, title, body, post_count, view_count, is_archived, category_id, session_id, user_id, created_at, last_posted_at, categories(name)', { count: 'exact' })
-    .eq('is_archived', false)
     .order(sort, { ascending: order === 'asc', nullsFirst: false })
 
   if (sort !== 'created_at') {
@@ -508,7 +510,7 @@ export default async function AdminPage({
   if (sp.thread) {
     const threadId = parseInt(sp.thread)
     const [{ data: t }, { data: p }] = await Promise.all([
-      supabase.from('threads').select('id, title').eq('id', threadId).single(),
+      supabase.from('threads').select('id, title, is_archived').eq('id', threadId).single(),
       supabase.from('posts').select('id, post_number, author_name, body, session_id, user_id')
         .eq('thread_id', threadId).eq('is_deleted', false).order('post_number', { ascending: true }),
     ])
@@ -574,6 +576,16 @@ export default async function AdminPage({
       {sp.adminError === 'missing_session' && (
         <div className="mb-3 border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">
           session_id / user_id がないためBANできませんでした。
+        </div>
+      )}
+      {sp.hidden === '1' && (
+        <div className="mb-3 border border-yellow-300 bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
+          スレッドを非公開にしました。一般公開ページには表示されません。
+        </div>
+      )}
+      {sp.unhidden === '1' && (
+        <div className="mb-3 border border-green-300 bg-green-50 px-3 py-2 text-xs text-green-800">
+          スレッドを再公開しました。
         </div>
       )}
 
@@ -1058,7 +1070,16 @@ export default async function AdminPage({
                       <tr key={t.id} className="hover:bg-gray-50">
                         <td className="px-2 py-2.5 font-mono text-[10px] text-gray-400 whitespace-nowrap w-12">{t.id}</td>
                         <td className="px-2 py-2.5 overflow-hidden">
-                          <a href={`/thread/${t.id}`} target="_blank" className="text-blue-600 hover:underline line-clamp-2 block text-xs leading-snug">
+                          <a
+                            href={t.is_archived ? `/admin?thread=${t.id}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}` : `/thread/${t.id}`}
+                            target={t.is_archived ? undefined : '_blank'}
+                            className={`${t.is_archived ? 'text-gray-500' : 'text-blue-600'} hover:underline line-clamp-2 block text-xs leading-snug`}
+                          >
+                            {t.is_archived && (
+                              <span className="mr-1 inline-flex rounded border border-yellow-300 bg-yellow-50 px-1.5 py-0.5 align-middle text-[10px] font-bold leading-none text-yellow-700">
+                                非公開
+                              </span>
+                            )}
                             {t.title}
                           </a>
                         </td>
@@ -1094,6 +1115,24 @@ export default async function AdminPage({
                                 </AdminSubmitButton>
                               </form>
                             )}
+                            <form action={adminToggleArchive} className="inline-flex">
+                              <input type="hidden" name="threadId" value={t.id} />
+                              <input type="hidden" name="isArchived" value={String(t.is_archived)} />
+                              <input type="hidden" name="threadPage" value={threadPage} />
+                              <input type="hidden" name="q" value={searchQ} />
+                              <AdminSubmitButton
+                                pendingText={t.is_archived ? '再公開中...' : '非公開中...'}
+                                confirmMessage={t.is_archived
+                                  ? 'このスレッドを再公開しますか？'
+                                  : 'このスレッドを非公開にしますか？&#10;一般公開ページには表示されなくなります。'}
+                                className="px-2 py-1 text-[10px] rounded border transition-colors leading-none disabled:opacity-60 disabled:cursor-wait"
+                                style={t.is_archived
+                                  ? { color: '#047857', borderColor: '#34d399', background: '#ecfdf5' }
+                                  : { color: '#a16207', borderColor: '#facc15', background: '#fefce8' }}
+                              >
+                                {t.is_archived ? '再公開' : '非公開'}
+                              </AdminSubmitButton>
+                            </form>
                             <form action={adminDeleteThread} className="inline-flex">
                               <input type="hidden" name="threadId" value={t.id} />
                               <input type="hidden" name="threadPage" value={threadPage} />
@@ -1156,6 +1195,11 @@ export default async function AdminPage({
           <div>
             <h2 className="font-bold text-gray-700 mb-2 pb-1 border-b border-gray-200 text-xs">
               💬 「{selectedThread.title}」のレス
+              {selectedThread.is_archived && (
+                <span className="ml-2 rounded border border-yellow-300 bg-yellow-50 px-1.5 py-0.5 text-[10px] text-yellow-700">
+                  非公開
+                </span>
+              )}
             </h2>
             <div className="space-y-1 max-h-[80vh] overflow-y-auto pr-1">
               {posts?.map(p => (

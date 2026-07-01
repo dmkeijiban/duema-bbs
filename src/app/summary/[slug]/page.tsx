@@ -142,20 +142,25 @@ const RANK_COLORS = [
 
 const RANK_LABELS = ['🥇', '🥈', '🥉', '4位', '5位']
 
-async function getLivePostCounts(threadIds: number[]): Promise<Map<number, number>> {
-  if (threadIds.length === 0) return new Map()
+async function getLiveThreadStats(threadIds: number[]): Promise<{ postCounts: Map<number, number>; visibleIds: Set<number> }> {
+  const fallbackVisibleIds = new Set(threadIds)
+  if (threadIds.length === 0) return { postCounts: new Map(), visibleIds: fallbackVisibleIds }
   const supabase = createPublicClient()
   const { data } = await supabase
     .from('threads')
-    .select('id, post_count')
+    .select('id, post_count, is_archived')
     .in('id', threadIds)
   const map = new Map<number, number>()
+  const visibleIds = new Set<number>()
   if (data) {
     for (const row of data) {
       map.set(row.id, row.post_count ?? 0)
+      if (!row.is_archived) visibleIds.add(row.id)
     }
+  } else {
+    return { postCounts: map, visibleIds: fallbackVisibleIds }
   }
-  return map
+  return { postCounts: map, visibleIds }
 }
 
 async function getSummaryComments(slug: string): Promise<{ comments: SummaryComment[]; enabled: boolean }> {
@@ -200,12 +205,14 @@ export default async function SummarySlugPage({ params }: Props) {
 
   if (!summary) notFound()
 
-  const threads = summary.threads ?? []
-  const threadIds = threads.map(t => t.id)
-  const [livePostCounts, commentsResult] = await Promise.all([
-    getLivePostCounts(threadIds),
+  const storedThreads = summary.threads ?? []
+  const threadIds = storedThreads.map(t => t.id)
+  const [liveThreadStats, commentsResult] = await Promise.all([
+    getLiveThreadStats(threadIds),
     summary.type === 'manual' ? getSummaryComments(summary.slug) : Promise.resolve({ comments: [], enabled: false }),
   ])
+  const threads = storedThreads.filter(thread => liveThreadStats.visibleIds.has(thread.id))
+  const livePostCounts = liveThreadStats.postCounts
   const displayViewCount = summary.type === 'manual'
     ? await incrementSummaryView(summary)
     : (summary.view_count ?? 0)

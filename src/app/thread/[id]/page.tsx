@@ -94,7 +94,12 @@ export async function generateMetadata({ params }: Props) {
   const { id } = await params
   const thread = await getCachedThread(parseInt(id))
 
-  if (!thread) return { title: 'スレッドが見つかりません' }
+  if (!thread || thread.is_archived) {
+    return {
+      title: 'スレッドが見つかりません',
+      robots: { index: false, follow: false },
+    }
+  }
 
   const baseUrl = SITE_URL
   const canonicalUrl = `${baseUrl}/thread/${id}`
@@ -155,7 +160,7 @@ export async function renderThreadPage(threadId: number, page: number) {
     getCachedThread(threadId),
     getCachedThreadPosts(threadId, page),
   ])
-  if (!thread) notFound()
+  if (!thread || thread.is_archived) notFound()
 
   const posts = postsResult.data
   const typedThread = thread as unknown as Thread & { categories: Category | null }
