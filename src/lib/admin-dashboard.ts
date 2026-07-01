@@ -25,12 +25,7 @@ export type InternalDashboardData = {
     totalViews: number
     avgViews: number
   }
-  topViewedThreads: DashboardThread[]
-  topCommentedThreads: DashboardThread[]
   recentCommentThreads: RecentThreadActivity[]
-  zeroCommentThreads: DashboardThread[]
-  highViewLowCommentThreads: DashboardThread[]
-  riskThreads: RecentThreadActivity[]
 }
 
 export type Ga4MetricSummary = {
@@ -66,8 +61,7 @@ export type Ga4DashboardData = {
   dailyTrend: Ga4DailyPoint[]
   summary: Ga4MetricSummary
   topPages: Ga4PageRow[]
-  topThreadPages: Ga4PageRow[]
-  topZukanPages: Ga4PageRow[]
+  risingPages: Ga4PageRow[]
 } | {
   ok: false
   error: string
@@ -151,33 +145,10 @@ export async function getInternalDashboardData(adminSupabase: SupabaseClient): P
   const [
     threadCountRes,
     commentCountRes,
-    topViewedRes,
-    topCommentedRes,
-    zeroCommentRes,
     recentPostsRes,
-    highViewCandidatesRes,
   ] = await Promise.all([
     adminSupabase.from('threads').select('id', { count: 'exact', head: true }),
     adminSupabase.from('posts').select('id', { count: 'exact', head: true }).eq('is_deleted', false),
-    adminSupabase
-      .from('threads')
-      .select('id, title, view_count, post_count, created_at, last_posted_at')
-      .eq('is_archived', false)
-      .order('view_count', { ascending: false, nullsFirst: false })
-      .limit(8),
-    adminSupabase
-      .from('threads')
-      .select('id, title, view_count, post_count, created_at, last_posted_at')
-      .eq('is_archived', false)
-      .order('post_count', { ascending: false, nullsFirst: false })
-      .limit(8),
-    adminSupabase
-      .from('threads')
-      .select('id, title, view_count, post_count, created_at, last_posted_at')
-      .eq('is_archived', false)
-      .eq('post_count', 0)
-      .order('view_count', { ascending: false, nullsFirst: false })
-      .limit(8),
     adminSupabase
       .from('posts')
       .select('id, thread_id, created_at, threads!inner(id, title, view_count, post_count, created_at, last_posted_at, is_archived)')
@@ -186,25 +157,9 @@ export async function getInternalDashboardData(adminSupabase: SupabaseClient): P
       .gte('created_at', yesterdayIso)
       .order('created_at', { ascending: false })
       .limit(300),
-    adminSupabase
-      .from('threads')
-      .select('id, title, view_count, post_count, created_at, last_posted_at')
-      .eq('is_archived', false)
-      .order('view_count', { ascending: false, nullsFirst: false })
-      .limit(80),
   ])
 
-  const topViewedThreads = ((topViewedRes.data ?? []) as Record<string, unknown>[]).map(mapThread)
-  const topCommentedThreads = ((topCommentedRes.data ?? []) as Record<string, unknown>[]).map(mapThread)
-  const zeroCommentThreads = ((zeroCommentRes.data ?? []) as Record<string, unknown>[]).map(mapThread)
   const recentCommentThreads = buildRecentActivity((recentPostsRes.data ?? []) as Record<string, unknown>[], 8)
-  const highViewLowCommentThreads = ((highViewCandidatesRes.data ?? []) as Record<string, unknown>[])
-    .map(mapThread)
-    .filter(thread => thread.postCount <= 2 && thread.viewCount >= 20)
-    .slice(0, 8)
-  const riskThreads = recentCommentThreads
-    .filter(thread => thread.recentComments >= 3 || thread.postCount >= 10)
-    .slice(0, 8)
 
   const STAT_PAGE = 1000
   let totalViews = 0
@@ -229,12 +184,7 @@ export async function getInternalDashboardData(adminSupabase: SupabaseClient): P
       totalViews,
       avgViews: threadCount > 0 ? Math.round(totalViews / threadCount) : 0,
     },
-    topViewedThreads,
-    topCommentedThreads,
     recentCommentThreads,
-    zeroCommentThreads,
-    highViewLowCommentThreads,
-    riskThreads,
   }
 }
 
@@ -416,9 +366,11 @@ async function getPageRows(
   token: string,
   limit: number,
   pathPrefix?: string,
+  startDate = '6daysAgo',
+  endDate = 'today',
 ): Promise<Ga4PageRow[]> {
   const body: Record<string, unknown> = {
-    dateRanges: [{ startDate: '6daysAgo', endDate: 'today' }],
+    dateRanges: [{ startDate, endDate }],
     dimensions: [{ name: 'pagePath' }],
     metrics: [{ name: 'screenPageViews' }, { name: 'activeUsers' }],
     orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
@@ -466,8 +418,7 @@ async function fetchGa4DashboardData(daysValue = 28): Promise<Ga4DashboardData> 
       trendRange,
       dailyTrend,
       topPages,
-      topThreadPages,
-      topZukanPages,
+      risingPages,
     ] = await Promise.all([
       getRangeMetrics(config, token, 'today', 'today'),
       getRangeMetrics(config, token, 'yesterday', 'yesterday'),
@@ -480,8 +431,7 @@ async function fetchGa4DashboardData(daysValue = 28): Promise<Ga4DashboardData> 
           : getRangeMetrics(config, token, '89daysAgo', 'today'),
       getDailyTrend(config, token, trendDays),
       getPageRows(config, token, 10),
-      getPageRows(config, token, 10, '/thread/'),
-      getPageRows(config, token, 10, '/zukan'),
+      getPageRows(config, token, 10, undefined, 'yesterday', 'today'),
     ])
 
     return {
@@ -503,8 +453,7 @@ async function fetchGa4DashboardData(daysValue = 28): Promise<Ga4DashboardData> 
         sevenDayUsers: sevenDays.users,
       },
       topPages,
-      topThreadPages,
-      topZukanPages,
+      risingPages,
     }
   } catch (error) {
     return {

@@ -19,7 +19,6 @@ import {
   ADMIN_DASHBOARD_CACHE_SECONDS,
   getGa4DashboardData,
   getInternalDashboardData,
-  type DashboardThread,
   type Ga4DailyPoint,
   type Ga4PageRow,
   type RecentThreadActivity,
@@ -231,47 +230,6 @@ function AccessTrendCard({
   )
 }
 
-function ThreadRankingCard({
-  title,
-  rows,
-  valueLabel,
-  getValue,
-}: {
-  title: string
-  rows: DashboardThread[]
-  valueLabel: string
-  getValue: (row: DashboardThread) => number
-}) {
-  return (
-    <section className="rounded border border-gray-200 bg-white">
-      <div className="border-b border-gray-100 px-3 py-2">
-        <h3 className="text-xs font-bold text-gray-700">{title}</h3>
-      </div>
-      <ol className="divide-y divide-gray-100">
-        {rows.length === 0 ? (
-          <li className="px-3 py-4 text-xs text-gray-400">対象データがありません。</li>
-        ) : rows.map((row, index) => (
-          <li key={row.id} className="flex items-start gap-2 px-3 py-2 text-xs">
-            <span className="mt-0.5 w-5 shrink-0 text-right tabular-nums text-gray-400">{index + 1}</span>
-            <div className="min-w-0 flex-1">
-              <Link href={`/thread/${row.id}`} className="line-clamp-2 font-bold text-blue-700 hover:underline">
-                {row.title}
-              </Link>
-              <p className="mt-0.5 text-[10px] text-gray-400">
-                ID {row.id} / 閲覧 {formatNumber(row.viewCount)} / コメント {formatNumber(row.postCount)}
-              </p>
-            </div>
-            <div className="shrink-0 text-right">
-              <p className="font-bold tabular-nums text-gray-800">{formatNumber(getValue(row))}</p>
-              <p className="text-[10px] text-gray-400">{valueLabel}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
-    </section>
-  )
-}
-
 function RecentRankingCard({
   title,
   rows,
@@ -312,11 +270,20 @@ function RecentRankingCard({
   )
 }
 
-function Ga4PageRankingCard({ title, rows }: { title: string; rows: Ga4PageRow[] }) {
+function Ga4PageRankingCard({
+  title,
+  rows,
+  note,
+}: {
+  title: string
+  rows: Ga4PageRow[]
+  note?: string
+}) {
   return (
     <section className="rounded border border-gray-200 bg-white">
       <div className="border-b border-gray-100 px-3 py-2">
         <h3 className="text-xs font-bold text-gray-700">{title}</h3>
+        {note && <p className="mt-0.5 text-[10px] text-gray-400">{note}</p>}
       </div>
       <ol className="divide-y divide-gray-100">
         {rows.length === 0 ? (
@@ -334,6 +301,20 @@ function Ga4PageRankingCard({ title, rows }: { title: string; rows: Ga4PageRow[]
           </li>
         ))}
       </ol>
+    </section>
+  )
+}
+
+function Ga4UnavailableCard({ title, note, message }: { title: string; note: string; message: string }) {
+  return (
+    <section className="rounded border border-gray-200 bg-white">
+      <div className="border-b border-gray-100 px-3 py-2">
+        <h3 className="text-xs font-bold text-gray-700">{title}</h3>
+        <p className="mt-0.5 text-[10px] text-gray-400">{note}</p>
+      </div>
+      <div className="px-3 py-4 text-xs text-red-700">
+        GA4から取得できませんでした: {message}
+      </div>
     </section>
   )
 }
@@ -723,57 +704,36 @@ export default async function AdminPage({
             <h3 className="mb-2 text-sm font-bold text-gray-700">伸びているコンテンツ</h3>
             <div className="grid gap-3 xl:grid-cols-3">
               {ga4Dashboard.ok ? (
-                <>
-                  <Ga4PageRankingCard title="GA4 直近7日のページ" rows={ga4Dashboard.topPages} />
-                  <Ga4PageRankingCard title="GA4 直近7日のスレページ" rows={ga4Dashboard.topThreadPages} />
-                  <Ga4PageRankingCard title="GA4 直近7日の思い出図鑑" rows={ga4Dashboard.topZukanPages} />
-                </>
+                <Ga4PageRankingCard
+                  title="GA4 直近7日のページ"
+                  rows={ga4Dashboard.topPages}
+                  note="サイト全体で今週よく見られているページ"
+                />
               ) : (
-                <ThreadRankingCard
-                  title="累計閲覧数が多いスレ"
-                  rows={internalDashboard.topViewedThreads}
-                  valueLabel="閲覧"
-                  getValue={row => row.viewCount}
+                <Ga4UnavailableCard
+                  title="GA4 直近7日のページ"
+                  note="サイト全体で今週よく見られているページ"
+                  message={ga4Dashboard.error}
                 />
               )}
-              <ThreadRankingCard
-                title="コメント数が多いスレ"
-                rows={internalDashboard.topCommentedThreads}
-                valueLabel="コメント"
-                getValue={row => row.postCount}
-              />
               <RecentRankingCard
                 title="最近コメントが増えたスレ"
                 rows={internalDashboard.recentCommentThreads}
                 note="直近24時間のコメント増加"
               />
-            </div>
-          </div>
-
-          <div>
-            <h3 className="mb-2 text-sm font-bold text-gray-700">管理者向けチェック</h3>
-            <div className="grid gap-3 xl:grid-cols-4">
-              <ThreadRankingCard
-                title="コメント0のスレ"
-                rows={internalDashboard.zeroCommentThreads}
-                valueLabel="閲覧"
-                getValue={row => row.viewCount}
-              />
-              <ThreadRankingCard
-                title="閲覧は多いがコメントが少ないスレ"
-                rows={internalDashboard.highViewLowCommentThreads}
-                valueLabel="閲覧"
-                getValue={row => row.viewCount}
-              />
-              <RecentRankingCard
-                title="荒れやすそうな急伸スレ"
-                rows={internalDashboard.riskThreads}
-                note="直近24時間のコメント増加が多いスレ"
-              />
-              <RecentRankingCard
-                title="最新コメントが多いスレ"
-                rows={internalDashboard.recentCommentThreads}
-              />
+              {ga4Dashboard.ok ? (
+                <Ga4PageRankingCard
+                  title="直近24時間で急に伸びたページ"
+                  rows={ga4Dashboard.risingPages}
+                  note="前日〜今日の表示回数が多いページ"
+                />
+              ) : (
+                <Ga4UnavailableCard
+                  title="直近24時間で急に伸びたページ"
+                  note="前日〜今日の表示回数が多いページ"
+                  message={ga4Dashboard.error}
+                />
+              )}
             </div>
           </div>
         </div>
