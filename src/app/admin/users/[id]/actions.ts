@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { revalidateTag } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { verifyAdminCookie } from '@/lib/admin-auth'
+import { PUBLIC_HIDDEN_USERS_TAG } from '@/lib/public-visibility'
 
 type ToggleRankExcludedResult = {
   error?: string
@@ -223,6 +224,10 @@ export async function toggleAccountSuspended(
 
   // 7. 投稿者ランキング・キャンペーンランキングは1日1回更新。即時反映のため tag を失効させる。
   try {
+    revalidateTag(PUBLIC_HIDDEN_USERS_TAG, { expire: 0 })
+    revalidateTag('profiles', { expire: 0 })
+    revalidateTag('threads', { expire: 0 })
+    revalidateTag('zukan-reviews', { expire: 0 })
     revalidateTag('user-rankings', { expire: 0 })
   } catch (e) {
     console.error('Failed to revalidate user-rankings tag:', e)

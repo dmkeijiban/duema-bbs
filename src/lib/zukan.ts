@@ -1,5 +1,6 @@
 import { createPublicClient } from './supabase-public'
 import { createAdminClient } from './supabase-admin'
+import { filterPublicVisibleUserContent, getCachedPublicHiddenUserIds } from './public-visibility'
 
 export type ZukanPack = {
   id: string
@@ -140,6 +141,7 @@ export type PackReview = {
   avatar_url: string | null
   profile_slug: string | null
   is_withdrawn: boolean
+  is_suspended: boolean
   body: string
   created_at: string
 }
@@ -152,6 +154,7 @@ export type CardReview = {
   avatar_url: string | null
   profile_slug: string | null
   is_withdrawn: boolean
+  is_suspended: boolean
   body: string
   created_at: string
 }
@@ -185,6 +188,7 @@ type CardReviewHighlightRow = {
 }
 
 export type CardRatingRow = {
+  user_id: string | null
   score_admiration: number | null
   score_trauma: number | null
   score_still_like: number | null
@@ -210,7 +214,7 @@ const WITHDRAWN_REVIEW_NAME = ANONYMOUS_REVIEW_NAME
 
 export async function attachReviewProfiles<T extends { user_id: string | null; display_name: string }>(
   rows: T[]
-): Promise<(T & { avatar_url: string | null; profile_slug: string | null; is_withdrawn: boolean })[]> {
+): Promise<(T & { avatar_url: string | null; profile_slug: string | null; is_withdrawn: boolean; is_suspended: boolean })[]> {
   const userIds = Array.from(new Set(rows.map(row => row.user_id).filter((id): id is string => !!id)))
   if (userIds.length === 0) {
     return rows.map(row => ({
@@ -219,6 +223,7 @@ export async function attachReviewProfiles<T extends { user_id: string | null; d
       avatar_url: null,
       profile_slug: null,
       is_withdrawn: false,
+      is_suspended: false,
     }))
   }
 
@@ -236,6 +241,7 @@ export async function attachReviewProfiles<T extends { user_id: string | null; d
         avatar_url: null,
         profile_slug: null,
         is_withdrawn: false,
+        is_suspended: false,
       }))
     }
 
@@ -259,6 +265,7 @@ export async function attachReviewProfiles<T extends { user_id: string | null; d
           avatarUrl: isPublic && typeof profile.avatar_url === 'string' ? profile.avatar_url : null,
           profileSlug: isPublic ? profile.profile_slug as string : null,
           isWithdrawn,
+          isSuspended: profile.account_suspended === true,
         },
       ]
     }))
@@ -271,6 +278,7 @@ export async function attachReviewProfiles<T extends { user_id: string | null; d
         avatar_url: profile?.avatarUrl ?? null,
         profile_slug: profile?.profileSlug ?? null,
         is_withdrawn: profile?.isWithdrawn ?? false,
+        is_suspended: profile?.isSuspended ?? false,
       }
     })
   } catch {
@@ -280,6 +288,7 @@ export async function attachReviewProfiles<T extends { user_id: string | null; d
       avatar_url: null,
       profile_slug: null,
       is_withdrawn: false,
+      is_suspended: false,
     }))
   }
 }
@@ -299,7 +308,12 @@ export async function fetchPackReviews(packId: string): Promise<PackReview[] | n
       if (isTableMissing(error)) return []
       return null
     }
-    return attachReviewProfiles(data as Omit<PackReview, 'avatar_url' | 'profile_slug' | 'is_withdrawn'>[])
+    const hiddenUserIds = await getCachedPublicHiddenUserIds()
+    const rows = filterPublicVisibleUserContent(
+      data as Omit<PackReview, 'avatar_url' | 'profile_slug' | 'is_withdrawn' | 'is_suspended'>[],
+      hiddenUserIds
+    )
+    return attachReviewProfiles(rows)
   } catch {
     return null
   }
@@ -320,7 +334,12 @@ export async function fetchCardReviews(cardId: string): Promise<CardReview[] | n
       if (isTableMissing(error)) return []
       return null
     }
-    return attachReviewProfiles(data as Omit<CardReview, 'avatar_url' | 'profile_slug' | 'is_withdrawn'>[])
+    const hiddenUserIds = await getCachedPublicHiddenUserIds()
+    const rows = filterPublicVisibleUserContent(
+      data as Omit<CardReview, 'avatar_url' | 'profile_slug' | 'is_withdrawn' | 'is_suspended'>[],
+      hiddenUserIds
+    )
+    return attachReviewProfiles(rows)
   } catch {
     return null
   }
@@ -333,7 +352,7 @@ export async function fetchCardReviewHighlights(
     const supabase = createPublicClient()
     const { data, error } = await supabase
       .from('zukan_card_reviews')
-      .select('card_id, created_at, zukan_cards!inner(id, slug, name, civilization, official_image_url, is_published)')
+      .select('card_id, user_id, created_at, zukan_cards!inner(id, slug, name, civilization, official_image_url, is_published)')
       .eq('is_deleted', false)
       .eq('is_hidden', false)
       .eq('zukan_cards.is_published', true)
@@ -345,8 +364,14 @@ export async function fetchCardReviewHighlights(
       return null
     }
 
+    const hiddenUserIds = await getCachedPublicHiddenUserIds()
+    const visibleRows = filterPublicVisibleUserContent(
+      (data ?? []) as unknown as (CardReviewHighlightRow & { user_id: string | null })[],
+      hiddenUserIds
+    )
+
     const summaries = new Map<string, ZukanCardReviewHighlight>()
-    for (const row of (data ?? []) as unknown as CardReviewHighlightRow[]) {
+    for (const row of visibleRows) {
       const card = row.zukan_cards
       if (!card?.slug) continue
 
@@ -392,7 +417,7 @@ export async function fetchCardRatings(cardId: string): Promise<CardRatingSummar
     const supabase = createPublicClient()
     const { data, error } = await supabase
       .from('zukan_card_ratings')
-      .select('score_admiration, score_trauma, score_still_like, score_name, score_art')
+      .select('user_id, score_admiration, score_trauma, score_still_like, score_name, score_art')
       .eq('card_id', cardId)
       .eq('is_deleted', false)
       .eq('is_hidden', false)
@@ -400,7 +425,8 @@ export async function fetchCardRatings(cardId: string): Promise<CardRatingSummar
       if (isTableMissing(error)) return null
       return null
     }
-    const rows = data as CardRatingRow[]
+    const hiddenUserIds = await getCachedPublicHiddenUserIds()
+    const rows = filterPublicVisibleUserContent(data as CardRatingRow[], hiddenUserIds)
     if (rows.length === 0) return null
 
     const avg = (field: keyof CardRatingRow) => {

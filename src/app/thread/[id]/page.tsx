@@ -15,6 +15,7 @@ import { AdBanner } from '@/components/AdBanner'
 import { getDisplayCategory } from '@/lib/categories'
 import { isThinThreadForAdSenseReview, isPrNoticeForAdSenseReview } from '@/lib/adsense-review-mode'
 import { isThreadAutoClosed } from '@/lib/thread-auto-close'
+import { getCachedPublicHiddenUserIds, isPublicVisibleUserContent } from '@/lib/public-visibility'
 
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
@@ -94,7 +95,8 @@ export async function generateMetadata({ params }: Props) {
   const { id } = await params
   const thread = await getCachedThread(parseInt(id))
 
-  if (!thread || thread.is_archived) {
+  const hiddenUserIds = await getCachedPublicHiddenUserIds()
+  if (!thread || thread.is_archived || !isPublicVisibleUserContent(thread, hiddenUserIds)) {
     return {
       title: 'スレッドが見つかりません',
       robots: { index: false, follow: false },
@@ -160,7 +162,8 @@ export async function renderThreadPage(threadId: number, page: number) {
     getCachedThread(threadId),
     getCachedThreadPosts(threadId, page),
   ])
-  if (!thread || thread.is_archived) notFound()
+  const hiddenUserIds = await getCachedPublicHiddenUserIds()
+  if (!thread || thread.is_archived || !isPublicVisibleUserContent(thread, hiddenUserIds)) notFound()
 
   const posts = postsResult.data
   const typedThread = thread as unknown as Thread & { categories: Category | null }
