@@ -329,10 +329,15 @@ function ymd(date: Date) {
   return `${year}-${month}-${day}`
 }
 
+function getJstTodayUtcDate() {
+  const now = new Date()
+  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
+  return new Date(Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), jst.getUTCDate()))
+}
+
 function fillDailyTrend(points: Ga4DailyPoint[], days: 7 | 28 | 90) {
   const byDate = new Map(points.map(point => [point.date, point]))
-  const now = new Date()
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  const start = getJstTodayUtcDate()
   start.setUTCDate(start.getUTCDate() - (days - 1))
 
   return Array.from({ length: days }, (_, index) => {
