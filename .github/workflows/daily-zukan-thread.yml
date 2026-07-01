@@ -46,6 +46,7 @@ jobs:
 
           set +e
           HTTP_CODE=$(curl -sS \
+            -L \
             --retry 2 --retry-delay 10 --max-time 60 \
             -H "Authorization: Bearer ${CRON_SECRET}" \
             -o response_body.txt -w '%{http_code}' \
