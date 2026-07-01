@@ -10,6 +10,7 @@ import { capturePostHogEvent } from '@/lib/posthog-events'
 import { createClient } from '@/lib/supabase'
 import { ProfileAvatar } from './ProfileAvatar'
 import { getDisplayCategory } from '@/lib/categories'
+import { COMMENT_BODY_MAX_LENGTH } from '@/lib/spam'
 
 type AuthState =
   | { status: 'loading' }
@@ -278,12 +279,12 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
                   }}
                   required
                   rows={5}
-                  maxLength={3000}
+                  maxLength={COMMENT_BODY_MAX_LENGTH}
                   className="w-full px-2 py-1.5 text-sm resize-y focus:outline-none"
                   style={{ border: '1px solid #80bdff' }}
                 />
-                <div className={`text-right text-[11px] mt-0.5 ${bodyValue.length >= 2800 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
-                  {bodyValue.length} / 3000
+                <div className={`text-right text-[11px] mt-0.5 ${bodyValue.length >= COMMENT_BODY_MAX_LENGTH - 100 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                  {bodyValue.length} / {COMMENT_BODY_MAX_LENGTH}
                 </div>
               </td>
             </tr>

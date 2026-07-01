@@ -10,6 +10,10 @@ import {
   adminAddNgWord, adminDisableNgWord,
   adminBanSession, adminUnbanSession,
   adminToggleArchive,
+  adminBanIpHash,
+  adminHidePostsByIpHash,
+  adminHidePostsBySession,
+  adminToggleThreadCommentLock,
 } from './actions'
 import { SettingEditFormClient } from './SettingEditFormClient'
 import { getAllSettings } from '@/lib/settings'
@@ -66,6 +70,39 @@ type ModerationBan = {
   reason: string | null
   created_at: string
   expires_at: string | null
+}
+
+type AdminPostRow = {
+  id: number
+  post_number: number
+  author_name: string
+  body: string
+  session_id: string | null
+  user_id?: string | null
+  ip_hash?: string | null
+}
+
+type SelectedThreadRow = {
+  id: number
+  title: string
+  is_archived?: boolean
+  comment_locked?: boolean
+}
+
+type AdminThreadRow = {
+  id: number
+  title: string
+  body: string
+  post_count: number
+  view_count?: number
+  is_archived: boolean
+  comment_locked?: boolean
+  category_id: number | null
+  session_id: string | null
+  user_id?: string | null
+  created_at?: string
+  last_posted_at?: string | null
+  categories: { name: string }[] | { name: string } | null
 }
 
 async function isAdmin() {
@@ -358,7 +395,7 @@ export default async function AdminPage({
 
   let threadsQuery = supabase
     .from('threads')
-    .select('id, title, body, post_count, view_count, is_archived, category_id, session_id, user_id, created_at, last_posted_at, categories(name)', { count: 'exact' })
+    .select('id, title, body, post_count, view_count, is_archived, comment_locked, category_id, session_id, user_id, created_at, last_posted_at, categories(name)', { count: 'exact' })
     .order(sort, { ascending: order === 'asc', nullsFirst: false })
 
   if (sort !== 'created_at') {
@@ -377,7 +414,37 @@ export default async function AdminPage({
     threadsQuery = threadsQuery.range(threadOffset, threadOffset + THREADS_PER_PAGE - 1)
   }
 
-  const { data: threads, count: threadCount } = await threadsQuery
+  const threadQueryResult = await threadsQuery
+  let threads = threadQueryResult.data as AdminThreadRow[] | null
+  let threadCount = threadQueryResult.count
+  const threadsError = threadQueryResult.error
+
+  if (threadsError && (threadsError.code === '42703' || threadsError.message?.includes('comment_locked'))) {
+    let fallbackThreadsQuery = supabase
+      .from('threads')
+      .select('id, title, body, post_count, view_count, is_archived, category_id, session_id, user_id, created_at, last_posted_at, categories(name)', { count: 'exact' })
+      .order(sort, { ascending: order === 'asc', nullsFirst: false })
+
+    if (sort !== 'created_at') {
+      fallbackThreadsQuery = fallbackThreadsQuery.order('created_at', { ascending: false })
+    }
+
+    if (isSearching) {
+      const numericId = parseInt(searchQ)
+      if (!isNaN(numericId) && String(numericId) === searchQ) {
+        fallbackThreadsQuery = fallbackThreadsQuery.eq('id', numericId)
+      } else {
+        fallbackThreadsQuery = fallbackThreadsQuery.ilike('title', `%${searchQ}%`)
+      }
+      fallbackThreadsQuery = fallbackThreadsQuery.limit(50)
+    } else {
+      fallbackThreadsQuery = fallbackThreadsQuery.range(threadOffset, threadOffset + THREADS_PER_PAGE - 1)
+    }
+
+    const retry = await fallbackThreadsQuery
+    threads = retry.data as AdminThreadRow[] | null
+    threadCount = retry.count
+  }
 
   const threadTotalPages = isSearching ? 1 : Math.max(1, Math.ceil((threadCount ?? 0) / THREADS_PER_PAGE))
 
@@ -486,17 +553,33 @@ export default async function AdminPage({
   const editSetting = sp.editSetting ?? null
 
   // 特定スレのレス
-  let posts = null
-  let selectedThread = null
+  let posts: AdminPostRow[] | null = null
+  let selectedThread: SelectedThreadRow | null = null
   if (sp.thread) {
     const threadId = parseInt(sp.thread)
-    const [{ data: t }, { data: p }] = await Promise.all([
-      supabase.from('threads').select('id, title, is_archived').eq('id', threadId).single(),
-      supabase.from('posts').select('id, post_number, author_name, body, session_id, user_id')
-        .eq('thread_id', threadId).eq('is_deleted', false).order('post_number', { ascending: true }),
-    ])
-    selectedThread = t
-    posts = p
+    let selectedThreadResult = await supabase.from('threads').select('id, title, is_archived, comment_locked').eq('id', threadId).single()
+    if (selectedThreadResult.error && (selectedThreadResult.error.code === '42703' || selectedThreadResult.error.message?.includes('comment_locked'))) {
+      selectedThreadResult = await supabase.from('threads').select('id, title, is_archived').eq('id', threadId).single()
+    }
+
+    const postsWithIp = await supabase.from('posts').select('id, post_number, author_name, body, session_id, user_id, ip_hash')
+      .eq('thread_id', threadId)
+      .eq('is_deleted', false)
+      .order('post_number', { ascending: true })
+    let postsData = postsWithIp.data as AdminPostRow[] | null
+    let postsError = postsWithIp.error
+
+    if (postsError && (postsError.code === '42703' || postsError.message?.includes('ip_hash'))) {
+      const postsWithoutIp = await supabase.from('posts').select('id, post_number, author_name, body, session_id, user_id')
+        .eq('thread_id', threadId)
+        .eq('is_deleted', false)
+        .order('post_number', { ascending: true })
+      postsData = postsWithoutIp.data as AdminPostRow[] | null
+      postsError = postsWithoutIp.error
+    }
+
+    selectedThread = selectedThreadResult.data as SelectedThreadRow | null
+    posts = postsError ? [] : (postsData ?? [])
   }
 
   // 登録ユーザーのプロフィールをバッチ取得
@@ -567,6 +650,11 @@ export default async function AdminPage({
       {sp.unhidden === '1' && (
         <div className="mb-3 border border-green-300 bg-green-50 px-3 py-2 text-xs text-green-800">
           スレッドを再公開しました。
+        </div>
+      )}
+      {sp.error && (
+        <div className="mb-4 border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">
+          {sp.error}
         </div>
       )}
 
@@ -738,7 +826,6 @@ export default async function AdminPage({
           </div>
         </div>
       </section>
-
       {/* ─── 編集フォーム（URL パラメータがある場合のみ表示） ─── */}
       {editThread && (
         <div className="mb-4 border-2 border-blue-400 bg-blue-50 p-4 rounded">
@@ -997,6 +1084,45 @@ export default async function AdminPage({
                 </a>
               )
             })}
+            {/*
+                <div className="text-gray-400 text-[10px] mb-1">
+                  💬{t.post_count}{t.is_archived && ' 📂'}{t.comment_locked && ' 🔒'}
+                </div>
+                <div className="flex gap-1 flex-wrap">
+                  {t.session_id && (
+                    <form action={adminBanSession} className="inline-flex">
+                      <input type="hidden" name="sessionId" value={t.session_id} />
+                      <input type="hidden" name="reason" value={`thread:${t.id}`} />
+                      <button type="submit" className="px-1.5 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity leading-none" style={{ background: '#111827' }}>
+                        BAN
+                      </button>
+                    </form>
+                  )}
+                  <a href={`/admin?thread=${t.id}`}
+                    className="px-1.5 py-0.5 text-[10px] text-blue-600 border border-blue-300 hover:bg-blue-50 leading-none">
+                    レス
+                  </a>
+                  <a href={`/admin?editThread=${t.id}&threadPage=${threadPage}`}
+                    className="px-1.5 py-0.5 text-[10px] text-green-700 border border-green-400 hover:bg-green-50 leading-none">
+                    編集
+                  </a>
+                  <form action={adminToggleThreadCommentLock} className="inline-flex">
+                    <input type="hidden" name="threadId" value={t.id} />
+                    <input type="hidden" name="commentLocked" value={String(Boolean(t.comment_locked))} />
+                    <button type="submit" className="px-1.5 py-0.5 text-[10px] text-orange-700 border border-orange-400 hover:bg-orange-50 leading-none">
+                      {t.comment_locked ? '解除' : 'ロック'}
+                    </button>
+                  </form>
+                  <form action={adminDeleteThread} className="inline-flex">
+                    <input type="hidden" name="threadId" value={t.id} />
+                    <button type="submit" className="px-1.5 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity leading-none" style={{ background: '#dc3545' }}>
+                      削除
+                    </button>
+                  </form>
+                </div>
+              </div>
+            ))}
+            */}
           </div>
 
           {/* スレッド一覧テーブル */}
@@ -1153,14 +1279,30 @@ export default async function AdminPage({
         {/* レス一覧パネル */}
         {selectedThread && (
           <div>
-            <h2 className="font-bold text-gray-700 mb-2 pb-1 border-b border-gray-200 text-xs">
-              💬 「{selectedThread.title}」のレス
-              {selectedThread.is_archived && (
-                <span className="ml-2 rounded border border-yellow-300 bg-yellow-50 px-1.5 py-0.5 text-[10px] text-yellow-700">
-                  非公開
-                </span>
-              )}
-            </h2>
+            <div className="mb-2 pb-1 border-b border-gray-200">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="font-bold text-gray-700">
+                  💬 「{selectedThread.title}」
+                  {selectedThread.is_archived && (
+                    <span className="ml-2 rounded border border-yellow-300 bg-yellow-50 px-1.5 py-0.5 text-[10px] text-yellow-700">
+                      非公開
+                    </span>
+                  )}
+                  {selectedThread.comment_locked && <span className="ml-2 text-[10px] text-orange-700">コメント停止中</span>}
+                </h2>
+                <form action={adminToggleThreadCommentLock}>
+                  <input type="hidden" name="threadId" value={selectedThread.id} />
+                  <input type="hidden" name="commentLocked" value={String(Boolean(selectedThread.comment_locked))} />
+                  <input type="hidden" name="returnToThread" value="true" />
+                  <button type="submit" className="px-2 py-0.5 text-[10px] text-orange-700 border border-orange-400 hover:bg-orange-50">
+                    {selectedThread.comment_locked ? 'コメント停止を解除' : 'コメント停止'}
+                  </button>
+                </form>
+              </div>
+              <p className="mt-1 text-[10px] text-gray-500">
+                レスごとに同一端末/IPハッシュのBANと一括非表示ができます。本文は上書きせず `is_deleted=true` にします。
+              </p>
+            </div>
             <div className="space-y-1 max-h-[80vh] overflow-y-auto pr-1">
               {posts?.map(p => (
                 <div key={p.id} className="bg-white border border-gray-200 p-2 rounded">
@@ -1174,6 +1316,10 @@ export default async function AdminPage({
                           </a>
                         ) : p.author_name}
                       </span>
+                      <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-gray-400">
+                        {p.session_id && <span className="break-all">session: {p.session_id}</span>}
+                        {p.ip_hash && <span className="break-all">ip: {p.ip_hash.slice(0, 12)}...</span>}
+                      </div>
                       <p className="text-xs text-gray-700 mt-0.5 line-clamp-2 break-all">{p.body}</p>
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1.5 shrink-0">
@@ -1207,6 +1353,34 @@ export default async function AdminPage({
                           >
                             BAN
                           </AdminSubmitButton>
+                        </form>
+                      )}
+                      {p.session_id && (
+                        <form action={adminHidePostsBySession} className="inline-flex">
+                          <input type="hidden" name="threadId" value={selectedThread.id} />
+                          <input type="hidden" name="sessionId" value={p.session_id} />
+                          <button type="submit" className="px-2 py-0.5 text-[10px] text-red-700 border border-red-300 hover:bg-red-50">
+                            端末一括非表示
+                          </button>
+                        </form>
+                      )}
+                      {p.ip_hash && (
+                        <form action={adminBanIpHash} className="inline-flex">
+                          <input type="hidden" name="ipHash" value={p.ip_hash} />
+                          <input type="hidden" name="reason" value={`post:${p.id}`} />
+                          <input type="hidden" name="returnToThread" value={selectedThread.id} />
+                          <button type="submit" className="px-2 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity leading-none" style={{ background: '#7f1d1d' }}>
+                            IP BAN
+                          </button>
+                        </form>
+                      )}
+                      {p.ip_hash && (
+                        <form action={adminHidePostsByIpHash} className="inline-flex">
+                          <input type="hidden" name="threadId" value={selectedThread.id} />
+                          <input type="hidden" name="ipHash" value={p.ip_hash} />
+                          <button type="submit" className="px-2 py-0.5 text-[10px] text-red-700 border border-red-300 hover:bg-red-50">
+                            IP一括非表示
+                          </button>
                         </form>
                       )}
                     </div>

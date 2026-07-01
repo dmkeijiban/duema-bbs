@@ -2,17 +2,18 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { hasJapanese } from '@/lib/spam'
+import { hasJapanese, validateCommentBody } from '@/lib/spam'
 import { v4 as uuidv4 } from 'uuid'
 import { uploadImage, validateImageFile } from '@/lib/upload'
 import { sendPushNotifications } from '@/app/actions/push-subscription'
 import { notifyNewThread } from '@/lib/discord'
 import { verifyAdminCookie } from '@/lib/admin-auth'
-import { checkNgWords, checkPostingBan } from '@/lib/moderation'
+import { checkModerationBan, checkNgWords, checkPostingBan, checkSessionBan, hashModerationValue } from '@/lib/moderation'
 import { AUTO_CLOSE_MESSAGE, isThreadAutoClosed } from '@/lib/thread-auto-close'
+import { checkSessionRateLimit, checkValueRateLimit } from '@/lib/rate-limit'
 
 function hasHoneypotValue(formData: FormData): boolean {
   const value = formData.get('website')
@@ -65,6 +66,83 @@ async function getAuthenticatedUserId(
   const { data, error } = await supabase.auth.getUser()
   if (error || !data.user) return null
   return data.user.id
+}
+
+async function getIpHash(): Promise<string | null> {
+  const headerStore = await headers()
+  const forwardedFor = headerStore.get('x-forwarded-for')?.split(',')[0]?.trim()
+  const realIp = headerStore.get('x-real-ip')?.trim()
+  const candidate = forwardedFor || realIp
+  return candidate ? hashModerationValue(candidate) : null
+}
+
+function isMissingColumn(error: { code?: string; message?: string } | null, column: string) {
+  return error?.code === '42703' || Boolean(error?.message?.includes(column))
+}
+
+type PostTargetThread = {
+  id: number
+  title?: string
+  body?: string
+  post_count?: number
+  is_archived: boolean
+  comment_locked?: boolean
+  created_at?: string
+  category_id?: number | null
+  categories?: { name?: string | null; slug?: string | null } | { name?: string | null; slug?: string | null }[] | null
+}
+
+async function checkPostRateLimits(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sessionId: string,
+  ipHash: string | null,
+) {
+  const checks = [
+    checkSessionRateLimit(supabase, {
+      table: 'posts',
+      sessionId,
+      windowSeconds: 60,
+      minIntervalSeconds: 8,
+      maxInWindow: 3,
+      label: 'レス',
+    }),
+    checkSessionRateLimit(supabase, {
+      table: 'posts',
+      sessionId,
+      windowSeconds: 600,
+      minIntervalSeconds: 0,
+      maxInWindow: 10,
+      label: 'レス',
+    }),
+  ]
+
+  if (ipHash) {
+    checks.push(
+      checkValueRateLimit(supabase, {
+        table: 'posts',
+        column: 'ip_hash',
+        value: ipHash,
+        windowSeconds: 60,
+        minIntervalSeconds: 0,
+        maxInWindow: 3,
+        label: '同じ回線からのレス',
+      }),
+      checkValueRateLimit(supabase, {
+        table: 'posts',
+        column: 'ip_hash',
+        value: ipHash,
+        windowSeconds: 600,
+        minIntervalSeconds: 0,
+        maxInWindow: 10,
+        label: '同じ回線からのレス',
+      }),
+    )
+  }
+
+  for (const result of await Promise.all(checks)) {
+    if (result) return result
+  }
+  return null
 }
 
 export async function createThread(formData: FormData) {
@@ -232,8 +310,8 @@ export async function createPost(formData: FormData) {
   const authorName = (formData.get('author_name') as string)?.trim() || '名無しのデュエリスト'
   const imageFile = formData.get('image') as File | null
   if (!threadId) return { error: 'スレッドIDが無効です' }
-  if (!body || body.length < 1) return { error: '本文を入力してください' }
-  if (body.length > 3000) return { error: '本文は3000文字以内で入力してください' }
+  const spamCheck = validateCommentBody(body ?? '')
+  if (!spamCheck.ok) return { error: spamCheck.error ?? '投稿内容を確認してください' }
 
   if (!hasJapanese(body)) {
     return { error: '日本語を含めてください（スパム対策）' }
@@ -241,32 +319,50 @@ export async function createPost(formData: FormData) {
 
   const supabase = await createClient()
 
-  const { data: threadForCloseCheck, error: threadCheckError } = await supabase
+  const threadResult = await supabase
     .from('threads')
-    .select('id, title, body, post_count, is_archived, created_at, category_id, categories(name,slug)')
+    .select('id, title, body, post_count, is_archived, comment_locked, created_at, category_id, categories(name,slug)')
     .eq('id', threadId)
     .single()
+  let targetThread = threadResult.data as PostTargetThread | null
+  let threadError = threadResult.error
 
-  if (threadCheckError || !threadForCloseCheck) {
-    return { error: 'スレッドが見つかりません' }
+  if (isMissingColumn(threadError, 'comment_locked')) {
+    const retry = await supabase
+      .from('threads')
+      .select('id, title, body, post_count, is_archived, created_at, category_id, categories(name,slug)')
+      .eq('id', threadId)
+      .single()
+    targetThread = retry.data as PostTargetThread | null
+    threadError = retry.error
   }
-  if (threadForCloseCheck.is_archived) {
-    return { error: 'このスレッドは過去ログです。コメントはできません。' }
-  }
-  if (isThreadAutoClosed(threadForCloseCheck)) {
+
+  if (threadError || !targetThread) return { error: 'スレッドが見つかりません' }
+  if (targetThread.is_archived) return { error: 'このスレッドは過去ログです。コメントはできません。' }
+  if (targetThread.comment_locked) return { error: 'このスレッドは現在コメントできません。' }
+  if (isThreadAutoClosed(targetThread)) {
     return { error: AUTO_CLOSE_MESSAGE }
   }
 
   const sessionId = await getOrCreateSessionId()
   const authUserId = await getAuthenticatedUserId(supabase)
   const userId = await getActiveProfileUserId(supabase)
+  const ipHash = await getIpHash()
   if (await checkPostingBan({ sessionId, userId: authUserId })) {
     return { error: 'Posting is restricted.' }
+  }
+  if (await checkSessionBan(supabase, sessionId)) {
+    return { error: 'この端末からの投稿は制限されています。' }
+  }
+  if (await checkModerationBan(supabase, 'ip_hash', ipHash)) {
+    return { error: 'この回線からの投稿は一時的に制限されています。' }
   }
   const ngWord = await checkNgWords(supabase, [body, authorName])
   if (ngWord) {
     return { error: `NG word detected: ${ngWord}` }
   }
+  const rateLimitError = await checkPostRateLimits(supabase, sessionId, ipHash)
+  if (rateLimitError) return { error: rateLimitError }
 
   const { data: maxPost } = await supabase
     .from('posts')
@@ -303,7 +399,24 @@ export async function createPost(formData: FormData) {
     image_height: imageHeight,
     session_id: sessionId,
     user_id: userId,
+    ip_hash: ipHash,
   })
+
+  // ip_hash カラムが未作成の場合はなしで再試行
+  if (error && isMissingColumn(error, 'ip_hash')) {
+    const { error: eIp } = await supabase.from('posts').insert({
+      thread_id: threadId,
+      post_number: nextPostNumber,
+      body,
+      author_name: authorName,
+      image_url: imageUrl,
+      image_width: imageWidth,
+      image_height: imageHeight,
+      session_id: sessionId,
+      user_id: userId,
+    })
+    error = eIp
+  }
 
   // image_width/height カラムが未作成の場合はなしで再試行
   if (error && (error.code === '42703' || error.message?.includes('image_width'))) {
@@ -315,8 +428,21 @@ export async function createPost(formData: FormData) {
       image_url: imageUrl,
       session_id: sessionId,
       user_id: userId,
+      ip_hash: ipHash,
     })
     error = e2
+  }
+
+  if (error && isMissingColumn(error, 'ip_hash')) {
+    const { error: e2b } = await supabase.from('posts').insert({
+      thread_id: threadId,
+      post_number: nextPostNumber,
+      body,
+      author_name: authorName,
+      image_url: imageUrl,
+      session_id: sessionId,
+    })
+    error = e2b
   }
 
   // session_id カラムが未作成の場合はなしで再試行

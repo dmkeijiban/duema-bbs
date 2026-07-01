@@ -154,6 +154,24 @@ type RelatedThreadRow = ThreadRow & {
   last_posted_at: string | null
 }
 
+type CachedThreadRow = {
+  id: number
+  title: string
+  body: string
+  author_name: string
+  user_id?: string | null
+  image_url: string | null
+  view_count: number
+  post_count: number
+  is_archived: boolean
+  comment_locked?: boolean
+  created_at: string
+  last_posted_at: string | null
+  session_id?: string | null
+  category_id: number | null
+  categories: unknown
+}
+
 export const getCachedTopThreads = unstable_cache(
   async () => {
     try {
@@ -286,11 +304,22 @@ export const getCachedThread = (threadId: number) =>
   unstable_cache(
     async () => {
       const supabase = createPublicClient()
-      const { data } = await supabase
+      const result = await supabase
         .from('threads')
-        .select('id, title, body, author_name, user_id, image_url, view_count, post_count, is_archived, created_at, last_posted_at, session_id, category_id, categories(id,name,slug,color,description,sort_order)')
+        .select('id, title, body, author_name, user_id, image_url, view_count, post_count, is_archived, comment_locked, created_at, last_posted_at, session_id, category_id, categories(id,name,slug,color,description,sort_order)')
         .eq('id', threadId)
         .single()
+      let data = result.data as CachedThreadRow | null
+
+      if (result.error && (result.error.code === '42703' || result.error.message?.includes('comment_locked'))) {
+        const retry = await supabase
+          .from('threads')
+          .select('id, title, body, author_name, user_id, image_url, view_count, post_count, is_archived, created_at, last_posted_at, session_id, category_id, categories(id,name,slug,color,description,sort_order)')
+          .eq('id', threadId)
+          .single()
+        data = retry.data as CachedThreadRow | null
+      }
+
       return data
     },
     [`thread-${threadId}`],
