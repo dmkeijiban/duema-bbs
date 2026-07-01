@@ -19,6 +19,10 @@ type ZukanCardCandidate = {
   official_image_url: string | null
 }
 
+type ZukanCardCandidateWithSlug = ZukanCardCandidate & {
+  slug: string
+}
+
 type ZukanDailyRow = {
   id: string
   run_date: string
@@ -64,6 +68,8 @@ export type ZukanDailyCardPostResult = {
     id: string
     url: string
     scheduledAt: string
+    text?: string
+    mediaUrls?: string[]
   }
   reason?: string
   error?: string
@@ -94,8 +100,23 @@ function buildThreadBody(cardName: string): string {
   ].join('\n')
 }
 
-function buildTypefullyText(cardName: string, url: string): string {
-  return `${buildThreadBody(cardName)}\n${url}`
+function buildCardUrl(cardSlug: string): string {
+  return `${SITE_URL}/zukan/card/${cardSlug}`
+}
+
+function buildTypefullyText(cardName: string, cardUrl: string): string {
+  return [
+    'みんなの',
+    `「${cardName}」に対する`,
+    '思い出を募集中‼️',
+    '',
+    '当時じゃなくて',
+    '今の評価でもOKです🙆‍♀️',
+    '',
+    'リプでも掲示板でも',
+    '気軽にコメント下さい‼️',
+    cardUrl,
+  ].join('\n')
 }
 
 function getCardImageUrl(card: ZukanCardCandidate): string | null {
@@ -275,8 +296,8 @@ export async function runZukanDailyCardPost({
 
   const candidates = ((cardsData ?? []) as ZukanCardCandidate[])
     .map(card => ({ card, imageUrl: getCardImageUrl(card) }))
-    .filter((item): item is { card: ZukanCardCandidate; imageUrl: string } =>
-      Boolean(item.card.id && item.card.name && item.imageUrl && !usedCardIds.has(item.card.id))
+    .filter((item): item is { card: ZukanCardCandidateWithSlug; imageUrl: string } =>
+      Boolean(item.card.id && item.card.slug && item.card.name && item.imageUrl && !usedCardIds.has(item.card.id))
     )
 
   const selected = pickRandom(candidates)
@@ -295,7 +316,8 @@ export async function runZukanDailyCardPost({
   const title = buildThreadTitle(card.name)
   const threadBody = buildThreadBody(card.name)
   const dryRunThreadUrl = `${SITE_URL}/thread/(dry-run)`
-  const typefullyText = buildTypefullyText(card.name, dryRunThreadUrl)
+  const cardUrl = buildCardUrl(card.slug)
+  const typefullyText = buildTypefullyText(card.name, cardUrl)
   const selectedCard = { id: card.id, slug: card.slug, name: card.name, imageUrl }
 
   if (dryRun) {
@@ -306,7 +328,13 @@ export async function runZukanDailyCardPost({
       errors: imageCheck.ok ? 0 : 1,
       selectedCard,
       thread: { id: -1, url: dryRunThreadUrl, title, body: threadBody },
-      typefully: { id: '(dry-run)', url: '(dry-run)', scheduledAt: new Date(Date.now() + 120_000).toISOString() },
+      typefully: {
+        id: '(dry-run)',
+        url: '(dry-run)',
+        scheduledAt: new Date(Date.now() + 120_000).toISOString(),
+        text: typefullyText,
+        mediaUrls: [imageUrl],
+      },
       ...(imageCheck.ok ? {} : { error: imageCheck.error }),
       results: [{
         status: imageCheck.ok ? 'would_create' : 'error',
@@ -315,6 +343,8 @@ export async function runZukanDailyCardPost({
         threadTitle: title,
         threadBody,
         typefullyText,
+        typefullyCardUrl: cardUrl,
+        mediaUrls: [imageUrl],
       }],
     }
   }
@@ -427,7 +457,7 @@ export async function runZukanDailyCardPost({
 
   const scheduledAt = new Date(Date.now() + 120_000).toISOString()
   const tf = await createTypefullyDraft({
-    threadLines: [buildTypefullyText(card.name, threadUrl)],
+    threadLines: [typefullyText],
     imageUrls: [imageUrl],
     scheduleDate: scheduledAt,
   })
@@ -479,7 +509,7 @@ export async function runZukanDailyCardPost({
     created: 1,
     selectedCard,
     thread: { id: threadId, url: threadUrl, title, body: threadBody },
-    typefully: { id: tf.id, url: tf.share_url, scheduledAt },
+    typefully: { id: tf.id, url: tf.share_url, scheduledAt, text: typefullyText, mediaUrls: [imageUrl] },
     results: [{
       status: 'posted',
       card: selectedCard,
@@ -487,6 +517,9 @@ export async function runZukanDailyCardPost({
       threadUrl,
       typefullyId: tf.id,
       typefullyUrl: tf.share_url,
+      typefullyText,
+      typefullyCardUrl: cardUrl,
+      mediaUrls: [imageUrl],
       scheduledAt,
     }],
   }
