@@ -18,6 +18,19 @@ type ReportRow = {
   created_at: string
 }
 
+type ReportedPostContext = {
+  id: number
+  thread_id: number | null
+  post_number: number | null
+  threads: { title: string | null } | { title: string | null }[] | null
+}
+
+type ReportTargetContext = {
+  threadId: number
+  threadTitle: string
+  postNumber: number | null
+}
+
 type ReporterProfile = {
   id: string
   display_name: string | null
@@ -106,6 +119,64 @@ function ReporterCell({ report, profile }: { report: ReportRow; profile: Reporte
   return <span className="text-gray-400">-</span>
 }
 
+function getThreadTitle(thread: ReportedPostContext['threads']) {
+  if (Array.isArray(thread)) return thread[0]?.title ?? null
+  return thread?.title ?? null
+}
+
+function ReportTargetCell({
+  report,
+  context,
+}: {
+  report: ReportRow
+  context: ReportTargetContext | undefined
+}) {
+  const isCommentReport = report.item_type === 'post' || report.item_type === 'comment'
+
+  if (report.item_type === 'thread') {
+    return (
+      <Link href={`/thread/${report.item_id}`} target="_blank" className="text-blue-600 hover:underline">
+        スレ #{report.item_id}
+      </Link>
+    )
+  }
+
+  if (!isCommentReport) {
+    return <span>{report.item_type} #{report.item_id}</span>
+  }
+
+  if (!context) {
+    return (
+      <div className="space-y-1">
+        <div className="font-medium text-gray-700">コメント #{report.item_id}</div>
+        <div className="text-[11px] text-gray-400">スレ情報を取得できませんでした</div>
+      </div>
+    )
+  }
+
+  const anchor = context.postNumber === null ? '' : `#post-${context.postNumber + 1}`
+  const href = `/thread/${context.threadId}${anchor}`
+
+  return (
+    <div className="min-w-[12rem] max-w-xs space-y-1 whitespace-normal">
+      <div className="font-medium text-gray-700">コメント #{report.item_id}</div>
+      <div className="text-[11px] text-gray-500">スレ #{context.threadId}</div>
+      <Link
+        href={href}
+        target="_blank"
+        className="block break-words text-blue-600 hover:underline"
+        title={context.threadTitle}
+      >
+        {context.threadTitle}
+      </Link>
+      <Link href={href} target="_blank" className="inline-block text-[11px] text-blue-600 hover:underline">
+        スレを開く
+      </Link>
+      <div className="break-all font-mono text-[10px] text-gray-400">{href}</div>
+    </div>
+  )
+}
+
 export default async function AdminReportsPage({
   searchParams,
 }: {
@@ -123,6 +194,31 @@ export default async function AdminReportsPage({
     .limit(100)
 
   const reports = (data ?? []) as ReportRow[]
+
+  const reportedPostIds = Array.from(
+    new Set(
+      reports
+        .filter((r) => r.item_type === 'post' || r.item_type === 'comment')
+        .map((r) => r.item_id)
+        .filter((id) => Number.isFinite(id))
+    )
+  )
+  const targetContextMap = new Map<number, ReportTargetContext>()
+  if (reportedPostIds.length > 0) {
+    const { data: postContextData } = await admin
+      .from('posts')
+      .select('id, thread_id, post_number, threads(title)')
+      .in('id', reportedPostIds)
+
+    for (const post of (postContextData ?? []) as unknown as ReportedPostContext[]) {
+      if (!post.thread_id) continue
+      targetContextMap.set(post.id, {
+        threadId: post.thread_id,
+        threadTitle: getThreadTitle(post.threads) || '（タイトル取得不可）',
+        postNumber: post.post_number,
+      })
+    }
+  }
 
   // 送信元ユーザーの profile をまとめて取得（表示改善のみ・データ変更はしない）。
   const reporterIds = Array.from(
@@ -182,7 +278,9 @@ export default async function AdminReportsPage({
             ) : reports.map((r) => (
               <tr key={r.id} className="align-top hover:bg-gray-50">
                 <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{formatDateTime(r.created_at)}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{r.item_type === 'thread' ? <a href={`/thread/${r.item_id}`} target="_blank" className="text-blue-600 hover:underline">スレ #{r.item_id}</a> : <span>コメント #{r.item_id}</span>}</td>
+                <td className="px-3 py-2">
+                  <ReportTargetCell report={r} context={targetContextMap.get(r.item_id)} />
+                </td>
                 <td className="px-3 py-2 text-[11px] text-gray-600"><ReporterCell report={r} profile={r.reporter_user_id ? profileMap.get(r.reporter_user_id) : undefined} /></td>
                 <td className="px-3 py-2 text-gray-700"><p className="font-bold">{r.reason || '（理由なし）'}</p>{r.item_body_excerpt && <p className="mt-1 line-clamp-2 break-all text-[11px] text-gray-500">{r.item_body_excerpt}</p>}</td>
                 <td className="px-3 py-2">
