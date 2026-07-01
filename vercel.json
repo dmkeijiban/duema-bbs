@@ -13,7 +13,7 @@
       "schedule": "0 0 * * *"
     },
     {
-      "path": "/api/internal/daily-zukan-thread",
+      "path": "/api/cron/zukan-daily-card-post",
       "schedule": "0 15 * * *"
     }
   ]

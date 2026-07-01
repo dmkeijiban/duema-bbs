@@ -1,37 +1,52 @@
-name: Daily Zukan Thread
+name: Daily Zukan Card Post
 
-# 思い出図鑑の当日スレ作成とX予約投稿。
-# GitHub Actions schedule はベストエフォートなので、JST 00:05の本実行に加えて
-# JST 01:05 / 07:05 に救済実行する。endpoint側の posted_date UNIQUE と
-# schedule completed 判定で同日二重作成を防ぐ。
+# 思い出図鑑0時投稿（掲示板スレ + Typefully画像付き投稿）。
+# Vercel Cron (JST 00:00) を主実行にし、GitHub Actions schedule は
+# JST 00:05 / 01:05 / 07:05 の救済枠として使う。
+# endpoint側の unique(run_date) / unique(card_id) で二重作成を防ぐ。
 on:
   schedule:
     - cron: "5 15,16,22 * * *"
   workflow_dispatch:
+    inputs:
+      base_url:
+        description: "呼び出し先URL（Preview検証時だけPreview URLに変更）"
+        required: false
+        default: "https://www.duema-bbs.com"
+      dry_run:
+        description: "dryRun=true で実行する"
+        required: false
+        default: "false"
 
 jobs:
-  daily-zukan-thread:
+  daily-zukan-card-post:
     runs-on: ubuntu-latest
     steps:
-      - name: Call daily-zukan-thread API
+      - name: Call zukan-daily-card-post API
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           EVENT_NAME: ${{ github.event_name }}
+          BASE_URL: ${{ inputs.base_url || 'https://www.duema-bbs.com' }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
         run: |
           set -uo pipefail
 
-          URL="https://www.duema-bbs.com/api/internal/daily-zukan-thread"
+          URL="${BASE_URL%/}/api/cron/zukan-daily-card-post"
+          if [ "${DRY_RUN}" = "true" ]; then
+            URL="${URL}?dryRun=true"
+          fi
 
-          echo "==== daily-zukan-thread 実行 ===="
+          echo "==== zukan-daily-card-post 実行 ===="
           echo "実行時刻 UTC : $(date -u '+%Y-%m-%d %H:%M:%S')"
           echo "実行時刻 JST : $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S')"
           echo "トリガー     : ${EVENT_NAME}"
-          echo "モード       : LIVE（dryRun=false）"
+          echo "モード       : dryRun=${DRY_RUN}"
           echo "URL          : ${URL}"
           echo "================================"
 
           set +e
           HTTP_CODE=$(curl -sS \
+            -L \
             --retry 2 --retry-delay 10 --max-time 60 \
             -H "Authorization: Bearer ${CRON_SECRET}" \
             -o response_body.txt -w '%{http_code}' \
@@ -58,15 +73,17 @@ jobs:
           CREATED=$(jq -r '.created // 0' response_body.txt 2>/dev/null || echo "0")
           DUPLICATE=$(jq -r '.duplicate // 0' response_body.txt 2>/dev/null || echo "0")
           SKIPPED=$(jq -r '.skipped // 0' response_body.txt 2>/dev/null || echo "0")
-          STATUS=$(jq -r '.status // "unknown"' response_body.txt 2>/dev/null || echo "unknown")
+          MODE=$(jq -r '.mode // "unknown"' response_body.txt 2>/dev/null || echo "unknown")
+          RUN_DATE=$(jq -r '.runDate // "unknown"' response_body.txt 2>/dev/null || echo "unknown")
+          STATUS=$(jq -r '.results[0].status // "unknown"' response_body.txt 2>/dev/null || echo "unknown")
           REASON=$(jq -r '.reason // "-"' response_body.txt 2>/dev/null || echo "-")
-          echo "summary      : status=${STATUS} created=${CREATED} duplicate=${DUPLICATE} skipped=${SKIPPED} errors=${ERRORS} reason=${REASON}"
+          echo "summary      : mode=${MODE} runDate=${RUN_DATE} status=${STATUS} created=${CREATED} duplicate=${DUPLICATE} skipped=${SKIPPED} errors=${ERRORS} reason=${REASON}"
 
           if [ "${ERRORS}" = "parse_error" ]; then
             echo "::error::レスポンスJSONを解析できません"
             exit 1
           fi
           if [ "${ERRORS}" -gt 0 ]; then
-            echo "::error::daily-zukan-thread が errors=${ERRORS} を返しました"
+            echo "::error::zukan-daily-card-post が errors=${ERRORS} を返しました"
             exit 1
           fi

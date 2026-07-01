@@ -7,6 +7,24 @@
 import { SITE_URL } from '@/lib/site-config'
 const SITE_ORIGIN = SITE_URL
 
+export async function notifyDiscordMessage(content: string): Promise<void> {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL
+  if (!webhookUrl) return
+
+  try {
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
+    })
+    if (!res.ok) {
+      console.error('Discord webhook error (generic):', res.status, await res.text())
+    }
+  } catch (err) {
+    console.error('Discord webhook fetch failed (generic):', err)
+  }
+}
+
 /** Xスレ化（sync-typefully）の同期結果サマリーを通知 */
 interface NotifySyncSummaryOptions {
   created: number
