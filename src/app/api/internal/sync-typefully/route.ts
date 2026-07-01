@@ -37,6 +37,11 @@ interface TypefullyDraft {
   schedule_date?: string | null
   typefully_url?: string | null
   share_url?: string | null
+  media_urls?: unknown
+  image_urls?: unknown
+  images?: unknown
+  media?: unknown
+  attachments?: unknown
 }
 
 interface TypefullyDraftDetail {
@@ -47,9 +52,21 @@ interface TypefullyDraftDetail {
   schedule_date?: string | null
   platforms?: {
     x?: {
-      posts?: Array<{ text?: string | null }>
+      posts?: Array<{
+        text?: string | null
+        media_urls?: unknown
+        image_urls?: unknown
+        images?: unknown
+        media?: unknown
+        attachments?: unknown
+      }>
     }
   }
+  media_urls?: unknown
+  image_urls?: unknown
+  images?: unknown
+  media?: unknown
+  attachments?: unknown
 }
 
 interface TodayTypefullyPost {
@@ -57,6 +74,7 @@ interface TodayTypefullyPost {
   sourceStatus: string
   scheduledAt: string
   body: string
+  imageUrls: string[]
   shareUrl: string | null
 }
 
@@ -64,6 +82,7 @@ interface ExistingXPost {
   id: number
   typefully_id: string | null
   thread_id: number | null
+  image_urls: string[] | null
   meta: Record<string, unknown> | null
 }
 
@@ -72,6 +91,7 @@ interface XPostDueRow {
   typefully_id: string | null
   scheduled_at: string | null
   thread_lines: string[] | null
+  image_urls: string[] | null
   status: string
   source_status: string | null
   source_ref: string | null
@@ -86,6 +106,7 @@ interface ThreadSyncResult {
   status: 'created' | 'duplicate' | 'skipped' | 'error'
   threadId?: number
   threadUrl?: string
+  imageUrl?: string
   error?: string
 }
 
@@ -95,6 +116,7 @@ interface TypefullyPostSummary {
   scheduledAtJst: string
   sourceStatus: string
   bodyPreview: string
+  imageUrls: string[]
 }
 
 function sanitizeSecretValue(value: string | undefined): string | undefined {
@@ -162,6 +184,58 @@ function getDraftText(draft: TypefullyDraft, detail: TypefullyDraftDetail | null
   ).trim()
 }
 
+function isHttpUrl(value: unknown): value is string {
+  return typeof value === 'string' && /^https?:\/\//i.test(value.trim())
+}
+
+function collectImageUrls(value: unknown, urls = new Set<string>()): Set<string> {
+  if (!value) return urls
+
+  if (isHttpUrl(value)) {
+    urls.add(value.trim())
+    return urls
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) collectImageUrls(item, urls)
+    return urls
+  }
+
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    for (const key of ['url', 'src', 'href', 'media_url', 'mediaUrl', 'image_url', 'imageUrl']) {
+      collectImageUrls(record[key], urls)
+    }
+    for (const key of ['media_urls', 'mediaUrls', 'image_urls', 'imageUrls', 'images', 'media', 'attachments']) {
+      collectImageUrls(record[key], urls)
+    }
+  }
+
+  return urls
+}
+
+function getDraftImageUrls(draft: TypefullyDraft, detail: TypefullyDraftDetail | null): string[] {
+  const urls = new Set<string>()
+  collectImageUrls(draft.media_urls, urls)
+  collectImageUrls(draft.image_urls, urls)
+  collectImageUrls(draft.images, urls)
+  collectImageUrls(draft.media, urls)
+  collectImageUrls(draft.attachments, urls)
+  collectImageUrls(detail?.media_urls, urls)
+  collectImageUrls(detail?.image_urls, urls)
+  collectImageUrls(detail?.images, urls)
+  collectImageUrls(detail?.media, urls)
+  collectImageUrls(detail?.attachments, urls)
+  for (const post of detail?.platforms?.x?.posts ?? []) {
+    collectImageUrls(post.media_urls, urls)
+    collectImageUrls(post.image_urls, urls)
+    collectImageUrls(post.images, urls)
+    collectImageUrls(post.media, urls)
+    collectImageUrls(post.attachments, urls)
+  }
+  return Array.from(urls)
+}
+
 function textToThreadLines(text: string): string[] {
   return text
     .split(/\n{2,}---\n{2,}/)
@@ -173,6 +247,10 @@ function getPrimaryText(lines: string[] | null): string {
   return (lines ?? []).join('\n\n').trim()
 }
 
+function getPrimaryImageUrl(urls: string[] | null): string | null {
+  return (urls ?? []).find((url) => isHttpUrl(url))?.trim() ?? null
+}
+
 function summarizeTypefullyPosts(posts: TodayTypefullyPost[]): TypefullyPostSummary[] {
   return posts.map((post) => ({
     typefullyId: post.typefullyId,
@@ -180,6 +258,7 @@ function summarizeTypefullyPosts(posts: TodayTypefullyPost[]): TypefullyPostSumm
     scheduledAtJst: formatJstDateTime(post.scheduledAt),
     sourceStatus: post.sourceStatus,
     bodyPreview: post.body.slice(0, 80),
+    imageUrls: post.imageUrls,
   }))
 }
 
@@ -236,6 +315,7 @@ async function fetchTodayTypefullyPosts(
     const detail = draftId ? await fetchDraftDetail(apiKey, socialSetId, draftId) : null
     const scheduledAt = getDraftScheduledAt(draft) ?? (detail ? getDraftScheduledAt(detail) : null)
     const body = getDraftText(draft, detail)
+    const imageUrls = getDraftImageUrls(draft, detail)
     if (!scheduledAt || !isTodayInJst(scheduledAt)) continue
 
     const typefullyId = draftId || `scheduled:${scheduledAt}:${hashText(body)}`
@@ -244,6 +324,7 @@ async function fetchTodayTypefullyPosts(
       sourceStatus: draft.status ?? 'scheduled',
       scheduledAt,
       body,
+      imageUrls,
       shareUrl: draft.share_url ?? draft.typefully_url ?? null,
     })
   }
@@ -262,7 +343,7 @@ async function upsertTodayTypefullyPosts(
   const typefullyIds = posts.map((post) => post.typefullyId)
   const { data, error } = await supabase
     .from('x_posts')
-    .select('id, typefully_id, thread_id, meta')
+    .select('id, typefully_id, thread_id, image_urls, meta')
     .in('typefully_id', typefullyIds)
 
   if (error) {
@@ -283,9 +364,13 @@ async function upsertTodayTypefullyPosts(
   for (const post of posts) {
     const existing = existingByTypefullyId.get(post.typefullyId)
     const threadLines = textToThreadLines(post.body)
+    const imageUrls = post.imageUrls.length > 0
+      ? post.imageUrls
+      : ((existing?.image_urls ?? []) as string[])
     const nextMeta = {
       ...(existing?.meta ?? {}),
       fetched_from_typefully_at: fetchedAt,
+      typefully_image_urls_count: imageUrls.length,
     }
 
     if (dryRun) {
@@ -303,7 +388,7 @@ async function upsertTodayTypefullyPosts(
           status: 'scheduled',
           title: generateTitleFromXPost(post.body) || 'デュエマ掲示板投稿',
           thread_lines: threadLines,
-          image_urls: [],
+          image_urls: imageUrls,
           typefully_id: post.typefullyId,
           typefully_share_url: post.shareUrl,
           scheduled_at: post.scheduledAt,
@@ -345,7 +430,7 @@ async function upsertTodayTypefullyPosts(
         status: 'scheduled',
         title: generateTitleFromXPost(post.body) || 'デュエマ掲示板投稿',
         thread_lines: threadLines,
-        image_urls: [],
+        image_urls: imageUrls,
         typefully_share_url: post.shareUrl,
         scheduled_at: post.scheduledAt,
         source_ref: `typefully:${post.typefullyId}`,
@@ -375,7 +460,7 @@ async function findDueXPosts(
   const minScheduledAt = new Date(now.getTime() - DUE_LOOKBACK_HOURS * 60 * 60 * 1000).toISOString()
   const { data, error } = await supabase
     .from('x_posts')
-    .select('id, typefully_id, scheduled_at, thread_lines, status, source_status, source_ref, retry_count, thread_id, meta')
+    .select('id, typefully_id, scheduled_at, thread_lines, image_urls, status, source_status, source_ref, retry_count, thread_id, meta')
     .is('thread_id', null)
     .not('scheduled_at', 'is', null)
     .gte('scheduled_at', minScheduledAt)
@@ -517,8 +602,16 @@ async function createThreadFromXPost(
   }
 
   const title = generateTitleFromXPost(body) || 'デュエマ掲示板投稿'
+  const imageUrl = getPrimaryImageUrl(row.image_urls)
   if (dryRun) {
-    return { xPostId: row.id, typefullyId: row.typefully_id, status: 'created', threadId: -1, threadUrl: '(dry-run)' }
+    return {
+      xPostId: row.id,
+      typefullyId: row.typefully_id,
+      status: 'created',
+      threadId: -1,
+      threadUrl: '(dry-run)',
+      ...(imageUrl ? { imageUrl } : {}),
+    }
   }
 
   const { data: thread, error } = await supabase
@@ -531,6 +624,7 @@ async function createThreadFromXPost(
       source: 'typefully',
       source_id: sourceId,
       source_text_hash: textHash,
+      ...(imageUrl ? { image_url: imageUrl } : {}),
     })
     .select('id')
     .single()
@@ -551,6 +645,7 @@ async function createThreadFromXPost(
     status: 'created',
     threadId: thread.id,
     threadUrl: `https://www.duema-bbs.com/thread/${thread.id}`,
+    ...(imageUrl ? { imageUrl } : {}),
   }
 }
 
