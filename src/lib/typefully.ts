@@ -40,7 +40,11 @@ export function threadsToContent(lines: string[]): string {
 }
 
 function normalizeApiKey(apiKey: string): string {
-  return apiKey.replace(/^Bearer\s+/i, '').trim()
+  return apiKey.replace(/\uFEFF/g, '').replace(/^Bearer\s+/i, '').trim()
+}
+
+function cleanEnvValue(value: string | undefined): string {
+  return value?.replace(/\uFEFF/g, '').trim() ?? ''
 }
 
 function formatTypefullyError(status: number, text: string): string {
@@ -79,7 +83,7 @@ export async function createTypefullyDraft(
     return { error: 'TYPEFULLY_API_KEY が設定されていません' }
   }
 
-  const socialSetId = process.env.TYPEFULLY_SOCIAL_SET_ID?.trim()
+  const socialSetId = cleanEnvValue(process.env.TYPEFULLY_SOCIAL_SET_ID)
   if (!socialSetId) {
     return { error: 'TYPEFULLY_SOCIAL_SET_ID が設定されていません' }
   }
@@ -117,8 +121,12 @@ export async function createTypefullyDraft(
     }
 
     const data = (await res.json()) as TypefullyDraftResponse
+    const id = String(data.id ?? '')
+    if (!id) {
+      return { error: 'Typefully API response missing draft id' }
+    }
     return {
-      id: String(data.id ?? ''),
+      id,
       share_url: String(data.private_url ?? data.share_url ?? data.url ?? ''),
     }
   } catch (e) {
@@ -137,7 +145,7 @@ export async function getTypefullyDraft(
     return { error: 'TYPEFULLY_API_KEY が設定されていません' }
   }
 
-  const socialSetId = process.env.TYPEFULLY_SOCIAL_SET_ID?.trim()
+  const socialSetId = cleanEnvValue(process.env.TYPEFULLY_SOCIAL_SET_ID)
   if (!socialSetId) {
     return { error: 'TYPEFULLY_SOCIAL_SET_ID が設定されていません' }
   }
