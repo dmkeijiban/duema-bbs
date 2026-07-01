@@ -28,7 +28,11 @@ import { AdBanner } from '@/components/AdBanner'
 import { getCategoryIdsForSlug } from '@/lib/categories'
 import { ADSENSE_REVIEW_MODE, isAdSenseRiskyThreadTitle, isPrNoticeForAdSenseReview } from '@/lib/adsense-review-mode'
 import { TopActivityNotice } from '@/components/TopActivityNotice'
-import { filterPublicVisibleUserContent, getCachedPublicHiddenUserIds } from '@/lib/public-visibility'
+import {
+  filterPublicVisibleUserContent,
+  getCachedPublicHiddenUserIds,
+  getPublicVisibleUserContentOrFilter,
+} from '@/lib/public-visibility'
 
 export const revalidate = 3600
 const TOP_THREAD_PAGE_SIZE = 60
@@ -90,15 +94,17 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
   const categoryIds = searchParams.category ? getCategoryIdsForSlug(searchParams.category, cats) : []
 
   if (isRandom) {
+    const hiddenUserIds = await getCachedPublicHiddenUserIds()
+    const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
     let q = supabase
       .from('threads')
       .select('id, title, user_id, image_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
       .eq('is_archived', false)
-      .limit(100)
+    if (publicUserFilter) q = q.or(publicUserFilter)
     if (categoryIds.length === 1) q = q.eq('category_id', categoryIds[0])
     if (categoryIds.length > 1) q = q.in('category_id', categoryIds)
+    q = q.limit(100)
     const { data: raw } = await q
-    const hiddenUserIds = await getCachedPublicHiddenUserIds()
     const fetched = raw ? await withFallbackThumbnails(supabase, filterPublicVisibleUserContent(raw, hiddenUserIds)) : []
     const all = seededShuffle(ADSENSE_REVIEW_MODE ? fetched.filter(t => !isAdSenseRiskyThreadTitle(t.title)) : fetched)
     if (all.length === 0) return <ThreadEmpty searchQ={undefined} />
@@ -112,6 +118,8 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
   }
 
   if (searchQ) {
+    const hiddenUserIds = await getCachedPublicHiddenUserIds()
+    const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
     const offset = (page - 1) * TOP_THREAD_PAGE_SIZE
     let countQ = supabase
       .from('threads')
@@ -123,6 +131,10 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
       .select('id, title, user_id, image_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
       .eq('is_archived', isArchived)
       .ilike('title', `%${searchQ}%`)
+    if (publicUserFilter) {
+      countQ = countQ.or(publicUserFilter)
+      dataQ = dataQ.or(publicUserFilter)
+    }
     if (categoryIds.length === 1) {
       countQ = countQ.eq('category_id', categoryIds[0])
       dataQ = dataQ.eq('category_id', categoryIds[0])
@@ -132,7 +144,6 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
     }
     dataQ = dataQ.order('last_posted_at', { ascending: false }).range(offset, offset + TOP_THREAD_PAGE_SIZE - 1)
     const [{ count }, { data: raw }] = await Promise.all([countQ, dataQ])
-    const hiddenUserIds = await getCachedPublicHiddenUserIds()
     const rawThreads = raw ? await withFallbackThumbnails(supabase, filterPublicVisibleUserContent(raw, hiddenUserIds)) : []
     const threads = ADSENSE_REVIEW_MODE ? rawThreads.filter(t => !isAdSenseRiskyThreadTitle(t.title)) : rawThreads
     if (threads.length === 0) return <ThreadEmpty searchQ={searchQ} />

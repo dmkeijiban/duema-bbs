@@ -26,7 +26,11 @@ import {
   getCategoryIdsForSlug,
   getDisplayCategoryBySlug,
 } from '@/lib/categories'
-import { filterPublicVisibleUserContent, getCachedPublicHiddenUserIds } from '@/lib/public-visibility'
+import {
+  filterPublicVisibleUserContent,
+  getCachedPublicHiddenUserIds,
+  getPublicVisibleUserContentOrFilter,
+} from '@/lib/public-visibility'
 
 export const revalidate = 3600
 
@@ -101,13 +105,18 @@ async function CategoryThreadList({
 
   // ── ランダム（キャッシュ不適）
   if (isRandom) {
-    const { data: raw } = await supabase
+    const hiddenUserIds = await getCachedPublicHiddenUserIds()
+    const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
+    let randomQuery = supabase
       .from('threads')
       .select('id, title, user_id, image_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
       .eq('is_archived', false)
       .in('category_id', categoryIds)
+
+    if (publicUserFilter) randomQuery = randomQuery.or(publicUserFilter)
+
+    const { data: raw } = await randomQuery
       .limit(100)
-    const hiddenUserIds = await getCachedPublicHiddenUserIds()
     const all = seededShuffle(raw ? await withFallbackThumbnails(supabase, filterPublicVisibleUserContent(raw, hiddenUserIds)) : [])
     if (all.length === 0) return <CategoryThreadEmpty />
     return (

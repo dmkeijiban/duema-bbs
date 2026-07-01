@@ -11,7 +11,11 @@ import Link from 'next/link'
 import { SITE_URL } from '@/lib/site-config'
 import { ThreadListHeader } from '@/components/ThreadListHeader'
 import { ThreadListTopContent } from '@/components/ThreadListTopContent'
-import { filterPublicVisibleUserContent, getCachedPublicHiddenUserIds } from '@/lib/public-visibility'
+import {
+  filterPublicVisibleUserContent,
+  getCachedPublicHiddenUserIds,
+  getPublicVisibleUserContentOrFilter,
+} from '@/lib/public-visibility'
 
 const PAGE_SIZE = 60
 
@@ -33,15 +37,20 @@ async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
   const supabase = createPublicClient()
   const isArchived = sort === 'archived'
   const basePath = sort === 'recent' ? '/update' : sort === 'new' ? '/new' : sort === 'random' ? '/random' : '/archived'
+  const hiddenUserIds = await getCachedPublicHiddenUserIds()
+  const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
 
   // ランダムは毎回シャッフルするためページネーション不要（常にPAGE_SIZE件ランダム表示）
   if (sort === 'random') {
-    const { data: rawThreads } = await supabase
+    let randomQuery = supabase
       .from('threads')
       .select('*, categories(id,name,slug,color,description,sort_order)')
       .eq('is_archived', false)
+
+    if (publicUserFilter) randomQuery = randomQuery.or(publicUserFilter)
+
+    const { data: rawThreads } = await randomQuery
       .limit(500)
-    const hiddenUserIds = await getCachedPublicHiddenUserIds()
     const all = rawThreads ? await withFallbackThumbnails(supabase, filterPublicVisibleUserContent(rawThreads, hiddenUserIds)) : []
     const threads = seededShuffle(all).slice(0, PAGE_SIZE) as (Thread & { categories: Category | null })[]
     if (threads.length === 0) {
@@ -82,10 +91,14 @@ async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
   }
 
   // 総件数取得
-  const { count } = await supabase
+  let countQuery = supabase
     .from('threads')
     .select('*', { count: 'exact', head: true })
     .eq('is_archived', isArchived)
+
+  if (publicUserFilter) countQuery = countQuery.or(publicUserFilter)
+
+  const { count } = await countQuery
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
   const offset = (page - 1) * PAGE_SIZE
 
@@ -93,6 +106,8 @@ async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
     .from('threads')
     .select('*, categories(id,name,slug,color,description,sort_order)')
     .eq('is_archived', isArchived)
+
+  if (publicUserFilter) query = query.or(publicUserFilter)
 
   if (sort === 'new') {
     query = query.order('created_at', { ascending: false })
@@ -102,7 +117,6 @@ async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
 
   query = query.range(offset, offset + PAGE_SIZE - 1)
   const { data: rawThreads } = await query
-  const hiddenUserIds = await getCachedPublicHiddenUserIds()
   const threads = rawThreads ? await withFallbackThumbnails(supabase, filterPublicVisibleUserContent(rawThreads, hiddenUserIds)) : []
 
   if (threads.length === 0) {
