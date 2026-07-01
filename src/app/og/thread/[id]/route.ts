@@ -37,10 +37,11 @@ async function getThreadImage(threadId: number): Promise<string | undefined> {
   const supabase = await createClient()
   const { data: thread } = await supabase
     .from('threads')
-    .select('image_url')
+    .select('image_url, is_archived')
     .eq('id', threadId)
     .single()
 
+  if (!thread || thread.is_archived) return undefined
   if (thread?.image_url) return thread.image_url
 
   const { data: postImg } = await supabase
