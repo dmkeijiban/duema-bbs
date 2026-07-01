@@ -103,7 +103,7 @@ async function checkPostRateLimits(
       sessionId,
       windowSeconds: 60,
       minIntervalSeconds: 8,
-      maxInWindow: 3,
+      maxInWindow: 5,
       label: 'レス',
     }),
     checkSessionRateLimit(supabase, {
@@ -111,7 +111,7 @@ async function checkPostRateLimits(
       sessionId,
       windowSeconds: 600,
       minIntervalSeconds: 0,
-      maxInWindow: 10,
+      maxInWindow: 15,
       label: 'レス',
     }),
   ]
@@ -124,7 +124,7 @@ async function checkPostRateLimits(
         value: ipHash,
         windowSeconds: 60,
         minIntervalSeconds: 0,
-        maxInWindow: 3,
+        maxInWindow: 5,
         label: '同じ回線からのレス',
       }),
       checkValueRateLimit(supabase, {
@@ -133,7 +133,7 @@ async function checkPostRateLimits(
         value: ipHash,
         windowSeconds: 600,
         minIntervalSeconds: 0,
-        maxInWindow: 10,
+        maxInWindow: 15,
         label: '同じ回線からのレス',
       }),
     )
