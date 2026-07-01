@@ -8,14 +8,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { runDailyZukanThread, getDailyZukanThreadForRetry } from '@/lib/daily-zukan-thread'
 import { createTypefullyDraft } from '@/lib/typefully'
-import { SITE_URL } from '@/lib/site-config'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 // Typefully予約投稿の結果（APIレスポンス・ログ用）。
 type TypefullyOutcome =
-  | { status: 'scheduled'; id: string; shareUrl: string; scheduledAt: string }
+  | { status: 'scheduled'; id: string; shareUrl: string; scheduledAt: string; text: string; mediaUrls: string[] }
   | { status: 'error'; error: string }
 
 function summarizeDailyZukanResult(
@@ -37,16 +36,18 @@ function summarizeDailyZukanResult(
 }
 
 // 作成済み思い出図鑑スレを X/Typefully へ投稿する文面を組み立てる。
-function buildTypefullyText(cardName: string, threadUrl: string): string {
+function buildTypefullyText(cardName: string, cardUrl: string): string {
   return [
-    '本日の思い出図鑑スレ',
+    'みんなの',
+    `「${cardName}」に対する`,
+    '思い出を募集中‼️',
     '',
-    `${cardName}について語ろう`,
+    '当時じゃなくて',
+    '今の評価でもOKです🙆‍♀️',
     '',
-    '当時の思い出、使っていたデッキ、今の評価など',
-    '気軽にコメントしてください。',
-    '',
-    threadUrl,
+    'リプでも掲示板でも',
+    '気軽にコメント下さい‼️',
+    cardUrl,
   ].join('\n')
 }
 
@@ -98,8 +99,7 @@ async function handleRetryTypefully(postedDate: string): Promise<NextResponse> {
   }
 
   // 既存スレを使って Typefully だけ再投稿する。
-  const threadUrl = `${SITE_URL}/thread/${lookup.threadId}`
-  const text = buildTypefullyText(lookup.cardName, threadUrl)
+  const text = buildTypefullyText(lookup.cardName, lookup.cardUrl)
   const scheduledAt = new Date(Date.now() + 2 * 60 * 1000).toISOString()
   console.log('[daily-zukan-thread] retry_typefully (manual re-post)', {
     postedDate,
@@ -107,7 +107,11 @@ async function handleRetryTypefully(postedDate: string): Promise<NextResponse> {
     cardName: lookup.cardName,
     scheduledAt,
   })
-  const tf = await createTypefullyDraft({ threadLines: [text], scheduleDate: scheduledAt })
+  const tf = await createTypefullyDraft({
+    threadLines: [text],
+    imageUrls: lookup.imageUrl ? [lookup.imageUrl] : undefined,
+    scheduleDate: scheduledAt,
+  })
 
   if ('error' in tf) {
     console.error('[daily-zukan-thread] retry_typefully error', {
@@ -144,6 +148,8 @@ async function handleRetryTypefully(postedDate: string): Promise<NextResponse> {
     typefullyId: tf.id,
     shareUrl: tf.share_url,
     scheduledAt,
+    text,
+    mediaUrls: lookup.imageUrl ? [lookup.imageUrl] : [],
     warning:
       'Typefully成功済みかどうかはDBに記録がないため、二重投稿に注意してください',
   })
@@ -176,12 +182,16 @@ export async function GET(req: NextRequest) {
         cycleNo: result.cycleNo,
       })
 
-      const threadUrl = `${SITE_URL}/thread/${result.threadId}`
-      const text = buildTypefullyText(result.cardName, threadUrl)
+      const text = buildTypefullyText(result.cardName, result.cardUrl)
       // 下書きではなく「予約投稿」として登録し X へ自動投稿させる。
       // 安全のため Cron 実行時刻の少し後（+2分）に予約する。
       const scheduledAt = new Date(Date.now() + 2 * 60 * 1000).toISOString()
-      const tf = await createTypefullyDraft({ threadLines: [text], scheduleDate: scheduledAt })
+      const mediaUrls = result.imageUrl ? [result.imageUrl] : []
+      const tf = await createTypefullyDraft({
+        threadLines: [text],
+        imageUrls: mediaUrls,
+        scheduleDate: scheduledAt,
+      })
 
       if ('error' in tf) {
         // Typefully投稿の失敗だけでは作成済みスレ・ログは削除しない（ここでは触らない）。
@@ -197,7 +207,7 @@ export async function GET(req: NextRequest) {
           shareUrl: tf.share_url,
           scheduledAt,
         })
-        typefully = { status: 'scheduled', id: tf.id, shareUrl: tf.share_url, scheduledAt }
+        typefully = { status: 'scheduled', id: tf.id, shareUrl: tf.share_url, scheduledAt, text, mediaUrls }
       }
     } else if (result.status === 'skipped') {
       console.log('[daily-zukan-thread] skipped', {

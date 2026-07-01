@@ -31,6 +31,8 @@ export type DailyZukanResult =
       status: 'created'
       cardSlug: string
       cardName: string
+      cardUrl: string
+      imageUrl: string
       threadId: number
       cycleNo: number
       postedDate: string
@@ -97,7 +99,12 @@ async function fetchPublishedCards(admin: ReturnType<typeof createAdminClient>):
   if (error) {
     return { cards: null, error: `cards: ${error.message}` }
   }
-  return { cards: (cards ?? []) as DailyZukanCard[], error: null }
+  return {
+    cards: ((cards ?? []) as DailyZukanCard[]).filter((card) =>
+      Boolean(card.slug && card.name && card.official_image_url?.trim()),
+    ),
+    error: null,
+  }
 }
 
 function chooseScheduleCard(
@@ -456,6 +463,8 @@ export async function runDailyZukanThread(): Promise<DailyZukanResult> {
     status: 'created',
     cardSlug: card.slug,
     cardName: card.name,
+    cardUrl,
+    imageUrl: card.official_image_url ?? '',
     threadId: thread.id,
     cycleNo,
     postedDate,
@@ -466,7 +475,7 @@ export async function runDailyZukanThread(): Promise<DailyZukanResult> {
 // retry_typefully モード用：指定日のログから既存スレ情報を引く。
 // スレは作り直さず、Typefully再投稿に必要な threadId / cardName だけ返す。
 export type DailyZukanRetryLookup =
-  | { status: 'found'; threadId: number; cardName: string; postedDate: string }
+  | { status: 'found'; threadId: number; cardName: string; cardUrl: string; imageUrl: string; postedDate: string }
   | { status: 'not_found'; reason: string; postedDate: string }
   | { status: 'error'; error: string }
 
@@ -495,10 +504,19 @@ export async function getDailyZukanThreadForRetry(
   // 2. Typefully文面に使うカード名を取得。カードが見つからなければslugで代替。
   const { data: card } = await admin
     .from('zukan_cards')
-    .select('name')
+    .select('name, slug, official_image_url')
     .eq('slug', log.card_slug)
     .maybeSingle()
   const cardName = card?.name ?? log.card_slug
+  const cardSlug = card?.slug ?? log.card_slug
+  const imageUrl = card?.official_image_url ?? ''
 
-  return { status: 'found', threadId: log.thread_id, cardName, postedDate }
+  return {
+    status: 'found',
+    threadId: log.thread_id,
+    cardName,
+    cardUrl: `${SITE_URL}/zukan/card/${cardSlug}`,
+    imageUrl,
+    postedDate,
+  }
 }
