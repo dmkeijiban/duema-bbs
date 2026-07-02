@@ -63,10 +63,7 @@ export async function getKakologThreads({
     raw = retryResult.data as unknown[] | null
   }
 
-  const visible = filterPublicVisibleUserContent((raw ?? []).map(thread => ({
-    ...(thread as Record<string, unknown>),
-    is_archived: true,
-  })) as unknown as Thread[], hiddenUserIds)
+  const visible = filterPublicVisibleUserContent((raw ?? []) as unknown as Thread[], hiddenUserIds)
   return withFallbackThumbnails(supabase, visible) as unknown as Promise<KakologThread[]>
 }
 
