@@ -32,8 +32,10 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
   const [authorName, setAuthorName] = useState('')
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
   const [error, setError] = useState('')
-  const [isPending, startTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [, startRefreshTransition] = useTransition()
   const [scrollTarget, setScrollTarget] = useState<number | null>(null)
+  const [successMessage, setSuccessMessage] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const displayCategory = getDisplayCategory(thread.categories)
@@ -93,6 +95,8 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setSuccessMessage('')
+    setIsSubmitting(true)
 
     const fd = new FormData()
     fd.set('thread_id', String(threadId))
@@ -101,9 +105,13 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
     const file = fileInputRef.current?.files?.[0]
     if (file) fd.set('image', file)
 
-    startTransition(async () => {
+    const startedAt = performance.now()
+    const finishSubmit = () => setIsSubmitting(false)
+
+    ;(async () => {
       try {
         const result = await createPost(fd)
+        const actionReturnedAt = performance.now()
         if (result?.error) {
           capturePostHogEvent('reply_submit_error', {
             thread_id: threadId,
@@ -112,6 +120,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
             has_image: Boolean(file),
           })
           setError(result.error)
+          finishSubmit()
         } else {
           capturePostHogEvent('reply_submit_success', {
             thread_id: threadId,
@@ -121,9 +130,25 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
           onBodyChange('')
           setAuthorName('')
           if (fileInputRef.current) fileInputRef.current.value = ''
+          setSuccessMessage('投稿しました。反映中です。')
+          finishSubmit()
           if ('postNumber' in result && typeof result.postNumber === 'number') {
             setScrollTarget(result.postNumber + 1)
           }
+          if ('debugTiming' in result && result.debugTiming) {
+            console.info('[reply submit timing]', JSON.stringify({
+              total_ms: Math.round(actionReturnedAt - startedAt),
+              action_return_ms: Math.round(actionReturnedAt - startedAt),
+              server: result.debugTiming,
+              has_image: Boolean(file),
+              thread_id: threadId,
+            }))
+          }
+          window.setTimeout(() => {
+            startRefreshTransition(() => {
+              router.refresh()
+            })
+          }, 0)
         }
       } catch {
         capturePostHogEvent('reply_submit_exception', {
@@ -134,8 +159,9 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
         // デプロイ後に古いJSキャッシュを持つタブからアクセスするとサーバーアクションIDが
         // 一致せず404が返る。ページ更新を促すメッセージを表示する。
         setError('ページが古くなっています。再読み込みしてから再度投稿してください。')
+        finishSubmit()
       }
-    })
+    })()
   }
 
   return (
@@ -273,15 +299,20 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
             {error}
           </div>
         )}
+        {successMessage && !error && (
+          <div className="mx-3 my-1.5 px-2 py-1.5 text-xs" style={{ background: '#d4edda', color: '#155724', border: '1px solid #c3e6cb' }}>
+            {successMessage}
+          </div>
+        )}
 
         <div className="px-3 py-2.5">
           <button
             type="submit"
-            disabled={isPending || authState.status === 'loading' || authState.status === 'profile_missing'}
+            disabled={isSubmitting || authState.status === 'loading' || authState.status === 'profile_missing'}
             className="w-full py-2 text-sm text-white disabled:opacity-60"
             style={{ background: '#0d6efd' }}
           >
-            {isPending ? '送信中...' : '投稿する'}
+            {isSubmitting ? '送信中...' : '投稿する'}
           </button>
         </div>
       </form>
