@@ -328,3 +328,15 @@ export function getEntryThumbnails(entry: HallEntry): { src: string; name: strin
   }
   return out
 }
+
+/** 指定した施行年の先頭カード画像を最大3枚集める（殿堂図鑑トップの年度カード用サムネ）。 */
+export function getYearThumbnails(year: string): { src: string; name: string }[] {
+  const out: { src: string; name: string }[] = []
+  for (const entry of getEntriesByYear(year)) {
+    for (const thumb of getEntryThumbnails(entry)) {
+      out.push(thumb)
+      if (out.length >= 3) return out
+    }
+  }
+  return out
+}
