@@ -34,6 +34,7 @@ export interface Post {
   body: string
   author_name: string
   user_id?: string | null
+  session_id?: string | null
   image_url: string | null
   thumbnail_url?: string | null
   ip_hash?: string | null
