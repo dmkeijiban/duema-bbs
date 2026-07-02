@@ -8,8 +8,8 @@ export interface TypefullyDraftParams {
   threadLines: string[]
   /** 1投稿目に添付する画像URL */
   imageUrls?: string[]
-  /** ISO8601形式のスケジュール日時（省略時は下書きとして保存） */
-  scheduleDate?: string
+  /** ISO8601形式のスケジュール日時、または即時公開/次枠指定（省略時は下書きとして保存） */
+  scheduleDate?: string | 'now' | 'next-free-slot'
   /** 自動リツイート（Typefully の auto_retweet_enabled 機能） */
   autoRetweetEnabled?: boolean
   /** 自動プラグイン */
@@ -59,10 +59,11 @@ function formatTypefullyError(status: number, text: string): string {
       return `Typefully API error ${status}: ${data.detail}`
     }
     if (data.error && typeof data.error === 'object') {
-      const err = data.error as { message?: unknown; code?: unknown }
+      const err = data.error as { message?: unknown; code?: unknown; details?: unknown }
       const message = typeof err.message === 'string' ? err.message : JSON.stringify(data.error)
       const code = typeof err.code === 'string' ? ` (${err.code})` : ''
-      return `Typefully API error ${status}${code}: ${message}`
+      const details = err.details ? ` details=${JSON.stringify(err.details).slice(0, 300)}` : ''
+      return `Typefully API error ${status}${code}: ${message}${details}`
     }
   } catch {
     // JSONではないレスポンスは下で短く返す。

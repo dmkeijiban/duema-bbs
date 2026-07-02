@@ -13,10 +13,11 @@ import { createTypefullyDraft } from '@/lib/typefully'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-// Typefully予約投稿の結果（APIレスポンス・ログ用）。
+// Typefully投稿の結果（APIレスポンス・ログ用）。
 type TypefullyOutcome =
-  | { status: 'scheduled'; id: string; shareUrl: string; scheduledAt: string; text: string; mediaUrls: string[]; persistError?: string }
+  | { status: 'posted'; id: string; shareUrl: string; postedAt: string; text: string; mediaUrls: string[]; imageFallback?: string; persistError?: string }
   | { status: 'error'; error: string; persistError?: string }
+  | { status: 'skipped'; reason: string; typefullyId?: string | null }
 
 type TypefullyGuard = {
   status: string | null
@@ -49,7 +50,7 @@ function buildTypefullyText(cardName: string, cardUrl: string): string {
     '思い出を募集中‼️',
     '',
     '当時じゃなくて',
-    '今の評価でもOKです🙆‍♀️',
+    '今の評価でもOKです💁‍♀️',
     '',
     'リプでも掲示板でも',
     '気軽にコメント下さい‼️',
@@ -119,11 +120,146 @@ async function saveTypefullyError(postedDate: string, errorMessage: string): Pro
   return error?.message
 }
 
+function isTypefullyValidationError(error: string): boolean {
+  return /Typefully API error 422|VALIDATION_ERROR/i.test(error)
+}
+
+async function createTypefullyPost({
+  postedDate,
+  threadId,
+  cardName,
+  cardUrl,
+  imageUrl,
+}: {
+  postedDate: string
+  threadId: number
+  cardName: string
+  cardUrl: string
+  imageUrl: string
+}): Promise<TypefullyOutcome> {
+  const text = buildTypefullyText(cardName, cardUrl)
+  const mediaUrls = imageUrl ? [imageUrl] : []
+  const postedAt = new Date().toISOString()
+
+  let tf = await createTypefullyDraft({
+    threadLines: [text],
+    imageUrls: mediaUrls,
+    scheduleDate: 'now',
+  })
+  let usedMediaUrls = mediaUrls
+  let imageFallback: string | undefined
+
+  if ('error' in tf && mediaUrls.length > 0 && isTypefullyValidationError(tf.error)) {
+    console.error('[daily-zukan-thread] typefully image payload rejected; retrying text-only', {
+      postedDate,
+      threadId,
+      error: tf.error,
+    })
+    imageFallback = tf.error
+    tf = await createTypefullyDraft({
+      threadLines: [text],
+      scheduleDate: 'now',
+    })
+    usedMediaUrls = []
+  }
+
+  if ('error' in tf) {
+    console.error('[daily-zukan-thread] typefully error', {
+      postedDate,
+      threadId,
+      error: tf.error,
+    })
+    const persistError = await saveTypefullyError(postedDate, tf.error)
+    if (persistError) {
+      console.error('[daily-zukan-thread] typefully error persistence failed', {
+        postedDate,
+        threadId,
+        error: persistError,
+      })
+    }
+    return { status: 'error', error: tf.error, ...(persistError ? { persistError } : {}) }
+  }
+
+  console.log('[daily-zukan-thread] typefully posted', {
+    postedDate,
+    threadId,
+    id: tf.id,
+    shareUrl: tf.share_url,
+    postedAt,
+    mediaCount: usedMediaUrls.length,
+  })
+  const persistError = await saveTypefullySuccess(postedDate, tf.id, tf.share_url, postedAt)
+  if (persistError) {
+    console.error('[daily-zukan-thread] typefully success persistence failed', {
+      postedDate,
+      threadId,
+      error: persistError,
+    })
+  }
+  return {
+    status: 'posted',
+    id: tf.id,
+    shareUrl: tf.share_url,
+    postedAt,
+    text,
+    mediaUrls: usedMediaUrls,
+    ...(imageFallback ? { imageFallback } : {}),
+    ...(persistError ? { persistError } : {}),
+  }
+}
+
+async function createTypefullyForPostedDate(postedDate: string): Promise<{
+  threadId?: number
+  typefully: TypefullyOutcome
+  httpStatus: number
+}> {
+  const guard = await getTypefullyGuard(postedDate)
+  if ('error' in guard) {
+    console.error('[daily-zukan-thread] typefully guard lookup error', {
+      postedDate,
+      error: guard.error,
+    })
+    return { typefully: { status: 'error', error: guard.error }, httpStatus: 500 }
+  }
+  if (guard.status === 'success' || guard.id) {
+    return {
+      typefully: { status: 'skipped', reason: 'already_success', typefullyId: guard.id },
+      httpStatus: 200,
+    }
+  }
+
+  const lookup = await getDailyZukanThreadForRetry(postedDate)
+  if (lookup.status === 'error') {
+    console.error('[daily-zukan-thread] typefully lookup error', {
+      postedDate,
+      error: lookup.error,
+    })
+    return { typefully: { status: 'error', error: lookup.error }, httpStatus: 500 }
+  }
+  if (lookup.status === 'not_found') {
+    return { typefully: { status: 'error', error: lookup.reason }, httpStatus: 404 }
+  }
+
+  const typefully = await createTypefullyPost({
+    postedDate,
+    threadId: lookup.threadId,
+    cardName: lookup.cardName,
+    cardUrl: lookup.cardUrl,
+    imageUrl: lookup.imageUrl,
+  })
+
+  return {
+    threadId: lookup.threadId,
+    typefully,
+    httpStatus: typefully.status === 'posted' || typefully.status === 'skipped' ? 200 : 502,
+  }
+}
+
 // 手動再試行モード（?retry_typefully=YYYY-MM-DD）。
 // 「スレは作れたが Typefully 投稿だけ失敗した日」を救済する。
 // - 通常のスレ作成は実行しない（既存スレを使い回す）
 // - 新しいログ行も作らない・スレも作り直さない
-// - DBに Typefully 成功記録が無いため、二重投稿の注意を warning で返す（自動再試行はしない）
+// - DBに Typefully 成功記録がある場合は再投稿しない
 async function handleRetryTypefully(postedDate: string): Promise<NextResponse> {
   // 日付形式チェック（YYYY-MM-DD かつ実在する日付）。
   if (!/^\d{4}-\d{2}-\d{2}$/.test(postedDate) || Number.isNaN(Date.parse(postedDate))) {
@@ -138,123 +274,66 @@ async function handleRetryTypefully(postedDate: string): Promise<NextResponse> {
     )
   }
 
-  const guard = await getTypefullyGuard(postedDate)
-  if ('error' in guard) {
-    console.error('[daily-zukan-thread] retry_typefully guard lookup error', {
-      postedDate,
-      error: guard.error,
-    })
+  const { threadId, typefully, httpStatus } = await createTypefullyForPostedDate(postedDate)
+  return NextResponse.json({
+    ok: typefully.status === 'posted' || typefully.status === 'skipped',
+    mode: 'retry_typefully',
+    postedDate,
+    threadId,
+    typefully,
+  }, { status: httpStatus })
+}
+
+// 安全確認用（?preview_typefully=YYYY-MM-DD）。
+// Typefully API は呼ばず、既存スレから投稿予定文面と画像候補だけ返す。
+async function handlePreviewTypefully(postedDate: string): Promise<NextResponse> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(postedDate) || Number.isNaN(Date.parse(postedDate))) {
     return NextResponse.json(
-      { ok: false, mode: 'retry_typefully', postedDate, error: guard.error },
-      { status: 500 },
+      {
+        ok: false,
+        mode: 'preview_typefully',
+        error: 'invalid_date_format',
+        detail: 'YYYY-MM-DD 形式で指定してください',
+      },
+      { status: 400 },
     )
-  }
-  if (guard.status === 'success' || guard.id) {
-    return NextResponse.json({
-      ok: true,
-      mode: 'retry_typefully',
-      postedDate,
-      typefully: 'skipped',
-      reason: 'already_success',
-      typefullyId: guard.id,
-    })
   }
 
   const lookup = await getDailyZukanThreadForRetry(postedDate)
   if (lookup.status === 'error') {
-    console.error('[daily-zukan-thread] retry_typefully lookup error', {
-      postedDate,
-      error: lookup.error,
-    })
     return NextResponse.json(
-      { ok: false, mode: 'retry_typefully', postedDate, error: lookup.error },
+      { ok: false, mode: 'preview_typefully', postedDate, error: lookup.error },
       { status: 500 },
     )
   }
   if (lookup.status === 'not_found') {
-    // no_log_for_date / no_thread_id
     return NextResponse.json(
-      { ok: false, mode: 'retry_typefully', postedDate, error: lookup.reason },
+      { ok: false, mode: 'preview_typefully', postedDate, error: lookup.reason },
       { status: 404 },
     )
   }
 
-  // 既存スレを使って Typefully だけ再投稿する。
-  const text = buildTypefullyText(lookup.cardName, lookup.cardUrl)
-  const scheduledAt = new Date(Date.now() + 2 * 60 * 1000).toISOString()
-  console.log('[daily-zukan-thread] retry_typefully (manual re-post)', {
-    postedDate,
-    threadId: lookup.threadId,
-    cardName: lookup.cardName,
-    scheduledAt,
-  })
-  const tf = await createTypefullyDraft({
-    threadLines: [text],
-    imageUrls: lookup.imageUrl ? [lookup.imageUrl] : undefined,
-    scheduleDate: scheduledAt,
-  })
-
-  if ('error' in tf) {
-    console.error('[daily-zukan-thread] retry_typefully error', {
-      postedDate,
-      threadId: lookup.threadId,
-      error: tf.error,
-    })
-    const persistError = await saveTypefullyError(postedDate, tf.error)
-    if (persistError) {
-      console.error('[daily-zukan-thread] retry_typefully error persistence failed', {
-        postedDate,
-        threadId: lookup.threadId,
-        error: persistError,
-      })
-    }
-    return NextResponse.json(
-      {
-        ok: false,
-        mode: 'retry_typefully',
-        postedDate,
-        threadId: lookup.threadId,
-        typefully: 'error',
-        error: tf.error,
-        ...(persistError ? { persistError } : {}),
-      },
-      { status: 502 },
-    )
-  }
-
-  console.log('[daily-zukan-thread] retry_typefully scheduled', {
-    postedDate,
-    threadId: lookup.threadId,
-    id: tf.id,
-    shareUrl: tf.share_url,
-    scheduledAt,
-  })
-  const persistError = await saveTypefullySuccess(postedDate, tf.id, tf.share_url, scheduledAt)
-  if (persistError) {
-    console.error('[daily-zukan-thread] retry_typefully success persistence failed', {
-      postedDate,
-      threadId: lookup.threadId,
-      error: persistError,
-    })
-  }
+  const guard = await getTypefullyGuard(postedDate)
   return NextResponse.json({
     ok: true,
-    mode: 'retry_typefully',
+    mode: 'preview_typefully',
     postedDate,
     threadId: lookup.threadId,
-    typefully: 'scheduled',
-    typefullyId: tf.id,
-    shareUrl: tf.share_url,
-    scheduledAt,
-    text,
+    text: buildTypefullyText(lookup.cardName, lookup.cardUrl),
     mediaUrls: lookup.imageUrl ? [lookup.imageUrl] : [],
-    ...(persistError ? { persistError } : {}),
+    typefully: 'error' in guard ? { guardError: guard.error } : guard,
   })
 }
 
 export async function GET(req: NextRequest) {
   const authError = assertCronAuth(req)
   if (authError) return authError
+
+  // 安全確認モード。Typefully API・DB更新・スレ作成は実行しない。
+  const previewDate = req.nextUrl.searchParams.get('preview_typefully')
+  if (previewDate) {
+    return handlePreviewTypefully(previewDate)
+  }
 
   // 手動再試行モード。通常のスレ作成より先に分岐する。
   const retryDate = req.nextUrl.searchParams.get('retry_typefully')
@@ -265,9 +344,8 @@ export async function GET(req: NextRequest) {
   try {
     const result = await runDailyZukanThread()
 
-    // Typefully投稿は created のときだけ実行する。
-    // skipped / error では投稿しない。created は posted_date UNIQUE により
-    // 1日1回しか発生しないため、同じ日に二重投稿されることはない。
+    // Typefully投稿は created 直後に実行する。既に同日スレがある場合も、
+    // Typefully成功記録が無いときだけ同じスレに対して再試行する。
     let typefully: TypefullyOutcome | undefined
 
     if (result.status === 'created') {
@@ -279,62 +357,22 @@ export async function GET(req: NextRequest) {
         cycleNo: result.cycleNo,
       })
 
-      const text = buildTypefullyText(result.cardName, result.cardUrl)
-      // 下書きではなく「予約投稿」として登録し X へ自動投稿させる。
-      // 安全のため Cron 実行時刻の少し後（+2分）に予約する。
-      const scheduledAt = new Date(Date.now() + 2 * 60 * 1000).toISOString()
-      const mediaUrls = result.imageUrl ? [result.imageUrl] : []
-      const tf = await createTypefullyDraft({
-        threadLines: [text],
-        imageUrls: mediaUrls,
-        scheduleDate: scheduledAt,
+      typefully = await createTypefullyPost({
+        postedDate: result.postedDate,
+        threadId: result.threadId,
+        cardName: result.cardName,
+        cardUrl: result.cardUrl,
+        imageUrl: result.imageUrl,
       })
-
-      if ('error' in tf) {
-        // Typefully投稿の失敗だけでは作成済みスレ・ログは削除しない（ここでは触らない）。
-        console.error('[daily-zukan-thread] typefully error', {
-          threadId: result.threadId,
-          error: tf.error,
-        })
-        const persistError = await saveTypefullyError(result.postedDate, tf.error)
-        if (persistError) {
-          console.error('[daily-zukan-thread] typefully error persistence failed', {
-            postedDate: result.postedDate,
-            threadId: result.threadId,
-            error: persistError,
-          })
-        }
-        typefully = { status: 'error', error: tf.error, ...(persistError ? { persistError } : {}) }
-      } else {
-        console.log('[daily-zukan-thread] typefully scheduled', {
-          threadId: result.threadId,
-          id: tf.id,
-          shareUrl: tf.share_url,
-          scheduledAt,
-        })
-        const persistError = await saveTypefullySuccess(result.postedDate, tf.id, tf.share_url, scheduledAt)
-        if (persistError) {
-          console.error('[daily-zukan-thread] typefully success persistence failed', {
-            postedDate: result.postedDate,
-            threadId: result.threadId,
-            error: persistError,
-          })
-        }
-        typefully = {
-          status: 'scheduled',
-          id: tf.id,
-          shareUrl: tf.share_url,
-          scheduledAt,
-          text,
-          mediaUrls,
-          ...(persistError ? { persistError } : {}),
-        }
-      }
     } else if (result.status === 'skipped') {
       console.log('[daily-zukan-thread] skipped', {
         postedDate: result.postedDate,
         reason: result.reason,
       })
+      if (['already_posted_today', 'schedule_already_completed', 'race_already_posted'].includes(result.reason)) {
+        const retry = await createTypefullyForPostedDate(result.postedDate)
+        typefully = retry.typefully
+      }
     } else {
       console.error('[daily-zukan-thread] error', result)
     }
