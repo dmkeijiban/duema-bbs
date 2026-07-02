@@ -132,7 +132,15 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
           onBodyChange('')
           setAuthorName('')
           if (fileInputRef.current) fileInputRef.current.value = ''
-          setSuccessMessage('投稿しました。反映中です。')
+          let timingLabel = ''
+          if (typeof resultRecord.debugTimingJson === 'string') {
+            try {
+              timingLabel = ` (${JSON.parse(resultRecord.debugTimingJson).total_ms}ms)`
+            } catch {
+              timingLabel = ''
+            }
+          }
+          setSuccessMessage(`投稿しました。反映中です。${isPreviewHost ? timingLabel : ''}`)
           finishSubmit()
           const formReleasedAt = performance.now()
           if ('postNumber' in result && typeof result.postNumber === 'number') {
