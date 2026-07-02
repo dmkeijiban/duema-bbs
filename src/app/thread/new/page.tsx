@@ -60,7 +60,7 @@ export default async function NewThreadPage() {
             </p>
           )}
         </div>
-        <NewThreadFormClient categories={categories} />
+        <NewThreadFormClient categories={categories} isLoggedIn={isLoggedIn} />
       </div>
     </div>
   )

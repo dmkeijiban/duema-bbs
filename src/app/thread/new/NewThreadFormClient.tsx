@@ -19,10 +19,12 @@ type AuthState =
 
 interface Props {
   categories: Category[]
+  isLoggedIn: boolean
 }
 
-export function NewThreadFormClient({ categories }: Props) {
+export function NewThreadFormClient({ categories, isLoggedIn }: Props) {
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [isPending, startTransition] = useTransition()
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
   const router = useRouter()
@@ -55,6 +57,7 @@ export function NewThreadFormClient({ categories }: Props) {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
+    setSuccess('')
     const formData = new FormData(e.currentTarget)
     startTransition(async () => {
       try {
@@ -62,7 +65,13 @@ export function NewThreadFormClient({ categories }: Props) {
         if (result?.error) {
           setError(result.error)
         } else if ('threadId' in result && result.threadId) {
-          router.push(`/thread/${result.threadId}`)
+          setSuccess(isLoggedIn
+            ? '投稿しました！ありがとうございます。'
+            : '投稿しました。アカウントを作成すると、プロフィールや投稿一覧を利用できます。'
+          )
+          window.setTimeout(() => {
+            router.push(`/thread/${result.threadId}`)
+          }, 900)
         }
       } catch (err) {
         // NEXT_REDIRECT はNext.jsがリダイレクト処理するので再スロー
@@ -178,10 +187,21 @@ export function NewThreadFormClient({ categories }: Props) {
         </div>
       )}
 
+      {success && (
+        <div className="px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+          <p>{success}</p>
+          {!isLoggedIn && (
+            <Link href="/login?mode=signup" className="mt-2 inline-flex rounded border border-green-300 bg-white px-3 py-1.5 text-xs font-bold text-green-700 hover:bg-green-100">
+              アカウント作成
+            </Link>
+          )}
+        </div>
+      )}
+
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
-          disabled={isPending}
+          disabled={isPending || Boolean(success)}
           className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-sm transition-colors"
         >
           <PenSquare className="w-4 h-4" />
