@@ -37,6 +37,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
   const [scrollTarget, setScrollTarget] = useState<number | null>(null)
   const [successMessage, setSuccessMessage] = useState('')
   const [debugTimingJson, setDebugTimingJson] = useState('')
+  const submitInFlightRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const displayCategory = getDisplayCategory(thread.categories)
@@ -95,6 +96,8 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (submitInFlightRef.current) return
+    submitInFlightRef.current = true
     setError('')
     setSuccessMessage('')
     setDebugTimingJson('')
@@ -108,7 +111,10 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
     if (file) fd.set('image', file)
 
     const startedAt = performance.now()
-    const finishSubmit = () => setIsSubmitting(false)
+    const finishSubmit = () => {
+      submitInFlightRef.current = false
+      setIsSubmitting(false)
+    }
 
     ;(async () => {
       try {
