@@ -20,9 +20,19 @@ export function applyActiveThreadFilter<T>(query: T, now = new Date()): T {
 
 export function applyKakologThreadFilter<T>(query: T, now = new Date()): T {
   const q = query as unknown as {
-    or: (filters: string) => unknown
+    eq: (column: string, value: unknown) => {
+      is: (column: string, value: null) => {
+        eq: (column: string, value: unknown) => {
+          lt: (column: string, value: string) => unknown
+        }
+      }
+    }
   }
-  return q.or(`is_archived.eq.true,archived_at.not.is.null,and(auto_lock_exempt.eq.false,created_at.lt.${cutoffIso(now)})`) as T
+  return q
+    .eq('is_archived', false)
+    .is('archived_at', null)
+    .eq('auto_lock_exempt', false)
+    .lt('created_at', cutoffIso(now)) as T
 }
 
 export function applyLegacyActiveThreadFilter<T>(query: T): T {
@@ -34,9 +44,11 @@ export function applyLegacyActiveThreadFilter<T>(query: T): T {
 
 export function applyLegacyKakologThreadFilter<T>(query: T): T {
   const q = query as unknown as {
-    eq: (column: string, value: unknown) => unknown
+    eq: (column: string, value: unknown) => {
+      lt: (column: string, value: string) => unknown
+    }
   }
-  return q.eq('is_archived', true) as T
+  return q.eq('is_archived', false).lt('created_at', cutoffIso()) as T
 }
 
 export function isArchiveSchemaMissing(error: { code?: string; message?: string } | null | undefined) {
