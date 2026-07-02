@@ -60,6 +60,18 @@ export async function optimizeThumbnail(file: File): Promise<OptimizedImage> {
   return { buffer: data, contentType: 'image/webp', ext: 'webp', width: info.width, height: info.height, byteSize: info.size }
 }
 
+export async function optimizeListThumbnail(file: File): Promise<OptimizedImage> {
+  const inputBuffer = Buffer.from(await file.arrayBuffer())
+
+  const { data, info } = await sharp(inputBuffer)
+    .rotate()
+    .resize(192, 192, { fit: 'cover', withoutEnlargement: false })
+    .webp({ quality: 80 })
+    .toBuffer({ resolveWithObject: true })
+
+  return { buffer: data, contentType: 'image/webp', ext: 'webp', width: info.width, height: info.height, byteSize: info.size }
+}
+
 export async function optimizePostImage(file: File): Promise<OptimizedImage> {
   return optimizeImage(file, { maxWidth: 1600, maxHeight: 2000, quality: 84 })
 }

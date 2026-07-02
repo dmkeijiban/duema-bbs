@@ -1,12 +1,17 @@
-import { optimizeThumbnail, optimizePostImage, optimizeBannerImage } from './image-optimize'
+import { optimizeThumbnail, optimizePostImage, optimizeBannerImage, optimizeListThumbnail } from './image-optimize'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type UploadPreset = 'thumbnail' | 'post' | 'banner'
 
 export interface UploadResult {
   url: string
+  thumbnailUrl: string | null
   width: number
   height: number
+}
+
+interface UploadOptions {
+  createListThumbnail?: boolean
 }
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
@@ -24,7 +29,8 @@ export async function uploadImage(
   file: File,
   supabase: SupabaseClient,
   storagePath: string,
-  preset: UploadPreset
+  preset: UploadPreset,
+  options: UploadOptions = {}
 ): Promise<{ data?: UploadResult; error?: string }> {
   const validationError = validateImageFile(file)
   if (validationError) return { error: validationError }
@@ -47,5 +53,27 @@ export async function uploadImage(
   if (error) return { error: '画像のアップロードに失敗しました' }
 
   const { data: urlData } = supabase.storage.from('bbs-images').getPublicUrl(data.path)
-  return { data: { url: urlData.publicUrl, width: optimized.width, height: optimized.height } }
+  let thumbnailUrl: string | null = null
+
+  if (options.createListThumbnail) {
+    try {
+      const thumbnail = await optimizeListThumbnail(file)
+      const thumbnailFileName = `thumbnails/${storagePath}.${thumbnail.ext}`
+      const { data: thumbnailData, error: thumbnailError } = await supabase.storage
+        .from('bbs-images')
+        .upload(thumbnailFileName, thumbnail.buffer, {
+          contentType: thumbnail.contentType,
+          cacheControl: STORAGE_CACHE_SECONDS,
+        })
+
+      if (!thumbnailError) {
+        const { data: thumbnailUrlData } = supabase.storage.from('bbs-images').getPublicUrl(thumbnailData.path)
+        thumbnailUrl = thumbnailUrlData.publicUrl
+      }
+    } catch (error) {
+      console.warn('list thumbnail generation failed:', error)
+    }
+  }
+
+  return { data: { url: urlData.publicUrl, thumbnailUrl, width: optimized.width, height: optimized.height } }
 }

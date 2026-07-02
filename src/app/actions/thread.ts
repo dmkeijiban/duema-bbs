@@ -191,6 +191,7 @@ export async function createThread(formData: FormData) {
   }
 
   let imageUrl: string | null = null
+  let thumbnailUrl: string | null = null
   let imageWidth: number | null = null
   let imageHeight: number | null = null
 
@@ -198,9 +199,10 @@ export async function createThread(formData: FormData) {
     const validErr = validateImageFile(imageFile)
     if (validErr) return { error: validErr }
 
-    const result = await uploadImage(imageFile, supabase, `threads/${uuidv4()}`, 'post')
+    const result = await uploadImage(imageFile, supabase, `threads/${uuidv4()}`, 'post', { createListThumbnail: true })
     if (result.error || !result.data) return { error: result.error ?? '画像のアップロードに失敗しました' }
     imageUrl = result.data.url
+    thumbnailUrl = result.data.thumbnailUrl
     imageWidth = result.data.width || null
     imageHeight = result.data.height || null
   }
@@ -211,6 +213,7 @@ export async function createThread(formData: FormData) {
     author_name: authorName,
     category_id: categoryId ? parseInt(categoryId) : null,
     image_url: imageUrl,
+    thumbnail_url: thumbnailUrl,
     image_width: imageWidth,
     image_height: imageHeight,
     session_id: sessionId,
@@ -233,6 +236,7 @@ export async function createThread(formData: FormData) {
         author_name: authorName,
         category_id: categoryId ? parseInt(categoryId) : null,
         image_url: imageUrl,
+        thumbnail_url: thumbnailUrl,
         session_id: sessionId,
         user_id: userId,
       })
@@ -252,6 +256,7 @@ export async function createThread(formData: FormData) {
         author_name: authorName,
         category_id: categoryId ? parseInt(categoryId) : null,
         image_url: imageUrl,
+        thumbnail_url: thumbnailUrl,
         user_id: userId,
       })
       .select('id')
@@ -272,6 +277,7 @@ export async function createThread(formData: FormData) {
         author_name: authorName,
         category_id: categoryId ? parseInt(categoryId) : null,
         image_url: imageUrl,
+        thumbnail_url: thumbnailUrl,
         session_id: sessionId,
       })
       .select('id')
@@ -375,6 +381,7 @@ export async function createPost(formData: FormData) {
   const nextPostNumber = (maxPost?.post_number ?? 0) + 1
 
   let imageUrl: string | null = null
+  let thumbnailUrl: string | null = null
   let imageWidth: number | null = null
   let imageHeight: number | null = null
 
@@ -382,9 +389,10 @@ export async function createPost(formData: FormData) {
     const validErr = validateImageFile(imageFile)
     if (validErr) return { error: validErr }
 
-    const result = await uploadImage(imageFile, supabase, `posts/${uuidv4()}`, 'post')
+    const result = await uploadImage(imageFile, supabase, `posts/${uuidv4()}`, 'post', { createListThumbnail: true })
     if (result.error || !result.data) return { error: result.error ?? '画像のアップロードに失敗しました' }
     imageUrl = result.data.url
+    thumbnailUrl = result.data.thumbnailUrl
     imageWidth = result.data.width || null
     imageHeight = result.data.height || null
   }
@@ -395,6 +403,7 @@ export async function createPost(formData: FormData) {
     body,
     author_name: authorName,
     image_url: imageUrl,
+    thumbnail_url: thumbnailUrl,
     image_width: imageWidth,
     image_height: imageHeight,
     session_id: sessionId,
@@ -410,6 +419,7 @@ export async function createPost(formData: FormData) {
       body,
       author_name: authorName,
       image_url: imageUrl,
+      thumbnail_url: thumbnailUrl,
       image_width: imageWidth,
       image_height: imageHeight,
       session_id: sessionId,
@@ -426,6 +436,7 @@ export async function createPost(formData: FormData) {
       body,
       author_name: authorName,
       image_url: imageUrl,
+      thumbnail_url: thumbnailUrl,
       session_id: sessionId,
       user_id: userId,
       ip_hash: ipHash,
@@ -440,6 +451,7 @@ export async function createPost(formData: FormData) {
       body,
       author_name: authorName,
       image_url: imageUrl,
+      thumbnail_url: thumbnailUrl,
       session_id: sessionId,
     })
     error = e2b
@@ -453,6 +465,7 @@ export async function createPost(formData: FormData) {
       body,
       author_name: authorName,
       image_url: imageUrl,
+      thumbnail_url: thumbnailUrl,
       user_id: userId,
     })
     error = e3
@@ -468,6 +481,7 @@ export async function createPost(formData: FormData) {
       body,
       author_name: authorName,
       image_url: imageUrl,
+      thumbnail_url: thumbnailUrl,
       session_id: sessionId,
     })
     error = e4
@@ -506,7 +520,10 @@ export async function createPost(formData: FormData) {
       .eq('id', threadId)
       .single()
     if (!th?.image_url) {
-      await admin.from('threads').update({ image_url: imageUrl }).eq('id', threadId)
+      const updateData = thumbnailUrl
+        ? { image_url: imageUrl, thumbnail_url: thumbnailUrl }
+        : { image_url: imageUrl }
+      await admin.from('threads').update(updateData).eq('id', threadId)
     }
   }
 
