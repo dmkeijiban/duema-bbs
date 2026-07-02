@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase'
+import { createClient, getCurrentUser } from '@/lib/supabase'
 
 type AuthState =
   | { status: 'anon' }
@@ -33,7 +33,7 @@ export function HeaderAuthNav({ variant, onNavigate }: Props) {
     const resolve = async () => {
       const {
         data: { user },
-      } = await supabase.auth.getUser()
+      } = await getCurrentUser()
       if (!active) return
       if (!user) {
         setState({ status: 'anon' })

@@ -8,7 +8,7 @@ import { PenSquare } from '@/components/Icons'
 import Link from 'next/link'
 import { getPostableConsolidatedCategories } from '@/lib/categories'
 import type { Category } from '@/types'
-import { createClient } from '@/lib/supabase'
+import { createClient, getCurrentUser } from '@/lib/supabase'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 
 type AuthState =
@@ -30,7 +30,7 @@ export function NewThreadFormClient({ categories }: Props) {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(async ({ data }) => {
+    getCurrentUser().then(async ({ data }) => {
       if (!data.user) {
         setAuthState({ status: 'anon' })
         return

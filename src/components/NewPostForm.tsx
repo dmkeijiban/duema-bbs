@@ -7,7 +7,7 @@ import { createPost } from '@/app/actions/thread'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { capturePostHogEvent } from '@/lib/posthog-events'
-import { createClient } from '@/lib/supabase'
+import { createClient, getCurrentUser } from '@/lib/supabase'
 import { ProfileAvatar } from './ProfileAvatar'
 import { getDisplayCategory } from '@/lib/categories'
 import { COMMENT_BODY_MAX_LENGTH } from '@/lib/spam'
@@ -52,7 +52,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(async ({ data }) => {
+    getCurrentUser().then(async ({ data }) => {
       if (!data.user) {
         setAuthState({ status: 'anon' })
         return

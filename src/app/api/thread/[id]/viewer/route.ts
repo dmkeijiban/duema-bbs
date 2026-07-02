@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase-server'
+import { createPublicClient } from '@/lib/supabase-public'
 import { verifyAdminCookie } from '@/lib/admin-auth'
 
 interface Props {
@@ -20,6 +21,12 @@ function getJstDateKey() {
   return jstNow.toISOString().slice(0, 10)
 }
 
+function hasSupabaseAuthToken(cookieStore: Awaited<ReturnType<typeof cookies>>) {
+  return cookieStore
+    .getAll()
+    .some(cookie => cookie.name.startsWith('sb-') && cookie.name.endsWith('-auth-token'))
+}
+
 export async function GET(request: NextRequest, { params }: Props) {
   const { id } = await params
   const threadId = parseInt(id)
@@ -36,9 +43,15 @@ export async function GET(request: NextRequest, { params }: Props) {
     request.nextUrl.searchParams.get('view') === '1' &&
     !isBotRequest(request) &&
     cookieStore.get(viewCookieName)?.value !== todayKey
-  const supabase = await createClient()
-  const { data: userData } = await supabase.auth.getUser()
-  const currentUserId = userData.user?.id ?? ''
+
+  let currentUserId = ''
+  if (hasSupabaseAuthToken(cookieStore)) {
+    const authSupabase = await createClient()
+    const { data: userData } = await authSupabase.auth.getUser()
+    currentUserId = userData.user?.id ?? ''
+  }
+
+  const supabase = createPublicClient()
 
   let isFavorited = false
   if (sessionId) {
