@@ -11,6 +11,7 @@ export interface UploadResult {
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 const MAX_BYTES = 10 * 1024 * 1024
+const STORAGE_CACHE_SECONDS = '31536000'
 
 export function validateImageFile(file: File): string | null {
   if (!file || file.size === 0) return '画像が選択されていません'
@@ -38,7 +39,10 @@ export async function uploadImage(
 
   const { data, error } = await supabase.storage
     .from('bbs-images')
-    .upload(fileName, optimized.buffer, { contentType: optimized.contentType })
+    .upload(fileName, optimized.buffer, {
+      contentType: optimized.contentType,
+      cacheControl: STORAGE_CACHE_SECONDS,
+    })
 
   if (error) return { error: '画像のアップロードに失敗しました' }
 
