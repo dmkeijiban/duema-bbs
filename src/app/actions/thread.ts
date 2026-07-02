@@ -2,6 +2,7 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { after } from 'next/server'
 import { cookies, headers } from 'next/headers'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
@@ -11,9 +12,9 @@ import { uploadImage, validateImageFile } from '@/lib/upload'
 import { sendPushNotifications } from '@/app/actions/push-subscription'
 import { notifyNewThread } from '@/lib/discord'
 import { verifyAdminCookie } from '@/lib/admin-auth'
-import { checkModerationBan, checkNgWords, checkPostingBan, checkSessionBan, hashModerationValue } from '@/lib/moderation'
+import { checkModerationBan, checkNgWords, checkPostingBan, hashModerationValue } from '@/lib/moderation'
 import { getThreadCommentClosedMessage } from '@/lib/thread-auto-close'
-import { checkSessionRateLimit, checkValueRateLimit } from '@/lib/rate-limit'
+import { checkValueRateLimitRules } from '@/lib/rate-limit'
 
 function hasHoneypotValue(formData: FormData): boolean {
   const value = formData.get('website')
@@ -93,49 +94,205 @@ type PostTargetThread = {
   categories?: { name?: string | null; slug?: string | null } | { name?: string | null; slug?: string | null }[] | null
 }
 
+type PostTiming = {
+  startedAt: number
+  previous: number
+  steps: Record<string, number>
+  milestones: Record<string, number>
+}
+
+function shouldExposePostTiming() {
+  return process.env.POST_TIMING_LOGS === '1' || process.env.VERCEL_ENV !== 'production'
+}
+
+function createPostTiming(): PostTiming {
+  const now = performance.now()
+  return {
+    startedAt: now,
+    previous: now,
+    steps: {},
+    milestones: {},
+  }
+}
+
+function markPostTiming(timing: PostTiming, step: string) {
+  const now = performance.now()
+  timing.steps[step] = Math.round(now - timing.previous)
+  timing.milestones[step] = Math.round(now - timing.startedAt)
+  timing.previous = now
+}
+
+function getPostTimingPayload(timing: PostTiming) {
+  return {
+    total_ms: Math.round(performance.now() - timing.startedAt),
+    steps_ms: timing.steps,
+    milestones_ms: timing.milestones,
+  }
+}
+
+async function hasSupabaseAuthCookie() {
+  const cookieStore = await cookies()
+  return cookieStore.getAll().some(cookie =>
+    cookie.name.startsWith('sb-') &&
+    cookie.name.includes('auth-token') &&
+    cookie.value.length > 0
+  )
+}
+
+async function getPostAuthContext(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  timing: PostTiming,
+) {
+  if (!(await hasSupabaseAuthCookie())) {
+    markPostTiming(timing, 'auth_cookie_skip')
+    return { authUserId: null, activeProfileUserId: null }
+  }
+
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  markPostTiming(timing, 'auth_get_user')
+  const user = userData.user
+  if (userError || !user) return { authUserId: null, activeProfileUserId: null }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, profile_hidden, account_suspended, withdrawn_at')
+    .eq('id', user.id)
+    .maybeSingle()
+  markPostTiming(timing, 'profile_select')
+
+  const activeProfileUserId = (
+    !profileError &&
+    profile &&
+    !profile.profile_hidden &&
+    !profile.account_suspended &&
+    !profile.withdrawn_at
+  )
+    ? user.id
+    : null
+
+  return { authUserId: user.id, activeProfileUserId }
+}
+
+async function runPostAfterTasks(params: {
+  threadId: number
+  threadTitle: string | null
+  postNumber: number
+  imageUrl: string | null
+  thumbnailUrl: string | null
+}) {
+  const startedAt = performance.now()
+  let previous = startedAt
+  const steps: Record<string, number> = {}
+  const mark = (step: string) => {
+    const now = performance.now()
+    steps[step] = Math.round(now - previous)
+    previous = now
+  }
+
+  try {
+    const admin = createAdminClient()
+    const { error: countError } = await admin.rpc('increment_post_count', { p_thread_id: params.threadId })
+    if (countError) console.warn('increment_post_count failed:', countError.message)
+    mark('increment_post_count')
+
+    if (params.threadTitle) {
+      sendPushNotifications(
+        params.threadId,
+        params.threadTitle,
+        params.postNumber,
+      ).catch(() => {})
+    }
+    mark('notification_enqueue')
+
+    if (params.imageUrl) {
+      const { data: th } = await admin
+        .from('threads')
+        .select('image_url')
+        .eq('id', params.threadId)
+        .single()
+      mark('thumbnail_select')
+
+      if (!th?.image_url) {
+        const updateData = params.thumbnailUrl
+          ? { image_url: params.imageUrl, thumbnail_url: params.thumbnailUrl }
+          : { image_url: params.imageUrl }
+        await admin.from('threads').update(updateData).eq('id', params.threadId)
+      }
+      mark('thumbnail_update')
+    } else {
+      mark('thumbnail_skip')
+    }
+
+    revalidateTag(`thread-${params.threadId}`, { expire: 0 })
+    revalidateTag('threads', { expire: 0 })
+    revalidateTag('posts', { expire: 0 })
+    mark('list_cache_revalidate')
+
+    if (shouldExposePostTiming()) {
+      console.log('[createPost after timing]', JSON.stringify({
+        total_ms: Math.round(performance.now() - startedAt),
+        steps_ms: steps,
+      }))
+    }
+  } catch (error) {
+    console.warn('Post after tasks failed:', error)
+    if (shouldExposePostTiming()) {
+      console.log('[createPost after timing]', JSON.stringify({
+        status: 'failed',
+        total_ms: Math.round(performance.now() - startedAt),
+        steps_ms: steps,
+      }))
+    }
+  }
+}
+
 async function checkPostRateLimits(
   supabase: Awaited<ReturnType<typeof createClient>>,
   sessionId: string,
   ipHash: string | null,
 ) {
   const checks = [
-    checkSessionRateLimit(supabase, {
+    checkValueRateLimitRules(supabase, {
       table: 'posts',
-      sessionId,
-      windowSeconds: 60,
-      minIntervalSeconds: 8,
-      maxInWindow: 5,
-      label: 'レス',
-    }),
-    checkSessionRateLimit(supabase, {
-      table: 'posts',
-      sessionId,
-      windowSeconds: 600,
-      minIntervalSeconds: 0,
-      maxInWindow: 15,
-      label: 'レス',
+      column: 'session_id',
+      value: sessionId,
+      rules: [
+        {
+          windowSeconds: 60,
+          minIntervalSeconds: 8,
+          maxInWindow: 5,
+          label: 'レス',
+        },
+        {
+          windowSeconds: 600,
+          minIntervalSeconds: 0,
+          maxInWindow: 15,
+          label: 'レス',
+        },
+      ],
     }),
   ]
 
   if (ipHash) {
     checks.push(
-      checkValueRateLimit(supabase, {
+      checkValueRateLimitRules(supabase, {
         table: 'posts',
         column: 'ip_hash',
         value: ipHash,
-        windowSeconds: 60,
-        minIntervalSeconds: 0,
-        maxInWindow: 5,
-        label: '同じ回線からのレス',
-      }),
-      checkValueRateLimit(supabase, {
-        table: 'posts',
-        column: 'ip_hash',
-        value: ipHash,
-        windowSeconds: 600,
-        minIntervalSeconds: 0,
-        maxInWindow: 15,
-        label: '同じ回線からのレス',
+        rules: [
+          {
+            windowSeconds: 60,
+            minIntervalSeconds: 0,
+            maxInWindow: 5,
+            label: '同じ回線からのレス',
+          },
+          {
+            windowSeconds: 600,
+            minIntervalSeconds: 0,
+            maxInWindow: 15,
+            label: '同じ回線からのレス',
+          },
+        ],
       }),
     )
   }
@@ -310,10 +467,11 @@ export async function createThread(formData: FormData) {
 }
 
 export async function createPost(formData: FormData) {
+  const timing = createPostTiming()
   if (hasHoneypotValue(formData)) return { error: '投稿に失敗しました' }
 
   const threadId = parseInt(formData.get('thread_id') as string)
-  const body = (formData.get('body') as string)?.trim()
+  const body = ((formData.get('body') as string) ?? '').trim()
   const authorName = (formData.get('author_name') as string)?.trim() || '名無しのデュエリスト'
   const imageFile = formData.get('image') as File | null
   if (!threadId) return { error: 'スレッドIDが無効です' }
@@ -323,8 +481,10 @@ export async function createPost(formData: FormData) {
   if (!hasJapanese(body)) {
     return { error: '日本語を含めてください（スパム対策）' }
   }
+  markPostTiming(timing, 'validation')
 
   const supabase = await createClient()
+  markPostTiming(timing, 'supabase_client')
 
   const threadResult = await supabase
     .from('threads')
@@ -352,6 +512,7 @@ export async function createPost(formData: FormData) {
     targetThread = retry.data as PostTargetThread | null
     threadError = retry.error
   }
+  markPostTiming(timing, 'thread_check')
 
   if (threadError || !targetThread) return { error: 'スレッドが見つかりません' }
   if (targetThread.is_archived) return { error: 'このスレッドは過去ログです。コメントはできません。' }
@@ -359,23 +520,33 @@ export async function createPost(formData: FormData) {
   if (closedMessage) return { error: closedMessage }
 
   const sessionId = await getOrCreateSessionId()
-  const authUserId = await getAuthenticatedUserId(supabase)
-  const userId = await getActiveProfileUserId(supabase)
+  markPostTiming(timing, 'session_cookie')
+  const { authUserId, activeProfileUserId: userId } = await getPostAuthContext(supabase, timing)
   const ipHash = await getIpHash()
-  if (await checkPostingBan({ sessionId, userId: authUserId })) {
+  markPostTiming(timing, 'ip_hash')
+
+  const [
+    postingBanned,
+    ipBanned,
+    ngWord,
+    rateLimitError,
+  ] = await Promise.all([
+    checkPostingBan({ sessionId, userId: authUserId }),
+    checkModerationBan(supabase, 'ip_hash', ipHash),
+    checkNgWords(supabase, [body, authorName]),
+    checkPostRateLimits(supabase, sessionId, ipHash),
+  ])
+  markPostTiming(timing, 'moderation_parallel_checks')
+
+  if (postingBanned) {
     return { error: 'Posting is restricted.' }
   }
-  if (await checkSessionBan(supabase, sessionId)) {
-    return { error: 'この端末からの投稿は制限されています。' }
-  }
-  if (await checkModerationBan(supabase, 'ip_hash', ipHash)) {
+  if (ipBanned) {
     return { error: 'この回線からの投稿は一時的に制限されています。' }
   }
-  const ngWord = await checkNgWords(supabase, [body, authorName])
   if (ngWord) {
     return { error: `NG word detected: ${ngWord}` }
   }
-  const rateLimitError = await checkPostRateLimits(supabase, sessionId, ipHash)
   if (rateLimitError) return { error: rateLimitError }
 
   const { data: maxPost } = await supabase
@@ -387,6 +558,7 @@ export async function createPost(formData: FormData) {
     .single()
 
   const nextPostNumber = (maxPost?.post_number ?? 0) + 1
+  markPostTiming(timing, 'max_post_number')
 
   let imageUrl: string | null = null
   let thumbnailUrl: string | null = null
@@ -404,6 +576,7 @@ export async function createPost(formData: FormData) {
     imageWidth = result.data.width || null
     imageHeight = result.data.height || null
   }
+  markPostTiming(timing, imageUrl ? 'image_upload' : 'image_skip')
 
   let { error } = await supabase.from('posts').insert({
     thread_id: threadId,
@@ -499,48 +672,34 @@ export async function createPost(formData: FormData) {
     console.error('Post insert error:', error)
     return { error: 'コメントの投稿に失敗しました' }
   }
+  markPostTiming(timing, 'posts_insert')
 
-  await supabase.rpc('increment_post_count', { p_thread_id: threadId })
+  markPostTiming(timing, 'thread_cache_revalidate_skipped')
 
-  // スレタイトルを取得して通知を送る（失敗してもレス投稿はブロックしない）
-  const { data: threadData } = await supabase
-    .from('threads')
-    .select('title')
-    .eq('id', threadId)
-    .single()
+  after(() => runPostAfterTasks({
+    threadId,
+    threadTitle: targetThread.title ?? null,
+    postNumber: nextPostNumber,
+    imageUrl,
+    thumbnailUrl,
+  }))
 
-  if (threadData?.title) {
-    // Web Push 通知（失敗してもレス投稿はブロックしない）
-    sendPushNotifications(
-      threadId,
-      threadData.title,
-      nextPostNumber,
-    ).catch(() => {})
+  if (shouldExposePostTiming()) {
+    console.log('[createPost timing]', JSON.stringify({
+      total_ms: Math.round(performance.now() - timing.startedAt),
+      steps_ms: timing.steps,
+      has_image: Boolean(imageUrl),
+    }))
   }
 
-  // 画像付き投稿の場合、スレのサムネが未設定なら自動設定
-  // admin client を使う（threads テーブルに UPDATE RLS ポリシーがないため user client では失敗する）
-  if (imageUrl) {
-    const admin = createAdminClient()
-    const { data: th } = await admin
-      .from('threads')
-      .select('image_url')
-      .eq('id', threadId)
-      .single()
-    if (!th?.image_url) {
-      const updateData = thumbnailUrl
-        ? { image_url: imageUrl, thumbnail_url: thumbnailUrl }
-        : { image_url: imageUrl }
-      await admin.from('threads').update(updateData).eq('id', threadId)
-    }
-  }
+  const debugTiming = shouldExposePostTiming() ? getPostTimingPayload(timing) : undefined
 
-  revalidateTag(`thread-${threadId}`, { expire: 0 })
-  revalidateTag('threads', { expire: 0 })
-  revalidateTag('posts', { expire: 0 })
-  revalidatePath(`/thread/${threadId}`)
-  revalidatePath('/')
-  return { success: true, postNumber: nextPostNumber }
+  return {
+    success: true,
+    postNumber: nextPostNumber,
+    debugTiming,
+    debugTimingJson: debugTiming ? JSON.stringify(debugTiming) : undefined,
+  }
 }
 
 export async function toggleFavorite(threadId: number) {
