@@ -122,6 +122,8 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
           setError(result.error)
           finishSubmit()
         } else {
+          const isPreviewHost = window.location.hostname === 'localhost' || window.location.hostname.endsWith('.vercel.app')
+          const resultRecord = result && typeof result === 'object' ? result as Record<string, unknown> : {}
           capturePostHogEvent('reply_submit_success', {
             thread_id: threadId,
             category_slug: thread.categories?.slug ?? null,
@@ -136,11 +138,13 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
           if ('postNumber' in result && typeof result.postNumber === 'number') {
             setScrollTarget(result.postNumber + 1)
           }
-          if (
-            'debugTiming' in result &&
-            result.debugTiming &&
-            (window.location.hostname === 'localhost' || window.location.hostname.endsWith('.vercel.app'))
-          ) {
+          if (isPreviewHost) {
+            console.warn('[reply submit result]', JSON.stringify({
+              keys: Object.keys(resultRecord),
+              debugTimingJson: resultRecord.debugTimingJson ?? null,
+            }))
+          }
+          if ('debugTiming' in result && result.debugTiming && isPreviewHost) {
             console.warn('[reply submit timing]', JSON.stringify({
               total_ms: Math.round(actionReturnedAt - startedAt),
               action_return_ms: Math.round(actionReturnedAt - startedAt),
@@ -154,7 +158,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
             startRefreshTransition(() => {
               router.refresh()
             })
-          }, 750)
+          }, 2500)
         }
       } catch {
         capturePostHogEvent('reply_submit_exception', {

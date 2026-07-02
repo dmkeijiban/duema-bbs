@@ -692,10 +692,13 @@ export async function createPost(formData: FormData) {
     }))
   }
 
+  const debugTiming = shouldExposePostTiming() ? getPostTimingPayload(timing) : undefined
+
   return {
     success: true,
     postNumber: nextPostNumber,
-    debugTiming: getPostTimingPayload(timing),
+    debugTiming,
+    debugTimingJson: debugTiming ? JSON.stringify(debugTiming) : undefined,
   }
 }
 
