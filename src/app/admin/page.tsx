@@ -1020,7 +1020,7 @@ export default async function AdminPage({
       </details>
 
       {/* ─── スレッド管理 ─── */}
-      <div className={selectedThread ? 'grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(22rem,1fr)] gap-4' : 'grid grid-cols-1 gap-4'}>
+      <div className={selectedThread ? 'grid grid-cols-1 xl:grid-cols-[minmax(34rem,1fr)_minmax(32rem,0.9fr)] gap-4' : 'grid grid-cols-1 gap-4'}>
 
         <div>
           <div data-admin-thread-list-start className="scroll-mt-3 flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
@@ -1299,10 +1299,10 @@ export default async function AdminPage({
 
         {/* レス一覧パネル */}
         {selectedThread && (
-          <div>
-            <div className="mb-2 pb-1 border-b border-gray-200">
-              <div className="flex items-start justify-between gap-2">
-                <h2 className="min-w-0 font-bold text-gray-700">
+          <div className="min-w-0">
+            <div className="mb-2 rounded border border-gray-200 bg-white p-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <h2 className="min-w-0 font-bold text-gray-700 break-words">
                   💬 「{selectedThread.title}」
                   {(selectedThread.is_archived || selectedThread.archived_at) && (
                     <span className="ml-2 rounded border border-yellow-300 bg-yellow-50 px-1.5 py-0.5 text-[10px] text-yellow-700">
@@ -1312,7 +1312,7 @@ export default async function AdminPage({
                   {selectedThread.comment_locked && <span className="ml-2 text-[10px] text-orange-700">コメント停止中</span>}
                   {selectedThread.auto_lock_exempt && <span className="ml-2 text-[10px] text-sky-700">自動ロック除外</span>}
                 </h2>
-                <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                <div className="flex shrink-0 flex-wrap gap-1 sm:justify-end">
                   <a
                     href={adminThreadsUrl({ page: threadPage, q: searchQ, sort, order })}
                     data-admin-scroll="preserve"
@@ -1354,26 +1354,43 @@ export default async function AdminPage({
                 レスごとに同一端末/IPハッシュのBANと一括非表示ができます。本文は上書きせず `is_deleted=true` にします。
               </p>
             </div>
-            <div className="space-y-1 max-h-[80vh] overflow-y-auto pr-1">
+            <div className="max-h-[80vh] space-y-2 overflow-y-auto overflow-x-hidden pr-1">
               {posts?.map(p => (
-                <div key={p.id} className="bg-white border border-gray-200 p-2 rounded">
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1 min-w-0">
-                      <span className="font-bold text-[10px] text-gray-500">
+                <div key={p.id} className="min-w-0 rounded border border-gray-200 bg-white p-3 shadow-sm">
+                  <div className="space-y-2">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="font-bold text-[11px] text-gray-500">
                         #{p.post_number + 1}{' '}
                         {(p as typeof p & { user_id?: string }).user_id && postAuthorProfiles[(p as typeof p & { user_id?: string }).user_id!] ? (
                           <a href={`/admin/users/${(p as typeof p & { user_id?: string }).user_id}`} className="text-blue-600 hover:underline">
                             {postAuthorProfiles[(p as typeof p & { user_id?: string }).user_id!].display_name}
                           </a>
                         ) : p.author_name}
-                      </span>
-                      <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-gray-400">
-                        {p.session_id && <span className="break-all">session: {p.session_id}</span>}
-                        {p.ip_hash && <span className="break-all">ip: {p.ip_hash.slice(0, 12)}...</span>}
+                        </span>
                       </div>
-                      <p className="text-xs text-gray-700 mt-0.5 line-clamp-2 break-all">{p.body}</p>
                     </div>
-                    <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1.5 shrink-0">
+
+                    <p className="whitespace-pre-wrap break-words rounded bg-gray-50 px-2.5 py-2 text-xs leading-relaxed text-gray-800">
+                      {p.body}
+                    </p>
+
+                    {(p.session_id || p.ip_hash) && (
+                      <div className="space-y-1 rounded border border-gray-100 bg-gray-50 px-2.5 py-2 text-[10px] text-gray-500">
+                        {p.session_id && (
+                          <div className="overflow-x-auto whitespace-nowrap font-mono" title={p.session_id}>
+                            <span className="font-sans font-semibold text-gray-600">session:</span> {p.session_id}
+                          </div>
+                        )}
+                        {p.ip_hash && (
+                          <div className="overflow-x-auto whitespace-nowrap font-mono" title={p.ip_hash}>
+                            <span className="font-sans font-semibold text-gray-600">ip:</span> {p.ip_hash}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-1.5 border-t border-gray-100 pt-2">
                       <a href={`/admin?thread=${selectedThread.id}&editPost=${p.id}${threadPage > 1 ? `&threadPage=${threadPage}` : ''}`}
                         data-admin-scroll="preserve"
                         className="px-2 py-1 text-[10px] text-green-700 border border-green-400 hover:bg-green-50 rounded leading-none">
