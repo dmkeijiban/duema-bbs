@@ -132,13 +132,19 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
           if (fileInputRef.current) fileInputRef.current.value = ''
           setSuccessMessage('投稿しました。反映中です。')
           finishSubmit()
+          const formReleasedAt = performance.now()
           if ('postNumber' in result && typeof result.postNumber === 'number') {
             setScrollTarget(result.postNumber + 1)
           }
-          if ('debugTiming' in result && result.debugTiming) {
-            console.info('[reply submit timing]', JSON.stringify({
+          if (
+            'debugTiming' in result &&
+            result.debugTiming &&
+            (window.location.hostname === 'localhost' || window.location.hostname.endsWith('.vercel.app'))
+          ) {
+            console.warn('[reply submit timing]', JSON.stringify({
               total_ms: Math.round(actionReturnedAt - startedAt),
               action_return_ms: Math.round(actionReturnedAt - startedAt),
+              form_release_ms: Math.round(formReleasedAt - startedAt),
               server: result.debugTiming,
               has_image: Boolean(file),
               thread_id: threadId,
@@ -148,7 +154,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
             startRefreshTransition(() => {
               router.refresh()
             })
-          }, 0)
+          }, 750)
         }
       } catch {
         capturePostHogEvent('reply_submit_exception', {

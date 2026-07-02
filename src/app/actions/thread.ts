@@ -12,9 +12,9 @@ import { uploadImage, validateImageFile } from '@/lib/upload'
 import { sendPushNotifications } from '@/app/actions/push-subscription'
 import { notifyNewThread } from '@/lib/discord'
 import { verifyAdminCookie } from '@/lib/admin-auth'
-import { checkModerationBan, checkNgWords, checkPostingBan, checkSessionBan, hashModerationValue } from '@/lib/moderation'
+import { checkModerationBan, checkNgWords, checkPostingBan, hashModerationValue } from '@/lib/moderation'
 import { getThreadCommentClosedMessage } from '@/lib/thread-auto-close'
-import { checkSessionRateLimit, checkValueRateLimit } from '@/lib/rate-limit'
+import { checkValueRateLimitRules } from '@/lib/rate-limit'
 
 function hasHoneypotValue(formData: FormData): boolean {
   const value = formData.get('website')
@@ -223,6 +223,7 @@ async function runPostAfterTasks(params: {
       mark('thumbnail_skip')
     }
 
+    revalidateTag(`thread-${params.threadId}`, { expire: 0 })
     revalidateTag('threads', { expire: 0 })
     revalidateTag('posts', { expire: 0 })
     mark('list_cache_revalidate')
@@ -251,43 +252,47 @@ async function checkPostRateLimits(
   ipHash: string | null,
 ) {
   const checks = [
-    checkSessionRateLimit(supabase, {
+    checkValueRateLimitRules(supabase, {
       table: 'posts',
-      sessionId,
-      windowSeconds: 60,
-      minIntervalSeconds: 8,
-      maxInWindow: 5,
-      label: 'レス',
-    }),
-    checkSessionRateLimit(supabase, {
-      table: 'posts',
-      sessionId,
-      windowSeconds: 600,
-      minIntervalSeconds: 0,
-      maxInWindow: 15,
-      label: 'レス',
+      column: 'session_id',
+      value: sessionId,
+      rules: [
+        {
+          windowSeconds: 60,
+          minIntervalSeconds: 8,
+          maxInWindow: 5,
+          label: 'レス',
+        },
+        {
+          windowSeconds: 600,
+          minIntervalSeconds: 0,
+          maxInWindow: 15,
+          label: 'レス',
+        },
+      ],
     }),
   ]
 
   if (ipHash) {
     checks.push(
-      checkValueRateLimit(supabase, {
+      checkValueRateLimitRules(supabase, {
         table: 'posts',
         column: 'ip_hash',
         value: ipHash,
-        windowSeconds: 60,
-        minIntervalSeconds: 0,
-        maxInWindow: 5,
-        label: '同じ回線からのレス',
-      }),
-      checkValueRateLimit(supabase, {
-        table: 'posts',
-        column: 'ip_hash',
-        value: ipHash,
-        windowSeconds: 600,
-        minIntervalSeconds: 0,
-        maxInWindow: 15,
-        label: '同じ回線からのレス',
+        rules: [
+          {
+            windowSeconds: 60,
+            minIntervalSeconds: 0,
+            maxInWindow: 5,
+            label: '同じ回線からのレス',
+          },
+          {
+            windowSeconds: 600,
+            minIntervalSeconds: 0,
+            maxInWindow: 15,
+            label: '同じ回線からのレス',
+          },
+        ],
       }),
     )
   }
@@ -522,13 +527,11 @@ export async function createPost(formData: FormData) {
 
   const [
     postingBanned,
-    sessionBanned,
     ipBanned,
     ngWord,
     rateLimitError,
   ] = await Promise.all([
     checkPostingBan({ sessionId, userId: authUserId }),
-    checkSessionBan(supabase, sessionId),
     checkModerationBan(supabase, 'ip_hash', ipHash),
     checkNgWords(supabase, [body, authorName]),
     checkPostRateLimits(supabase, sessionId, ipHash),
@@ -537,9 +540,6 @@ export async function createPost(formData: FormData) {
 
   if (postingBanned) {
     return { error: 'Posting is restricted.' }
-  }
-  if (sessionBanned) {
-    return { error: 'この端末からの投稿は制限されています。' }
   }
   if (ipBanned) {
     return { error: 'この回線からの投稿は一時的に制限されています。' }
@@ -674,8 +674,7 @@ export async function createPost(formData: FormData) {
   }
   markPostTiming(timing, 'posts_insert')
 
-  revalidateTag(`thread-${threadId}`, { expire: 0 })
-  markPostTiming(timing, 'thread_cache_revalidate')
+  markPostTiming(timing, 'thread_cache_revalidate_skipped')
 
   after(() => runPostAfterTasks({
     threadId,
