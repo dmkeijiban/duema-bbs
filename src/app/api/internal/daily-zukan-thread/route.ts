@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { runDailyZukanThread, getDailyZukanThreadForRetry } from '@/lib/daily-zukan-thread'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createTypefullyDraft } from '@/lib/typefully'
+import { SITE_URL } from '@/lib/site-config'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -43,7 +44,7 @@ function summarizeDailyZukanResult(
 }
 
 // 作成済み思い出図鑑スレを X/Typefully へ投稿する文面を組み立てる。
-function buildTypefullyText(cardName: string, cardUrl: string): string {
+function buildTypefullyText(cardName: string, threadUrl: string): string {
   return [
     'みんなの',
     `「${cardName}」に対する`,
@@ -54,7 +55,7 @@ function buildTypefullyText(cardName: string, cardUrl: string): string {
     '',
     'リプでも掲示板でも',
     '気軽にコメント下さい‼️',
-    cardUrl,
+    threadUrl,
   ].join('\n')
 }
 
@@ -128,16 +129,14 @@ async function createTypefullyPost({
   postedDate,
   threadId,
   cardName,
-  cardUrl,
   imageUrl,
 }: {
   postedDate: string
   threadId: number
   cardName: string
-  cardUrl: string
   imageUrl: string
 }): Promise<TypefullyOutcome> {
-  const text = buildTypefullyText(cardName, cardUrl)
+  const text = buildTypefullyText(cardName, `${SITE_URL}/thread/${threadId}`)
   const mediaUrls = imageUrl ? [imageUrl] : []
   const postedAt = new Date().toISOString()
 
@@ -244,7 +243,6 @@ async function createTypefullyForPostedDate(postedDate: string): Promise<{
     postedDate,
     threadId: lookup.threadId,
     cardName: lookup.cardName,
-    cardUrl: lookup.cardUrl,
     imageUrl: lookup.imageUrl,
   })
 
@@ -319,7 +317,7 @@ async function handlePreviewTypefully(postedDate: string): Promise<NextResponse>
     mode: 'preview_typefully',
     postedDate,
     threadId: lookup.threadId,
-    text: buildTypefullyText(lookup.cardName, lookup.cardUrl),
+    text: buildTypefullyText(lookup.cardName, `${SITE_URL}/thread/${lookup.threadId}`),
     mediaUrls: lookup.imageUrl ? [lookup.imageUrl] : [],
     typefully: 'error' in guard ? { guardError: guard.error } : guard,
   })
@@ -361,7 +359,6 @@ export async function GET(req: NextRequest) {
         postedDate: result.postedDate,
         threadId: result.threadId,
         cardName: result.cardName,
-        cardUrl: result.cardUrl,
         imageUrl: result.imageUrl,
       })
     } else if (result.status === 'skipped') {
