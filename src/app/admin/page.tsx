@@ -537,11 +537,12 @@ export default async function AdminPage({
   }
   const editSetting = sp.editSetting ?? null
 
-  // 特定スレのレス
+  // 特定スレのレス / 詳細パネル
   let posts: AdminPostRow[] | null = null
   let selectedThread: SelectedThreadRow | null = null
-  if (sp.thread) {
-    const threadId = parseInt(sp.thread)
+  const activeThreadIdParam = sp.thread ?? sp.editThread
+  if (activeThreadIdParam) {
+    const threadId = parseInt(activeThreadIdParam)
     let selectedThreadResult = await supabase.from('threads').select('id, title, is_archived, comment_locked, auto_lock_exempt, archived_at').eq('id', threadId).single()
     if (selectedThreadResult.error && (selectedThreadResult.error.code === '42703' || selectedThreadResult.error.message?.includes('comment_locked') || selectedThreadResult.error.message?.includes('auto_lock_exempt') || selectedThreadResult.error.message?.includes('archived_at'))) {
       selectedThreadResult = await supabase.from('threads').select('id, title, is_archived').eq('id', threadId).single()
@@ -813,41 +814,6 @@ export default async function AdminPage({
           </div>
         </div>
       </section>
-      {/* ─── 編集フォーム（URL パラメータがある場合のみ表示） ─── */}
-      {editThread && (
-        <div className="mb-4 border-2 border-blue-400 bg-blue-50 p-4 rounded">
-          <h2 className="font-bold text-blue-800 mb-3">✏️ スレッド編集</h2>
-          <form action={adminUpdateThread} className="space-y-2" data-admin-scroll="preserve">
-            <input type="hidden" name="threadId" value={editThread.id} />
-            <input type="hidden" name="threadPage" value={threadPage} />
-            <div>
-              <label className="text-xs text-gray-600 block mb-0.5">タイトル</label>
-              <input type="text" name="title" defaultValue={editThread.title}
-                className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400" required />
-            </div>
-            <div>
-              <label className="text-xs text-gray-600 block mb-0.5">本文</label>
-              <textarea name="body" rows={5} defaultValue={editThread.body}
-                className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400 resize-y" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-600 block mb-0.5">カテゴリ</label>
-              <select name="category_id" defaultValue={editThread.category_id ?? ''}
-                className="border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400">
-                <option value="">未分類</option>
-                {categories?.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex gap-2 pt-1">
-              <button type="submit" className="px-4 py-1.5 text-white text-xs font-medium rounded" style={{ background: '#0d6efd' }}>保存</button>
-              <Link href={adminThreadsUrl({ page: threadPage, q: searchQ, sort, order })} scroll={false} data-admin-scroll="preserve" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600 rounded">キャンセル</Link>
-            </div>
-          </form>
-        </div>
-      )}
-
       {editPost && sp.thread && (
         <div className="mb-4 border-2 border-green-400 bg-green-50 p-4 rounded">
           <h2 className="font-bold text-green-800 mb-3">✏️ レス編集（#{editPost.post_number + 1} {editPost.author_name}）</h2>
@@ -1130,7 +1096,7 @@ export default async function AdminPage({
                     <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold w-20">コメント数</th>
                     <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold w-20">閲覧数</th>
                     <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold hidden md:table-cell w-24">更新日</th>
-                    <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold w-44">操作</th>
+                    <th className="px-2 py-2.5 text-right whitespace-nowrap font-semibold w-36">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -1138,7 +1104,7 @@ export default async function AdminPage({
                     const cat = (t as typeof t & { categories?: { name: string } | null }).categories
                     const createdAt = (t as typeof t & { created_at?: string }).created_at
                     const lastPostedAt = (t as typeof t & { last_posted_at?: string | null }).last_posted_at
-                    const isSelectedThread = selectedThread?.id === t.id
+                    const isSelectedThread = selectedThread?.id === t.id || editThread?.id === t.id
                     const isPastLog = t.is_archived || Boolean(t.archived_at)
                     const toDateStr = (iso: string | null | undefined) =>
                       iso ? new Date(iso).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'
@@ -1172,71 +1138,28 @@ export default async function AdminPage({
                         <td className="px-2 py-2.5 w-20 text-right text-blue-700 whitespace-nowrap tabular-nums font-bold">{(t as typeof t & { view_count?: number | null }).view_count ?? 0}</td>
                         <td className="px-2 py-2.5 w-24 text-right text-gray-400 whitespace-nowrap hidden md:table-cell text-[10px]">{dateStr}</td>
                         <td className="px-2 py-2.5 whitespace-nowrap">
-                          <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1.5">
-                            <a href={isSelectedThread
-                              ? adminThreadsUrl({ page: threadPage, q: searchQ, sort, order })
-                              : `/admin?thread=${t.id}${threadPage > 1 ? `&threadPage=${threadPage}` : ''}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}`}
-                              data-admin-scroll="preserve"
-                              className={isSelectedThread
-                                ? 'px-2 py-1 text-[10px] text-white border border-blue-600 bg-blue-600 hover:bg-blue-700 rounded leading-none'
-                                : 'px-2 py-1 text-[10px] text-blue-600 border border-blue-300 hover:bg-blue-50 rounded leading-none'}>
-                              {isSelectedThread ? 'レス表示中' : 'レス'}
-                            </a>
-                            <a href={`/admin?editThread=${t.id}&threadPage=${threadPage}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}`}
+                          <div className="flex flex-wrap items-center justify-end gap-1">
+                            <a href={`/admin?thread=${t.id}&editThread=${t.id}&threadPage=${threadPage}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}`}
                               data-admin-scroll="preserve"
                               className="px-2 py-1 text-[10px] text-green-700 border border-green-400 hover:bg-green-50 rounded leading-none">
                               編集
                             </a>
-                            {(t.session_id || (t as typeof t & { user_id?: string | null }).user_id) && (
-                              <form action={adminBanSession} className="inline-flex" data-admin-scroll="preserve">
-                                <input type="hidden" name="sessionId" value={t.session_id ?? ''} />
-                                <input type="hidden" name="userId" value={(t as typeof t & { user_id?: string | null }).user_id ?? ''} />
-                                <input type="hidden" name="reason" value={`thread:${t.id}`} />
-                                <input type="hidden" name="threadPage" value={threadPage} />
-                                <AdminSubmitButton
-                                  pendingText="BAN中..."
-                                  confirmMessage="この投稿者をBANしますか？&#10;今後の投稿が制限されます。"
-                                  className="px-2 py-1 text-[10px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
-                                  style={{ background: '#111827' }}
-                                >
-                                  BAN
-                                </AdminSubmitButton>
-                              </form>
-                            )}
-                            <form action={adminToggleAutoLockExempt} className="inline-flex" data-admin-scroll="preserve">
-                              <input type="hidden" name="threadId" value={t.id} />
-                              <input type="hidden" name="autoLockExempt" value={String(Boolean(t.auto_lock_exempt))} />
-                              <input type="hidden" name="threadPage" value={threadPage} />
-                              <input type="hidden" name="q" value={searchQ} />
-                              <AdminSubmitButton
-                                pendingText={t.auto_lock_exempt ? '解除中...' : '除外中...'}
-                                confirmMessage={t.auto_lock_exempt
-                                  ? 'このスレッドの自動ロック除外を解除しますか？'
-                                  : 'このスレッドを30日超の自動ロック・過去ログ化から除外しますか？'}
-                                className="px-2 py-1 text-[10px] rounded border transition-colors leading-none disabled:opacity-60 disabled:cursor-wait"
-                                style={t.auto_lock_exempt
-                                  ? { color: '#0369a1', borderColor: '#7dd3fc', background: '#f0f9ff' }
-                                  : { color: '#075985', borderColor: '#bae6fd', background: '#fff' }}
-                              >
-                                {t.auto_lock_exempt ? '除外解除' : '自動除外'}
-                              </AdminSubmitButton>
-                            </form>
                             <form action={adminToggleArchive} className="inline-flex" data-admin-scroll="preserve">
                               <input type="hidden" name="threadId" value={t.id} />
                               <input type="hidden" name="isArchived" value={String(isPastLog)} />
                               <input type="hidden" name="threadPage" value={threadPage} />
                               <input type="hidden" name="q" value={searchQ} />
                               <AdminSubmitButton
-                                pendingText={isPastLog ? '解除中...' : '過去ログ化中...'}
+                                pendingText={isPastLog ? '公開中...' : '非公開中...'}
                                 confirmMessage={isPastLog
-                                  ? 'このスレッドの過去ログ扱いを解除しますか？'
-                                  : 'このスレッドを過去ログ扱いにしますか？&#10;通常一覧には表示されなくなります。'}
+                                  ? 'このスレッドを公開に戻しますか？'
+                                  : 'このスレッドを非公開にしますか？&#10;通常一覧には表示されなくなります。'}
                                 className="px-2 py-1 text-[10px] rounded border transition-colors leading-none disabled:opacity-60 disabled:cursor-wait"
                                 style={isPastLog
                                   ? { color: '#047857', borderColor: '#34d399', background: '#ecfdf5' }
                                   : { color: '#a16207', borderColor: '#facc15', background: '#fefce8' }}
                               >
-                                {isPastLog ? '過去ログ解除' : '過去ログ'}
+                                {isPastLog ? '公開に戻す' : '非公開'}
                               </AdminSubmitButton>
                             </form>
                             <form action={adminDeleteThread} className="inline-flex" data-admin-scroll="preserve">
@@ -1303,10 +1226,10 @@ export default async function AdminPage({
             <div className="mb-2 rounded border border-gray-200 bg-white p-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <h2 className="min-w-0 font-bold text-gray-700 break-words">
-                  💬 「{selectedThread.title}」
+                  🧰 スレッド詳細「{selectedThread.title}」
                   {(selectedThread.is_archived || selectedThread.archived_at) && (
                     <span className="ml-2 rounded border border-yellow-300 bg-yellow-50 px-1.5 py-0.5 text-[10px] text-yellow-700">
-                      過去ログ
+                      非公開
                     </span>
                   )}
                   {selectedThread.comment_locked && <span className="ml-2 text-[10px] text-orange-700">コメント停止中</span>}
@@ -1320,37 +1243,151 @@ export default async function AdminPage({
                   >
                     閉じる
                   </a>
-                  <form action={adminToggleThreadCommentLock} data-admin-scroll="preserve">
-                    <input type="hidden" name="threadId" value={selectedThread.id} />
-                    <input type="hidden" name="commentLocked" value={String(Boolean(selectedThread.comment_locked))} />
-                    <input type="hidden" name="returnToThread" value="true" />
-                    <input type="hidden" name="threadPage" value={threadPage} />
-                    <button type="submit" className="px-2.5 py-1 text-[11px] text-orange-700 border border-orange-400 hover:bg-orange-50 rounded">
-                      {selectedThread.comment_locked ? 'コメント停止を解除' : 'コメント停止'}
-                    </button>
-                  </form>
-                  <form action={adminToggleAutoLockExempt} data-admin-scroll="preserve">
-                    <input type="hidden" name="threadId" value={selectedThread.id} />
-                    <input type="hidden" name="autoLockExempt" value={String(Boolean(selectedThread.auto_lock_exempt))} />
-                    <input type="hidden" name="returnToThread" value="true" />
-                    <input type="hidden" name="threadPage" value={threadPage} />
-                    <input type="hidden" name="q" value={searchQ} />
-                    <button type="submit" className="px-2.5 py-1 text-[11px] text-sky-700 border border-sky-300 hover:bg-sky-50 rounded">
-                      {selectedThread.auto_lock_exempt ? '自動除外を解除' : '自動除外'}
-                    </button>
-                  </form>
-                  <form action={adminToggleArchive} data-admin-scroll="preserve">
-                    <input type="hidden" name="threadId" value={selectedThread.id} />
-                    <input type="hidden" name="isArchived" value={String(Boolean(selectedThread.is_archived || selectedThread.archived_at))} />
-                    <input type="hidden" name="threadPage" value={threadPage} />
-                    <input type="hidden" name="q" value={searchQ} />
-                    <button type="submit" className="px-2.5 py-1 text-[11px] text-yellow-700 border border-yellow-400 hover:bg-yellow-50 rounded">
-                      {selectedThread.is_archived || selectedThread.archived_at ? '過去ログ解除' : '過去ログ扱い'}
-                    </button>
-                  </form>
                 </div>
               </div>
-              <p className="mt-1 text-[10px] text-gray-500">
+            </div>
+
+            {editThread && (
+              <div className="mb-3 space-y-3">
+                <section className="rounded border border-gray-200 bg-white p-3">
+                  <h3 className="mb-2 text-xs font-bold text-gray-700">A. スレッド概要</h3>
+                  <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] text-gray-600">
+                    <dt className="text-gray-400">ID</dt>
+                    <dd className="font-mono">{editThread.id}</dd>
+                    <dt className="text-gray-400">カテゴリ</dt>
+                    <dd>{Array.isArray(editThread.categories) ? editThread.categories[0]?.name ?? '-' : editThread.categories?.name ?? '-'}</dd>
+                    <dt className="text-gray-400">コメント数</dt>
+                    <dd>{editThread.post_count}</dd>
+                    <dt className="text-gray-400">閲覧数</dt>
+                    <dd>{editThread.view_count ?? 0}</dd>
+                    <dt className="text-gray-400">作成日時</dt>
+                    <dd>{editThread.created_at ? new Date(editThread.created_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }) : '-'}</dd>
+                    <dt className="text-gray-400">更新日時</dt>
+                    <dd>{editThread.last_posted_at ? new Date(editThread.last_posted_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }) : '-'}</dd>
+                    <dt className="text-gray-400">公開状態</dt>
+                    <dd>{editThread.is_archived || editThread.archived_at ? '非公開' : '公開中'}</dd>
+                    <dt className="text-gray-400">自動除外</dt>
+                    <dd>{editThread.auto_lock_exempt ? 'ON' : 'OFF'}</dd>
+                    <dt className="text-gray-400">過去ログ状態</dt>
+                    <dd>{editThread.is_archived || editThread.archived_at ? '対象' : '通常'}</dd>
+                  </dl>
+                </section>
+
+                <section className="rounded border border-blue-200 bg-blue-50 p-3">
+                  <h3 className="mb-2 text-xs font-bold text-blue-800">B. 基本編集</h3>
+                  <form action={adminUpdateThread} className="space-y-2" data-admin-scroll="preserve">
+                    <input type="hidden" name="threadId" value={editThread.id} />
+                    <input type="hidden" name="threadPage" value={threadPage} />
+                    <div>
+                      <label className="text-xs text-gray-600 block mb-0.5">タイトル</label>
+                      <input type="text" name="title" defaultValue={editThread.title}
+                        className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400" required />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 block mb-0.5">本文</label>
+                      <textarea name="body" rows={5} defaultValue={editThread.body}
+                        className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400 resize-y" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 block mb-0.5">カテゴリ</label>
+                      <select name="category_id" defaultValue={editThread.category_id ?? ''}
+                        className="border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400">
+                        <option value="">未分類</option>
+                        {categories?.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button type="submit" className="px-4 py-1.5 text-white text-xs font-medium rounded" style={{ background: '#0d6efd' }}>保存</button>
+                      <Link href={adminThreadsUrl({ page: threadPage, q: searchQ, sort, order })} scroll={false} data-admin-scroll="preserve" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600 rounded">キャンセル</Link>
+                    </div>
+                  </form>
+                </section>
+
+                <section className="rounded border border-gray-200 bg-white p-3">
+                  <h3 className="mb-2 text-xs font-bold text-gray-700">C. 状態変更</h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    <form action={adminToggleArchive} data-admin-scroll="preserve">
+                      <input type="hidden" name="threadId" value={editThread.id} />
+                      <input type="hidden" name="isArchived" value={String(Boolean(editThread.is_archived || editThread.archived_at))} />
+                      <input type="hidden" name="threadPage" value={threadPage} />
+                      <input type="hidden" name="q" value={searchQ} />
+                      <AdminSubmitButton
+                        pendingText={editThread.is_archived || editThread.archived_at ? '公開中...' : '非公開中...'}
+                        confirmMessage={editThread.is_archived || editThread.archived_at
+                          ? 'このスレッドを公開に戻しますか？'
+                          : 'このスレッドを非公開にしますか？&#10;通常一覧には表示されなくなります。'}
+                        className="px-2.5 py-1 text-[11px] rounded border leading-none disabled:opacity-60 disabled:cursor-wait"
+                        style={editThread.is_archived || editThread.archived_at
+                          ? { color: '#047857', borderColor: '#34d399', background: '#ecfdf5' }
+                          : { color: '#a16207', borderColor: '#facc15', background: '#fefce8' }}
+                      >
+                        {editThread.is_archived || editThread.archived_at ? '公開に戻す' : '非公開'}
+                      </AdminSubmitButton>
+                    </form>
+                    <form action={adminToggleAutoLockExempt} data-admin-scroll="preserve">
+                      <input type="hidden" name="threadId" value={editThread.id} />
+                      <input type="hidden" name="autoLockExempt" value={String(Boolean(editThread.auto_lock_exempt))} />
+                      <input type="hidden" name="returnToThread" value="true" />
+                      <input type="hidden" name="threadPage" value={threadPage} />
+                      <input type="hidden" name="q" value={searchQ} />
+                      <button type="submit" className="px-2.5 py-1 text-[11px] text-sky-700 border border-sky-300 hover:bg-sky-50 rounded">
+                        {editThread.auto_lock_exempt ? '自動除外を解除' : '自動除外'}
+                      </button>
+                    </form>
+                    <form action={adminToggleThreadCommentLock} data-admin-scroll="preserve">
+                      <input type="hidden" name="threadId" value={editThread.id} />
+                      <input type="hidden" name="commentLocked" value={String(Boolean(editThread.comment_locked))} />
+                      <input type="hidden" name="returnToThread" value="true" />
+                      <input type="hidden" name="threadPage" value={threadPage} />
+                      <button type="submit" className="px-2.5 py-1 text-[11px] text-orange-700 border border-orange-400 hover:bg-orange-50 rounded">
+                        {editThread.comment_locked ? 'コメント停止を解除' : 'コメント停止'}
+                      </button>
+                    </form>
+                  </div>
+                </section>
+
+                <section className="rounded border border-red-200 bg-red-50 p-3">
+                  <h3 className="mb-2 text-xs font-bold text-red-800">E. 危険操作</h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(editThread.session_id || (editThread as typeof editThread & { user_id?: string | null }).user_id) && (
+                      <form action={adminBanSession} className="inline-flex" data-admin-scroll="preserve">
+                        <input type="hidden" name="sessionId" value={editThread.session_id ?? ''} />
+                        <input type="hidden" name="userId" value={(editThread as typeof editThread & { user_id?: string | null }).user_id ?? ''} />
+                        <input type="hidden" name="reason" value={`thread:${editThread.id}`} />
+                        <input type="hidden" name="returnToThread" value={editThread.id} />
+                        <input type="hidden" name="threadPage" value={threadPage} />
+                        <AdminSubmitButton
+                          pendingText="BAN中..."
+                          confirmMessage="この投稿者をBANしますか？&#10;今後の投稿が制限されます。"
+                          className="px-2.5 py-1 text-[11px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
+                          style={{ background: '#111827' }}
+                        >
+                          BAN
+                        </AdminSubmitButton>
+                      </form>
+                    )}
+                    <form action={adminDeleteThread} className="inline-flex" data-admin-scroll="preserve">
+                      <input type="hidden" name="threadId" value={editThread.id} />
+                      <input type="hidden" name="threadPage" value={threadPage} />
+                      <AdminSubmitButton
+                        pendingText="削除中..."
+                        confirmMessage="このスレッドを削除しますか？&#10;掲示板上には表示されなくなります。"
+                        className="px-2.5 py-1 text-[11px] text-white rounded hover:opacity-75 transition-opacity leading-none disabled:opacity-60 disabled:cursor-wait"
+                        style={{ background: '#dc3545' }}
+                      >
+                        スレッド削除
+                      </AdminSubmitButton>
+                    </form>
+                  </div>
+                </section>
+              </div>
+            )}
+
+            <div className="mb-2 rounded border border-gray-200 bg-white p-3">
+              <h3 className="mb-1 text-xs font-bold text-gray-700">D. レス管理</h3>
+              <p className="text-[10px] text-gray-500">
                 レスごとに同一端末/IPハッシュのBANと一括非表示ができます。本文は上書きせず `is_deleted=true` にします。
               </p>
             </div>
@@ -1391,7 +1428,7 @@ export default async function AdminPage({
                     )}
 
                     <div className="flex flex-wrap items-center gap-1.5 border-t border-gray-100 pt-2">
-                      <a href={`/admin?thread=${selectedThread.id}&editPost=${p.id}${threadPage > 1 ? `&threadPage=${threadPage}` : ''}`}
+                      <a href={`/admin?thread=${selectedThread.id}&editThread=${selectedThread.id}&editPost=${p.id}${threadPage > 1 ? `&threadPage=${threadPage}` : ''}`}
                         data-admin-scroll="preserve"
                         className="px-2 py-1 text-[10px] text-green-700 border border-green-400 hover:bg-green-50 rounded leading-none">
                         編集
