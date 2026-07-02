@@ -139,23 +139,15 @@ export async function deleteOwnPost(postId: number, threadId: number) {
   if (!sessionId) return { error: 'セッションが見つかりません' }
 
   const isPostAuthor = post.session_id === sessionId
+  if (!isPostAuthor) return { error: '削除権限がありません' }
 
-  const { data: thread } = await supabase
-    .from('threads')
-    .select('session_id')
-    .eq('id', threadId)
-    .single()
-
-  const isThreadOwner = thread?.session_id === sessionId
-  if (!isPostAuthor && !isThreadOwner) return { error: '削除権限がありません' }
-
-  const deletedBy = isPostAuthor ? 'user' : 'thread_owner'
-  const { error } = await supabase.from('posts').update({
+  const { data: updated, error } = await supabase.from('posts').update({
     is_deleted: true,
     deleted_at: new Date().toISOString(),
-    deleted_by: deletedBy,
-  }).eq('id', postId)
+    deleted_by: 'user',
+  }).eq('id', postId).eq('thread_id', threadId).eq('session_id', sessionId).eq('is_deleted', false).select('id')
   if (error) return { error: '削除に失敗しました' }
+  if (!updated || updated.length === 0) return { error: '削除対象が見つかりません' }
 
   await supabase.rpc('recalculate_post_count', { p_thread_id: threadId })
 
