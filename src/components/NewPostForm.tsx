@@ -2,7 +2,6 @@
 
 import { useRef, useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import dynamic from 'next/dynamic'
 import { createPost } from '@/app/actions/thread'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
@@ -17,11 +16,6 @@ type AuthState =
   | { status: 'anon' }
   | { status: 'user'; displayName: string; avatarUrl: string | null }
   | { status: 'profile_missing' }
-
-const PushSubscribeButton = dynamic(
-  () => import('./PushSubscribeButton').then(mod => mod.PushSubscribeButton),
-  { ssr: false },
-)
 
 const POSTS_PER_PAGE = 100
 
@@ -40,15 +34,9 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const [scrollTarget, setScrollTarget] = useState<number | null>(null)
-  const [showPushButton, setShowPushButton] = useState(false)
-  const [pushUnsupported, setPushUnsupported] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const displayCategory = getDisplayCategory(thread.categories)
-
-  useEffect(() => {
-    setPushUnsupported(!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window))
-  }, [])
 
   useEffect(() => {
     const supabase = createClient()
@@ -72,30 +60,6 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
         avatarUrl: profile.avatar_url ?? null,
       })
     })
-  }, [])
-
-  // プッシュ通知ボタン：スクロール30% OR 10秒滞在で表示
-  useEffect(() => {
-    let shown = false
-    const show = () => {
-      if (shown) return
-      shown = true
-      setShowPushButton(true)
-    }
-
-    const timer = setTimeout(show, 10_000)
-
-    const onScroll = () => {
-      const el = document.documentElement
-      const scrolled = el.scrollTop / (el.scrollHeight - el.clientHeight)
-      if (scrolled >= 0.3) show()
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-
-    return () => {
-      clearTimeout(timer)
-      window.removeEventListener('scroll', onScroll)
-    }
   }, [])
 
   useEffect(() => {
@@ -301,16 +265,6 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
                 />
               </td>
             </tr>
-            {!pushUnsupported && (
-              <tr className="border-b border-gray-200">
-                <td className="py-2 px-3 align-middle text-xs font-medium whitespace-nowrap" style={{ background: '#f5f5f5' }}>
-                  返信通知
-                </td>
-                <td className="py-2 px-3">
-                  {showPushButton && <PushSubscribeButton threadId={threadId} />}
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
 

@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { Post, PublicAuthorProfile } from '@/types'
 import { formatDateTimeJP } from '@/lib/utils'
 import { deleteOwnPost } from '@/app/actions/delete'
-import { PostLikeButton } from './PostLikeButton'
 import { ReportButton } from './ReportButton'
 import { ImageViewer } from './ImageViewer'
 import { LinkCard } from './LinkCard'
@@ -535,7 +534,6 @@ export const PostItem = memo(function PostItem({
           <>
             <PostAuthorName fallbackName={post.author_name} profile={authorProfile} />
             <span className="text-gray-400">{formatDateTimeJP(post.created_at)}</span>
-            <PostLikeButton likeKey={`post-${post.id}`} />
             <ReportButton itemType="post" itemId={post.id} itemBody={post.body} />
           </>
         )}

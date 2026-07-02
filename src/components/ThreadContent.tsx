@@ -1,21 +1,14 @@
 'use client'
 
 import { useEffect, useState, useMemo, useCallback } from 'react'
-import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { Post, Thread, Category, PublicAuthorProfile } from '@/types'
 import { PostItem, renderBody } from './PostItem'
 import { NewPostForm } from './NewPostForm'
-import { PostLikeButton } from './PostLikeButton'
 import { ReportButton } from './ReportButton'
 import { formatDateTimeJP, resolveImageUrl } from '@/lib/utils'
 import { ImageViewer } from './ImageViewer'
 import { getThreadViewerState } from '@/lib/thread-viewer-client'
-
-const InlinePushSubscribeButton = dynamic(
-  () => import('./PushSubscribeButton').then(mod => mod.PushSubscribeButton),
-  { ssr: false },
-)
 
 interface Props {
   posts: Post[]
@@ -154,7 +147,6 @@ export function ThreadContent({
             <span className="inline-block px-0.5 text-white text-[10px] leading-4" style={{ background: '#dc3545' }}>スレ主</span>
             <ThreadAuthorName fallbackName={thread.author_name} profile={threadAuthorProfile} />
             <span className="text-gray-400 text-[10px]">{formatDateTimeJP(thread.created_at)}</span>
-            <PostLikeButton likeKey={`thread-${thread.id}`} />
             <ReportButton itemType="thread" itemId={thread.id} itemBody={thread.body} />
           </div>
           <div className="px-3 pt-1.5 pb-7 text-base text-gray-800 break-words leading-relaxed">
@@ -210,10 +202,6 @@ export function ThreadContent({
             </Link>
           )}
         </div>
-      )}
-
-      {!isArchived && !commentClosedMessage && (
-        <InlinePushSubscribeButton threadId={threadId} cta />
       )}
 
       {recommendSlot && (
