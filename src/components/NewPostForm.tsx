@@ -145,7 +145,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
               timingLabel = ''
             }
           }
-          setSuccessMessage(`投稿しました。反映中です。${isPreviewHost ? timingLabel : ''}`)
+          setSuccessMessage(`投稿しました。反映まで少しお待ちください。${isPreviewHost ? timingLabel : ''}`)
           setDebugTimingJson(nextDebugTimingJson)
           finishSubmit()
           const formReleasedAt = performance.now()
@@ -327,6 +327,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
           <div
             className="mx-3 my-1.5 px-2 py-1.5 text-xs"
             data-post-timing={debugTimingJson || undefined}
+            role="status"
             style={{ background: '#d4edda', color: '#155724', border: '1px solid #c3e6cb' }}
           >
             {successMessage}
