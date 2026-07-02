@@ -575,6 +575,7 @@ export default async function AdminPage({
             <div className="flex flex-wrap gap-1.5">
               <Link href="/admin/x-posts" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">🐦 X投稿管理</Link>
               <Link href="/admin/x-schedule" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">📅 スケジュール</Link>
+              <Link href="/admin/x-buzz" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">X話題URLストック</Link>
             </div>
           </div>
 
