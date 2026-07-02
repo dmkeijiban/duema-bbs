@@ -133,7 +133,11 @@ jobs:
           SAVED=$(jq -r '.savedTodayTypefullyPosts // 0' response_body.txt 2>/dev/null || echo "0")
           UPDATED=$(jq -r '.updatedTodayTypefullyPosts // 0' response_body.txt 2>/dev/null || echo "0")
           LOCKED=$(jq -r '.lockedThreadedPosts // 0' response_body.txt 2>/dev/null || echo "0")
-          echo "summary      : fetchedToday=${FETCHED} normalizedToday=${NORMALIZED} saved=${SAVED} updated=${UPDATED} lockedThreaded=${LOCKED} created=${CREATED} duplicate=${DUPLICATE} skipped=${SKIPPED} errors=${ERRORS} duePosts=${DUE_POSTS}"
+          PF_FETCHED=$(jq -r '.publishedFallbackFetched // 0' response_body.txt 2>/dev/null || echo "0")
+          PF_NORMALIZED=$(jq -r '.publishedFallbackNormalized // 0' response_body.txt 2>/dev/null || echo "0")
+          PF_SAVED=$(jq -r '.publishedFallbackSaved // 0' response_body.txt 2>/dev/null || echo "0")
+          PF_SKIPPED=$(jq -r '.publishedFallbackSkipped // 0' response_body.txt 2>/dev/null || echo "0")
+          echo "summary      : fetchedToday=${FETCHED} normalizedToday=${NORMALIZED} saved=${SAVED} updated=${UPDATED} lockedThreaded=${LOCKED} publishedFallbackFetched=${PF_FETCHED} publishedFallbackNormalized=${PF_NORMALIZED} publishedFallbackSaved=${PF_SAVED} publishedFallbackSkipped=${PF_SKIPPED} created=${CREATED} duplicate=${DUPLICATE} skipped=${SKIPPED} errors=${ERRORS} duePosts=${DUE_POSTS}"
 
           if [ "${ERRORS}" = "parse_error" ]; then
             echo "::error::レスポンスJSONを解析できません"

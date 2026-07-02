@@ -22,6 +22,9 @@ const TYPEFULLY_DRAFT_LIMIT = 50
 const DEFAULT_MAX_NEW_PER_RUN = 5
 const DUE_LOOKBACK_HOURS = 24
 const ERROR_MAX_LENGTH = 500
+const FIXED_POST_JST_HOURS = [7, 12, 19, 22]
+const FIXED_SLOT_TOLERANCE_MINUTES = 45
+const PUBLISHED_FALLBACK_GRACE_MINUTES = 10
 const CANCELLED_SOURCE_STATUSES = new Set(['cancelled', 'canceled', 'deleted'])
 const ELIGIBLE_X_POST_STATUSES = ['scheduled', 'posted', 'published', 'sent', 'typefully_drafted']
 
@@ -36,8 +39,10 @@ interface TypefullyDraft {
   scheduled_at?: string | null
   scheduled_date?: string | null
   schedule_date?: string | null
+  published_at?: string | null
   typefully_url?: string | null
   share_url?: string | null
+  x_published_url?: string | null
   media_urls?: unknown
   image_urls?: unknown
   images?: unknown
@@ -51,6 +56,7 @@ interface TypefullyDraftDetail {
   scheduled_at?: string | null
   scheduled_date?: string | null
   schedule_date?: string | null
+  published_at?: string | null
   platforms?: {
     x?: {
       posts?: Array<{
@@ -84,6 +90,10 @@ interface ExistingXPost {
   typefully_id: string | null
   thread_id: number | null
   image_urls: string[] | null
+  typefully_share_url: string | null
+  scheduled_at: string | null
+  thread_lines: string[] | null
+  source_ref: string | null
   meta: Record<string, unknown> | null
 }
 
@@ -119,6 +129,8 @@ interface TypefullyPostSummary {
   bodyPreview: string
   imageUrls: string[]
 }
+
+type PublishedFallbackSkipReasons = Record<string, number>
 
 function sanitizeSecretValue(value: string | undefined): string | undefined {
   return value?.replace(/^﻿/, '')
@@ -167,6 +179,60 @@ function formatJstDateTime(dateStr: string): string {
 
 function getDraftScheduledAt(draft: TypefullyDraft | TypefullyDraftDetail): string | null {
   return draft.scheduled_at ?? draft.scheduled_date ?? draft.schedule_date ?? null
+}
+
+function getDraftPublishedAt(draft: TypefullyDraft | TypefullyDraftDetail): string | null {
+  return draft.published_at ?? null
+}
+
+function getJstDayWindow(now = new Date()): { start: Date; end: Date } {
+  const jstDate = formatJstDate(now)
+  const start = new Date(`${jstDate}T00:00:00+09:00`)
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000)
+  return { start, end }
+}
+
+function getJstMinutesOfDay(dateStr: string): number | null {
+  const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return null
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Tokyo',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date)
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value)
+  const minute = Number(parts.find((part) => part.type === 'minute')?.value)
+  return Number.isFinite(hour) && Number.isFinite(minute) ? hour * 60 + minute : null
+}
+
+function distanceToFixedSlotMinutes(dateStr: string): number {
+  const minutes = getJstMinutesOfDay(dateStr)
+  if (minutes == null) return Number.MAX_SAFE_INTEGER
+  return Math.min(
+    ...FIXED_POST_JST_HOURS.map((hour) => Math.abs(minutes - hour * 60)),
+  )
+}
+
+function hasPostNearFixedSlot(posts: TodayTypefullyPost[], hour: number): boolean {
+  const target = hour * 60
+  return posts.some((post) => {
+    const minutes = getJstMinutesOfDay(post.scheduledAt)
+    return minutes != null && Math.abs(minutes - target) <= FIXED_SLOT_TOLERANCE_MINUTES
+  })
+}
+
+function shouldCheckPublishedFallback(posts: TodayTypefullyPost[], now = new Date()): boolean {
+  if (posts.length === 0) return true
+
+  const nowMinutes = getJstMinutesOfDay(now.toISOString())
+  if (nowMinutes == null) return false
+
+  return FIXED_POST_JST_HOURS.some((hour) => (
+    nowMinutes >= hour * 60 + PUBLISHED_FALLBACK_GRACE_MINUTES &&
+    !hasPostNearFixedSlot(posts, hour)
+  ))
 }
 
 function getDraftText(draft: TypefullyDraft, detail: TypefullyDraftDetail | null): string {
@@ -263,6 +329,10 @@ function summarizeTypefullyPosts(posts: TodayTypefullyPost[]): TypefullyPostSumm
   }))
 }
 
+function incrementSkipReason(reasons: PublishedFallbackSkipReasons, reason: string): void {
+  reasons[reason] = (reasons[reason] ?? 0) + 1
+}
+
 async function fetchDraftDetail(
   apiKey: string,
   socialSetId: string,
@@ -331,6 +401,158 @@ async function fetchTodayTypefullyPosts(
   }
 
   return { posts, fetched: json.results.length }
+}
+
+async function fetchTodayPublishedFallbackPosts(
+  apiKey: string,
+  socialSetId: string,
+): Promise<{
+  posts: TodayTypefullyPost[]
+  fetched: number
+  skipReasons: PublishedFallbackSkipReasons
+  error?: string
+  status?: number
+}> {
+  const endpoint =
+    `${TYPEFULLY_API}/social-sets/${socialSetId}/drafts?status=published&order_by=-published_at&limit=${TYPEFULLY_DRAFT_LIMIT}`
+
+  const res = await fetch(endpoint, {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+    next: { revalidate: 0 },
+  })
+
+  if (!res.ok) {
+    const body = await res.text()
+    console.error('[sync-typefully] Typefully published drafts API error:', res.status, body.slice(0, 300))
+    return { posts: [], fetched: 0, skipReasons: {}, error: 'Typefully API error', status: res.status }
+  }
+
+  const json = await res.json()
+  const errField = json.detail ?? json.error ?? json.errors ?? json.message
+  if (errField) {
+    const message = String(errField).slice(0, 200)
+    console.error('[sync-typefully] Typefully published drafts response error:', message)
+    return { posts: [], fetched: 0, skipReasons: {}, error: message, status: 502 }
+  }
+  if (!Array.isArray(json.results)) {
+    console.error('[sync-typefully] Typefully published drafts unexpected response:', JSON.stringify(json).slice(0, 300))
+    return { posts: [], fetched: 0, skipReasons: {}, error: 'Typefully API unexpected response', status: 502 }
+  }
+
+  const posts: TodayTypefullyPost[] = []
+  const skipReasons: PublishedFallbackSkipReasons = {}
+  for (const draft of json.results as TypefullyDraft[]) {
+    const draftId = draft.id != null ? String(draft.id) : ''
+    const detail = draftId ? await fetchDraftDetail(apiKey, socialSetId, draftId) : null
+    const publishedAt = getDraftPublishedAt(draft) ?? (detail ? getDraftPublishedAt(detail) : null)
+    if (!publishedAt) {
+      incrementSkipReason(skipReasons, 'missing_published_at')
+      continue
+    }
+    if (!isTodayInJst(publishedAt)) {
+      incrementSkipReason(skipReasons, 'not_today_jst')
+      continue
+    }
+
+    const body = getDraftText(draft, detail)
+    if (!body) {
+      incrementSkipReason(skipReasons, 'empty_body')
+      continue
+    }
+
+    const imageUrls = getDraftImageUrls(draft, detail)
+    const typefullyId = draftId || `published:${publishedAt}:${hashText(body)}`
+    posts.push({
+      typefullyId,
+      sourceStatus: draft.status ?? 'published',
+      scheduledAt: publishedAt,
+      body,
+      imageUrls,
+      shareUrl: draft.x_published_url ?? draft.share_url ?? draft.typefully_url ?? null,
+    })
+  }
+
+  posts.sort((a, b) => {
+    const slotDiff = distanceToFixedSlotMinutes(a.scheduledAt) - distanceToFixedSlotMinutes(b.scheduledAt)
+    if (slotDiff !== 0) return slotDiff
+    return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
+  })
+
+  return { posts, fetched: json.results.length, skipReasons }
+}
+
+async function filterExistingPublishedFallbackPosts(
+  supabase: SupabaseAdmin,
+  posts: TodayTypefullyPost[],
+): Promise<{ posts: TodayTypefullyPost[]; skipReasons: PublishedFallbackSkipReasons; error?: string }> {
+  if (posts.length === 0) return { posts, skipReasons: {} }
+
+  const { start, end } = getJstDayWindow()
+  const typefullyIds = posts.map((post) => post.typefullyId)
+  const { data: existingById, error: idError } = await supabase
+    .from('x_posts')
+    .select('id, typefully_id, thread_id, image_urls, typefully_share_url, scheduled_at, thread_lines, source_ref, meta')
+    .in('typefully_id', typefullyIds)
+
+  if (idError) return { posts: [], skipReasons: {}, error: idError.message }
+
+  const { data: existingToday, error: todayError } = await supabase
+    .from('x_posts')
+    .select('id, typefully_id, thread_id, image_urls, typefully_share_url, scheduled_at, thread_lines, source_ref, meta')
+    .gte('scheduled_at', start.toISOString())
+    .lt('scheduled_at', end.toISOString())
+
+  if (todayError) return { posts: [], skipReasons: {}, error: todayError.message }
+
+  const existingRowsById = (existingById ?? []) as ExistingXPost[]
+  const existingRows = [
+    ...existingRowsById,
+    ...((existingToday ?? []) as ExistingXPost[]).filter((row) => (
+      !existingRowsById.some((existing) => existing.id === row.id)
+    )),
+  ]
+  const existingTypefullyIds = new Set(
+    existingRows
+      .map((row) => row.typefully_id)
+      .filter((id): id is string => Boolean(id)),
+  )
+  const existingUrls = new Set(
+    existingRows
+      .flatMap((row) => [row.typefully_share_url, row.source_ref?.replace(/^typefully:/, '')])
+      .filter((url): url is string => Boolean(url)),
+  )
+  const existingBodies = existingRows.map((row) => ({
+    scheduledAt: row.scheduled_at,
+    bodyHash: hashText(getPrimaryText(row.thread_lines)),
+  }))
+
+  const skipReasons: PublishedFallbackSkipReasons = {}
+  const filtered = posts.filter((post) => {
+    if (existingTypefullyIds.has(post.typefullyId)) {
+      incrementSkipReason(skipReasons, 'existing_typefully_id')
+      return false
+    }
+    if (post.shareUrl && existingUrls.has(post.shareUrl)) {
+      incrementSkipReason(skipReasons, 'existing_url')
+      return false
+    }
+
+    const postTime = new Date(post.scheduledAt).getTime()
+    const postHash = hashText(post.body)
+    const hasNearbyBodyMatch = existingBodies.some((existing) => {
+      if (!existing.scheduledAt || !existing.bodyHash) return false
+      const existingTime = new Date(existing.scheduledAt).getTime()
+      return existing.bodyHash === postHash &&
+        Math.abs(existingTime - postTime) <= FIXED_SLOT_TOLERANCE_MINUTES * 60 * 1000
+    })
+    if (hasNearbyBodyMatch) {
+      incrementSkipReason(skipReasons, 'existing_body_near_time')
+      return false
+    }
+    return true
+  })
+
+  return { posts: filtered, skipReasons }
 }
 
 async function upsertTodayTypefullyPosts(
@@ -673,6 +895,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   let duplicateTodayPosts = 0
   let saveErrors = 0
   let todayTypefullyPosts: TypefullyPostSummary[] = []
+  let publishedFallbackFetched = 0
+  let publishedFallbackNormalized = 0
+  let publishedFallbackSaved = 0
+  let publishedFallbackSkipped = 0
+  let publishedFallbackSkipReasons: PublishedFallbackSkipReasons = {}
+  let publishedFallbackPosts: TypefullyPostSummary[] = []
 
   if (mode === 'fetch_today' || mode === 'fetch_and_sync') {
     const apiKey = sanitizeSecretValue(process.env.TYPEFULLY_API_KEY)
@@ -699,6 +927,40 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     lockedThreadedPosts = saveResult.locked
     duplicateTodayPosts = saveResult.duplicate
     saveErrors = saveResult.errors
+
+    if (shouldCheckPublishedFallback(fetched.posts)) {
+      const fallback = await fetchTodayPublishedFallbackPosts(apiKey, socialSetId)
+      if (fallback.error) {
+        return NextResponse.json(
+          { error: fallback.error, status: fallback.status ?? 502, mode, dryRun },
+          { status: fallback.status ?? 502 },
+        )
+      }
+
+      publishedFallbackFetched = fallback.fetched
+      publishedFallbackSkipReasons = { ...fallback.skipReasons }
+
+      const filtered = await filterExistingPublishedFallbackPosts(supabase, fallback.posts)
+      if (filtered.error) {
+        return NextResponse.json({ error: filtered.error, mode, dryRun }, { status: 500 })
+      }
+      for (const [reason, count] of Object.entries(filtered.skipReasons)) {
+        publishedFallbackSkipReasons[reason] = (publishedFallbackSkipReasons[reason] ?? 0) + count
+      }
+
+      publishedFallbackNormalized = filtered.posts.length
+      publishedFallbackSkipped = Math.max(0, fallback.fetched - publishedFallbackNormalized)
+      publishedFallbackPosts = summarizeTypefullyPosts(filtered.posts)
+
+      const fallbackSaveResult = await upsertTodayTypefullyPosts(supabase, filtered.posts, dryRun)
+      publishedFallbackSaved = fallbackSaveResult.saved
+      updatedTodayPosts += fallbackSaveResult.updated
+      lockedThreadedPosts += fallbackSaveResult.locked
+      duplicateTodayPosts += fallbackSaveResult.duplicate
+      saveErrors += fallbackSaveResult.errors
+    } else {
+      publishedFallbackSkipReasons = { not_needed: 1 }
+    }
   }
 
   let dueRows: XPostDueRow[] = []
@@ -731,6 +993,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     `[sync-typefully] mode=${mode} dryRun=${dryRun}` +
     ` fetchedToday=${fetchedTodayPosts} normalizedToday=${normalizedTodayPosts}` +
     ` saved=${savedTodayPosts} updated=${updatedTodayPosts} duplicateToday=${duplicateTodayPosts}` +
+    ` publishedFallbackFetched=${publishedFallbackFetched} publishedFallbackNormalized=${publishedFallbackNormalized}` +
+    ` publishedFallbackSaved=${publishedFallbackSaved} publishedFallbackSkipped=${publishedFallbackSkipped}` +
     ` lockedThreaded=${lockedThreadedPosts} saveErrors=${saveErrors}` +
     ` duePosts=${dueRows.length} created=${created} duplicate=${duplicate} skipped=${skipped} errors=${errors}`,
   )
@@ -744,6 +1008,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     updatedTodayTypefullyPosts: updatedTodayPosts,
     duplicateTodayTypefullyPosts: duplicateTodayPosts,
     todayTypefullyPosts,
+    publishedFallbackFetched,
+    publishedFallbackNormalized,
+    publishedFallbackSaved,
+    publishedFallbackSkipped,
+    publishedFallbackSkipReasons,
+    publishedFallbackPosts,
     lockedThreadedPosts,
     saveErrors,
     duePosts: dueRows.length,
