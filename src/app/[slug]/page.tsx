@@ -16,7 +16,18 @@ interface Props {
   params: Promise<{ slug: string }>
 }
 
+function hasPublicSupabaseEnv(): boolean {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  return Boolean(supabaseUrl?.startsWith('http') && supabaseKey)
+}
+
 export async function generateStaticParams() {
+  if (!hasPublicSupabaseEnv()) {
+    console.warn('[fixed-page] skip generateStaticParams: missing public Supabase env')
+    return []
+  }
+
   const supabase = createPublicClient()
   const { data } = await supabase
     .from('fixed_pages')
