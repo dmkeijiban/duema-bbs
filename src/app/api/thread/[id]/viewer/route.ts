@@ -24,7 +24,7 @@ function getJstDateKey() {
 function hasSupabaseAuthToken(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return cookieStore
     .getAll()
-    .some(cookie => cookie.name.startsWith('sb-') && cookie.name.endsWith('-auth-token'))
+    .some(cookie => cookie.name.startsWith('sb-') && cookie.name.includes('-auth-token'))
 }
 
 export async function GET(request: NextRequest, { params }: Props) {

@@ -406,7 +406,7 @@ export const getCachedThreadPosts = (threadId: number, page: number) =>
       const offset = (page - 1) * THREAD_POSTS_PER_PAGE
       const { data } = await supabase
         .from('posts')
-        .select('id, thread_id, post_number, body, author_name, user_id, image_url, created_at, is_deleted, deleted_by, deleted_at')
+        .select('id, thread_id, post_number, body, author_name, user_id, session_id, image_url, created_at, is_deleted, deleted_by, deleted_at')
         .eq('thread_id', threadId)
         .eq('is_deleted', false)
         .order('post_number', { ascending: true })
