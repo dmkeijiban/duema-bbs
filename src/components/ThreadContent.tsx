@@ -11,7 +11,6 @@ import { ReportButton } from './ReportButton'
 import { formatDateTimeJP, resolveImageUrl } from '@/lib/utils'
 import { ImageViewer } from './ImageViewer'
 import { getThreadViewerState } from '@/lib/thread-viewer-client'
-import { AUTO_CLOSE_MESSAGE } from '@/lib/thread-auto-close'
 
 const InlinePushSubscribeButton = dynamic(
   () => import('./PushSubscribeButton').then(mod => mod.PushSubscribeButton),
@@ -26,8 +25,7 @@ interface Props {
   authorProfiles?: Record<string, PublicAuthorProfile>
   currentUserId?: string
   isArchived: boolean
-  isAutoClosed?: boolean
-  isCommentLocked?: boolean
+  commentClosedMessage?: string | null
   page: number
   totalPages: number
   recommendSlot?: React.ReactNode
@@ -87,8 +85,7 @@ export function ThreadContent({
   authorProfiles = {},
   currentUserId = '',
   isArchived,
-  isAutoClosed = false,
-  isCommentLocked = false,
+  commentClosedMessage = null,
   page,
   totalPages,
   recommendSlot,
@@ -215,7 +212,7 @@ export function ThreadContent({
         </div>
       )}
 
-      {!isArchived && !isAutoClosed && !isCommentLocked && (
+      {!isArchived && !commentClosedMessage && (
         <InlinePushSubscribeButton threadId={threadId} cta />
       )}
 
@@ -223,7 +220,7 @@ export function ThreadContent({
         <div className="mt-3">{recommendSlot}</div>
       )}
 
-      {!isArchived && !isAutoClosed && !isCommentLocked && (
+      {!isArchived && !commentClosedMessage && (
         <div id="reply-form-bottom" className="mt-3 scroll-mt-20">
           <NewPostForm
             threadId={threadId}
@@ -236,15 +233,9 @@ export function ThreadContent({
         </div>
       )}
 
-      {!isArchived && isAutoClosed && (
+      {!isArchived && commentClosedMessage && (
         <div id="reply-form-bottom" className="mt-3 px-4 py-3 text-sm text-center text-gray-600 border border-gray-300 bg-white">
-          {AUTO_CLOSE_MESSAGE}
-        </div>
-      )}
-
-      {!isArchived && isCommentLocked && (
-        <div id="reply-form-bottom" className="mt-3 px-4 py-3 text-sm text-center text-gray-600 border border-gray-300 bg-white">
-          このスレッドは現在コメントできません。
+          {commentClosedMessage}
         </div>
       )}
 
