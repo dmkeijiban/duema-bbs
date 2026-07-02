@@ -30,7 +30,6 @@ interface Props {
   displayNumber: number
   sessionId: string
   currentUserId?: string
-  threadSessionId: string
   threadId: number
   authorProfile?: PublicAuthorProfile
 }
@@ -482,7 +481,6 @@ export const PostItem = memo(function PostItem({
   displayNumber,
   sessionId,
   currentUserId = '',
-  threadSessionId,
   threadId,
   authorProfile,
 }: Props) {
@@ -493,7 +491,7 @@ export const PostItem = memo(function PostItem({
   const postSessionId = (post as Post & { session_id?: string }).session_id ?? ''
   const isDeletedByRegisteredUser =
     locallyDeletedByUser || post.is_deleted === true
-  const canDeleteBySession = Boolean(sessionId && (postSessionId === sessionId || threadSessionId === sessionId))
+  const canDeleteBySession = Boolean(sessionId && postSessionId === sessionId)
   const canDeleteByUser = Boolean(currentUserId && post.user_id === currentUserId)
   const canDelete = !isDeletedByRegisteredUser && (canDeleteBySession || canDeleteByUser)
 

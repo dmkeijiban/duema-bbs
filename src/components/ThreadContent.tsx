@@ -123,7 +123,6 @@ export function ThreadContent({
     displayNumber: post.post_number + 1,
   })), [posts])
 
-  const threadSessionId = (thread as Thread & { session_id?: string }).session_id ?? ''
   const threadAuthorProfile = thread.user_id ? authorProfiles[thread.user_id] : undefined
   const threadBodyNodes = useMemo(
     () => renderBody(thread.body, displayPosts as Post[]),
@@ -168,7 +167,6 @@ export function ThreadContent({
             displayNumber={post.displayNumber}
             sessionId={sessionId}
             currentUserId={viewerUserId}
-            threadSessionId={threadSessionId}
             threadId={threadId}
             authorProfile={post.user_id ? authorProfiles[post.user_id] : undefined}
           />

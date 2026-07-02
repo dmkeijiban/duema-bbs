@@ -408,7 +408,7 @@ export const getCachedThreadPosts = (threadId: number, page: number) =>
         .from('posts')
         .select('id, thread_id, post_number, body, author_name, user_id, image_url, created_at, is_deleted, deleted_by, deleted_at')
         .eq('thread_id', threadId)
-        .or('is_deleted.eq.false,deleted_by.eq.registered_user')
+        .eq('is_deleted', false)
         .order('post_number', { ascending: true })
         .range(offset, offset + THREAD_POSTS_PER_PAGE - 1)
       const hiddenUserIds = await getCachedPublicHiddenUserIds()
