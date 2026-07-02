@@ -9,21 +9,18 @@ interface Props {
   /** カテゴリページで使用。指定すると `/basePath?sort=xxx` 形式のリンクを生成する */
   basePath?: string
   recentHref?: string
-  newHref?: string
   rankingHref?: string
   randomHref?: string
 }
 
 const TABS = [
-  { label: '更新順一覧', sort: 'recent',  icon: '↺', short: '更新'  },
-  { label: '新着一覧',   sort: 'new',     icon: '⏱', short: '新着'  },
+  { label: '更新順一覧', sort: 'recent',  icon: '🔄', short: '更新'  },
   { label: 'ランキング', sort: 'popular', icon: '📊', short: '人気'  },
   { label: 'ランダム',   sort: 'random', icon: '🎲', short: 'ランダム' },
 ]
 
 const ROOT_SORT_HREF: Record<string, string> = {
   recent: '/',
-  new: '/?sort=new',
   popular: '/?sort=popular',
   random: '/?sort=random',
 }
@@ -34,7 +31,6 @@ export function SortTabs({
   categories,
   basePath,
   recentHref = '/',
-  newHref = ROOT_SORT_HREF.new,
   rankingHref = ROOT_SORT_HREF.popular,
   randomHref = ROOT_SORT_HREF.random,
 }: Props) {
@@ -42,7 +38,6 @@ export function SortTabs({
     if (basePath) return `${basePath}?sort=${sort}`
     if (currentCategory) return `/category/${currentCategory}?sort=${sort}`
     if (sort === 'recent') return recentHref
-    if (sort === 'new') return newHref
     if (sort === 'popular') return rankingHref
     if (sort === 'random') return randomHref
     return ROOT_SORT_HREF[sort] ?? '/'
@@ -76,6 +71,22 @@ export function SortTabs({
           )
         })}
         <CategoryDropdown currentCategory={currentCategory} categories={categories} />
+        <li className="shrink-0" role="presentation">
+          <Link
+            href="/kakolog"
+            role="tab"
+            aria-selected={currentSort === 'kakolog'}
+            className={
+              currentSort === 'kakolog'
+                ? 'flex min-h-9 items-center justify-center gap-1 rounded border border-blue-600 bg-blue-600 px-2.5 text-xs font-bold text-white shadow-sm md:px-3 md:text-sm'
+                : 'flex min-h-9 items-center justify-center gap-1 rounded border border-blue-100 bg-white px-2.5 text-xs font-medium text-blue-700 hover:bg-blue-50 md:px-3 md:text-sm'
+            }
+          >
+            <span className="opacity-80">🕰️</span>
+            <span className="hidden md:inline">過去ログ</span>
+            <span className="md:hidden">過去</span>
+          </Link>
+        </li>
       </ul>
     </div>
   )

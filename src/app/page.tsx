@@ -33,6 +33,11 @@ import {
   getCachedPublicHiddenUserIds,
   getPublicVisibleUserContentOrFilter,
 } from '@/lib/public-visibility'
+import {
+  applyActiveThreadFilter,
+  applyLegacyActiveThreadFilter,
+  isArchiveSchemaMissing,
+} from '@/lib/thread-archive'
 
 export const revalidate = 3600
 const TOP_THREAD_PAGE_SIZE = 60
@@ -99,12 +104,24 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
     let q = supabase
       .from('threads')
       .select('id, title, user_id, image_url, thumbnail_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
-      .eq('is_archived', false)
+    q = applyActiveThreadFilter(q)
     if (publicUserFilter) q = q.or(publicUserFilter)
     if (categoryIds.length === 1) q = q.eq('category_id', categoryIds[0])
     if (categoryIds.length > 1) q = q.in('category_id', categoryIds)
     q = q.limit(100)
-    const { data: raw } = await q
+    const randomResult = await q
+    let raw = randomResult.data
+    if (isArchiveSchemaMissing(randomResult.error)) {
+      let retry = applyLegacyActiveThreadFilter(supabase
+        .from('threads')
+        .select('id, title, user_id, image_url, thumbnail_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
+      )
+      if (publicUserFilter) retry = retry.or(publicUserFilter)
+      if (categoryIds.length === 1) retry = retry.eq('category_id', categoryIds[0])
+      if (categoryIds.length > 1) retry = retry.in('category_id', categoryIds)
+      const retryResult = await retry.limit(100)
+      raw = retryResult.data
+    }
     const fetched = raw ? await withFallbackThumbnails(supabase, filterPublicVisibleUserContent(raw, hiddenUserIds)) : []
     const all = seededShuffle(ADSENSE_REVIEW_MODE ? fetched.filter(t => !isAdSenseRiskyThreadTitle(t.title)) : fetched)
     if (all.length === 0) return <ThreadEmpty searchQ={undefined} />

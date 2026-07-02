@@ -96,7 +96,7 @@ export async function generateMetadata({ params }: Props) {
   const thread = await getCachedThread(parseInt(id))
 
   const hiddenUserIds = await getCachedPublicHiddenUserIds()
-  if (!thread || thread.is_archived || !isPublicVisibleUserContent(thread, hiddenUserIds)) {
+  if (!thread || !isPublicVisibleUserContent(thread, hiddenUserIds)) {
     return {
       title: 'スレッドが見つかりません',
       robots: { index: false, follow: false },
@@ -163,7 +163,7 @@ export async function renderThreadPage(threadId: number, page: number) {
     getCachedThreadPosts(threadId, page),
   ])
   const hiddenUserIds = await getCachedPublicHiddenUserIds()
-  if (!thread || thread.is_archived || !isPublicVisibleUserContent(thread, hiddenUserIds)) notFound()
+  if (!thread || !isPublicVisibleUserContent(thread, hiddenUserIds)) notFound()
 
   const posts = postsResult.data
   const typedThread = thread as unknown as Thread & { categories: Category | null }
@@ -193,6 +193,7 @@ export async function renderThreadPage(threadId: number, page: number) {
       : typedPost
   })
   const commentClosedMessage = getThreadCommentClosedMessage(typedThread)
+  const isArchivedForDisplay = typedThread.is_archived || Boolean(typedThread.archived_at)
   const totalPages = Math.max(1, Math.ceil((typedThread.post_count ?? 0) / POSTS_PER_PAGE))
   const visibleThreadNotices = (threadNotices as Notice[]).filter(notice => !isReviewModeHiddenNotice(notice))
 
@@ -359,7 +360,7 @@ export async function renderThreadPage(threadId: number, page: number) {
         thread={publicThread}
         starterImageUrl={starterImageUrl}
         authorProfiles={authorProfiles}
-        isArchived={typedThread.is_archived}
+        isArchived={isArchivedForDisplay}
         commentClosedMessage={commentClosedMessage}
         page={page}
         totalPages={totalPages}

@@ -16,12 +16,18 @@ import {
   getCachedPublicHiddenUserIds,
   getPublicVisibleUserContentOrFilter,
 } from '@/lib/public-visibility'
+import {
+  applyActiveThreadFilter,
+  applyKakologThreadFilter,
+  applyLegacyActiveThreadFilter,
+  applyLegacyKakologThreadFilter,
+  isArchiveSchemaMissing,
+} from '@/lib/thread-archive'
 
 const PAGE_SIZE = 60
 
 export const NAV_LINKS = [
-  { label: '↺ 更新順一覧', href: '/update' },
-  { label: '⏱ 新着一覧', href: '/new' },
+  { label: '🔄 更新順一覧', href: '/update' },
   { label: '📊 ランキング', href: '/ranking' },
   { label: '🎲 ランダム', href: '/random' },
 ]
@@ -36,7 +42,7 @@ interface Props {
 async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
   const supabase = createPublicClient()
   const isArchived = sort === 'archived'
-  const basePath = sort === 'recent' ? '/update' : sort === 'new' ? '/new' : sort === 'random' ? '/random' : '/archived'
+  const basePath = sort === 'recent' ? '/update' : sort === 'new' ? '/new' : sort === 'random' ? '/random' : '/kakolog'
   const hiddenUserIds = await getCachedPublicHiddenUserIds()
   const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
 
@@ -45,12 +51,23 @@ async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
     let randomQuery = supabase
       .from('threads')
       .select('*, categories(id,name,slug,color,description,sort_order)')
-      .eq('is_archived', false)
+    randomQuery = applyActiveThreadFilter(randomQuery)
 
     if (publicUserFilter) randomQuery = randomQuery.or(publicUserFilter)
 
-    const { data: rawThreads } = await randomQuery
+    const randomResult = await randomQuery
       .limit(500)
+    let rawThreads = randomResult.data
+    const randomError = randomResult.error
+    if (isArchiveSchemaMissing(randomError)) {
+      let retry = applyLegacyActiveThreadFilter(supabase
+        .from('threads')
+        .select('*, categories(id,name,slug,color,description,sort_order)')
+      )
+      if (publicUserFilter) retry = retry.or(publicUserFilter)
+      const retryResult = await retry.limit(500)
+      rawThreads = retryResult.data
+    }
     const all = rawThreads ? await withFallbackThumbnails(supabase, filterPublicVisibleUserContent(rawThreads, hiddenUserIds)) : []
     const threads = seededShuffle(all).slice(0, PAGE_SIZE) as (Thread & { categories: Category | null })[]
     if (threads.length === 0) {
@@ -94,18 +111,23 @@ async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
   let countQuery = supabase
     .from('threads')
     .select('*', { count: 'exact', head: true })
-    .eq('is_archived', isArchived)
+  countQuery = isArchived
+    ? applyKakologThreadFilter(countQuery)
+    : applyActiveThreadFilter(countQuery)
 
   if (publicUserFilter) countQuery = countQuery.or(publicUserFilter)
 
-  const { count } = await countQuery
-  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
+  const countResult = await countQuery
+  let count = countResult.count
+  const countError = countResult.error
   const offset = (page - 1) * PAGE_SIZE
 
   let query = supabase
     .from('threads')
     .select('*, categories(id,name,slug,color,description,sort_order)')
-    .eq('is_archived', isArchived)
+  query = isArchived
+    ? applyKakologThreadFilter(query)
+    : applyActiveThreadFilter(query)
 
   if (publicUserFilter) query = query.or(publicUserFilter)
 
@@ -116,7 +138,35 @@ async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
   }
 
   query = query.range(offset, offset + PAGE_SIZE - 1)
-  const { data: rawThreads } = await query
+  const dataResult = await query
+  let rawThreads = dataResult.data
+  const dataError = dataResult.error
+  if (isArchiveSchemaMissing(countError) || isArchiveSchemaMissing(dataError)) {
+    let legacyCountQuery = supabase
+      .from('threads')
+      .select('*', { count: 'exact', head: true })
+    legacyCountQuery = isArchived
+      ? applyLegacyKakologThreadFilter(legacyCountQuery)
+      : applyLegacyActiveThreadFilter(legacyCountQuery)
+    let legacyDataQuery = supabase
+      .from('threads')
+      .select('*, categories(id,name,slug,color,description,sort_order)')
+    legacyDataQuery = isArchived
+      ? applyLegacyKakologThreadFilter(legacyDataQuery)
+      : applyLegacyActiveThreadFilter(legacyDataQuery)
+    if (publicUserFilter) {
+      legacyCountQuery = legacyCountQuery.or(publicUserFilter)
+      legacyDataQuery = legacyDataQuery.or(publicUserFilter)
+    }
+    legacyDataQuery = sort === 'new'
+      ? legacyDataQuery.order('created_at', { ascending: false })
+      : legacyDataQuery.order('last_posted_at', { ascending: false })
+    legacyDataQuery = legacyDataQuery.range(offset, offset + PAGE_SIZE - 1)
+    const [legacyCount, legacyData] = await Promise.all([legacyCountQuery, legacyDataQuery])
+    count = legacyCount.count
+    rawThreads = legacyData.data
+  }
+  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
   const threads = rawThreads ? await withFallbackThumbnails(supabase, filterPublicVisibleUserContent(rawThreads, hiddenUserIds)) : []
 
   if (threads.length === 0) {
@@ -241,10 +291,22 @@ export function BottomNav({
                 : 'flex min-h-9 items-center justify-center rounded border border-blue-100 bg-white px-2 text-center text-xs font-medium text-blue-700 hover:bg-blue-50 md:text-sm'
             }
           >
-            📁 カテゴリ
+            📂 カテゴリ
           </Link>
         </li>
       )}
+      <li>
+        <Link
+          href="/kakolog"
+          className={
+            current === '/kakolog'
+              ? 'flex min-h-9 items-center justify-center rounded border border-blue-600 bg-blue-600 px-2 text-center text-xs font-bold text-white shadow-sm md:text-sm'
+              : 'flex min-h-9 items-center justify-center rounded border border-blue-100 bg-white px-2 text-center text-xs font-medium text-blue-700 hover:bg-blue-50 md:text-sm'
+          }
+        >
+          🕰️ 過去ログ
+        </Link>
+      </li>
       </ul>
     </nav>
   )
@@ -264,7 +326,7 @@ export async function ThreadSortPage({ sort, title, icon, page = 1 }: Props) {
           <ThreadList sort={sort} page={page} />
         </Suspense>
         <BottomNav
-          current={sort === 'recent' ? '/update' : sort === 'new' ? '/new' : sort === 'random' ? '/random' : undefined}
+          current={sort === 'recent' ? '/update' : sort === 'new' ? '/new' : sort === 'random' ? '/random' : sort === 'archived' ? '/kakolog' : undefined}
           categories={categories}
         />
         <div className="mb-6" />

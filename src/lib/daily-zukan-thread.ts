@@ -415,17 +415,34 @@ export async function runDailyZukanThread(): Promise<DailyZukanResult> {
     .maybeSingle()
   const categoryId: number | null = categoryRow?.id ?? null
 
-  const { data: thread, error: threadError } = await admin
+  let { data: thread, error: threadError } = await admin
     .from('threads')
     .insert({
       title,
       body,
       category_id: categoryId,
       author_name: '名無しのデュエリスト',
+      auto_lock_exempt: true,
       ...(card.official_image_url ? { image_url: card.official_image_url } : {}),
     })
     .select('id')
     .single()
+
+  if (threadError && (threadError.code === '42703' || threadError.message?.includes('auto_lock_exempt'))) {
+    const retry = await admin
+      .from('threads')
+      .insert({
+        title,
+        body,
+        category_id: categoryId,
+        author_name: '名無しのデュエリスト',
+        ...(card.official_image_url ? { image_url: card.official_image_url } : {}),
+      })
+      .select('id')
+      .single()
+    thread = retry.data
+    threadError = retry.error
+  }
 
   if (threadError || !thread) {
     // スレ作成に失敗したらログ行を削除し、同日の再試行でカードを消費しない。

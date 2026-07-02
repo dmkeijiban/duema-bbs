@@ -20,6 +20,8 @@ export interface Thread {
   post_count: number
   is_archived: boolean
   comment_locked?: boolean
+  auto_lock_exempt?: boolean
+  archived_at?: string | null
   created_at: string
   last_posted_at: string
   categories?: Category | null

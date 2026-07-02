@@ -247,7 +247,13 @@ export async function adminDeleteThread(formData: FormData) {
   const threadPage = getThreadPage(formData)
   const supabase = createAdminClient()
 
-  await supabase.from('threads').update({ is_archived: true }).eq('id', threadId)
+  let result = await supabase
+    .from('threads')
+    .update({ is_archived: true, archived_at: new Date().toISOString() })
+    .eq('id', threadId)
+  if (isMissingColumn(result.error, 'archived_at')) {
+    result = await supabase.from('threads').update({ is_archived: true }).eq('id', threadId)
+  }
 
   revalidatePath('/')
   revalidatePath('/admin')
@@ -467,6 +473,37 @@ export async function adminToggleThreadCommentLock(formData: FormData) {
   redirect(adminPath({ thread: returnToThread ? threadId : undefined, threadPage }))
 }
 
+export async function adminToggleAutoLockExempt(formData: FormData) {
+  await checkAdmin()
+  const threadId = parseInt(formData.get('threadId') as string)
+  const current = formData.get('autoLockExempt') === 'true'
+  const returnToThread = formData.get('returnToThread') === 'true'
+  const threadPage = getThreadPage(formData)
+  const q = (formData.get('q') as string | null)?.trim()
+  const supabase = createAdminClient()
+
+  const { error } = await supabase
+    .from('threads')
+    .update({ auto_lock_exempt: !current })
+    .eq('id', threadId)
+
+  if (error) {
+    const message = isMissingColumn(error, 'auto_lock_exempt')
+      ? 'auto_lock_exemptカラムが未適用です。20260702_kakolog_threads.sql を適用してください。'
+      : error.message
+    redirect(`/admin?error=${encodeURIComponent(message)}`)
+  }
+
+  revalidateTag(`thread-${threadId}`, { expire: 0 })
+  revalidateTag('threads', { expire: 0 })
+  revalidatePath(`/thread/${threadId}`)
+  revalidatePath('/')
+  revalidatePath('/category', 'layout')
+  revalidatePath('/feed.xml')
+  revalidatePath('/admin')
+  redirect(adminPath({ thread: returnToThread ? threadId : undefined, threadPage, q }))
+}
+
 export async function adminHidePostsBySession(formData: FormData) {
   await checkAdmin()
   const threadId = parseInt(formData.get('threadId') as string)
@@ -535,7 +572,20 @@ export async function adminToggleArchive(formData: FormData) {
   const q = (formData.get('q') as string | null)?.trim()
   const supabase = createAdminClient()
 
-  await supabase.from('threads').update({ is_archived: !current }).eq('id', threadId)
+  const nextArchived = !current
+  let result = await supabase
+    .from('threads')
+    .update({
+      is_archived: nextArchived,
+      archived_at: nextArchived ? new Date().toISOString() : null,
+    })
+    .eq('id', threadId)
+  if (isMissingColumn(result.error, 'archived_at')) {
+    result = await supabase.from('threads').update({ is_archived: nextArchived }).eq('id', threadId)
+  }
+  if (result.error) {
+    redirect(`/admin?error=${encodeURIComponent(result.error.message)}`)
+  }
 
   revalidateTag(`thread-${threadId}`, { expire: 0 })
   revalidateTag('threads', { expire: 0 })

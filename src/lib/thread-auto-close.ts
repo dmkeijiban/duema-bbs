@@ -1,16 +1,20 @@
 export const AUTO_CLOSE_POST_COUNT = 100
 export const THREAD_COMMENT_CLOSE_DAYS = 30
+export const THREAD_ARCHIVE_DAYS = THREAD_COMMENT_CLOSE_DAYS
 
 export const AUTO_CLOSE_MESSAGE =
   'このスレッドはコメント数が100件に達したため、書き込みを終了しました。'
 export const THREAD_COMMENT_CLOSED_MESSAGE =
   'このスレッドはコメント受付を終了しました'
+export const THREAD_AGE_CLOSED_MESSAGE =
+  `このスレッドは作成から${THREAD_COMMENT_CLOSE_DAYS}日以上経過したため、コメントの投稿を停止しています。過去ログとして閲覧できます。`
 
 type AutoCloseThread = {
   title?: string | null
   body?: string | null
   post_count?: number | null
   comment_locked?: boolean | null
+  auto_lock_exempt?: boolean | null
   created_at?: string | null
   categories?: {
     name?: string | null
@@ -28,7 +32,11 @@ function isCreatedAtMidnightJst(createdAt: string | null | undefined) {
   return date.getUTCHours() === 15
 }
 
-function isOlderThanCommentWindow(createdAt: string | null | undefined, now = new Date()) {
+export function getThreadArchiveCutoff(now = new Date()) {
+  return new Date(now.getTime() - THREAD_ARCHIVE_DAYS * 24 * 60 * 60 * 1000)
+}
+
+export function isOlderThanCommentWindow(createdAt: string | null | undefined, now = new Date()) {
   if (!createdAt) return false
   const date = new Date(createdAt)
   if (Number.isNaN(date.getTime())) return false
@@ -54,14 +62,24 @@ export function isMemoryZukanMidnightThread(thread: AutoCloseThread) {
 }
 
 export function isThreadAutoClosed(thread: AutoCloseThread) {
+  if (thread.auto_lock_exempt === true) return false
   if (isMemoryZukanMidnightThread(thread)) return false
   return (thread.post_count ?? 0) >= AUTO_CLOSE_POST_COUNT
 }
 
+export function isThreadAgeClosed(thread: AutoCloseThread, now = new Date()) {
+  if (thread.auto_lock_exempt === true) return false
+  if (isMemoryZukanMidnightThread(thread)) return false
+  return isOlderThanCommentWindow(thread.created_at, now)
+}
+
+export function isThreadAutoArchived(thread: AutoCloseThread, now = new Date()) {
+  return isThreadAgeClosed(thread, now)
+}
+
 export function isThreadCommentClosed(thread: AutoCloseThread, now = new Date()) {
   if (thread.comment_locked === true) return true
-  if (isMemoryZukanMidnightThread(thread)) return false
-  if (isOlderThanCommentWindow(thread.created_at, now)) return true
+  if (isThreadAgeClosed(thread, now)) return true
   return isThreadAutoClosed(thread)
 }
 
@@ -72,6 +90,7 @@ export function canCommentToThread(thread: AutoCloseThread, now = new Date()) {
 export function getThreadCommentClosedMessage(thread: AutoCloseThread, now = new Date()) {
   if (!isThreadCommentClosed(thread, now)) return null
   if (thread.comment_locked === true) return THREAD_COMMENT_CLOSED_MESSAGE
+  if (isThreadAgeClosed(thread, now)) return THREAD_AGE_CLOSED_MESSAGE
   if (isThreadAutoClosed(thread)) return AUTO_CLOSE_MESSAGE
   return THREAD_COMMENT_CLOSED_MESSAGE
 }
