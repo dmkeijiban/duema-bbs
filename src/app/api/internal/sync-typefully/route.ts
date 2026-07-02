@@ -3,6 +3,7 @@
  *
  * Typefully API だけを見て、今日分の予約投稿を x_posts に保存する。
  * 掲示板スレ化は x_posts.scheduled_at が到来した行だけを処理する。
+ * 手動実行: Authorization: Bearer ${INTERNAL_POST_SECRET}
  */
 
 import { NextRequest, NextResponse } from 'next/server'
