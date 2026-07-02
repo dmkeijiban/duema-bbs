@@ -12,7 +12,7 @@ interface Props {
 
 export function ThreadRow({ thread, rank }: Props) {
   const category = getDisplayCategory(thread.categories)
-  const imgSrc = resolveImageUrl(thread.image_url) ?? DEFAULT_THREAD_THUMBNAIL
+  const imgSrc = resolveImageUrl(thread.thumbnail_url ?? thread.image_url) ?? DEFAULT_THREAD_THUMBNAIL
   return (
     <Link
       href={`/thread/${thread.id}`}

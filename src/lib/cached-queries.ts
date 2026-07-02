@@ -152,7 +152,7 @@ export const getCachedSetting = unstable_cache(
   { revalidate: STANDARD_CACHE_SECONDS, tags: ['settings'] }
 )
 
-type ThreadRow = { id: number; title: string; user_id?: string | null; image_url: string | null; post_count: number }
+type ThreadRow = { id: number; title: string; user_id?: string | null; image_url: string | null; thumbnail_url?: string | null; post_count: number }
 type RelatedThreadRow = ThreadRow & {
   category_id: number | null
   created_at: string | null
@@ -166,6 +166,7 @@ type CachedThreadRow = {
   author_name: string
   user_id?: string | null
   image_url: string | null
+  thumbnail_url?: string | null
   view_count: number
   post_count: number
   is_archived: boolean
@@ -185,7 +186,7 @@ export const getCachedTopThreads = unstable_cache(
       const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
       let query = supabase
         .from('threads')
-        .select('id, title, user_id, image_url, post_count')
+        .select('id, title, user_id, image_url, thumbnail_url, post_count')
         .eq('is_archived', false)
 
       if (publicUserFilter) query = query.or(publicUserFilter)
@@ -268,7 +269,7 @@ export function getCachedRelatedThreads(
       const hiddenUserIds = await getCachedPublicHiddenUserIds()
       const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
       const keywords = extractRecommendKeywords(title)
-      const select = 'id, title, user_id, image_url, post_count, category_id, created_at, last_posted_at'
+      const select = 'id, title, user_id, image_url, thumbnail_url, post_count, category_id, created_at, last_posted_at'
 
       let sameCategoryQuery: PromiseLike<{ data: unknown[] | null }>
       if (categoryId === null) {
@@ -830,7 +831,7 @@ export function getCachedThreadList(
         .eq('is_archived', isArchived)
       let dataQuery = supabase
         .from('threads')
-        .select('id, title, user_id, image_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
+        .select('id, title, user_id, image_url, thumbnail_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
         .eq('is_archived', isArchived)
 
       if (publicUserFilter) {

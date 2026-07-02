@@ -15,6 +15,7 @@ export interface Thread {
   author_name: string
   user_id?: string | null
   image_url: string | null
+  thumbnail_url?: string | null
   view_count: number
   post_count: number
   is_archived: boolean
@@ -32,6 +33,7 @@ export interface Post {
   author_name: string
   user_id?: string | null
   image_url: string | null
+  thumbnail_url?: string | null
   ip_hash?: string | null
   created_at: string
   is_deleted?: boolean | null
