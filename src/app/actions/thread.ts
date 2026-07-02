@@ -12,7 +12,7 @@ import { sendPushNotifications } from '@/app/actions/push-subscription'
 import { notifyNewThread } from '@/lib/discord'
 import { verifyAdminCookie } from '@/lib/admin-auth'
 import { checkModerationBan, checkNgWords, checkPostingBan, checkSessionBan, hashModerationValue } from '@/lib/moderation'
-import { AUTO_CLOSE_MESSAGE, isThreadAutoClosed } from '@/lib/thread-auto-close'
+import { getThreadCommentClosedMessage } from '@/lib/thread-auto-close'
 import { checkSessionRateLimit, checkValueRateLimit } from '@/lib/rate-limit'
 
 function hasHoneypotValue(formData: FormData): boolean {
@@ -345,10 +345,8 @@ export async function createPost(formData: FormData) {
 
   if (threadError || !targetThread) return { error: 'スレッドが見つかりません' }
   if (targetThread.is_archived) return { error: 'このスレッドは過去ログです。コメントはできません。' }
-  if (targetThread.comment_locked) return { error: 'このスレッドは現在コメントできません。' }
-  if (isThreadAutoClosed(targetThread)) {
-    return { error: AUTO_CLOSE_MESSAGE }
-  }
+  const closedMessage = getThreadCommentClosedMessage(targetThread)
+  if (closedMessage) return { error: closedMessage }
 
   const sessionId = await getOrCreateSessionId()
   const authUserId = await getAuthenticatedUserId(supabase)
