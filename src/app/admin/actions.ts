@@ -25,6 +25,22 @@ function appendAdminStatus(returnPath: string, key: string, value: string) {
   return `${returnPath}${returnPath.includes('?') ? '&' : '?'}${key}=${value}`
 }
 
+function adminPath(params: Record<string, string | number | null | undefined> = {}) {
+  const searchParams = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== null && value !== undefined && value !== '') {
+      searchParams.set(key, String(value))
+    }
+  }
+  const query = searchParams.toString()
+  return query ? `/admin?${query}` : '/admin'
+}
+
+function getThreadPage(formData: FormData) {
+  const page = parseInt(formData.get('threadPage') as string)
+  return Number.isFinite(page) && page > 1 ? page : undefined
+}
+
 function logBanError(context: string, error: {
   code?: string
   message?: string
@@ -228,7 +244,7 @@ export async function adminLogin(formData: FormData) {
 export async function adminDeleteThread(formData: FormData) {
   await checkAdmin()
   const threadId = parseInt(formData.get('threadId') as string)
-  const threadPage = Math.max(1, parseInt(formData.get('threadPage') as string) || 1)
+  const threadPage = getThreadPage(formData)
   const supabase = createAdminClient()
 
   await supabase.from('threads').update({ is_archived: true }).eq('id', threadId)
@@ -236,13 +252,14 @@ export async function adminDeleteThread(formData: FormData) {
   revalidatePath('/')
   revalidatePath('/admin')
   revalidateTag('threads', { expire: 0 })
-  redirect(threadPage > 1 ? `/admin?threadPage=${threadPage}` : '/admin')
+  redirect(adminPath({ threadPage }))
 }
 
 export async function adminDeletePost(formData: FormData) {
   await checkAdmin()
   const postId = parseInt(formData.get('postId') as string)
   const threadId = parseInt(formData.get('threadId') as string)
+  const threadPage = getThreadPage(formData)
   const supabase = createAdminClient()
 
   await supabase.from('posts').update({
@@ -255,12 +272,13 @@ export async function adminDeletePost(formData: FormData) {
   revalidateTag(`thread-${threadId}`, { expire: 0 })
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/admin')
-  redirect(`/admin?thread=${threadId}`)
+  redirect(adminPath({ thread: threadId, threadPage }))
 }
 
 export async function adminUpdateThread(formData: FormData) {
   await checkAdmin()
   const threadId = parseInt(formData.get('threadId') as string)
+  const threadPage = getThreadPage(formData)
   const title = formData.get('title') as string
   const body = formData.get('body') as string
   const categoryId = formData.get('category_id') as string
@@ -279,7 +297,7 @@ export async function adminUpdateThread(formData: FormData) {
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/')
   revalidatePath('/admin')
-  redirect('/admin')
+  redirect(adminPath({ threadPage }))
 }
 
 /**
@@ -304,6 +322,7 @@ export async function adminUpdatePost(formData: FormData) {
   await checkAdmin()
   const postId = parseInt(formData.get('postId') as string)
   const threadId = parseInt(formData.get('threadId') as string)
+  const threadPage = getThreadPage(formData)
   const newBody = formData.get('body') as string
   const supabase = createAdminClient()
 
@@ -333,7 +352,7 @@ export async function adminUpdatePost(formData: FormData) {
   revalidateTag(`thread-${threadId}`, { expire: 0 })
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/admin')
-  redirect(`/admin?thread=${threadId}`)
+  redirect(adminPath({ thread: threadId, threadPage }))
 }
 
 export async function adminAddNgWord(formData: FormData) {
@@ -367,12 +386,8 @@ export async function adminBanSession(formData: FormData) {
   const userId = (formData.get('userId') as string)?.trim()
   const reason = (formData.get('reason') as string)?.trim() || 'admin'
   const returnToThread = formData.get('returnToThread') as string | null
-  const threadPage = Math.max(1, parseInt(formData.get('threadPage') as string) || 1)
-  const returnPath = returnToThread
-    ? `/admin?thread=${returnToThread}`
-    : threadPage > 1
-      ? `/admin?threadPage=${threadPage}`
-      : '/admin'
+  const threadPage = getThreadPage(formData)
+  const returnPath = adminPath({ thread: returnToThread, threadPage })
 
   if (!sessionId && !userId) redirect(appendAdminStatus(returnPath, 'adminError', 'missing_session'))
 
@@ -398,7 +413,8 @@ export async function adminBanIpHash(formData: FormData) {
   const ipHash = (formData.get('ipHash') as string)?.trim()
   const reason = (formData.get('reason') as string)?.trim() || 'admin'
   const returnToThread = formData.get('returnToThread') as string | null
-  if (!ipHash) redirect(returnToThread ? `/admin?thread=${returnToThread}` : '/admin')
+  const threadPage = getThreadPage(formData)
+  if (!ipHash) redirect(adminPath({ thread: returnToThread, threadPage }))
 
   const supabase = createAdminClient()
   await supabase
@@ -412,7 +428,7 @@ export async function adminBanIpHash(formData: FormData) {
     }, { onConflict: 'ban_type,ban_value' })
 
   revalidatePath('/admin')
-  redirect(returnToThread ? `/admin?thread=${returnToThread}` : '/admin')
+  redirect(adminPath({ thread: returnToThread, threadPage }))
 }
 
 export async function adminUnbanSession(formData: FormData) {
@@ -430,6 +446,7 @@ export async function adminToggleThreadCommentLock(formData: FormData) {
   const threadId = parseInt(formData.get('threadId') as string)
   const current = formData.get('commentLocked') === 'true'
   const returnToThread = formData.get('returnToThread') === 'true'
+  const threadPage = getThreadPage(formData)
   const supabase = createAdminClient()
 
   const { error } = await supabase
@@ -447,14 +464,15 @@ export async function adminToggleThreadCommentLock(formData: FormData) {
   revalidateTag(`thread-${threadId}`, { expire: 0 })
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/admin')
-  redirect(returnToThread ? `/admin?thread=${threadId}` : '/admin')
+  redirect(adminPath({ thread: returnToThread ? threadId : undefined, threadPage }))
 }
 
 export async function adminHidePostsBySession(formData: FormData) {
   await checkAdmin()
   const threadId = parseInt(formData.get('threadId') as string)
   const sessionId = (formData.get('sessionId') as string)?.trim()
-  if (!threadId || !sessionId) redirect(threadId ? `/admin?thread=${threadId}` : '/admin')
+  const threadPage = getThreadPage(formData)
+  if (!threadId || !sessionId) redirect(adminPath({ thread: threadId || undefined, threadPage }))
 
   const supabase = createAdminClient()
   await supabase
@@ -472,14 +490,15 @@ export async function adminHidePostsBySession(formData: FormData) {
   revalidateTag(`thread-${threadId}`, { expire: 0 })
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/admin')
-  redirect(`/admin?thread=${threadId}`)
+  redirect(adminPath({ thread: threadId, threadPage }))
 }
 
 export async function adminHidePostsByIpHash(formData: FormData) {
   await checkAdmin()
   const threadId = parseInt(formData.get('threadId') as string)
   const ipHash = (formData.get('ipHash') as string)?.trim()
-  if (!threadId || !ipHash) redirect(threadId ? `/admin?thread=${threadId}` : '/admin')
+  const threadPage = getThreadPage(formData)
+  if (!threadId || !ipHash) redirect(adminPath({ thread: threadId || undefined, threadPage }))
 
   const supabase = createAdminClient()
   const { error } = await supabase
@@ -505,14 +524,14 @@ export async function adminHidePostsByIpHash(formData: FormData) {
   revalidateTag(`thread-${threadId}`, { expire: 0 })
   revalidatePath(`/thread/${threadId}`)
   revalidatePath('/admin')
-  redirect(`/admin?thread=${threadId}`)
+  redirect(adminPath({ thread: threadId, threadPage }))
 }
 
 export async function adminToggleArchive(formData: FormData) {
   await checkAdmin()
   const threadId = parseInt(formData.get('threadId') as string)
   const current = formData.get('isArchived') === 'true'
-  const threadPage = Math.max(1, parseInt(formData.get('threadPage') as string) || 1)
+  const threadPage = getThreadPage(formData)
   const q = (formData.get('q') as string | null)?.trim()
   const supabase = createAdminClient()
 
@@ -530,7 +549,7 @@ export async function adminToggleArchive(formData: FormData) {
   revalidatePath('/admin')
 
   const params = new URLSearchParams()
-  if (threadPage > 1) params.set('threadPage', String(threadPage))
+  if (threadPage) params.set('threadPage', String(threadPage))
   if (q) params.set('q', q)
   params.set(current ? 'unhidden' : 'hidden', '1')
   redirect(`/admin?${params.toString()}`)

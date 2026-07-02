@@ -28,6 +28,7 @@ import {
 } from '@/lib/admin-dashboard'
 import { AdminSubmitButton } from './AdminSubmitButton'
 import { AccessTrendCard } from './AccessTrendCard'
+import { AdminScrollManager } from './AdminScrollManager'
 
 const ADMIN_COOKIE = 'admin_auth'
 const THREADS_PER_PAGE = 30
@@ -593,6 +594,7 @@ export default async function AdminPage({
 
   return (
     <div className="max-w-screen-xl mx-auto px-3 py-4 text-sm">
+      <AdminScrollManager />
 
       {/* ヘッダー */}
       <div className="flex items-center justify-between mb-4">
@@ -810,8 +812,9 @@ export default async function AdminPage({
       {editThread && (
         <div className="mb-4 border-2 border-blue-400 bg-blue-50 p-4 rounded">
           <h2 className="font-bold text-blue-800 mb-3">✏️ スレッド編集</h2>
-          <form action={adminUpdateThread} className="space-y-2">
+          <form action={adminUpdateThread} className="space-y-2" data-admin-scroll="preserve">
             <input type="hidden" name="threadId" value={editThread.id} />
+            <input type="hidden" name="threadPage" value={threadPage} />
             <div>
               <label className="text-xs text-gray-600 block mb-0.5">タイトル</label>
               <input type="text" name="title" defaultValue={editThread.title}
@@ -834,7 +837,7 @@ export default async function AdminPage({
             </div>
             <div className="flex gap-2 pt-1">
               <button type="submit" className="px-4 py-1.5 text-white text-xs font-medium rounded" style={{ background: '#0d6efd' }}>保存</button>
-              <Link href="/admin" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600 rounded">キャンセル</Link>
+              <Link href={adminThreadsUrl({ page: threadPage, q: searchQ, sort, order })} scroll={false} data-admin-scroll="preserve" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600 rounded">キャンセル</Link>
             </div>
           </form>
         </div>
@@ -843,14 +846,15 @@ export default async function AdminPage({
       {editPost && sp.thread && (
         <div className="mb-4 border-2 border-green-400 bg-green-50 p-4 rounded">
           <h2 className="font-bold text-green-800 mb-3">✏️ レス編集（#{editPost.post_number + 1} {editPost.author_name}）</h2>
-          <form action={adminUpdatePost} className="space-y-2">
+          <form action={adminUpdatePost} className="space-y-2" data-admin-scroll="preserve">
             <input type="hidden" name="postId" value={editPost.id} />
             <input type="hidden" name="threadId" value={sp.thread} />
+            <input type="hidden" name="threadPage" value={threadPage} />
             <textarea name="body" rows={4} defaultValue={editPost.body}
               className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-green-400 resize-y" required />
             <div className="flex gap-2">
               <button type="submit" className="px-4 py-1.5 text-white text-xs font-medium rounded" style={{ background: '#28a745' }}>保存</button>
-              <a href={`/admin?thread=${sp.thread}`} className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600 rounded">キャンセル</a>
+              <a href={`/admin?thread=${sp.thread}${threadPage > 1 ? `&threadPage=${threadPage}` : ''}`} data-admin-scroll="preserve" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600 rounded">キャンセル</a>
             </div>
           </form>
         </div>
@@ -984,7 +988,7 @@ export default async function AdminPage({
                     <span className="text-xs font-medium text-gray-800">{SETTING_LABELS[key]}</span>
                     <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">{(settings[key] ?? '（未設定）').slice(0, 60)}</p>
                   </div>
-                  <a href={`/admin?editSetting=${key}`}
+                  <a href={`/admin?editSetting=${key}`} data-admin-scroll="preserve"
                     className="shrink-0 px-2 py-0.5 text-[10px] text-purple-700 border border-purple-400 hover:bg-purple-50 rounded">編集</a>
                 </div>
               ))}
@@ -1000,7 +1004,7 @@ export default async function AdminPage({
                     <span className="text-xs font-medium text-gray-800">{SETTING_LABELS[key]}</span>
                     <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">{(settings[key] ?? '（未設定）').slice(0, 80)}</p>
                   </div>
-                  <a href={`/admin?editSetting=${key}`}
+                  <a href={`/admin?editSetting=${key}`} data-admin-scroll="preserve"
                     className="shrink-0 px-2 py-0.5 text-[10px] text-purple-700 border border-purple-400 hover:bg-purple-50 rounded">編集</a>
                 </div>
               ))}
@@ -1014,7 +1018,7 @@ export default async function AdminPage({
       <div className={selectedThread ? 'grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(22rem,1fr)] gap-4' : 'grid grid-cols-1 gap-4'}>
 
         <div>
-          <div className="flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
+          <div data-admin-thread-list-start className="scroll-mt-3 flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
             <h2 className="font-bold text-gray-700">
               📋 スレッド管理
               {!isSearching && (
@@ -1031,7 +1035,7 @@ export default async function AdminPage({
           </div>
 
           {/* 検索フォーム */}
-          <form method="GET" action="/admin" className="mb-3 flex gap-2">
+          <form method="GET" action="/admin" className="mb-3 flex gap-2" data-admin-scroll="thread-list">
             <input
               type="text"
               name="q"
@@ -1045,7 +1049,7 @@ export default async function AdminPage({
               検索
             </button>
             {isSearching && (
-              <a href={adminThreadsUrl({ q: '', sort, order })} className="px-3 py-1.5 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">
+              <a href={adminThreadsUrl({ q: '', sort, order })} data-admin-scroll="thread-list" className="px-3 py-1.5 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">
                 クリア
               </a>
             )}
@@ -1057,7 +1061,7 @@ export default async function AdminPage({
               const labels: Record<SortKey, string> = { last_posted_at: '更新順', created_at: '日付順', post_count: 'コメント順', view_count: '閲覧数順' }
               const nextOrder: SortOrder = sort === key && order === 'desc' ? 'asc' : 'desc'
               return (
-                <a key={key} href={adminThreadsUrl({ q: searchQ, sort: key, order: nextOrder })}
+                <a key={key} href={adminThreadsUrl({ q: searchQ, sort: key, order: nextOrder })} data-admin-scroll="thread-list"
                   className="rounded border px-2.5 py-1 text-xs"
                   style={sort === key ? { borderColor: '#0d6efd', color: '#0d6efd', background: '#eff6ff' } : { borderColor: '#d1d5db', color: '#4b5563', background: '#fff' }}>
                   {labels[key]}{sort === key ? (order === 'desc' ? ' ↓' : ' ↑') : ''}
@@ -1129,11 +1133,12 @@ export default async function AdminPage({
                     const cat = (t as typeof t & { categories?: { name: string } | null }).categories
                     const createdAt = (t as typeof t & { created_at?: string }).created_at
                     const lastPostedAt = (t as typeof t & { last_posted_at?: string | null }).last_posted_at
+                    const isSelectedThread = selectedThread?.id === t.id
                     const toDateStr = (iso: string | null | undefined) =>
                       iso ? new Date(iso).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'
                     const dateStr = toDateStr(lastPostedAt ?? createdAt)
                     return (
-                      <tr key={t.id} className="hover:bg-gray-50">
+                      <tr key={t.id} className={isSelectedThread ? 'bg-blue-50 ring-1 ring-inset ring-blue-200 hover:bg-blue-50' : 'hover:bg-gray-50'}>
                         <td className="px-2 py-2.5 font-mono text-[10px] text-gray-400 whitespace-nowrap w-12">{t.id}</td>
                         <td className="px-2 py-2.5 overflow-hidden">
                           <a
@@ -1157,16 +1162,22 @@ export default async function AdminPage({
                         <td className="px-2 py-2.5 w-24 text-right text-gray-400 whitespace-nowrap hidden md:table-cell text-[10px]">{dateStr}</td>
                         <td className="px-2 py-2.5 whitespace-nowrap">
                           <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1.5">
-                            <a href={`/admin?thread=${t.id}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}`}
-                              className="px-2 py-1 text-[10px] text-blue-600 border border-blue-300 hover:bg-blue-50 rounded leading-none">
-                              レス
+                            <a href={isSelectedThread
+                              ? adminThreadsUrl({ page: threadPage, q: searchQ, sort, order })
+                              : `/admin?thread=${t.id}${threadPage > 1 ? `&threadPage=${threadPage}` : ''}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}`}
+                              data-admin-scroll="preserve"
+                              className={isSelectedThread
+                                ? 'px-2 py-1 text-[10px] text-white border border-blue-600 bg-blue-600 hover:bg-blue-700 rounded leading-none'
+                                : 'px-2 py-1 text-[10px] text-blue-600 border border-blue-300 hover:bg-blue-50 rounded leading-none'}>
+                              {isSelectedThread ? 'レス表示中' : 'レス'}
                             </a>
                             <a href={`/admin?editThread=${t.id}&threadPage=${threadPage}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}`}
+                              data-admin-scroll="preserve"
                               className="px-2 py-1 text-[10px] text-green-700 border border-green-400 hover:bg-green-50 rounded leading-none">
                               編集
                             </a>
                             {(t.session_id || (t as typeof t & { user_id?: string | null }).user_id) && (
-                              <form action={adminBanSession} className="inline-flex">
+                              <form action={adminBanSession} className="inline-flex" data-admin-scroll="preserve">
                                 <input type="hidden" name="sessionId" value={t.session_id ?? ''} />
                                 <input type="hidden" name="userId" value={(t as typeof t & { user_id?: string | null }).user_id ?? ''} />
                                 <input type="hidden" name="reason" value={`thread:${t.id}`} />
@@ -1181,7 +1192,7 @@ export default async function AdminPage({
                                 </AdminSubmitButton>
                               </form>
                             )}
-                            <form action={adminToggleArchive} className="inline-flex">
+                            <form action={adminToggleArchive} className="inline-flex" data-admin-scroll="preserve">
                               <input type="hidden" name="threadId" value={t.id} />
                               <input type="hidden" name="isArchived" value={String(t.is_archived)} />
                               <input type="hidden" name="threadPage" value={threadPage} />
@@ -1199,7 +1210,7 @@ export default async function AdminPage({
                                 {t.is_archived ? '再公開' : '非公開'}
                               </AdminSubmitButton>
                             </form>
-                            <form action={adminDeleteThread} className="inline-flex">
+                            <form action={adminDeleteThread} className="inline-flex" data-admin-scroll="preserve">
                               <input type="hidden" name="threadId" value={t.id} />
                               <input type="hidden" name="threadPage" value={threadPage} />
                               <AdminSubmitButton
@@ -1225,7 +1236,7 @@ export default async function AdminPage({
           {!isSearching && threadTotalPages > 1 && (
             <div className="flex items-center gap-1 flex-wrap mt-2">
               {threadPage > 1 && (
-                <a href={adminThreadsUrl({ page: threadPage - 1, q: searchQ, sort, order })}
+                <a href={adminThreadsUrl({ page: threadPage - 1, q: searchQ, sort, order })} data-admin-scroll="thread-list"
                   className="min-w-[1.75rem] h-6 px-1.5 text-[11px] font-medium border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 rounded flex items-center justify-center">
                   «
                 </a>
@@ -1237,6 +1248,7 @@ export default async function AdminPage({
                   <a
                     key={p}
                     href={adminThreadsUrl({ page: p as number, q: searchQ, sort, order })}
+                    data-admin-scroll="thread-list"
                     className="min-w-[1.75rem] h-6 px-1.5 text-[11px] font-medium border rounded flex items-center justify-center"
                     style={p === threadPage
                       ? { background: '#0d6efd', color: '#fff', borderColor: '#0d6efd' }
@@ -1247,7 +1259,7 @@ export default async function AdminPage({
                 )
               )}
               {threadPage < threadTotalPages && (
-                <a href={adminThreadsUrl({ page: threadPage + 1, q: searchQ, sort, order })}
+                <a href={adminThreadsUrl({ page: threadPage + 1, q: searchQ, sort, order })} data-admin-scroll="thread-list"
                   className="min-w-[1.75rem] h-6 px-1.5 text-[11px] font-medium border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 rounded flex items-center justify-center">
                   »
                 </a>
@@ -1260,8 +1272,8 @@ export default async function AdminPage({
         {selectedThread && (
           <div>
             <div className="mb-2 pb-1 border-b border-gray-200">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="font-bold text-gray-700">
+              <div className="flex items-start justify-between gap-2">
+                <h2 className="min-w-0 font-bold text-gray-700">
                   💬 「{selectedThread.title}」
                   {selectedThread.is_archived && (
                     <span className="ml-2 rounded border border-yellow-300 bg-yellow-50 px-1.5 py-0.5 text-[10px] text-yellow-700">
@@ -1270,14 +1282,24 @@ export default async function AdminPage({
                   )}
                   {selectedThread.comment_locked && <span className="ml-2 text-[10px] text-orange-700">コメント停止中</span>}
                 </h2>
-                <form action={adminToggleThreadCommentLock}>
-                  <input type="hidden" name="threadId" value={selectedThread.id} />
-                  <input type="hidden" name="commentLocked" value={String(Boolean(selectedThread.comment_locked))} />
-                  <input type="hidden" name="returnToThread" value="true" />
-                  <button type="submit" className="px-2 py-0.5 text-[10px] text-orange-700 border border-orange-400 hover:bg-orange-50">
-                    {selectedThread.comment_locked ? 'コメント停止を解除' : 'コメント停止'}
-                  </button>
-                </form>
+                <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                  <a
+                    href={adminThreadsUrl({ page: threadPage, q: searchQ, sort, order })}
+                    data-admin-scroll="preserve"
+                    className="px-2.5 py-1 text-[11px] text-gray-700 border border-gray-400 bg-white hover:bg-gray-50 rounded"
+                  >
+                    閉じる
+                  </a>
+                  <form action={adminToggleThreadCommentLock} data-admin-scroll="preserve">
+                    <input type="hidden" name="threadId" value={selectedThread.id} />
+                    <input type="hidden" name="commentLocked" value={String(Boolean(selectedThread.comment_locked))} />
+                    <input type="hidden" name="returnToThread" value="true" />
+                    <input type="hidden" name="threadPage" value={threadPage} />
+                    <button type="submit" className="px-2.5 py-1 text-[11px] text-orange-700 border border-orange-400 hover:bg-orange-50 rounded">
+                      {selectedThread.comment_locked ? 'コメント停止を解除' : 'コメント停止'}
+                    </button>
+                  </form>
+                </div>
               </div>
               <p className="mt-1 text-[10px] text-gray-500">
                 レスごとに同一端末/IPハッシュのBANと一括非表示ができます。本文は上書きせず `is_deleted=true` にします。
@@ -1303,13 +1325,15 @@ export default async function AdminPage({
                       <p className="text-xs text-gray-700 mt-0.5 line-clamp-2 break-all">{p.body}</p>
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1.5 shrink-0">
-                      <a href={`/admin?thread=${selectedThread.id}&editPost=${p.id}`}
+                      <a href={`/admin?thread=${selectedThread.id}&editPost=${p.id}${threadPage > 1 ? `&threadPage=${threadPage}` : ''}`}
+                        data-admin-scroll="preserve"
                         className="px-2 py-1 text-[10px] text-green-700 border border-green-400 hover:bg-green-50 rounded leading-none">
                         編集
                       </a>
-                      <form action={adminDeletePost} className="inline-flex">
+                      <form action={adminDeletePost} className="inline-flex" data-admin-scroll="preserve">
                         <input type="hidden" name="postId" value={p.id} />
                         <input type="hidden" name="threadId" value={selectedThread.id} />
+                        <input type="hidden" name="threadPage" value={threadPage} />
                         <AdminSubmitButton
                           pendingText="削除中..."
                           confirmMessage={"このコメントを削除しますか？&#10;掲示板上には表示されなくなります。"}
@@ -1320,11 +1344,12 @@ export default async function AdminPage({
                         </AdminSubmitButton>
                       </form>
                       {(p.session_id || (p as typeof p & { user_id?: string | null }).user_id) && (
-                        <form action={adminBanSession} className="inline-flex">
+                        <form action={adminBanSession} className="inline-flex" data-admin-scroll="preserve">
                           <input type="hidden" name="sessionId" value={p.session_id ?? ''} />
                           <input type="hidden" name="userId" value={(p as typeof p & { user_id?: string | null }).user_id ?? ''} />
                           <input type="hidden" name="reason" value={`post:${p.id}`} />
                           <input type="hidden" name="returnToThread" value={selectedThread.id} />
+                          <input type="hidden" name="threadPage" value={threadPage} />
                           <AdminSubmitButton
                             pendingText="BAN中..."
                             confirmMessage={"この投稿者をBANしますか？&#10;今後の投稿が制限されます。"}
@@ -1336,28 +1361,31 @@ export default async function AdminPage({
                         </form>
                       )}
                       {p.session_id && (
-                        <form action={adminHidePostsBySession} className="inline-flex">
+                        <form action={adminHidePostsBySession} className="inline-flex" data-admin-scroll="preserve">
                           <input type="hidden" name="threadId" value={selectedThread.id} />
                           <input type="hidden" name="sessionId" value={p.session_id} />
+                          <input type="hidden" name="threadPage" value={threadPage} />
                           <button type="submit" className="px-2 py-0.5 text-[10px] text-red-700 border border-red-300 hover:bg-red-50">
                             端末一括非表示
                           </button>
                         </form>
                       )}
                       {p.ip_hash && (
-                        <form action={adminBanIpHash} className="inline-flex">
+                        <form action={adminBanIpHash} className="inline-flex" data-admin-scroll="preserve">
                           <input type="hidden" name="ipHash" value={p.ip_hash} />
                           <input type="hidden" name="reason" value={`post:${p.id}`} />
                           <input type="hidden" name="returnToThread" value={selectedThread.id} />
+                          <input type="hidden" name="threadPage" value={threadPage} />
                           <button type="submit" className="px-2 py-0.5 text-[10px] text-white hover:opacity-75 transition-opacity leading-none" style={{ background: '#7f1d1d' }}>
                             IP BAN
                           </button>
                         </form>
                       )}
                       {p.ip_hash && (
-                        <form action={adminHidePostsByIpHash} className="inline-flex">
+                        <form action={adminHidePostsByIpHash} className="inline-flex" data-admin-scroll="preserve">
                           <input type="hidden" name="threadId" value={selectedThread.id} />
                           <input type="hidden" name="ipHash" value={p.ip_hash} />
+                          <input type="hidden" name="threadPage" value={threadPage} />
                           <button type="submit" className="px-2 py-0.5 text-[10px] text-red-700 border border-red-300 hover:bg-red-50">
                             IP一括非表示
                           </button>

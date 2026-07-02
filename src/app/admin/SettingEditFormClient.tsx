@@ -37,7 +37,7 @@ export function SettingEditFormClient({ settingKey, initialValue, label }: Props
       if (result.error) {
         setError(result.error)
       } else {
-        router.push('/admin')
+        router.push('/admin', { scroll: false })
       }
     })
   }
@@ -58,12 +58,12 @@ export function SettingEditFormClient({ settingKey, initialValue, label }: Props
           <SettingRichEditor content={value} onChange={setValue} minHeight={120} />
         )}
         <div className="flex gap-2 items-center">
-          <button onClick={handleSave} disabled={isPending}
+          <button onClick={handleSave} disabled={isPending} data-admin-scroll="preserve"
             className="px-4 py-1.5 text-white text-xs font-medium disabled:opacity-60"
             style={{ background: '#6f42c1' }}>
             {isPending ? '保存中...' : '保存'}
           </button>
-          <Link href="/admin" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600">
+          <Link href="/admin" scroll={false} data-admin-scroll="preserve" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600">
             キャンセル
           </Link>
           {error && <span className="text-xs text-red-600">{error}</span>}
