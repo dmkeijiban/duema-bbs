@@ -43,7 +43,7 @@ export const metadata = {
 
 type ThreadPeriod = 'today' | 'week' | 'all'
 
-const PAGE_SIZE = 60
+const PAGE_SIZE = 50
 
 const rankDecoration = [
   {
@@ -550,6 +550,7 @@ export default async function RankingPage({ searchParams }: Props) {
             }`}
           >
             📋 スレッドランキング
+            <span className="text-xs font-medium">（上位50件）</span>
           </Link>
           <Link
             href="/ranking?type=users&period=monthly"
