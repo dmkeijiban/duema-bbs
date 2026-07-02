@@ -5,7 +5,7 @@ import { createThread } from '@/app/actions/thread'
 import { Category } from '@/types'
 import { getPostableConsolidatedCategories } from '@/lib/categories'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase'
+import { createClient, getCurrentUser } from '@/lib/supabase'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { capturePostHogEvent } from '@/lib/posthog-events'
 
@@ -29,7 +29,7 @@ export function InlineNewThread({ categories }: Props) {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(async ({ data }) => {
+    getCurrentUser().then(async ({ data }) => {
       if (!data.user) {
         setAuthState({ status: 'anon' })
         return
