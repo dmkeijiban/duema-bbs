@@ -109,7 +109,7 @@ async function CategoryThreadList({
     const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
     let randomQuery = supabase
       .from('threads')
-      .select('id, title, user_id, image_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
+      .select('id, title, user_id, image_url, thumbnail_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
       .eq('is_archived', false)
       .in('category_id', categoryIds)
 

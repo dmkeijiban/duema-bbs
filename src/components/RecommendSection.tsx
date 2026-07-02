@@ -61,7 +61,7 @@ export async function RecommendSection({ threadId, title, categoryId = null }: P
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 border-l border-t border-gray-300">
         {threads.map((thread, idx) => {
-          const imgSrc = thread.image_url ?? DEFAULT_THREAD_THUMBNAIL
+          const imgSrc = thread.thumbnail_url ?? thread.image_url ?? DEFAULT_THREAD_THUMBNAIL
           return (
             <Link
               key={thread.id}

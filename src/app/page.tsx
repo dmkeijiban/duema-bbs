@@ -98,7 +98,7 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
     const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
     let q = supabase
       .from('threads')
-      .select('id, title, user_id, image_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
+      .select('id, title, user_id, image_url, thumbnail_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
       .eq('is_archived', false)
     if (publicUserFilter) q = q.or(publicUserFilter)
     if (categoryIds.length === 1) q = q.eq('category_id', categoryIds[0])
@@ -128,7 +128,7 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
       .ilike('title', `%${searchQ}%`)
     let dataQ = supabase
       .from('threads')
-      .select('id, title, user_id, image_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
+      .select('id, title, user_id, image_url, thumbnail_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
       .eq('is_archived', isArchived)
       .ilike('title', `%${searchQ}%`)
     if (publicUserFilter) {
