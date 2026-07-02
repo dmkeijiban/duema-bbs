@@ -3,6 +3,13 @@ import { createPublicClient } from './supabase-public'
 import { createAdminClient } from './supabase-admin'
 import { withFallbackThumbnails } from './thumbnail'
 import {
+  applyActiveThreadFilter,
+  applyKakologThreadFilter,
+  applyLegacyActiveThreadFilter,
+  applyLegacyKakologThreadFilter,
+  isArchiveSchemaMissing,
+} from './thread-archive'
+import {
   USER_RANKING_CARD_RATING_POINT,
   USER_RANKING_CARD_REVIEW_POINT,
   USER_RANKING_PACK_REVIEW_POINT,
@@ -171,6 +178,8 @@ type CachedThreadRow = {
   post_count: number
   is_archived: boolean
   comment_locked?: boolean
+  auto_lock_exempt?: boolean
+  archived_at?: string | null
   created_at: string
   last_posted_at: string | null
   session_id?: string | null
@@ -184,16 +193,28 @@ export const getCachedTopThreads = unstable_cache(
       const supabase = createPublicClient()
       const hiddenUserIds = await getCachedPublicHiddenUserIds()
       const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
-      let query = supabase
+      let query = applyActiveThreadFilter(supabase
         .from('threads')
         .select('id, title, user_id, image_url, thumbnail_url, post_count')
-        .eq('is_archived', false)
+      )
 
       if (publicUserFilter) query = query.or(publicUserFilter)
 
-      const { data: raw } = await query
+      const result = await query
         .order('post_count', { ascending: false })
         .limit(20)
+      let raw = result.data
+      if (isArchiveSchemaMissing(result.error)) {
+        let retry = applyLegacyActiveThreadFilter(supabase
+          .from('threads')
+          .select('id, title, user_id, image_url, thumbnail_url, post_count')
+        )
+        if (publicUserFilter) retry = retry.or(publicUserFilter)
+        const retryResult = await retry
+          .order('post_count', { ascending: false })
+          .limit(20)
+        raw = retryResult.data
+      }
       if (!raw || raw.length === 0) return []
       return withFallbackThumbnails(supabase, filterPublicVisibleUserContent(raw as ThreadRow[], hiddenUserIds))
     } catch (error) {
@@ -331,12 +352,20 @@ export const getCachedThread = (threadId: number) =>
       const supabase = createPublicClient()
       const result = await supabase
         .from('threads')
-        .select('id, title, body, author_name, user_id, image_url, view_count, post_count, is_archived, comment_locked, created_at, last_posted_at, session_id, category_id, categories(id,name,slug,color,description,sort_order)')
+        .select('id, title, body, author_name, user_id, image_url, view_count, post_count, is_archived, comment_locked, auto_lock_exempt, archived_at, created_at, last_posted_at, session_id, category_id, categories(id,name,slug,color,description,sort_order)')
         .eq('id', threadId)
         .single()
       let data = result.data as CachedThreadRow | null
 
-      if (result.error && (result.error.code === '42703' || result.error.message?.includes('comment_locked'))) {
+      if (
+        result.error &&
+        (
+          result.error.code === '42703' ||
+          result.error.message?.includes('comment_locked') ||
+          result.error.message?.includes('auto_lock_exempt') ||
+          result.error.message?.includes('archived_at')
+        )
+      ) {
         const retry = await supabase
           .from('threads')
           .select('id, title, body, author_name, user_id, image_url, view_count, post_count, is_archived, created_at, last_posted_at, session_id, category_id, categories(id,name,slug,color,description,sort_order)')
@@ -828,11 +857,15 @@ export function getCachedThreadList(
       let countQuery = supabase
         .from('threads')
         .select('id', { count: 'exact', head: true })
-        .eq('is_archived', isArchived)
+      countQuery = isArchived
+        ? applyKakologThreadFilter(countQuery)
+        : applyActiveThreadFilter(countQuery)
       let dataQuery = supabase
         .from('threads')
-        .select('id, title, user_id, image_url, thumbnail_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
-        .eq('is_archived', isArchived)
+        .select('id, title, user_id, image_url, thumbnail_url, post_count, is_archived, auto_lock_exempt, archived_at, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
+      dataQuery = isArchived
+        ? applyKakologThreadFilter(dataQuery)
+        : applyActiveThreadFilter(dataQuery)
 
       if (publicUserFilter) {
         countQuery = countQuery.or(publicUserFilter)
@@ -860,8 +893,56 @@ export function getCachedThreadList(
 
       dataQuery = dataQuery.range(offset, offset + pageSize - 1)
 
-      const [{ count }, { data: raw }] = await Promise.all([countQuery, dataQuery])
-      const visibleRaw = filterPublicVisibleUserContent(raw as ThreadRow[] | null, hiddenUserIds)
+      const [countResult, dataResult] = await Promise.all([countQuery, dataQuery])
+      let count = countResult.count
+      let raw = dataResult.data
+      if (isArchiveSchemaMissing(countResult.error) || isArchiveSchemaMissing(dataResult.error)) {
+        let legacyCountQuery = supabase
+          .from('threads')
+          .select('id', { count: 'exact', head: true })
+        legacyCountQuery = isArchived
+          ? applyLegacyKakologThreadFilter(legacyCountQuery)
+          : applyLegacyActiveThreadFilter(legacyCountQuery)
+        let legacyDataQuery = supabase
+          .from('threads')
+          .select('id, title, user_id, image_url, thumbnail_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
+        legacyDataQuery = isArchived
+          ? applyLegacyKakologThreadFilter(legacyDataQuery)
+          : applyLegacyActiveThreadFilter(legacyDataQuery)
+
+        if (publicUserFilter) {
+          legacyCountQuery = legacyCountQuery.or(publicUserFilter)
+          legacyDataQuery = legacyDataQuery.or(publicUserFilter)
+        }
+
+        if (categoryId !== null) {
+          const categoryIds = Array.isArray(categoryId) ? categoryId : [categoryId]
+          if (categoryIds.length === 1) {
+            legacyCountQuery = legacyCountQuery.eq('category_id', categoryIds[0])
+            legacyDataQuery = legacyDataQuery.eq('category_id', categoryIds[0])
+          } else if (categoryIds.length > 1) {
+            legacyCountQuery = legacyCountQuery.in('category_id', categoryIds)
+            legacyDataQuery = legacyDataQuery.in('category_id', categoryIds)
+          }
+        }
+
+        if (sort === 'popular') {
+          legacyDataQuery = legacyDataQuery.order('post_count', { ascending: false })
+        } else if (sort === 'new') {
+          legacyDataQuery = legacyDataQuery.order('created_at', { ascending: false })
+        } else {
+          legacyDataQuery = legacyDataQuery.order('last_posted_at', { ascending: false })
+        }
+
+        legacyDataQuery = legacyDataQuery.range(offset, offset + pageSize - 1)
+        const [legacyCount, legacyData] = await Promise.all([legacyCountQuery, legacyDataQuery])
+        count = legacyCount.count
+        raw = legacyData.data as unknown as typeof raw
+      }
+      const normalizedRaw = isArchived
+        ? (raw ?? []).map(thread => ({ ...thread, is_archived: true }))
+        : raw
+      const visibleRaw = filterPublicVisibleUserContent(normalizedRaw as ThreadRow[] | null, hiddenUserIds)
       const threads = visibleRaw.length > 0 ? await withFallbackThumbnails(supabase, visibleRaw) : []
 
       return {

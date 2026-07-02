@@ -13,6 +13,7 @@ import {
   adminBanIpHash,
   adminHidePostsByIpHash,
   adminHidePostsBySession,
+  adminToggleAutoLockExempt,
   adminToggleThreadCommentLock,
 } from './actions'
 import { SettingEditFormClient } from './SettingEditFormClient'
@@ -88,6 +89,8 @@ type SelectedThreadRow = {
   title: string
   is_archived?: boolean
   comment_locked?: boolean
+  auto_lock_exempt?: boolean
+  archived_at?: string | null
 }
 
 type AdminThreadRow = {
@@ -98,6 +101,8 @@ type AdminThreadRow = {
   view_count?: number
   is_archived: boolean
   comment_locked?: boolean
+  auto_lock_exempt?: boolean
+  archived_at?: string | null
   category_id: number | null
   session_id: string | null
   user_id?: string | null
@@ -353,7 +358,7 @@ export default async function AdminPage({
 
   let threadsQuery = supabase
     .from('threads')
-    .select('id, title, body, post_count, view_count, is_archived, comment_locked, category_id, session_id, user_id, created_at, last_posted_at, categories(name)', { count: 'exact' })
+    .select('id, title, body, post_count, view_count, is_archived, comment_locked, auto_lock_exempt, archived_at, category_id, session_id, user_id, created_at, last_posted_at, categories(name)', { count: 'exact' })
     .order(sort, { ascending: order === 'asc', nullsFirst: false })
 
   if (sort !== 'created_at') {
@@ -377,7 +382,7 @@ export default async function AdminPage({
   let threadCount = threadQueryResult.count
   const threadsError = threadQueryResult.error
 
-  if (threadsError && (threadsError.code === '42703' || threadsError.message?.includes('comment_locked'))) {
+  if (threadsError && (threadsError.code === '42703' || threadsError.message?.includes('comment_locked') || threadsError.message?.includes('auto_lock_exempt') || threadsError.message?.includes('archived_at'))) {
     let fallbackThreadsQuery = supabase
       .from('threads')
       .select('id, title, body, post_count, view_count, is_archived, category_id, session_id, user_id, created_at, last_posted_at, categories(name)', { count: 'exact' })
@@ -537,8 +542,8 @@ export default async function AdminPage({
   let selectedThread: SelectedThreadRow | null = null
   if (sp.thread) {
     const threadId = parseInt(sp.thread)
-    let selectedThreadResult = await supabase.from('threads').select('id, title, is_archived, comment_locked').eq('id', threadId).single()
-    if (selectedThreadResult.error && (selectedThreadResult.error.code === '42703' || selectedThreadResult.error.message?.includes('comment_locked'))) {
+    let selectedThreadResult = await supabase.from('threads').select('id, title, is_archived, comment_locked, auto_lock_exempt, archived_at').eq('id', threadId).single()
+    if (selectedThreadResult.error && (selectedThreadResult.error.code === '42703' || selectedThreadResult.error.message?.includes('comment_locked') || selectedThreadResult.error.message?.includes('auto_lock_exempt') || selectedThreadResult.error.message?.includes('archived_at'))) {
       selectedThreadResult = await supabase.from('threads').select('id, title, is_archived').eq('id', threadId).single()
     }
 
@@ -1134,6 +1139,7 @@ export default async function AdminPage({
                     const createdAt = (t as typeof t & { created_at?: string }).created_at
                     const lastPostedAt = (t as typeof t & { last_posted_at?: string | null }).last_posted_at
                     const isSelectedThread = selectedThread?.id === t.id
+                    const isPastLog = t.is_archived || Boolean(t.archived_at)
                     const toDateStr = (iso: string | null | undefined) =>
                       iso ? new Date(iso).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'
                     const dateStr = toDateStr(lastPostedAt ?? createdAt)
@@ -1142,13 +1148,18 @@ export default async function AdminPage({
                         <td className="px-2 py-2.5 font-mono text-[10px] text-gray-400 whitespace-nowrap w-12">{t.id}</td>
                         <td className="px-2 py-2.5 overflow-hidden">
                           <a
-                            href={t.is_archived ? `/admin?thread=${t.id}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}` : `/thread/${t.id}`}
-                            target={t.is_archived ? undefined : '_blank'}
-                            className={`${t.is_archived ? 'text-gray-500' : 'text-blue-600'} hover:underline line-clamp-2 block text-xs leading-snug`}
+                            href={isPastLog ? `/admin?thread=${t.id}${searchQ ? `&q=${encodeURIComponent(searchQ)}` : ''}` : `/thread/${t.id}`}
+                            target={isPastLog ? undefined : '_blank'}
+                            className={`${isPastLog ? 'text-gray-500' : 'text-blue-600'} hover:underline line-clamp-2 block text-xs leading-snug`}
                           >
-                            {t.is_archived && (
+                            {isPastLog && (
                               <span className="mr-1 inline-flex rounded border border-yellow-300 bg-yellow-50 px-1.5 py-0.5 align-middle text-[10px] font-bold leading-none text-yellow-700">
-                                非公開
+                                過去ログ
+                              </span>
+                            )}
+                            {t.auto_lock_exempt && (
+                              <span className="mr-1 inline-flex rounded border border-sky-300 bg-sky-50 px-1.5 py-0.5 align-middle text-[10px] font-bold leading-none text-sky-700">
+                                自動除外
                               </span>
                             )}
                             {t.title}
@@ -1192,22 +1203,40 @@ export default async function AdminPage({
                                 </AdminSubmitButton>
                               </form>
                             )}
-                            <form action={adminToggleArchive} className="inline-flex" data-admin-scroll="preserve">
+                            <form action={adminToggleAutoLockExempt} className="inline-flex" data-admin-scroll="preserve">
                               <input type="hidden" name="threadId" value={t.id} />
-                              <input type="hidden" name="isArchived" value={String(t.is_archived)} />
+                              <input type="hidden" name="autoLockExempt" value={String(Boolean(t.auto_lock_exempt))} />
                               <input type="hidden" name="threadPage" value={threadPage} />
                               <input type="hidden" name="q" value={searchQ} />
                               <AdminSubmitButton
-                                pendingText={t.is_archived ? '再公開中...' : '非公開中...'}
-                                confirmMessage={t.is_archived
-                                  ? 'このスレッドを再公開しますか？'
-                                  : 'このスレッドを非公開にしますか？&#10;一般公開ページには表示されなくなります。'}
+                                pendingText={t.auto_lock_exempt ? '解除中...' : '除外中...'}
+                                confirmMessage={t.auto_lock_exempt
+                                  ? 'このスレッドの自動ロック除外を解除しますか？'
+                                  : 'このスレッドを30日超の自動ロック・過去ログ化から除外しますか？'}
                                 className="px-2 py-1 text-[10px] rounded border transition-colors leading-none disabled:opacity-60 disabled:cursor-wait"
-                                style={t.is_archived
+                                style={t.auto_lock_exempt
+                                  ? { color: '#0369a1', borderColor: '#7dd3fc', background: '#f0f9ff' }
+                                  : { color: '#075985', borderColor: '#bae6fd', background: '#fff' }}
+                              >
+                                {t.auto_lock_exempt ? '除外解除' : '自動除外'}
+                              </AdminSubmitButton>
+                            </form>
+                            <form action={adminToggleArchive} className="inline-flex" data-admin-scroll="preserve">
+                              <input type="hidden" name="threadId" value={t.id} />
+                              <input type="hidden" name="isArchived" value={String(isPastLog)} />
+                              <input type="hidden" name="threadPage" value={threadPage} />
+                              <input type="hidden" name="q" value={searchQ} />
+                              <AdminSubmitButton
+                                pendingText={isPastLog ? '解除中...' : '過去ログ化中...'}
+                                confirmMessage={isPastLog
+                                  ? 'このスレッドの過去ログ扱いを解除しますか？'
+                                  : 'このスレッドを過去ログ扱いにしますか？&#10;通常一覧には表示されなくなります。'}
+                                className="px-2 py-1 text-[10px] rounded border transition-colors leading-none disabled:opacity-60 disabled:cursor-wait"
+                                style={isPastLog
                                   ? { color: '#047857', borderColor: '#34d399', background: '#ecfdf5' }
                                   : { color: '#a16207', borderColor: '#facc15', background: '#fefce8' }}
                               >
-                                {t.is_archived ? '再公開' : '非公開'}
+                                {isPastLog ? '過去ログ解除' : '過去ログ'}
                               </AdminSubmitButton>
                             </form>
                             <form action={adminDeleteThread} className="inline-flex" data-admin-scroll="preserve">
@@ -1275,12 +1304,13 @@ export default async function AdminPage({
               <div className="flex items-start justify-between gap-2">
                 <h2 className="min-w-0 font-bold text-gray-700">
                   💬 「{selectedThread.title}」
-                  {selectedThread.is_archived && (
+                  {(selectedThread.is_archived || selectedThread.archived_at) && (
                     <span className="ml-2 rounded border border-yellow-300 bg-yellow-50 px-1.5 py-0.5 text-[10px] text-yellow-700">
-                      非公開
+                      過去ログ
                     </span>
                   )}
                   {selectedThread.comment_locked && <span className="ml-2 text-[10px] text-orange-700">コメント停止中</span>}
+                  {selectedThread.auto_lock_exempt && <span className="ml-2 text-[10px] text-sky-700">自動ロック除外</span>}
                 </h2>
                 <div className="flex shrink-0 flex-wrap justify-end gap-1">
                   <a
@@ -1297,6 +1327,25 @@ export default async function AdminPage({
                     <input type="hidden" name="threadPage" value={threadPage} />
                     <button type="submit" className="px-2.5 py-1 text-[11px] text-orange-700 border border-orange-400 hover:bg-orange-50 rounded">
                       {selectedThread.comment_locked ? 'コメント停止を解除' : 'コメント停止'}
+                    </button>
+                  </form>
+                  <form action={adminToggleAutoLockExempt} data-admin-scroll="preserve">
+                    <input type="hidden" name="threadId" value={selectedThread.id} />
+                    <input type="hidden" name="autoLockExempt" value={String(Boolean(selectedThread.auto_lock_exempt))} />
+                    <input type="hidden" name="returnToThread" value="true" />
+                    <input type="hidden" name="threadPage" value={threadPage} />
+                    <input type="hidden" name="q" value={searchQ} />
+                    <button type="submit" className="px-2.5 py-1 text-[11px] text-sky-700 border border-sky-300 hover:bg-sky-50 rounded">
+                      {selectedThread.auto_lock_exempt ? '自動除外を解除' : '自動除外'}
+                    </button>
+                  </form>
+                  <form action={adminToggleArchive} data-admin-scroll="preserve">
+                    <input type="hidden" name="threadId" value={selectedThread.id} />
+                    <input type="hidden" name="isArchived" value={String(Boolean(selectedThread.is_archived || selectedThread.archived_at))} />
+                    <input type="hidden" name="threadPage" value={threadPage} />
+                    <input type="hidden" name="q" value={searchQ} />
+                    <button type="submit" className="px-2.5 py-1 text-[11px] text-yellow-700 border border-yellow-400 hover:bg-yellow-50 rounded">
+                      {selectedThread.is_archived || selectedThread.archived_at ? '過去ログ解除' : '過去ログ扱い'}
                     </button>
                   </form>
                 </div>

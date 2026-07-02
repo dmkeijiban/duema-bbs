@@ -19,6 +19,9 @@ create table if not exists threads (
   view_count int not null default 0,
   post_count int not null default 1,
   is_archived bool not null default false,
+  comment_locked bool not null default false,
+  auto_lock_exempt bool not null default false,
+  archived_at timestamptz,
   created_at timestamptz not null default now(),
   last_posted_at timestamptz not null default now()
 );

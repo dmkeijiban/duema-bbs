@@ -38,7 +38,7 @@ export function CategoryDropdown({ currentCategory, categories }: Props) {
             : 'flex min-h-9 w-full items-center justify-center rounded border border-blue-100 bg-white px-2.5 text-xs font-medium text-blue-700 hover:bg-blue-50 md:px-3 md:text-sm'
         }
       >
-        <span className="opacity-80">📁</span>
+        <span className="opacity-80">📂</span>
         <span className="ml-0.5">カテゴリ {open ? '▴' : '▾'}</span>
       </button>
       {open && (

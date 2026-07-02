@@ -1,5 +1,6 @@
 import { createPublicClient } from '@/lib/supabase-public'
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site-config'
+import { applyActiveThreadFilter, applyLegacyActiveThreadFilter, isArchiveSchemaMissing } from '@/lib/thread-archive'
 import { NextResponse } from 'next/server'
 
 export const revalidate = 3600
@@ -20,13 +21,25 @@ function toRfc822(dateStr: string): string {
 export async function GET() {
   const supabase = createPublicClient()
 
-  const { data: threads } = await supabase
+  let query = supabase
     .from('threads')
     .select('id, title, post_count, last_posted_at, created_at, categories(name, slug)')
-    .eq('is_archived', false)
     .gte('post_count', 2)
+  query = applyActiveThreadFilter(query)
+  const result = await query
     .order('last_posted_at', { ascending: false })
     .limit(50)
+  let threads = result.data
+  if (isArchiveSchemaMissing(result.error)) {
+    const retry = await applyLegacyActiveThreadFilter(supabase
+      .from('threads')
+      .select('id, title, post_count, last_posted_at, created_at, categories(name, slug)')
+      .gte('post_count', 2)
+    )
+      .order('last_posted_at', { ascending: false })
+      .limit(50)
+    threads = retry.data
+  }
 
   const items = (threads ?? []).map(thread => {
     const catRaw = thread.categories

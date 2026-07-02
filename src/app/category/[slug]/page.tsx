@@ -31,6 +31,11 @@ import {
   getCachedPublicHiddenUserIds,
   getPublicVisibleUserContentOrFilter,
 } from '@/lib/public-visibility'
+import {
+  applyActiveThreadFilter,
+  applyLegacyActiveThreadFilter,
+  isArchiveSchemaMissing,
+} from '@/lib/thread-archive'
 
 export const revalidate = 3600
 
@@ -110,13 +115,24 @@ async function CategoryThreadList({
     let randomQuery = supabase
       .from('threads')
       .select('id, title, user_id, image_url, thumbnail_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
-      .eq('is_archived', false)
       .in('category_id', categoryIds)
+    randomQuery = applyActiveThreadFilter(randomQuery)
 
     if (publicUserFilter) randomQuery = randomQuery.or(publicUserFilter)
 
-    const { data: raw } = await randomQuery
+    const randomResult = await randomQuery
       .limit(100)
+    let raw = randomResult.data
+    if (isArchiveSchemaMissing(randomResult.error)) {
+      let retry = applyLegacyActiveThreadFilter(supabase
+        .from('threads')
+        .select('id, title, user_id, image_url, thumbnail_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
+        .in('category_id', categoryIds)
+      )
+      if (publicUserFilter) retry = retry.or(publicUserFilter)
+      const retryResult = await retry.limit(100)
+      raw = retryResult.data
+    }
     const all = seededShuffle(raw ? await withFallbackThumbnails(supabase, filterPublicVisibleUserContent(raw, hiddenUserIds)) : [])
     if (all.length === 0) return <CategoryThreadEmpty />
     return (
