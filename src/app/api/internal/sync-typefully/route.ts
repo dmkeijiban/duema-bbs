@@ -24,7 +24,7 @@ const DUE_LOOKBACK_HOURS = 24
 const ERROR_MAX_LENGTH = 500
 const FIXED_POST_JST_HOURS = [7, 12, 19, 22]
 const FIXED_SLOT_TOLERANCE_MINUTES = 45
-const PUBLISHED_FALLBACK_GRACE_MINUTES = 10
+const PUBLISHED_FALLBACK_GRACE_MINUTES = 0
 const CANCELLED_SOURCE_STATUSES = new Set(['cancelled', 'canceled', 'deleted'])
 const ELIGIBLE_X_POST_STATUSES = ['scheduled', 'posted', 'published', 'sent', 'typefully_drafted']
 
