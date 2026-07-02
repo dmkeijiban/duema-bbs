@@ -105,6 +105,29 @@ type AdminThreadRow = {
   categories: { name: string }[] | { name: string } | null
 }
 
+type AnalyticsThreadTitleRow = {
+  id: number
+  title: string | null
+}
+
+type DisplayGa4PageRow = Ga4PageRow & {
+  title: string
+  displayPath: string
+  href: string
+}
+
+const PAGE_LABELS: Record<string, string> = {
+  '/': 'デュエマ掲示板 TOPページ',
+  '/ranking': 'ランキング',
+  '/zukan': '思い出図鑑',
+  '/mypage': 'マイページ',
+  '/admin': '管理画面',
+  '/login': 'ログイン',
+  '/thread/new': 'スレ作成',
+  '/settings': '設定',
+  '/favorites': 'お気に入り',
+}
+
 async function isAdmin() {
   const cookieStore = await cookies()
   return verifyAdminCookie(cookieStore.get(ADMIN_COOKIE)?.value)
@@ -130,6 +153,49 @@ function LoginPage({ error }: { error?: string }) {
 
 function formatNumber(value: number) {
   return value.toLocaleString('ja-JP')
+}
+
+function normalizePagePath(rawPath: string) {
+  if (!rawPath || rawPath === '(not set)') return rawPath || '/'
+
+  try {
+    const url = rawPath.startsWith('http://') || rawPath.startsWith('https://')
+      ? new URL(rawPath)
+      : new URL(rawPath, 'https://www.duema-bbs.com')
+    const pathname = url.pathname || '/'
+    return pathname !== '/' ? pathname.replace(/\/$/, '') : '/'
+  } catch {
+    const pathOnly = rawPath.split('?')[0]?.split('#')[0] || '/'
+    return pathOnly !== '/' ? pathOnly.replace(/\/$/, '') : '/'
+  }
+}
+
+function getThreadIdFromPagePath(pagePath: string) {
+  const match = normalizePagePath(pagePath).match(/^\/thread\/(\d+)(?:\/p\/\d+)?$/)
+  return match ? Number(match[1]) : null
+}
+
+function buildDisplayGa4Rows(rows: Ga4PageRow[], threadTitles: Map<number, string>): DisplayGa4PageRow[] {
+  return rows.map(row => {
+    const path = normalizePagePath(row.path)
+    const threadId = getThreadIdFromPagePath(path)
+
+    if (threadId) {
+      return {
+        ...row,
+        title: threadTitles.get(threadId) ?? `削除済みスレッド（/thread/${threadId}）`,
+        displayPath: path,
+        href: path,
+      }
+    }
+
+    return {
+      ...row,
+      title: PAGE_LABELS[path] ?? path,
+      displayPath: path,
+      href: path,
+    }
+  })
 }
 
 function formatDateTime(value: string | null) {
@@ -201,7 +267,7 @@ function Ga4PageRankingCard({
   note,
 }: {
   title: string
-  rows: Ga4PageRow[]
+  rows: DisplayGa4PageRow[]
   note?: string
 }) {
   return (
@@ -216,9 +282,12 @@ function Ga4PageRankingCard({
         ) : rows.map((row, index) => (
           <li key={`${row.path}-${index}`} className="flex items-start gap-2 px-3 py-2 text-xs">
             <span className="mt-0.5 w-5 shrink-0 text-right tabular-nums text-gray-400">{index + 1}</span>
-            <Link href={row.path} className="min-w-0 flex-1 truncate font-bold text-blue-700 hover:underline">
-              {row.path}
-            </Link>
+            <div className="min-w-0 flex-1">
+              <Link href={row.href} className="line-clamp-2 font-bold text-blue-700 hover:underline">
+                {row.title}
+              </Link>
+              <p className="mt-0.5 break-all text-[10px] text-gray-400">{row.displayPath}</p>
+            </div>
             <div className="shrink-0 text-right">
               <p className="font-bold tabular-nums text-gray-800">{formatNumber(row.views)}</p>
               <p className="text-[10px] text-gray-400">表示回数</p>
@@ -352,6 +421,28 @@ export default async function AdminPage({
     getGa4DashboardData(analyticsDays),
     getInternalDashboardData(adminSupabase),
   ])
+
+  const analyticsThreadIds = ga4Dashboard.ok
+    ? Array.from(new Set([
+      ...ga4Dashboard.topPages,
+      ...ga4Dashboard.risingPages,
+    ].map(row => getThreadIdFromPagePath(row.path)).filter((id): id is number => typeof id === 'number')))
+    : []
+
+  const threadTitleMap = new Map<number, string>()
+  if (analyticsThreadIds.length > 0) {
+    const { data: analyticsThreads } = await adminSupabase
+      .from('threads')
+      .select('id, title')
+      .in('id', analyticsThreadIds)
+
+    for (const thread of (analyticsThreads ?? []) as AnalyticsThreadTitleRow[]) {
+      if (thread.title) threadTitleMap.set(thread.id, thread.title)
+    }
+  }
+
+  const topPageRows = ga4Dashboard.ok ? buildDisplayGa4Rows(ga4Dashboard.topPages, threadTitleMap) : []
+  const risingPageRows = ga4Dashboard.ok ? buildDisplayGa4Rows(ga4Dashboard.risingPages, threadTitleMap) : []
 
   // サイト設定
   const settings = await getAllSettings()
@@ -683,7 +774,7 @@ export default async function AdminPage({
               {ga4Dashboard.ok ? (
                 <Ga4PageRankingCard
                   title="GA4 直近7日のページ"
-                  rows={ga4Dashboard.topPages}
+                  rows={topPageRows}
                   note="サイト全体で今週よく見られているページ"
                 />
               ) : (
@@ -701,7 +792,7 @@ export default async function AdminPage({
               {ga4Dashboard.ok ? (
                 <Ga4PageRankingCard
                   title="直近24時間で急に伸びたページ"
-                  rows={ga4Dashboard.risingPages}
+                  rows={risingPageRows}
                   note="前日〜今日の表示回数が多いページ"
                 />
               ) : (
