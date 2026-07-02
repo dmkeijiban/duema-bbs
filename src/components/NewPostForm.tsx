@@ -36,6 +36,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
   const [, startRefreshTransition] = useTransition()
   const [scrollTarget, setScrollTarget] = useState<number | null>(null)
   const [successMessage, setSuccessMessage] = useState('')
+  const [debugTimingJson, setDebugTimingJson] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const displayCategory = getDisplayCategory(thread.categories)
@@ -96,6 +97,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
     e.preventDefault()
     setError('')
     setSuccessMessage('')
+    setDebugTimingJson('')
     setIsSubmitting(true)
 
     const fd = new FormData()
@@ -132,15 +134,19 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
           onBodyChange('')
           setAuthorName('')
           if (fileInputRef.current) fileInputRef.current.value = ''
+          const nextDebugTimingJson = isPreviewHost && typeof resultRecord.debugTimingJson === 'string'
+            ? resultRecord.debugTimingJson
+            : ''
           let timingLabel = ''
-          if (typeof resultRecord.debugTimingJson === 'string') {
+          if (nextDebugTimingJson) {
             try {
-              timingLabel = ` (${JSON.parse(resultRecord.debugTimingJson).total_ms}ms)`
+              timingLabel = ` (${JSON.parse(nextDebugTimingJson).total_ms}ms)`
             } catch {
               timingLabel = ''
             }
           }
           setSuccessMessage(`投稿しました。反映中です。${isPreviewHost ? timingLabel : ''}`)
+          setDebugTimingJson(nextDebugTimingJson)
           finishSubmit()
           const formReleasedAt = performance.now()
           if ('postNumber' in result && typeof result.postNumber === 'number') {
@@ -318,7 +324,11 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
           </div>
         )}
         {successMessage && !error && (
-          <div className="mx-3 my-1.5 px-2 py-1.5 text-xs" style={{ background: '#d4edda', color: '#155724', border: '1px solid #c3e6cb' }}>
+          <div
+            className="mx-3 my-1.5 px-2 py-1.5 text-xs"
+            data-post-timing={debugTimingJson || undefined}
+            style={{ background: '#d4edda', color: '#155724', border: '1px solid #c3e6cb' }}
+          >
             {successMessage}
           </div>
         )}
