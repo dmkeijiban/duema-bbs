@@ -7,6 +7,7 @@ const REQUIRED_INITIAL_COMMENTS = 5
 const MIN_POST_COUNT = 11
 const CANDIDATE_LIMIT = 120
 const CATEGORY_SLUG = 'classic'
+const RECENT_EXCLUSION_DAYS = 14
 
 type DbThread = {
   id: number
@@ -76,6 +77,7 @@ export type ThreadRemakeDryRun = {
   generated: GeneratedRemake | null
   candidateCount: number
   excluded: ExclusionLog[]
+  excludedByReason: Record<string, number>
   skippedReason?: string
 }
 
@@ -95,10 +97,10 @@ const PRIORITY_THEME_RE =
   /懐か|思い出|好きな|好きだった|といえば|昔|当時|初代|勝舞|勝太|ジョー|アニメ|漫画|パック|弾|箱|開封|切札|相棒|使ってた|覚えてる|クラシック/
 
 const EXCLUDED_THEME_RE =
-  /新カード|判明|フラゲ|発売前|発売日|発売直後|新弾|収録|殿堂発表|速報|CS|大会結果|入賞|優勝|選手権|高騰|下落|相場|買取|値段|デッキ相談|デッキ診断|構築相談|デッキリスト|リスト|個人|店舗|炎上|晒し|荒らし|不具合|バグ|メンテ/
+  /新カード|判明|フラゲ|発売前|発売日|発売直後|新弾|収録|商標|ネタバレ|殿堂発表|速報|CS|大会結果|入賞|優勝|選手権|高騰|下落|相場|買取|値段|デッキ相談|デッキ診断|構築相談|デッキリスト|リスト|個人|店舗|炎上|晒し|荒らし|不具合|バグ|メンテ/
 
 const TEMPORAL_WORD_RE =
-  /今日|昨日|明日|今回|新カード|判明|フラゲ|発売前|発売日|殿堂発表|CS|大会結果|メンテ|不具合|バグ/
+  /今日|昨日|明日|今回|新カード|判明|フラゲ|発売前|発売日|商標|ネタバレ|殿堂発表|CS|大会結果|メンテ|不具合|バグ/
 
 const IMAGE_DEPENDENT_RE =
   /^(これ|このカード|この画像|これ覚えてる[？?]?|このデッキ|このリスト|この構築)\s*$|この(カード|画像|デッキ|リスト|構築)|画像(見て|のやつ|前提)|写真|添付|スクショ/m
@@ -140,12 +142,12 @@ function collectThreadExclusionReasons(thread: DbThread, remadeSourceIds: Set<nu
   const text = `${thread.title}\n${thread.body}`
   const createdAt = new Date(thread.created_at)
   const ageMs = now.getTime() - createdAt.getTime()
-  const ninetyDays = 90 * 86400000
+  const recentExclusionMs = RECENT_EXCLUSION_DAYS * 86400000
   const fiveYears = 5 * 365 * 86400000
 
   if (thread.is_archived) reasons.push('archived_or_private')
   if ((thread.post_count ?? 0) < MIN_POST_COUNT) reasons.push('comment_count_lt_10')
-  if (ageMs < ninetyDays) reasons.push('within_3_months')
+  if (ageMs < recentExclusionMs) reasons.push('within_14_days')
   if (ageMs > fiveYears) reasons.push('too_old')
   if (remadeSourceIds.has(thread.id)) reasons.push('already_remade')
   if (thread.remake_type || thread.remade_from_thread_id) reasons.push('source_is_remake')
@@ -156,6 +158,42 @@ function collectThreadExclusionReasons(thread: DbThread, remadeSourceIds: Set<nu
   if (!titleLooksReusable(thread.title)) reasons.push('not_reusable_theme')
 
   return reasons
+}
+
+function buildExcludedByReason(excluded: ExclusionLog[]): Record<string, number> {
+  const summary: Record<string, number> = {}
+  for (const item of excluded) {
+    for (const reason of item.reasons) {
+      summary[reason] = (summary[reason] ?? 0) + 1
+    }
+  }
+  return Object.fromEntries(Object.entries(summary).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])))
+}
+
+function buildDryRunResult(params: {
+  selected: RemakeCandidate | null
+  generated: GeneratedRemake | null
+  candidateCount: number
+  excluded: ExclusionLog[]
+  skippedReason?: string
+}): ThreadRemakeDryRun {
+  return {
+    status: 'dry_run',
+    selected: params.selected
+      ? {
+          id: params.selected.thread.id,
+          title: params.selected.thread.title,
+          postCount: params.selected.thread.post_count ?? 0,
+          score: params.selected.score,
+          imageUrl: params.selected.thread.image_url,
+        }
+      : null,
+    generated: params.generated,
+    candidateCount: params.candidateCount,
+    excluded: params.excluded,
+    excludedByReason: buildExcludedByReason(params.excluded),
+    ...(params.skippedReason ? { skippedReason: params.skippedReason } : {}),
+  }
 }
 
 function scoreCandidate(thread: DbThread): number {
@@ -182,6 +220,30 @@ function diversifyFallbackComment(comment: string, index: number): string {
   return `${trimmed}${suffixes[index % suffixes.length]}`
 }
 
+function isOldThemeBoostCandidate(source: RemakeCandidate): boolean {
+  const text = `${source.thread.title}\n${source.thread.body}`
+  return /強化|テーマ/.test(source.thread.title) && /サムライ|昔|過去|関連テーマ/.test(text)
+}
+
+function buildOldThemeBoostOpening(): Pick<GeneratedRemake, 'title' | 'body'> {
+  return {
+    title: '昔テーマの強化で嬉しかったやつある？',
+    body: [
+      'サムライみたいに、昔のテーマが急に強化される流れってけっこう好き。',
+      '',
+      '昔使ってたテーマ、強化されて嬉しかったテーマ、逆にまだ待ってるテーマとかあれば聞きたい。',
+    ].join('\n'),
+  }
+}
+
+function normalizeGeneratedForSource(generated: GeneratedRemake, source: RemakeCandidate): GeneratedRemake {
+  if (!isOldThemeBoostCandidate(source)) return generated
+  return {
+    ...generated,
+    ...buildOldThemeBoostOpening(),
+  }
+}
+
 function fallbackGenerate(source: RemakeCandidate): GeneratedRemake | null {
   const titleBase = source.thread.title
     .replace(/スレ$/g, '')
@@ -191,15 +253,21 @@ function fallbackGenerate(source: RemakeCandidate): GeneratedRemake | null {
 
   if (!titleLooksReusable(titleBase) || includesBadContext(titleBase)) return null
 
-  const title = titleBase.includes('といえば') || titleBase.includes('好き')
+  const isOldThemeBoost = isOldThemeBoostCandidate(source)
+  const oldThemeBoostOpening = isOldThemeBoost ? buildOldThemeBoostOpening() : null
+  const title = isOldThemeBoost
+    ? oldThemeBoostOpening!.title
+    : titleBase.includes('といえば') || titleBase.includes('好き')
     ? `${titleBase}で今でも語れるやつ`
     : `${titleBase}の思い出を語ろう`
 
-  const body = [
-    `${titleBase}について、今でも自然に話せそうな思い出を聞きたい。`,
-    '',
-    '当時使ってた人、対戦で印象に残ってる人、今見ても好きなところがある人いたら教えてください。',
-  ].join('\n')
+  const body = isOldThemeBoost
+    ? oldThemeBoostOpening!.body
+    : [
+        `${titleBase}について、今でも自然に話せそうな思い出を聞きたい。`,
+        '',
+        '当時使ってた人、対戦で印象に残ってる人、今見ても好きなところがある人いたら教えてください。',
+      ].join('\n')
 
   const comments = source.posts
     .map((post) => safeComment(post.body))
@@ -457,27 +525,27 @@ export async function runThreadRemake(options: { dryRun?: boolean } = {}): Promi
 
     if (!selected) {
       return options.dryRun
-        ? { status: 'dry_run', selected: null, generated: null, candidateCount: 0, excluded, skippedReason: 'no_candidates' }
+        ? buildDryRunResult({
+            selected: null,
+            generated: null,
+            candidateCount: 0,
+            excluded,
+            skippedReason: 'no_candidates',
+          })
         : { status: 'skipped', reason: 'no_candidates', excluded }
     }
 
-    const generated = await generateWithOpenAI(selected)
+    const rawGenerated = await generateWithOpenAI(selected)
+    const generated = rawGenerated ? normalizeGeneratedForSource(rawGenerated, selected) : null
     if (!generated) {
       return options.dryRun
-        ? {
-            status: 'dry_run',
-            selected: {
-              id: selected.thread.id,
-              title: selected.thread.title,
-              postCount: selected.thread.post_count ?? 0,
-              score: selected.score,
-              imageUrl: selected.thread.image_url,
-            },
+        ? buildDryRunResult({
+            selected,
             generated: null,
             candidateCount: candidates.length,
             excluded,
             skippedReason: 'generation_rejected',
-          }
+          })
         : { status: 'skipped', reason: 'generation_rejected', excluded }
     }
 
@@ -485,37 +553,23 @@ export async function runThreadRemake(options: { dryRun?: boolean } = {}): Promi
     if (validationReasons.length > 0) {
       excluded.unshift({ threadId: selected.thread.id, title: selected.thread.title, reasons: validationReasons })
       return options.dryRun
-        ? {
-            status: 'dry_run',
-            selected: {
-              id: selected.thread.id,
-              title: selected.thread.title,
-              postCount: selected.thread.post_count ?? 0,
-              score: selected.score,
-              imageUrl: selected.thread.image_url,
-            },
+        ? buildDryRunResult({
+            selected,
             generated,
             candidateCount: candidates.length,
             excluded,
             skippedReason: 'generated_validation_failed',
-          }
+          })
         : { status: 'skipped', reason: 'generated_validation_failed', excluded }
     }
 
     if (options.dryRun) {
-      return {
-        status: 'dry_run',
-        selected: {
-          id: selected.thread.id,
-          title: selected.thread.title,
-          postCount: selected.thread.post_count ?? 0,
-          score: selected.score,
-          imageUrl: selected.thread.image_url,
-        },
+      return buildDryRunResult({
+        selected,
         generated,
         candidateCount: candidates.length,
         excluded,
-      }
+      })
     }
 
     const admin = createAdminClient()

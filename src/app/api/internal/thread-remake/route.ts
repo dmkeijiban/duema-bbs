@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
       selected: result.selected,
       candidateCount: result.candidateCount,
       skippedReason: result.skippedReason ?? null,
+      excludedByReason: result.excludedByReason,
       excludedSample: result.excluded.slice(0, 12),
       generated: result.generated,
     })
