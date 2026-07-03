@@ -335,11 +335,14 @@ export async function renderThreadPage(threadId: number, page: number) {
       </nav>
 
       <div className="border border-gray-300 bg-white mb-3 px-3 py-2">
-        <div className="flex items-start justify-between gap-2">
-          <h1 className="min-w-0 flex-1 font-bold text-gray-800 leading-snug text-base break-words">
+        <div className="sm:flex sm:items-start sm:justify-between sm:gap-2">
+          <h1 className="inline min-w-0 font-bold text-gray-800 leading-snug text-base break-words sm:block sm:flex-1">
             {typedThread.title}
           </h1>
-          <div className="shrink-0">
+          <span className="ml-1 inline-block align-middle sm:hidden">
+            <ShareXButton title={typedThread.title} />
+          </span>
+          <div className="hidden shrink-0 sm:block">
             <ShareXButton title={typedThread.title} />
           </div>
         </div>
