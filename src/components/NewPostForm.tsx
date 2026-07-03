@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createPost } from '@/app/actions/thread'
-import { Thread, Category } from '@/types'
+import { Thread, Category, Post } from '@/types'
 import Link from 'next/link'
 import { capturePostHogEvent } from '@/lib/posthog-events'
 import { createClient, getCurrentUser } from '@/lib/supabase'
@@ -24,19 +24,28 @@ interface Props {
   thread: Thread & { categories: Category | null }
   bodyValue: string
   onBodyChange: (v: string) => void
+  onOptimisticPost: (draft: { body: string; authorName: string; imageUrl: string | null }) => string
+  onPostSucceeded: (optimisticId: string, post: Post) => void
+  onPostFailed: (optimisticId: string) => void
   rules?: string
   isAdmin?: boolean
 }
 
-export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props) {
+export function NewPostForm({
+  threadId,
+  thread,
+  bodyValue,
+  onBodyChange,
+  onOptimisticPost,
+  onPostSucceeded,
+  onPostFailed,
+}: Props) {
   const [authorName, setAuthorName] = useState('')
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [, startRefreshTransition] = useTransition()
   const [scrollTarget, setScrollTarget] = useState<number | null>(null)
-  const [successMessage, setSuccessMessage] = useState('')
-  const [debugTimingJson, setDebugTimingJson] = useState('')
   const submitInFlightRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -94,21 +103,32 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scrollTarget])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (submitInFlightRef.current) return
     submitInFlightRef.current = true
     setError('')
-    setSuccessMessage('')
-    setDebugTimingJson('')
     setIsSubmitting(true)
 
+    const form = e.currentTarget
+    const currentFormData = new FormData(form)
+    const submittedBody = String(currentFormData.get('body') ?? bodyValue)
+    const submittedAuthorName = authState.status === 'user'
+      ? authState.displayName
+      : authorName
     const fd = new FormData()
     fd.set('thread_id', String(threadId))
-    fd.set('body', bodyValue)
+    fd.set('body', submittedBody)
     fd.set('author_name', authorName)
     const file = fileInputRef.current?.files?.[0]
     if (file) fd.set('image', file)
+    const previewUrl = file ? URL.createObjectURL(file) : null
+    const optimisticId = onOptimisticPost({
+      body: submittedBody,
+      authorName: submittedAuthorName,
+      imageUrl: previewUrl,
+    })
+    onBodyChange('')
 
     const startedAt = performance.now()
     const finishSubmit = () => {
@@ -121,6 +141,8 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
         const result = await createPost(fd)
         const actionReturnedAt = performance.now()
         if (result?.error) {
+          onPostFailed(optimisticId)
+          if (previewUrl) URL.revokeObjectURL(previewUrl)
           capturePostHogEvent('reply_submit_error', {
             thread_id: threadId,
             category_slug: thread.categories?.slug ?? null,
@@ -128,31 +150,44 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
             has_image: Boolean(file),
           })
           setError(result.error)
+          onBodyChange(submittedBody)
           finishSubmit()
         } else {
           const isPreviewHost = window.location.hostname === 'localhost' || window.location.hostname.endsWith('.vercel.app')
           const resultRecord = result && typeof result === 'object' ? result as Record<string, unknown> : {}
+          if ('post' in resultRecord && resultRecord.post && typeof resultRecord.post === 'object') {
+            onPostSucceeded(optimisticId, resultRecord.post as Post)
+            if (previewUrl) URL.revokeObjectURL(previewUrl)
+          } else {
+            const fallbackPostNumber = typeof resultRecord.postNumber === 'number'
+              ? resultRecord.postNumber
+              : 0
+            onPostSucceeded(optimisticId, {
+              id: -Date.now(),
+              thread_id: threadId,
+              post_number: fallbackPostNumber,
+              body: submittedBody,
+              author_name: submittedAuthorName.trim() || '名無しのデュエリスト',
+              user_id: null,
+              session_id: null,
+              image_url: previewUrl,
+              thumbnail_url: null,
+              created_at: new Date().toISOString(),
+              is_deleted: false,
+              deleted_by: null,
+              deleted_at: null,
+            })
+            if (previewUrl) {
+              window.setTimeout(() => URL.revokeObjectURL(previewUrl), 30000)
+            }
+          }
           capturePostHogEvent('reply_submit_success', {
             thread_id: threadId,
             category_slug: thread.categories?.slug ?? null,
             has_image: Boolean(file),
           })
-          onBodyChange('')
           setAuthorName('')
           if (fileInputRef.current) fileInputRef.current.value = ''
-          const nextDebugTimingJson = isPreviewHost && typeof resultRecord.debugTimingJson === 'string'
-            ? resultRecord.debugTimingJson
-            : ''
-          let timingLabel = ''
-          if (nextDebugTimingJson) {
-            try {
-              timingLabel = ` (${JSON.parse(nextDebugTimingJson).total_ms}ms)`
-            } catch {
-              timingLabel = ''
-            }
-          }
-          setSuccessMessage(`投稿しました。反映まで少しお待ちください。${isPreviewHost ? timingLabel : ''}`)
-          setDebugTimingJson(nextDebugTimingJson)
           finishSubmit()
           const formReleasedAt = performance.now()
           if ('postNumber' in result && typeof result.postNumber === 'number') {
@@ -181,6 +216,8 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
           }, 2500)
         }
       } catch {
+        onPostFailed(optimisticId)
+        if (previewUrl) URL.revokeObjectURL(previewUrl)
         capturePostHogEvent('reply_submit_exception', {
           thread_id: threadId,
           category_slug: thread.categories?.slug ?? null,
@@ -189,6 +226,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
         // デプロイ後に古いJSキャッシュを持つタブからアクセスするとサーバーアクションIDが
         // 一致せず404が返る。ページ更新を促すメッセージを表示する。
         setError('ページが古くなっています。再読み込みしてから再度投稿してください。')
+        onBodyChange(submittedBody)
         finishSubmit()
       }
     })()
@@ -293,6 +331,7 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
               <td className="p-2 min-w-0">
                 <textarea
                   id="reply-textarea"
+                  name="body"
                   value={bodyValue}
                   onChange={e => {
                     onBodyChange(e.target.value)
@@ -329,17 +368,6 @@ export function NewPostForm({ threadId, thread, bodyValue, onBodyChange }: Props
             {error}
           </div>
         )}
-        {successMessage && !error && (
-          <div
-            className="mx-3 my-1.5 px-2 py-1.5 text-xs"
-            data-post-timing={debugTimingJson || undefined}
-            role="status"
-            style={{ background: '#d4edda', color: '#155724', border: '1px solid #c3e6cb' }}
-          >
-            {successMessage}
-          </div>
-        )}
-
         <div className="px-3 py-2.5">
           <button
             type="submit"
