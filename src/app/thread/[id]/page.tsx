@@ -339,7 +339,7 @@ export async function renderThreadPage(threadId: number, page: number) {
           <h1 className="inline min-w-0 font-bold text-gray-800 leading-snug text-base break-words sm:block sm:flex-1">
             {typedThread.title}
           </h1>
-          <span className="ml-1 inline-block align-middle sm:hidden">
+          <span className="ml-[0.5em] inline-block align-middle sm:hidden">
             <ShareXButton title={typedThread.title} />
           </span>
           <div className="hidden shrink-0 sm:block">
