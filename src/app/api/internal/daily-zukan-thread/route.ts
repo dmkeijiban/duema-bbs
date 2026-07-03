@@ -16,7 +16,7 @@ export const maxDuration = 60
 
 // Typefully投稿の結果（APIレスポンス・ログ用）。
 type TypefullyOutcome =
-  | { status: 'posted'; id: string; shareUrl: string; postedAt: string; text: string; mediaUrls: string[]; imageFallback?: string; persistError?: string }
+  | { status: 'posted'; id: string; shareUrl: string; postedAt: string; scheduledAt: string; text: string; mediaUrls: string[]; imageFallback?: string; persistError?: string }
   | { status: 'error'; error: string; persistError?: string }
   | { status: 'skipped'; reason: string; typefullyId?: string | null }
 
@@ -70,6 +70,12 @@ function assertCronAuth(req: NextRequest): NextResponse | null {
 
 function shortenError(error: string): string {
   return error.length > 1000 ? `${error.slice(0, 1000)}...` : error
+}
+
+const TYPEFULLY_SCHEDULE_DELAY_MINUTES = 5
+
+function getTypefullyScheduleDate(now = new Date()): string {
+  return new Date(now.getTime() + TYPEFULLY_SCHEDULE_DELAY_MINUTES * 60 * 1000).toISOString()
 }
 
 async function getTypefullyGuard(postedDate: string): Promise<TypefullyGuard | { error: string }> {
@@ -138,12 +144,12 @@ async function createTypefullyPost({
 }): Promise<TypefullyOutcome> {
   const text = buildTypefullyText(cardName, `${SITE_URL}/thread/${threadId}`)
   const mediaUrls = imageUrl ? [imageUrl] : []
-  const postedAt = new Date().toISOString()
+  const typefullyScheduleDate = getTypefullyScheduleDate()
 
   let tf = await createTypefullyDraft({
     threadLines: [text],
     imageUrls: mediaUrls,
-    scheduleDate: 'now',
+    scheduleDate: typefullyScheduleDate,
   })
   let usedMediaUrls = mediaUrls
   let imageFallback: string | undefined
@@ -157,7 +163,7 @@ async function createTypefullyPost({
     imageFallback = tf.error
     tf = await createTypefullyDraft({
       threadLines: [text],
-      scheduleDate: 'now',
+      scheduleDate: typefullyScheduleDate,
     })
     usedMediaUrls = []
   }
@@ -184,10 +190,10 @@ async function createTypefullyPost({
     threadId,
     id: tf.id,
     shareUrl: tf.share_url,
-    postedAt,
+    scheduledAt: typefullyScheduleDate,
     mediaCount: usedMediaUrls.length,
   })
-  const persistError = await saveTypefullySuccess(postedDate, tf.id, tf.share_url, postedAt)
+  const persistError = await saveTypefullySuccess(postedDate, tf.id, tf.share_url, typefullyScheduleDate)
   if (persistError) {
     console.error('[daily-zukan-thread] typefully success persistence failed', {
       postedDate,
@@ -199,7 +205,8 @@ async function createTypefullyPost({
     status: 'posted',
     id: tf.id,
     shareUrl: tf.share_url,
-    postedAt,
+    postedAt: typefullyScheduleDate,
+    scheduledAt: typefullyScheduleDate,
     text,
     mediaUrls: usedMediaUrls,
     ...(imageFallback ? { imageFallback } : {}),
