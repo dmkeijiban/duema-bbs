@@ -6,7 +6,6 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import {
   adminDeleteThread, adminDeletePost,
   adminUpdateThread, adminUpdatePost,
-  adminLogin,
   adminAddNgWord, adminDisableNgWord,
   adminBanSession, adminUnbanSession,
   adminToggleArchive,
@@ -30,6 +29,7 @@ import {
 import { AdminSubmitButton } from './AdminSubmitButton'
 import { AccessTrendCard } from './AccessTrendCard'
 import { AdminScrollManager } from './AdminScrollManager'
+import { AdminLoginView } from './AdminLoginView'
 
 const ADMIN_COOKIE = 'admin_auth'
 const THREADS_PER_PAGE = 30
@@ -137,24 +137,6 @@ const PAGE_LABELS: Record<string, string> = {
 async function isAdmin() {
   const cookieStore = await cookies()
   return verifyAdminCookie(cookieStore.get(ADMIN_COOKIE)?.value)
-}
-
-function LoginPage({ error }: { error?: string }) {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white border border-gray-300 p-8 w-full max-w-sm">
-        <h1 className="text-lg font-bold mb-4 text-gray-800">🔐 管理者ログイン</h1>
-        <form action={adminLogin}>
-          <input type="password" name="password" placeholder="管理者パスワード"
-            className="w-full border border-gray-300 px-3 py-2 text-sm mb-3 focus:outline-none focus:border-blue-400" required />
-          {error && <p className="text-red-500 text-xs mb-3">{error}</p>}
-          <button type="submit" className="w-full py-2 text-white text-sm font-medium" style={{ background: '#0d6efd' }}>
-            ログイン
-          </button>
-        </form>
-      </div>
-    </div>
-  )
 }
 
 function formatNumber(value: number) {
@@ -340,7 +322,7 @@ export default async function AdminPage({
   }>
 }) {
   const sp = await searchParams
-  if (!(await isAdmin())) return <LoginPage error={sp.error} />
+  if (!(await isAdmin())) return <AdminLoginView error={sp.error} />
 
   const supabase = await createClient()
   const adminSupabase = createAdminClient()
@@ -599,13 +581,13 @@ export default async function AdminPage({
   const positionLabel: Record<string, string> = { top: 'スレ上', mid: 'タブ下', bot: 'スレ下' }
 
   return (
-    <div className="max-w-screen-xl mx-auto px-3 py-4 text-sm">
+    <div className="mx-auto w-full max-w-screen-xl min-w-0 overflow-x-hidden px-2 py-4 text-sm sm:px-3">
       <AdminScrollManager />
 
       {/* ヘッダー */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex min-w-0 flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-bold text-gray-800">🛠 管理画面</h1>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Link href="/" className="text-xs text-blue-600 hover:underline">サイトに戻る</Link>
           <form action={logout}>
             <button type="submit" className="text-xs text-gray-500 hover:underline">ログアウト</button>
@@ -646,18 +628,18 @@ export default async function AdminPage({
       )}
 
       {/* ─── 管理メニュー（折り畳み） ─── */}
-      <details open className="mb-4 border border-gray-200 bg-white rounded">
+      <details open className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
         <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
           <span className="text-gray-400 text-xs">▶</span>
           <span>管理メニュー</span>
         </summary>
-        <div className="border-t border-gray-100 px-3 py-2 space-y-1.5">
+        <div className="min-w-0 space-y-1.5 border-t border-gray-100 px-3 py-2">
 
           {/* 各カテゴリ：見出し＋ボタン群を横並び（PC=見出し左・ボタン右で1行寄せ／スマホ=見出し上・ボタン下に折り返し）。
               ボタンは flex-wrap で自然に折り返し、横スクロールは発生させない */}
           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:w-32 sm:shrink-0 sm:pt-1.5">コンテンツ</p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex min-w-0 flex-wrap gap-1.5">
               <Link href="/admin/categories" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">🗂 カテゴリ</Link>
               <Link href="/admin/pages" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">📄 固定ページ</Link>
               <Link href="/admin/notices" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">📢 お知らせ</Link>
@@ -671,7 +653,7 @@ export default async function AdminPage({
 
           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:w-32 sm:shrink-0 sm:pt-1.5">X / SNS</p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex min-w-0 flex-wrap gap-1.5">
               <Link href="/admin/x-posts" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">🐦 X投稿管理</Link>
               <Link href="/admin/x-schedule" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">📅 スケジュール</Link>
               <Link href="/admin/x-buzz" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">X話題URLストック</Link>
@@ -680,7 +662,7 @@ export default async function AdminPage({
 
           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:w-32 sm:shrink-0 sm:pt-1.5">ユーティリティ</p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex min-w-0 flex-wrap gap-1.5">
               <Link href="/admin/cleanup" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">🧹 データ整理</Link>
               <Link href="/admin/deleted-posts" className="px-2.5 py-1 text-xs border border-orange-300 text-orange-600 hover:bg-orange-50 rounded">🗑️ 削除済みレス</Link>
               <Link href="/admin/revival" className="px-2.5 py-1 text-xs border border-green-400 text-green-700 hover:bg-green-50 rounded">♻️ リバイバル</Link>
@@ -708,7 +690,7 @@ export default async function AdminPage({
         </div>
       </details>
 
-      <section className="mb-4 rounded border border-gray-200 bg-gray-50">
+      <section className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-gray-50">
         <div className="border-b border-gray-200 px-3 py-2">
           <h2 className="font-bold text-gray-800">📊 アクセス・人気ダッシュボード</h2>
           <p className="mt-0.5 text-[11px] text-gray-500">
@@ -716,7 +698,7 @@ export default async function AdminPage({
           </p>
         </div>
 
-        <div className="space-y-4 p-3">
+        <div className="min-w-0 space-y-4 p-3">
           <div>
             {ga4Dashboard.ok && (
               <div className="mb-4">
@@ -738,7 +720,7 @@ export default async function AdminPage({
             </div>
             {ga4Dashboard.ok ? (
               <>
-                <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+                <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
                   <MetricCard label="今日の表示回数" value={ga4Dashboard.summary.todayViews} />
                   <MetricCard label="昨日の表示回数" value={ga4Dashboard.summary.yesterdayViews} />
                   <MetricCard label="過去7日間の表示回数" value={ga4Dashboard.summary.sevenDayViews} />
@@ -768,7 +750,7 @@ export default async function AdminPage({
                 threads.view_count / posts
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4">
               <MetricCard label="スレ総閲覧数" value={internalDashboard.totals.totalViews} note="内部累計" />
               <MetricCard label="スレ数" value={internalDashboard.totals.threadCount} />
               <MetricCard label="コメント数" value={internalDashboard.totals.commentCount} />
@@ -778,7 +760,7 @@ export default async function AdminPage({
 
           <div>
             <h3 className="mb-2 text-sm font-bold text-gray-700">伸びているコンテンツ</h3>
-            <div className="grid gap-3 xl:grid-cols-3">
+            <div className="grid min-w-0 gap-3 xl:grid-cols-3">
               {ga4Dashboard.ok ? (
                 <Ga4PageRankingCard
                   title="GA4 直近7日のページ"
@@ -840,7 +822,7 @@ export default async function AdminPage({
       )}
 
       {/* ─── モデレーション（NGワード・BAN）折り畳み ─── */}
-      <details className="mb-4 border border-gray-200 bg-white rounded">
+      <details className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
         <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
           <span className="text-gray-400 text-xs">▶</span>
           <span>🛡️ モデレーション</span>
@@ -848,7 +830,7 @@ export default async function AdminPage({
             NGワード {(ngWords as ModerationNgWord[]).length}件 / BAN {(sessionBans as ModerationBan[]).length}件
           </span>
         </summary>
-        <div className="border-t border-gray-100 p-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid min-w-0 grid-cols-1 gap-4 border-t border-gray-100 p-3 md:grid-cols-2">
           <section>
             <h3 className="font-bold text-gray-700 mb-2 text-xs">NGワード</h3>
             <form action={adminAddNgWord} className="flex gap-1 mb-2">
@@ -904,13 +886,13 @@ export default async function AdminPage({
       </details>
 
       {/* ─── お知らせ（折り畳み） ─── */}
-      <details className="mb-4 border border-gray-200 bg-white rounded">
+      <details className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
         <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
           <span className="text-gray-400 text-xs">▶</span>
           <span>📢 お知らせ</span>
           <span className="ml-auto text-[11px] font-normal text-gray-400">{notices?.length ?? 0}件</span>
         </summary>
-        <div className="border-t border-gray-100 p-3">
+        <div className="min-w-0 border-t border-gray-100 p-3">
           <div className="flex justify-end mb-2">
             <Link href="/admin/notices" className="px-2.5 py-1 text-xs border border-blue-400 text-blue-600 hover:bg-blue-50 rounded">編集する →</Link>
           </div>
@@ -943,12 +925,12 @@ export default async function AdminPage({
       </details>
 
       {/* ─── サイトテキスト設定（折り畳み） ─── */}
-      <details className="mb-4 border border-gray-200 bg-white rounded">
+      <details className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
         <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
           <span className="text-gray-400 text-xs">▶</span>
           <span>📝 サイトテキスト設定</span>
         </summary>
-        <div className="border-t border-gray-100 p-3 space-y-3">
+        <div className="min-w-0 space-y-3 border-t border-gray-100 p-3">
 
           <div>
             <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">ルール・バナー</p>
@@ -986,10 +968,10 @@ export default async function AdminPage({
       </details>
 
       {/* ─── スレッド管理 ─── */}
-      <div className={selectedThread ? 'grid grid-cols-1 xl:grid-cols-[minmax(34rem,1fr)_minmax(32rem,0.9fr)] gap-4' : 'grid grid-cols-1 gap-4'}>
+      <div className={selectedThread ? 'grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,0.9fr)]' : 'grid min-w-0 grid-cols-1 gap-4'}>
 
-        <div>
-          <div data-admin-thread-list-start className="scroll-mt-3 flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
+        <div className="min-w-0">
+          <div data-admin-thread-list-start className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-1 scroll-mt-3">
             <h2 className="font-bold text-gray-700">
               📋 スレッド管理
               {!isSearching && (
@@ -1081,7 +1063,7 @@ export default async function AdminPage({
           </div>
 
           {/* スレッド一覧テーブル */}
-          <div className="overflow-x-auto border border-gray-200 rounded bg-white">
+          <div className="max-w-full overflow-x-auto rounded border border-gray-200 bg-white">
             {(!threads || threads.length === 0) ? (
               <p className="px-4 py-8 text-center text-xs text-gray-400">
                 {isSearching ? '該当するスレッドがありません' : 'スレッドがありません'}
