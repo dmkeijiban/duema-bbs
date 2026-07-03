@@ -1,11 +1,61 @@
 import { MetadataRoute } from 'next'
+import { getConsolidatedCategoryBySlug } from '@/lib/categories'
 import { createPublicClient } from '@/lib/supabase-public'
+import {
+  applyKakologThreadFilter,
+  applyLegacyKakologThreadFilter,
+  isArchiveSchemaMissing,
+} from '@/lib/thread-archive'
 import { SITE_URL } from '@/lib/site-config'
 
 export const revalidate = 3600
 
 const BASE_URL = SITE_URL
 const POSTS_PER_PAGE = 100
+const KAKOLOG_SITEMAP_LIMIT = 1000
+
+type KakologSitemapThread = {
+  created_at: string | null
+  last_posted_at: string | null
+  category_id: number | null
+}
+
+function toJstDateKey(value: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(value))
+  const map = new Map(parts.map(part => [part.type, part.value]))
+  return `${map.get('year')}-${map.get('month')}-${map.get('day')}`
+}
+
+async function fetchKakologSitemapThreads(
+  supabase: ReturnType<typeof createPublicClient>
+): Promise<KakologSitemapThread[]> {
+  const selectColumns = 'created_at, last_posted_at, category_id'
+  const query = applyKakologThreadFilter(
+    supabase.from('threads').select(selectColumns)
+  )
+
+  const result = await query
+    .order('created_at', { ascending: false })
+    .limit(KAKOLOG_SITEMAP_LIMIT)
+
+  if (isArchiveSchemaMissing(result.error)) {
+    const fallbackQuery = applyLegacyKakologThreadFilter(
+      supabase.from('threads').select(selectColumns)
+    )
+    const fallbackResult = await fallbackQuery
+      .order('created_at', { ascending: false })
+      .limit(KAKOLOG_SITEMAP_LIMIT)
+    return (fallbackResult.data ?? []) as KakologSitemapThread[]
+  }
+
+  if (result.error) return []
+  return (result.data ?? []) as KakologSitemapThread[]
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
@@ -18,6 +68,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/update`, lastModified: new Date(), changeFrequency: 'hourly', priority: 0.7 },
     { url: `${BASE_URL}/new`, lastModified: new Date(), changeFrequency: 'hourly', priority: 0.7 },
     { url: `${BASE_URL}/summary`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.6 },
+    { url: `${BASE_URL}/kakolog`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.6 },
     { url: `${BASE_URL}/random`, lastModified: new Date(), changeFrequency: 'hourly', priority: 0.5 },
     { url: `${BASE_URL}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.4 },
     { url: `${BASE_URL}/zukan`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.7 },
@@ -27,17 +78,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const supabase = createPublicClient()
-    const [threadsResult, categoriesResult, summariesResult, fixedPagesResult] = await Promise.allSettled([
+    const [threadsResult, categoriesResult, summariesResult, fixedPagesResult, kakologThreadsResult] = await Promise.allSettled([
       supabase.from('threads').select('id, last_posted_at, post_count, view_count, category_id').eq('is_archived', false).order('last_posted_at', { ascending: false }).limit(5000),
       supabase.from('categories').select('id, slug').order('sort_order'),
       supabase.from('summaries').select('slug, created_at').eq('published', true).order('created_at', { ascending: false }).limit(100),
       supabase.from('fixed_pages').select('slug').eq('is_published', true).order('sort_order'),
+      fetchKakologSitemapThreads(supabase),
     ])
 
     const threads = threadsResult.status === 'fulfilled' ? (threadsResult.value.data ?? []) : []
     const categories = categoriesResult.status === 'fulfilled' ? (categoriesResult.value.data ?? []) : []
     const summaries = summariesResult.status === 'fulfilled' ? (summariesResult.value.data ?? []) : []
     const fixedPages = fixedPagesResult.status === 'fulfilled' ? (fixedPagesResult.value.data ?? []) : []
+    const kakologThreads = kakologThreadsResult.status === 'fulfilled' ? kakologThreadsResult.value : []
     const staticSlugs = new Set(['terms', 'privacy', 'contact', 'guide', 'settings'])
 
     const categoryLastPosted = new Map<number, Date>()
@@ -53,6 +106,41 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: categoryLastPosted.get(category.id) ?? new Date(),
       changeFrequency: 'hourly' as const,
       priority: 0.9,
+    }))
+
+    const rawCategoryById = new Map(categories.map(category => [category.id, category]))
+    const kakologDateLastPosted = new Map<string, Date>()
+    const kakologCategoryLastPosted = new Map<string, Date>()
+    for (const thread of kakologThreads) {
+      if (!thread.created_at) continue
+      const lastModified = thread.last_posted_at ? new Date(thread.last_posted_at) : new Date(thread.created_at)
+      const dateKey = toJstDateKey(thread.created_at)
+      const existingDate = kakologDateLastPosted.get(dateKey)
+      if (!existingDate || lastModified > existingDate) kakologDateLastPosted.set(dateKey, lastModified)
+
+      if (thread.category_id == null) continue
+      const rawCategory = rawCategoryById.get(thread.category_id)
+      if (!rawCategory) continue
+      const slug = getConsolidatedCategoryBySlug(rawCategory.slug)?.slug ?? rawCategory.slug
+      const existingCategory = kakologCategoryLastPosted.get(slug)
+      if (!existingCategory || lastModified > existingCategory) kakologCategoryLastPosted.set(slug, lastModified)
+    }
+
+    const kakologDatePages: MetadataRoute.Sitemap = Array.from(kakologDateLastPosted, ([date, lastModified]) => ({
+      url: `${BASE_URL}/kakolog/${date}`,
+      lastModified,
+      changeFrequency: 'weekly' as const,
+      priority: 0.5,
+    }))
+
+    const kakologCategorySlugs = Array.from(new Set(
+      categories.map(category => getConsolidatedCategoryBySlug(category.slug)?.slug ?? category.slug)
+    ))
+    const kakologCategoryPages: MetadataRoute.Sitemap = kakologCategorySlugs.map(slug => ({
+      url: `${BASE_URL}/kakolog/category/${slug}`,
+      lastModified: kakologCategoryLastPosted.get(slug) ?? new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: 0.5,
     }))
 
     const now = Date.now()
@@ -104,7 +192,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.5,
       }))
 
-    return [...staticPages, ...fixedPageEntries, ...categoryPages, ...threadPages, ...paginatedThreadPages, ...summaryPages]
+    return [...staticPages, ...fixedPageEntries, ...categoryPages, ...kakologDatePages, ...kakologCategoryPages, ...threadPages, ...paginatedThreadPages, ...summaryPages]
   } catch {
     return staticPages
   }
