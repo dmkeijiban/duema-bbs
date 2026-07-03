@@ -3,5 +3,18 @@
     "allow": [
       "Bash(ping *)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"$raw = [Console]::In.ReadToEnd(); $data = ConvertFrom-Json -InputObject $raw; $cmd = [string]$data.tool_input.command; if ($cmd -match '(?i)(^|[;&|]\\s*)git\\s+add\\s+(?:\\.|-A|--all)(?:\\s|$)') { [Console]::Error.WriteLine('git add . / -A / --all は禁止です。必要なファイルだけ明示して git add <file> してください。'); exit 2 }; exit 0\""
+          }
+        ]
+      }
+    ]
   }
 }
