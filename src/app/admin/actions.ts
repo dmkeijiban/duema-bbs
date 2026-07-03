@@ -238,7 +238,7 @@ export async function adminLogin(formData: FormData) {
     })
     redirect('/admin')
   }
-  redirect('/admin?error=パスワードが違います')
+  redirect(`/admin?error=${encodeURIComponent('パスワードが違います')}`)
 }
 
 export async function adminDeleteThread(formData: FormData) {
