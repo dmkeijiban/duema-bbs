@@ -23,7 +23,7 @@ export function ShareXButton({ title }: Props) {
   return (
     <button
       onClick={handleShare}
-      className="inline-flex h-7 min-w-7 items-center justify-center rounded border border-gray-300 bg-white px-2 text-xs font-bold leading-none text-gray-800 transition-all duration-100 hover:bg-gray-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 sm:h-auto sm:min-w-0 sm:px-3 sm:py-1.5"
+      className="inline-flex h-7 min-w-7 items-center justify-center rounded border border-black bg-black px-2 text-xs font-bold leading-none text-white transition-all duration-100 hover:bg-gray-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 sm:h-auto sm:min-w-0 sm:border-gray-300 sm:bg-white sm:px-3 sm:py-1.5 sm:text-gray-800 sm:hover:bg-gray-50"
       title="Xでシェア"
       type="button"
     >
