@@ -23,8 +23,12 @@ function escapeHtmlAttr(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+type TimelinePost = Post & {
+  optimisticStatus?: 'sending'
+}
+
 interface Props {
-  post: Post
+  post: TimelinePost
   allPosts: Post[]
   onAnchorClick: (displayNum: number) => void
   displayNumber: number
@@ -488,12 +492,13 @@ export const PostItem = memo(function PostItem({
   const [deleteError, setDeleteError] = useState('')
   const [isPending, startTransition] = useTransition()
 
+  const isOptimistic = post.optimisticStatus === 'sending'
   const postSessionId = (post as Post & { session_id?: string }).session_id ?? ''
   const isDeletedByRegisteredUser =
     locallyDeletedByUser || post.is_deleted === true
   const canDeleteBySession = Boolean(sessionId && postSessionId === sessionId)
   const canDeleteByUser = Boolean(currentUserId && post.user_id === currentUserId)
-  const canDelete = !isDeletedByRegisteredUser && (canDeleteBySession || canDeleteByUser)
+  const canDelete = !isOptimistic && !isDeletedByRegisteredUser && (canDeleteBySession || canDeleteByUser)
 
   const handleDelete = () => {
     if (!confirm('このコメントを削除しますか？')) return
@@ -532,7 +537,11 @@ export const PostItem = memo(function PostItem({
           <>
             <PostAuthorName fallbackName={post.author_name} profile={authorProfile} />
             <span className="text-gray-400">{formatDateTimeJP(post.created_at)}</span>
-            <ReportButton itemType="post" itemId={post.id} itemBody={post.body} />
+            {isOptimistic ? (
+              <span className="text-[10px] font-medium text-blue-600">送信中...</span>
+            ) : (
+              <ReportButton itemType="post" itemId={post.id} itemBody={post.body} />
+            )}
           </>
         )}
         {!isDeletedByRegisteredUser && canDelete && (

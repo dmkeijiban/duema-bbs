@@ -26,6 +26,17 @@ interface Props {
 }
 
 type DisplayPost = Post & { displayNumber: number }
+type OptimisticPost = Post & {
+  optimisticId?: string
+  optimisticStatus?: 'sending'
+}
+type OptimisticDisplayPost = OptimisticPost & { displayNumber: number }
+
+type OptimisticPostDraft = {
+  body: string
+  authorName: string
+  imageUrl: string | null
+}
 
 function ThreadAvatar({ src, alt }: { src: string | null | undefined; alt: string }) {
   if (!src) return null
@@ -88,6 +99,7 @@ export function ThreadContent({
   const [sessionId, setSessionId] = useState('')
   const [viewerUserId, setViewerUserId] = useState(currentUserId)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [optimisticPosts, setOptimisticPosts] = useState<OptimisticPost[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -122,11 +134,57 @@ export function ThreadContent({
     ...post,
     displayNumber: post.post_number + 1,
   })), [posts])
+  const visiblePosts = useMemo<OptimisticDisplayPost[]>(() => {
+    const displayedPostIds = new Set(displayPosts.map(post => post.id))
+    const displayedPostKeys = new Set(displayPosts.map(post => `${post.post_number}:${post.body}`))
+    const optimisticDisplayPosts = optimisticPosts
+      .filter(post => !displayedPostIds.has(post.id) && !displayedPostKeys.has(`${post.post_number}:${post.body}`))
+      .map(post => ({
+        ...post,
+        displayNumber: post.post_number + 1,
+      }))
+    return [...displayPosts, ...optimisticDisplayPosts]
+  }, [displayPosts, optimisticPosts])
+
+  const addOptimisticPost = useCallback((draft: OptimisticPostDraft) => {
+    const optimisticId = `optimistic-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const lastPostNumber = Math.max(0, ...displayPosts.map(post => post.post_number), ...optimisticPosts.map(post => post.post_number))
+    const authorName = draft.authorName.trim() || '名無しのデュエリスト'
+    const optimisticPost: OptimisticPost = {
+      id: -Date.now(),
+      thread_id: threadId,
+      post_number: lastPostNumber + 1,
+      body: draft.body,
+      author_name: authorName,
+      user_id: null,
+      session_id: sessionId || null,
+      image_url: draft.imageUrl,
+      thumbnail_url: null,
+      created_at: new Date().toISOString(),
+      is_deleted: false,
+      deleted_by: null,
+      deleted_at: null,
+      optimisticId,
+      optimisticStatus: 'sending',
+    }
+    setOptimisticPosts(current => [...current, optimisticPost])
+    return optimisticId
+  }, [displayPosts, optimisticPosts, sessionId, threadId])
+
+  const confirmOptimisticPost = useCallback((optimisticId: string, post: Post) => {
+    setOptimisticPosts(current => current.map(item => (
+      item.optimisticId === optimisticId ? post : item
+    )))
+  }, [])
+
+  const removeOptimisticPost = useCallback((optimisticId: string) => {
+    setOptimisticPosts(current => current.filter(post => post.optimisticId !== optimisticId))
+  }, [])
 
   const threadAuthorProfile = thread.user_id ? authorProfiles[thread.user_id] : undefined
   const threadBodyNodes = useMemo(
-    () => renderBody(thread.body, displayPosts as Post[]),
-    [thread.body, displayPosts]
+    () => renderBody(thread.body, visiblePosts as Post[]),
+    [thread.body, visiblePosts]
   )
 
   return (
@@ -158,11 +216,11 @@ export function ThreadContent({
           )}
         </div>
 
-        {displayPosts.map(post => (
+        {visiblePosts.map(post => (
           <PostItem
-            key={post.id}
+            key={post.optimisticId ?? post.id}
             post={post}
-            allPosts={displayPosts as Post[]}
+            allPosts={visiblePosts as Post[]}
             onAnchorClick={handleAnchorClick}
             displayNumber={post.displayNumber}
             sessionId={sessionId}
@@ -213,6 +271,9 @@ export function ThreadContent({
             thread={thread}
             bodyValue={bodyValue}
             onBodyChange={setBodyValue}
+            onOptimisticPost={addOptimisticPost}
+            onPostSucceeded={confirmOptimisticPost}
+            onPostFailed={removeOptimisticPost}
             rules={threadRules}
             isAdmin={isAdmin}
           />

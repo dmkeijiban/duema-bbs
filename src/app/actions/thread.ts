@@ -578,7 +578,12 @@ export async function createPost(formData: FormData) {
   }
   markPostTiming(timing, imageUrl ? 'image_upload' : 'image_skip')
 
-  let { error } = await supabase.from('posts').insert({
+  const postSelectWithOptionalColumns = 'id, thread_id, post_number, body, author_name, user_id, image_url, thumbnail_url, session_id, ip_hash, created_at, is_deleted, deleted_by, deleted_at'
+  const postSelectWithoutIpHash = 'id, thread_id, post_number, body, author_name, user_id, image_url, thumbnail_url, session_id, created_at, is_deleted, deleted_by, deleted_at'
+  const postSelectWithoutSession = 'id, thread_id, post_number, body, author_name, user_id, image_url, thumbnail_url, created_at, is_deleted, deleted_by, deleted_at'
+  let insertedPost: Record<string, unknown> | null = null
+
+  const { data: postData, error: initialInsertError } = await supabase.from('posts').insert({
     thread_id: threadId,
     post_number: nextPostNumber,
     body,
@@ -590,11 +595,13 @@ export async function createPost(formData: FormData) {
     session_id: sessionId,
     user_id: userId,
     ip_hash: ipHash,
-  })
+  }).select(postSelectWithOptionalColumns).single()
+  insertedPost = postData as Record<string, unknown> | null
+  let error = initialInsertError
 
   // ip_hash カラムが未作成の場合はなしで再試行
   if (error && isMissingColumn(error, 'ip_hash')) {
-    const { error: eIp } = await supabase.from('posts').insert({
+    const { data: retryPost, error: eIp } = await supabase.from('posts').insert({
       thread_id: threadId,
       post_number: nextPostNumber,
       body,
@@ -605,13 +612,14 @@ export async function createPost(formData: FormData) {
       image_height: imageHeight,
       session_id: sessionId,
       user_id: userId,
-    })
+    }).select(postSelectWithoutIpHash).single()
+    insertedPost = retryPost as Record<string, unknown> | null
     error = eIp
   }
 
   // image_width/height カラムが未作成の場合はなしで再試行
   if (error && (error.code === '42703' || error.message?.includes('image_width'))) {
-    const { error: e2 } = await supabase.from('posts').insert({
+    const { data: retryPost, error: e2 } = await supabase.from('posts').insert({
       thread_id: threadId,
       post_number: nextPostNumber,
       body,
@@ -621,12 +629,13 @@ export async function createPost(formData: FormData) {
       session_id: sessionId,
       user_id: userId,
       ip_hash: ipHash,
-    })
+    }).select(postSelectWithOptionalColumns).single()
+    insertedPost = retryPost as Record<string, unknown> | null
     error = e2
   }
 
   if (error && isMissingColumn(error, 'ip_hash')) {
-    const { error: e2b } = await supabase.from('posts').insert({
+    const { data: retryPost, error: e2b } = await supabase.from('posts').insert({
       thread_id: threadId,
       post_number: nextPostNumber,
       body,
@@ -634,13 +643,14 @@ export async function createPost(formData: FormData) {
       image_url: imageUrl,
       thumbnail_url: thumbnailUrl,
       session_id: sessionId,
-    })
+    }).select(postSelectWithoutIpHash).single()
+    insertedPost = retryPost as Record<string, unknown> | null
     error = e2b
   }
 
   // session_id カラムが未作成の場合はなしで再試行
   if (error && (error.code === '42703' || error.message?.includes('session_id'))) {
-    const { error: e3 } = await supabase.from('posts').insert({
+    const { data: retryPost, error: e3 } = await supabase.from('posts').insert({
       thread_id: threadId,
       post_number: nextPostNumber,
       body,
@@ -648,7 +658,8 @@ export async function createPost(formData: FormData) {
       image_url: imageUrl,
       thumbnail_url: thumbnailUrl,
       user_id: userId,
-    })
+    }).select(postSelectWithoutSession).single()
+    insertedPost = retryPost as Record<string, unknown> | null
     error = e3
   }
 
@@ -656,7 +667,7 @@ export async function createPost(formData: FormData) {
   // Previously this also matched any error whose message contained "user_id",
   // which could silently re-insert without user_id and produce user_id=null.
   if (error && error.code === '42703') {
-    const { error: e4 } = await supabase.from('posts').insert({
+    const { data: retryPost, error: e4 } = await supabase.from('posts').insert({
       thread_id: threadId,
       post_number: nextPostNumber,
       body,
@@ -664,11 +675,12 @@ export async function createPost(formData: FormData) {
       image_url: imageUrl,
       thumbnail_url: thumbnailUrl,
       session_id: sessionId,
-    })
+    }).select(postSelectWithoutIpHash).single()
+    insertedPost = retryPost as Record<string, unknown> | null
     error = e4
   }
 
-  if (error) {
+  if (error || !insertedPost) {
     console.error('Post insert error:', error)
     return { error: 'コメントの投稿に失敗しました' }
   }
@@ -697,6 +709,7 @@ export async function createPost(formData: FormData) {
   return {
     success: true,
     postNumber: nextPostNumber,
+    post: insertedPost,
     debugTiming,
     debugTimingJson: debugTiming ? JSON.stringify(debugTiming) : undefined,
   }
