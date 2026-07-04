@@ -22,25 +22,21 @@ Required secret:
 
 Do not put the secret in GitHub. Use `wrangler secret put CRON_SECRET`.
 
-## Vercel Analytics / Speed Insights
+## Analytics / Performance Monitoring
 
-Already installed in this project.
+Current runtime monitoring is centered on:
 
-Confirmed files:
+- Google Analytics 4
+- Microsoft Clarity
+- PostHog
 
-- `package.json`
-  - `@vercel/analytics`
-  - `@vercel/speed-insights`
-- `src/app/layout.tsx`
-  - `<Analytics />`
-  - `<SpeedInsights />`
+Vercel Analytics / Speed Insights were previously disabled to reduce runtime events and cost. Do not assume they are active just because package dependencies may still exist.
 
-To see data, open the Vercel project dashboard and check:
+Current rule:
 
-- Analytics
-- Speed Insights
-
-No UI changes are needed inside the site.
+- `src/app/layout.tsx` should not mount `<Analytics />` or `<SpeedInsights />` unless a separate PR explicitly reintroduces them.
+- Do not remove `@vercel/analytics` or `@vercel/speed-insights` from package files in a docs-only or UI-copy PR.
+- Reintroducing Vercel Analytics / Speed Insights requires a separate review of runtime cost, observability volume, and overlap with GA4 / Clarity / PostHog.
 
 ## n8n
 

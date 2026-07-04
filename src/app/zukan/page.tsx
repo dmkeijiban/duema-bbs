@@ -165,10 +165,14 @@ function PackListCard({ pack }: { pack: ZukanPack }) {
 function ReviewHighlightSection({
   title,
   emptyText,
+  emptyLinkLabel,
+  emptyLinkHref,
   cards,
 }: {
   title: string
   emptyText: string
+  emptyLinkLabel?: string
+  emptyLinkHref?: string
   cards: ZukanCardReviewHighlight[]
 }) {
   return (
@@ -177,7 +181,14 @@ function ReviewHighlightSection({
         <h2 className="text-sm font-bold text-gray-800">{title}</h2>
       </div>
       {cards.length === 0 ? (
-        <p className="px-3 py-4 text-xs text-gray-400">{emptyText}</p>
+        <div className="px-3 py-5 text-center">
+          <p className="text-xs leading-relaxed text-gray-500">{emptyText}</p>
+          {emptyLinkHref && emptyLinkLabel && (
+            <Link href={emptyLinkHref} className="mt-3 inline-flex min-h-8 items-center justify-center border border-gray-300 bg-gray-50 px-3 text-xs font-bold text-blue-700 hover:bg-gray-100">
+              {emptyLinkLabel}
+            </Link>
+          )}
+        </div>
       ) : (
         <div className="divide-y divide-gray-100">
           {cards.map(card => (
@@ -241,12 +252,16 @@ async function ReviewHighlightsBlock({
     <div className="grid gap-3 md:grid-cols-2">
       <ReviewHighlightSection
         title="最近思い出が投稿されたカード"
-        emptyText="まだ思い出が投稿されたカードはありません"
+        emptyText="まだ思い出が投稿されたカードはありません。DM-01のカード詳細から、当時の記憶や好きだったカードの話を書けます。"
+        emptyLinkLabel="DM-01のカードを見る"
+        emptyLinkHref="/zukan/dm-01"
         cards={reviewHighlights?.recent ?? []}
       />
       <ReviewHighlightSection
         title="思い出が多いカード"
-        emptyText="まだ思い出は投稿されていません"
+        emptyText="思い出レビューが集まると、ここに人気のカードが表示されます。まずは代表カードから気軽に残してみてください。"
+        emptyLinkLabel="代表カードを見る"
+        emptyLinkHref="/zukan/dm-01"
         cards={reviewHighlights?.mostReviewed ?? []}
       />
     </div>
@@ -278,7 +293,7 @@ async function MemoriesView() {
     <>
       {!isDbReady && (
         <p className="mb-3 border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          図鑑データを準備中です。もうしばらくお待ちください。
+          図鑑データを準備中です。公開済みのカード・パックから順に思い出を書けるようになります。
         </p>
       )}
 
