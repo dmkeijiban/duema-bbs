@@ -6,7 +6,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { NoticeItem } from '@/components/NoticeBlock'
-import { createAdminCookieValue, isAdminPassword, verifyAdminCookie } from '@/lib/admin-auth'
+import { ADMIN_COOKIE_MAX_AGE_SECONDS, createAdminCookieValue, isAdminPassword, verifyAdminCookie } from '@/lib/admin-auth'
 
 const ADMIN_COOKIE = 'admin_auth'
 type AdminClient = ReturnType<typeof createAdminClient>
@@ -234,7 +234,7 @@ export async function adminLogin(formData: FormData) {
       httpOnly: true,
       sameSite: 'strict',
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 7, // 7日間
+      maxAge: ADMIN_COOKIE_MAX_AGE_SECONDS,
     })
     redirect('/admin')
   }
