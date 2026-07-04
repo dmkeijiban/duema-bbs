@@ -70,18 +70,16 @@ export default async function KakologPage({ searchParams }: Props) {
         <span>過去ログ</span>
       </nav>
 
-      <h1 className="mb-2 border border-gray-300 bg-white px-3 py-2 text-base font-bold text-gray-900">
-        🕰️ 過去ログ
-      </h1>
-
       <section className="mb-2 border border-gray-300 bg-white px-3 py-2">
-        <p className="text-xs leading-relaxed text-gray-700">
-          過去ログでは、30日を超えた公開スレッドを閲覧できます。最近のログから探すほか、日付別・カテゴリ別にもたどれます。
+        <h1 className="text-base font-bold text-gray-900">
+          🕰️ 過去ログ
+        </h1>
+        <p className="mt-1 text-xs leading-relaxed text-gray-700">
+          過去ログでは、これまでに投稿されたスレッドを日付やカテゴリから探せます。
         </p>
       </section>
 
       <section>
-        <h2 className="mb-2 border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-gray-800">最近の過去ログ</h2>
         {pageThreads.length === 0 ? (
           <div className="border border-gray-300 bg-white px-4 py-12 text-center">
             <h3 className="text-base font-bold text-gray-800">過去ログはまだありません</h3>
