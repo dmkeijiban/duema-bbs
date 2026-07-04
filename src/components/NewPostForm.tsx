@@ -294,8 +294,7 @@ export function NewPostForm({
                     onChange={e => setAuthorName(e.target.value)}
                     placeholder="名前を入力(15文字以内・空欄可)"
                     maxLength={15}
-                    className="border border-gray-300 px-2 py-1 text-sm bg-white focus:outline-none focus:border-blue-400"
-                    style={{ width: 240 }}
+                    className="w-full max-w-[240px] border border-gray-300 bg-white px-2 py-1 text-sm focus:outline-none focus:border-blue-400"
                   />
                 </td>
               </tr>
@@ -329,6 +328,9 @@ export function NewPostForm({
                 本文
               </td>
               <td className="p-2 min-w-0">
+                <p className="mb-1 text-xs leading-relaxed text-gray-500">
+                  一言だけでもOKです。デッキ相談・感想・思い出話など、気軽にどうぞ。
+                </p>
                 <textarea
                   id="reply-textarea"
                   name="body"
