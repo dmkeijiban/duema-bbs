@@ -106,8 +106,19 @@ export default async function KakologPage() {
       <section>
         <h2 className="mb-2 border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-gray-800">最近の過去ログ</h2>
         {threads.length === 0 ? (
-          <div className="border border-gray-300 bg-white py-16 text-center text-gray-500">
-            過去ログはまだありません。
+          <div className="border border-gray-300 bg-white px-4 py-12 text-center">
+            <h3 className="text-base font-bold text-gray-800">過去ログはまだありません</h3>
+            <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-gray-600">
+              30日を超えた公開スレッドが増えると、ここから日付別・カテゴリ別に振り返れるようになります。
+            </p>
+            <div className="mt-4 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
+              <Link href="/update" className="inline-flex min-h-9 items-center justify-center border border-blue-600 bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700">
+                最新スレッドへ
+              </Link>
+              <Link href="/" className="inline-flex min-h-9 items-center justify-center border border-gray-300 bg-gray-50 px-4 text-sm font-bold text-gray-700 hover:bg-gray-100">
+                トップへ戻る
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-3 border-l border-t border-gray-300 md:grid-cols-5">

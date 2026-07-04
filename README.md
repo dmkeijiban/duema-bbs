@@ -1,26 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# duema-bbs
 
-## Getting Started
+デュエル・マスターズ専門の掲示板です。スレッド投稿、コメント、カテゴリ別一覧、過去ログ、思い出図鑑、投稿者ランキング、管理画面を Next.js / Supabase / Vercel で運用しています。
 
-First, run the development server:
+## 技術スタック
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Next.js App Router
+- React
+- TypeScript
+- Supabase
+- Vercel
+- Tailwind CSS
+
+## ローカル開発
+
+```powershell
+npm.cmd install
+npm.cmd run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+開発サーバー起動後、ブラウザで `http://localhost:3000` を開きます。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+型チェック:
+
+```powershell
+npm.cmd exec tsc -- --noEmit
+```
+
+lint:
+
+```powershell
+npm.cmd run lint
+```
 
 ## Content Tools
 
-Wiki URLから歴史読み物系の記事下書きを作る場合:
+Wiki URL から歴史読み物系の記事下書きを作る場合:
 
 ```powershell
 npm.cmd run content:article -- --url https://dmwiki.net/DM26-RP1
@@ -28,19 +42,22 @@ npm.cmd run content:article -- --url https://dmwiki.net/DM26-RP1
 
 詳しくは [docs/history-article-generator.md](docs/history-article-generator.md) を参照してください。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 重要な運用注意
 
-## Learn More
+- 投稿本文、コメント本文、ユーザー投稿データは保全を優先します。
+- 本番DBの物理削除、既存本文の一括更新、post_count修正、thread_id変更は事前確認なしで行いません。
+- Typefully、Discord、本番API、cron、GitHub Actions、Vercel設定、Supabase設定の手動操作は、目的と影響を確認してから行います。
+- 公開前の下書き生成と本番投稿・外部送信は分けて扱います。
 
-To learn more about Next.js, take a look at the following resources:
+## 触る前に確認する領域
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+次の領域は小さな変更でも影響が大きいため、別PRで扱います。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- DB / migration / RLS / env
+- cron / GitHub Actions / Typefully / Discord通知
+- AdSense / `ads.txt`
+- `images.unoptimized`
+- metadata / canonical / robots / sitemap
+- 本番APIの手動実行
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+APIキー、Cookie、Webhook URL、環境変数の実値はREADMEやdocsに書かないでください。

@@ -204,11 +204,19 @@ async function CategoryThreadList({
 
 function CategoryThreadEmpty() {
   return (
-    <div className="text-center py-16 text-gray-500 bg-white border border-gray-300">
-      <p>このカテゴリにはまだスレッドがありません</p>
-      <Link href="/thread/new" className="mt-3 inline-block text-blue-600 hover:underline text-sm">
-        最初のスレッドを立てる →
-      </Link>
+    <div className="bg-white border border-gray-300 px-4 py-12 text-center">
+      <h2 className="text-base font-bold text-gray-800">このカテゴリにはまだスレッドがありません</h2>
+      <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-gray-600">
+        デッキ相談、カード評価、思い出話など、このカテゴリに合う話題があれば最初のスレッドを立てられます。
+      </p>
+      <div className="mt-4 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
+        <Link href="/thread/new" className="inline-flex min-h-9 items-center justify-center border border-blue-600 bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700">
+          スレを立てる
+        </Link>
+        <Link href="/" className="inline-flex min-h-9 items-center justify-center border border-gray-300 bg-gray-50 px-4 text-sm font-bold text-gray-700 hover:bg-gray-100">
+          トップへ戻る
+        </Link>
+      </div>
     </div>
   )
 }
