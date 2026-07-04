@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { notifyNewThread } from '@/lib/discord'
+import { notifyNewThread, notifySyncSummary } from '@/lib/discord'
 import {
   generateTitleFromXPost,
   hashText,
@@ -998,6 +998,17 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     ` lockedThreaded=${lockedThreadedPosts} saveErrors=${saveErrors}` +
     ` duePosts=${dueRows.length} created=${created} duplicate=${duplicate} skipped=${skipped} errors=${errors}`,
   )
+
+  const summaryErrors = errors + saveErrors
+  await notifySyncSummary({
+    created,
+    duplicate,
+    errors: summaryErrors,
+    totalDrafts: fetchedTodayPosts + publishedFallbackFetched + dueRows.length,
+    skippedByLimit: Math.max(0, dueRows.length - maxNewPerRun),
+    dryRun,
+    executedAt: formatJstDateTime(new Date().toISOString()),
+  })
 
   return NextResponse.json({
     mode,
