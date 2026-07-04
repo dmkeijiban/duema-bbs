@@ -144,7 +144,9 @@ export async function ZukanCardMemories({ cardId, slug }: { cardId: string; slug
               まだ投稿はありません。最初の思い出を書いてみませんか？
             </p>
           )}
-          <CardReviewForm cardId={cardId} slug={slug} />
+          <div id="card-review-form" className="scroll-mt-20">
+            <CardReviewForm cardId={cardId} slug={slug} />
+          </div>
         </section>
       </div>
     </section>
