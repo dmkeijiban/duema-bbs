@@ -70,11 +70,6 @@ export function SortTabs({
             </li>
           )
         })}
-        <CategoryDropdown
-          currentCategory={currentCategory}
-          categories={categories}
-          className="order-5 sm:order-none"
-        />
         <li className="shrink-0 order-4 sm:order-none" role="presentation">
           <Link
             href="/kakolog"
@@ -91,6 +86,11 @@ export function SortTabs({
             <span className="md:hidden">過去</span>
           </Link>
         </li>
+        <CategoryDropdown
+          currentCategory={currentCategory}
+          categories={categories}
+          className="order-5 sm:order-none"
+        />
       </ul>
     </div>
   )

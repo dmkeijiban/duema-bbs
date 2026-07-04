@@ -279,14 +279,26 @@ export function BottomNav({
           </Link>
         </li>
       ))}
+      <li className="order-4 sm:order-none">
+        <Link
+          href="/kakolog"
+          className={
+            current === '/kakolog'
+              ? 'flex min-h-9 items-center justify-center rounded border border-blue-600 bg-blue-600 px-2 text-center text-xs font-bold text-white shadow-sm md:text-sm'
+              : 'flex min-h-9 items-center justify-center rounded border border-blue-100 bg-white px-2 text-center text-xs font-medium text-blue-700 hover:bg-blue-50 md:text-sm'
+          }
+        >
+          🕰️ 過去ログ
+        </Link>
+      </li>
       {categories.length > 0 ? (
         <CategoryDropdown
           currentCategory={currentCategory}
           categories={categories}
-          className="order-5 sm:order-4"
+          className="order-5 sm:order-none"
         />
       ) : (
-        <li className="col-span-2 order-5 sm:order-4 sm:col-span-1">
+        <li className="col-span-2 order-5 sm:order-none sm:col-span-1">
           <Link
             href="/"
             className={
@@ -299,18 +311,6 @@ export function BottomNav({
           </Link>
         </li>
       )}
-      <li className="order-4 sm:order-5">
-        <Link
-          href="/kakolog"
-          className={
-            current === '/kakolog'
-              ? 'flex min-h-9 items-center justify-center rounded border border-blue-600 bg-blue-600 px-2 text-center text-xs font-bold text-white shadow-sm md:text-sm'
-              : 'flex min-h-9 items-center justify-center rounded border border-blue-100 bg-white px-2 text-center text-xs font-medium text-blue-700 hover:bg-blue-50 md:text-sm'
-          }
-        >
-          🕰️ 過去ログ
-        </Link>
-      </li>
       </ul>
     </nav>
   )
