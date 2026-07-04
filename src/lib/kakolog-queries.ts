@@ -176,6 +176,21 @@ export function getJstDateRange(date: string) {
   }
 }
 
+export function getJstMonthRange(month: string) {
+  const match = month.match(/^(\d{4})-(\d{2})$/)
+  if (!match) return null
+  const year = Number(match[1])
+  const monthNumber = Number(match[2])
+  if (monthNumber < 1 || monthNumber > 12) return null
+
+  const start = new Date(Date.UTC(year, monthNumber - 1, 1) - 9 * 60 * 60 * 1000)
+  const end = new Date(Date.UTC(year, monthNumber, 1) - 9 * 60 * 60 * 1000)
+  return {
+    startIso: start.toISOString(),
+    endIso: end.toISOString(),
+  }
+}
+
 export function formatJstDateLabel(date: string) {
   const range = getJstDateRange(date)
   if (!range) return date
@@ -184,6 +199,16 @@ export function formatJstDateLabel(date: string) {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+  }).format(new Date(range.startIso))
+}
+
+export function formatJstMonthLabel(month: string) {
+  const range = getJstMonthRange(month)
+  if (!range) return month
+  return new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: 'long',
   }).format(new Date(range.startIso))
 }
 
@@ -198,4 +223,15 @@ export function toJstDateKey(value: string) {
   const m = parts.find(part => part.type === 'month')?.value
   const d = parts.find(part => part.type === 'day')?.value
   return y && m && d ? `${y}-${m}-${d}` : value.slice(0, 10)
+}
+
+export function toJstMonthKey(value: string) {
+  const parts = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+  }).formatToParts(new Date(value))
+  const y = parts.find(part => part.type === 'year')?.value
+  const m = parts.find(part => part.type === 'month')?.value
+  return y && m ? `${y}-${m}` : value.slice(0, 7)
 }
