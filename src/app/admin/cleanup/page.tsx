@@ -22,7 +22,8 @@ export default async function CleanupPage() {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
   const sixMonthsAgo = new Date()
   sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180)
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const twentyFourHoursAgo = new Date()
+  twentyFourHoursAgo.setDate(twentyFourHoursAgo.getDate() - 1)
 
   // ① 未回答スレッド（0レス、7日以上前）
   const { data: zeroReply } = await supabase
