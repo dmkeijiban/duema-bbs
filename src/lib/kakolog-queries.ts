@@ -13,12 +13,16 @@ import {
 } from '@/lib/thread-archive'
 
 export type KakologThread = Thread & { categories: Category | null }
+export type KakologIndexThread = Pick<Thread, 'id' | 'user_id' | 'created_at' | 'category_id'> & {
+  categories: Pick<Category, 'name' | 'slug'> | null
+}
 
 type KakologOptions = {
   startIso?: string
   endIso?: string
   categoryIds?: number[]
   limit?: number
+  offset?: number
 }
 
 export async function getKakologThreads({
@@ -26,6 +30,7 @@ export async function getKakologThreads({
   endIso,
   categoryIds = [],
   limit = 120,
+  offset = 0,
 }: KakologOptions = {}): Promise<KakologThread[]> {
   const supabase = createPublicClient()
   const hiddenUserIds = await getCachedPublicHiddenUserIds()
@@ -43,7 +48,7 @@ export async function getKakologThreads({
 
   const result = await query
     .order('created_at', { ascending: false })
-    .limit(limit)
+    .range(offset, offset + limit - 1)
   let raw = result.data as unknown[] | null
   const error = result.error
 
@@ -59,12 +64,93 @@ export async function getKakologThreads({
     if (categoryIds.length > 1) retry = retry.in('category_id', categoryIds)
     const retryResult = await retry
       .order('created_at', { ascending: false })
-      .limit(limit)
+      .range(offset, offset + limit - 1)
     raw = retryResult.data as unknown[] | null
   }
 
   const visible = filterPublicVisibleUserContent((raw ?? []) as unknown as Thread[], hiddenUserIds)
   return withFallbackThumbnails(supabase, visible) as unknown as Promise<KakologThread[]>
+}
+
+export async function getKakologThreadCount({
+  startIso,
+  endIso,
+  categoryIds = [],
+}: Omit<KakologOptions, 'limit' | 'offset'> = {}): Promise<number> {
+  const supabase = createPublicClient()
+  const hiddenUserIds = await getCachedPublicHiddenUserIds()
+  const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
+
+  let query = supabase
+    .from('threads')
+    .select('id', { count: 'exact', head: true })
+  query = applyKakologThreadFilter(query)
+  if (publicUserFilter) query = query.or(publicUserFilter)
+  if (startIso) query = query.gte('created_at', startIso)
+  if (endIso) query = query.lt('created_at', endIso)
+  if (categoryIds.length === 1) query = query.eq('category_id', categoryIds[0])
+  if (categoryIds.length > 1) query = query.in('category_id', categoryIds)
+
+  const result = await query
+  if (!isArchiveSchemaMissing(result.error)) return result.count ?? 0
+
+  let retry = applyLegacyKakologThreadFilter(supabase
+    .from('threads')
+    .select('id', { count: 'exact', head: true })
+  )
+  if (publicUserFilter) retry = retry.or(publicUserFilter)
+  if (startIso) retry = retry.gte('created_at', startIso)
+  if (endIso) retry = retry.lt('created_at', endIso)
+  if (categoryIds.length === 1) retry = retry.eq('category_id', categoryIds[0])
+  if (categoryIds.length > 1) retry = retry.in('category_id', categoryIds)
+
+  const retryResult = await retry
+  return retryResult.count ?? 0
+}
+
+export async function getKakologIndexThreads(): Promise<KakologIndexThread[]> {
+  const supabase = createPublicClient()
+  const hiddenUserIds = await getCachedPublicHiddenUserIds()
+  const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
+  const pageSize = 1000
+  const rows: KakologIndexThread[] = []
+  let offset = 0
+  let useLegacyFilter = false
+
+  while (true) {
+    let query = supabase
+      .from('threads')
+      .select('id, user_id, created_at, category_id, categories(name,slug)')
+    query = useLegacyFilter ? applyLegacyKakologThreadFilter(query) : applyKakologThreadFilter(query)
+    if (publicUserFilter) query = query.or(publicUserFilter)
+
+    const result = await query
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1)
+
+    if (!useLegacyFilter && isArchiveSchemaMissing(result.error)) {
+      rows.length = 0
+      offset = 0
+      useLegacyFilter = true
+      continue
+    }
+
+    if (result.error) {
+      console.warn('kakolog index fetch failed:', result.error.message)
+      break
+    }
+
+    const visible = filterPublicVisibleUserContent(
+      (result.data ?? []) as unknown as KakologIndexThread[],
+      hiddenUserIds
+    )
+    rows.push(...visible)
+
+    if ((result.data?.length ?? 0) < pageSize) break
+    offset += pageSize
+  }
+
+  return rows
 }
 
 export function getJstDateRange(date: string) {

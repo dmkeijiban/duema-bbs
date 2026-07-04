@@ -1,16 +1,18 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { BottomNav } from '@/components/ThreadSortPage'
+import { Pagination } from '@/components/Pagination'
 import { ThreadCard } from '@/components/ThreadCard'
-import { getCachedCategories } from '@/lib/cached-queries'
+import { getCachedCategories, THREAD_PAGE_SIZE } from '@/lib/cached-queries'
 import { getCategoryIdsForSlug, getDisplayCategoryBySlug } from '@/lib/categories'
-import { getKakologThreads } from '@/lib/kakolog-queries'
+import { getKakologThreadCount, getKakologThreads } from '@/lib/kakolog-queries'
 import { SITE_URL } from '@/lib/site-config'
 
 export const revalidate = 3600
 
 type Props = {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ page?: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -25,14 +27,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function KakologCategoryPage({ params }: Props) {
+export default async function KakologCategoryPage({ params, searchParams }: Props) {
   const { slug } = await params
+  const { page: pageString } = await searchParams
+  const page = Math.max(1, parseInt(pageString ?? '1') || 1)
+  const offset = (page - 1) * THREAD_PAGE_SIZE
   const categories = await getCachedCategories()
   const category = getDisplayCategoryBySlug(slug, categories)
   const categoryIds = getCategoryIdsForSlug(slug, categories)
-  const threads = categoryIds.length > 0
-    ? await getKakologThreads({ categoryIds, limit: 160 })
-    : []
+  const [threads, totalCount] = categoryIds.length > 0
+    ? await Promise.all([
+        getKakologThreads({ categoryIds, limit: THREAD_PAGE_SIZE, offset }),
+        getKakologThreadCount({ categoryIds }),
+      ])
+    : [[], 0]
+  const totalPages = Math.max(1, Math.ceil(totalCount / THREAD_PAGE_SIZE))
   const name = category?.name ?? slug
 
   return (
@@ -60,6 +69,10 @@ export default async function KakologCategoryPage({ params }: Props) {
           ))}
         </div>
       )}
+
+      <div className="mt-3">
+        <Pagination currentPage={page} totalPages={totalPages} basePath={`/kakolog/category/${slug}`} />
+      </div>
 
       <BottomNav current="/kakolog" currentCategory={slug} categories={categories} />
       <div className="mb-6" />
