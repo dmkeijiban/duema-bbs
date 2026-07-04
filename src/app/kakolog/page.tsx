@@ -6,10 +6,13 @@ import { ThreadCard } from '@/components/ThreadCard'
 import { getCachedCategories, THREAD_PAGE_SIZE } from '@/lib/cached-queries'
 import {
   formatJstDateLabel,
+  formatJstMonthLabel,
+  getJstMonthRange,
   getKakologIndexThreads,
   getKakologThreadCount,
   getKakologThreads,
   toJstDateKey,
+  toJstMonthKey,
   type KakologIndexThread,
 } from '@/lib/kakolog-queries'
 import { SITE_URL } from '@/lib/site-config'
@@ -22,9 +25,23 @@ export const metadata: Metadata = {
   alternates: { canonical: `${SITE_URL}/kakolog` },
 }
 
-function getDateLinks(threads: KakologIndexThread[]) {
+function getMonthLinks(threads: KakologIndexThread[]) {
   const counts = new Map<string, number>()
   for (const thread of threads) {
+    const key = toJstMonthKey(thread.created_at)
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  return Array.from(counts, ([month, count]) => ({
+    month,
+    count,
+    label: formatJstMonthLabel(month),
+  })).sort((a, b) => b.month.localeCompare(a.month))
+}
+
+function getDateLinksForMonth(threads: KakologIndexThread[], month: string) {
+  const counts = new Map<string, number>()
+  for (const thread of threads) {
+    if (toJstMonthKey(thread.created_at) !== month) continue
     const key = toJstDateKey(thread.created_at)
     counts.set(key, (counts.get(key) ?? 0) + 1)
   }
@@ -32,7 +49,7 @@ function getDateLinks(threads: KakologIndexThread[]) {
     date,
     count,
     label: formatJstDateLabel(date),
-  })).slice(0, 8)
+  })).sort((a, b) => b.date.localeCompare(a.date))
 }
 
 function getCategoryLinks(threads: KakologIndexThread[]) {
@@ -49,24 +66,30 @@ function getCategoryLinks(threads: KakologIndexThread[]) {
   return Array.from(counts, ([slug, item]) => ({
     slug,
     ...item,
-  })).slice(0, 8)
+  }))
 }
 
 type Props = {
-  searchParams: Promise<{ page?: string }>
+  searchParams: Promise<{ page?: string; month?: string }>
 }
 
 export default async function KakologPage({ searchParams }: Props) {
-  const { page: pageString } = await searchParams
+  const { page: pageString, month: monthString } = await searchParams
   const page = Math.max(1, parseInt(pageString ?? '1') || 1)
   const offset = (page - 1) * THREAD_PAGE_SIZE
+  const monthRange = monthString ? getJstMonthRange(monthString) : null
+  const selectedMonth = monthRange ? monthString : undefined
+  const kakologFilter = monthRange
+    ? { startIso: monthRange.startIso, endIso: monthRange.endIso }
+    : {}
   const [threads, totalCount, indexThreads, categories] = await Promise.all([
-    getKakologThreads({ limit: THREAD_PAGE_SIZE, offset }),
-    getKakologThreadCount(),
+    getKakologThreads({ ...kakologFilter, limit: THREAD_PAGE_SIZE, offset }),
+    getKakologThreadCount(kakologFilter),
     getKakologIndexThreads(),
     getCachedCategories(),
   ])
-  const dateLinks = getDateLinks(indexThreads)
+  const monthLinks = getMonthLinks(indexThreads)
+  const dateLinks = selectedMonth ? getDateLinksForMonth(indexThreads, selectedMonth) : []
   const categoryLinks = getCategoryLinks(indexThreads)
   const totalPages = Math.max(1, Math.ceil(totalCount / THREAD_PAGE_SIZE))
 
@@ -85,6 +108,11 @@ export default async function KakologPage({ searchParams }: Props) {
         <p className="mt-1 text-xs leading-relaxed text-gray-700">
           過去ログでは、これまでに投稿されたスレッドを日付やカテゴリから探せます。
         </p>
+        {selectedMonth && (
+          <p className="mt-1 text-xs font-bold text-blue-700">
+            {formatJstMonthLabel(selectedMonth)}の過去ログ：{totalCount}件
+          </p>
+        )}
       </section>
 
       <section>
@@ -111,28 +139,54 @@ export default async function KakologPage({ searchParams }: Props) {
           </div>
         )}
         <div className="mt-3">
-          <Pagination currentPage={page} totalPages={totalPages} basePath="/kakolog" />
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            basePath="/kakolog"
+            searchParams={selectedMonth ? { month: selectedMonth } : undefined}
+          />
         </div>
       </section>
 
-      {(dateLinks.length > 0 || categoryLinks.length > 0) && (
+      {(monthLinks.length > 0 || categoryLinks.length > 0) && (
         <section className="mt-3 border border-gray-300 bg-white">
           <div className="border-b border-gray-200 px-3 py-2">
             <h2 className="text-sm font-bold text-gray-800">もっと探す</h2>
-            <p className="mt-0.5 text-xs leading-relaxed text-gray-500">日付別・カテゴリ別の過去ログリンクです。</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-gray-500">月別・日付別・カテゴリ別の過去ログリンクです。</p>
           </div>
 
-          {dateLinks.length > 0 && (
+          {monthLinks.length > 0 && (
             <div className="border-b border-gray-100 px-3 py-3">
-              <h3 className="mb-2 text-xs font-bold text-gray-700">日付別</h3>
-              <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
+              <h3 className="mb-2 text-xs font-bold text-gray-700">月別アーカイブ</h3>
+              <div className="grid grid-cols-2 gap-1.5 md:[grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]">
+                {monthLinks.map(item => (
+                  <Link
+                    key={item.month}
+                    href={`/kakolog?month=${item.month}`}
+                    className={`flex min-w-0 items-center justify-between gap-2 rounded border px-2.5 py-1.5 text-xs text-blue-700 hover:border-blue-400 hover:bg-blue-50 ${
+                      selectedMonth === item.month ? 'border-blue-500 bg-blue-50 font-bold' : 'border-gray-300 bg-white'
+                    }`}
+                  >
+                    <span className="truncate">{item.label}</span>
+                    <span className="shrink-0 text-gray-500">{item.count}件</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {selectedMonth && dateLinks.length > 0 && (
+            <div className="border-b border-gray-100 px-3 py-3">
+              <h3 className="mb-2 text-xs font-bold text-gray-700">{formatJstMonthLabel(selectedMonth)}の日付別</h3>
+              <div className="grid grid-cols-2 gap-1.5 md:[grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]">
                 {dateLinks.map(item => (
                   <Link
                     key={item.date}
                     href={`/kakolog/${item.date}`}
-                    className="min-w-0 rounded border border-gray-300 bg-white px-2.5 py-1.5 text-center text-xs text-blue-700 hover:border-blue-400 hover:bg-blue-50 sm:text-left"
+                    className="flex min-w-0 items-center justify-between gap-2 rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-blue-700 hover:border-blue-400 hover:bg-blue-50"
                   >
-                    <span className="whitespace-nowrap">{item.label}（{item.count}）</span>
+                    <span className="truncate">{item.label}</span>
+                    <span className="shrink-0 text-gray-500">{item.count}件</span>
                   </Link>
                 ))}
               </div>
@@ -142,14 +196,15 @@ export default async function KakologPage({ searchParams }: Props) {
           {categoryLinks.length > 0 && (
             <div className="px-3 py-3">
               <h3 className="mb-2 text-xs font-bold text-gray-700">カテゴリ別</h3>
-              <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
+              <div className="grid grid-cols-2 gap-1.5 md:[grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]">
                 {categoryLinks.map(item => (
                   <Link
                     key={item.slug}
                     href={`/kakolog/category/${item.slug}`}
-                    className="min-w-0 rounded border border-gray-300 bg-white px-2.5 py-1.5 text-center text-xs text-blue-700 hover:border-blue-400 hover:bg-blue-50 sm:text-left"
+                    className="flex min-w-0 items-center justify-between gap-2 rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-blue-700 hover:border-blue-400 hover:bg-blue-50"
                   >
-                    <span className="whitespace-nowrap">{item.name}（{item.count}）</span>
+                    <span className="truncate">{item.name}</span>
+                    <span className="shrink-0 text-gray-500">{item.count}件</span>
                   </Link>
                 ))}
               </div>
