@@ -8,9 +8,10 @@ import { getConsolidatedCategories, getConsolidatedCategoryBySlug } from '@/lib/
 interface Props {
   currentCategory?: string
   categories: Category[]
+  className?: string
 }
 
-export function CategoryDropdown({ currentCategory, categories }: Props) {
+export function CategoryDropdown({ currentCategory, categories, className = '' }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLLIElement>(null)
   const displayCategories = getConsolidatedCategories(categories)
@@ -26,7 +27,7 @@ export function CategoryDropdown({ currentCategory, categories }: Props) {
   }, [open])
 
   return (
-    <li ref={ref} className="relative shrink-0 col-span-2 sm:col-span-1">
+    <li ref={ref} className={`relative shrink-0 col-span-2 sm:col-span-1 ${className}`}>
       <button
         onClick={() => setOpen(v => !v)}
         aria-haspopup="listbox"

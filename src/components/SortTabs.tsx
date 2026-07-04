@@ -14,9 +14,9 @@ interface Props {
 }
 
 const TABS = [
-  { label: '更新順一覧', sort: 'recent',  icon: '🔄', short: '更新'  },
-  { label: 'ランキング', sort: 'popular', icon: '📊', short: '人気'  },
-  { label: 'ランダム',   sort: 'random', icon: '🎲', short: 'ランダム' },
+  { label: '更新順一覧', sort: 'recent', icon: '🔄', short: '更新', order: 'order-1' },
+  { label: 'ランキング', sort: 'popular', icon: '📊', short: '人気', order: 'order-2' },
+  { label: 'ランダム', sort: 'random', icon: '🎲', short: 'ランダム', order: 'order-3' },
 ]
 
 const ROOT_SORT_HREF: Record<string, string> = {
@@ -46,13 +46,13 @@ export function SortTabs({
   return (
     <div className="mx-auto max-w-screen-xl px-2">
       <ul
-        className="mb-3 mt-2 flex flex-wrap items-center gap-1.5 border-b border-gray-200 pb-1.5"
+        className="mb-3 mt-2 grid grid-cols-2 items-center gap-1.5 border-b border-gray-200 pb-1.5 sm:flex sm:flex-wrap"
         role="tablist"
       >
         {TABS.map((tab) => {
           const active = currentSort === tab.sort
           return (
-            <li key={tab.sort} className="shrink-0" role="presentation">
+            <li key={tab.sort} className={`shrink-0 ${tab.order} sm:order-none`} role="presentation">
               <Link
                 href={getTabHref(tab.sort)}
                 role="tab"
@@ -70,8 +70,12 @@ export function SortTabs({
             </li>
           )
         })}
-        <CategoryDropdown currentCategory={currentCategory} categories={categories} />
-        <li className="shrink-0" role="presentation">
+        <CategoryDropdown
+          currentCategory={currentCategory}
+          categories={categories}
+          className="order-5 sm:order-none"
+        />
+        <li className="shrink-0 order-4 sm:order-none" role="presentation">
           <Link
             href="/kakolog"
             role="tab"

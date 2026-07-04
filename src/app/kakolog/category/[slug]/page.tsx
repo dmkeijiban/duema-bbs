@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { BottomNav } from '@/components/ThreadSortPage'
 import { ThreadCard } from '@/components/ThreadCard'
 import { getCachedCategories } from '@/lib/cached-queries'
 import { getCategoryIdsForSlug, getDisplayCategoryBySlug } from '@/lib/categories'
@@ -59,6 +60,9 @@ export default async function KakologCategoryPage({ params }: Props) {
           ))}
         </div>
       )}
+
+      <BottomNav current="/kakolog" currentCategory={slug} categories={categories} />
+      <div className="mb-6" />
     </main>
   )
 }
