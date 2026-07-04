@@ -1,15 +1,17 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { BottomNav } from '@/components/ThreadSortPage'
+import { Pagination } from '@/components/Pagination'
 import { ThreadCard } from '@/components/ThreadCard'
-import { getCachedCategories } from '@/lib/cached-queries'
-import { formatJstDateLabel, getJstDateRange, getKakologThreads } from '@/lib/kakolog-queries'
+import { getCachedCategories, THREAD_PAGE_SIZE } from '@/lib/cached-queries'
+import { formatJstDateLabel, getJstDateRange, getKakologThreadCount, getKakologThreads } from '@/lib/kakolog-queries'
 import { SITE_URL } from '@/lib/site-config'
 
 export const revalidate = 3600
 
 type Props = {
   params: Promise<{ date: string }>
+  searchParams: Promise<{ page?: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -22,13 +24,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function KakologDatePage({ params }: Props) {
+export default async function KakologDatePage({ params, searchParams }: Props) {
   const { date } = await params
+  const { page: pageString } = await searchParams
+  const page = Math.max(1, parseInt(pageString ?? '1') || 1)
+  const offset = (page - 1) * THREAD_PAGE_SIZE
   const range = getJstDateRange(date)
-  const [threads, categories] = await Promise.all([
-    range ? getKakologThreads({ ...range, limit: 160 }) : Promise.resolve([]),
+  const [threads, totalCount, categories] = await Promise.all([
+    range ? getKakologThreads({ ...range, limit: THREAD_PAGE_SIZE, offset }) : Promise.resolve([]),
+    range ? getKakologThreadCount(range) : Promise.resolve(0),
     getCachedCategories(),
   ])
+  const totalPages = Math.max(1, Math.ceil(totalCount / THREAD_PAGE_SIZE))
   const label = formatJstDateLabel(date)
 
   return (
@@ -56,6 +63,10 @@ export default async function KakologDatePage({ params }: Props) {
           ))}
         </div>
       )}
+
+      <div className="mt-3">
+        <Pagination currentPage={page} totalPages={totalPages} basePath={`/kakolog/${date}`} />
+      </div>
 
       <BottomNav current="/kakolog" categories={categories} />
       <div className="mb-6" />

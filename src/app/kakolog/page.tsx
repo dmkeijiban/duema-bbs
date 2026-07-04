@@ -4,7 +4,14 @@ import { BottomNav } from '@/components/ThreadSortPage'
 import { Pagination } from '@/components/Pagination'
 import { ThreadCard } from '@/components/ThreadCard'
 import { getCachedCategories, THREAD_PAGE_SIZE } from '@/lib/cached-queries'
-import { formatJstDateLabel, getKakologThreads, toJstDateKey } from '@/lib/kakolog-queries'
+import {
+  formatJstDateLabel,
+  getKakologIndexThreads,
+  getKakologThreadCount,
+  getKakologThreads,
+  toJstDateKey,
+  type KakologIndexThread,
+} from '@/lib/kakolog-queries'
 import { SITE_URL } from '@/lib/site-config'
 
 export const revalidate = 3600
@@ -15,7 +22,7 @@ export const metadata: Metadata = {
   alternates: { canonical: `${SITE_URL}/kakolog` },
 }
 
-function getDateLinks(threads: Awaited<ReturnType<typeof getKakologThreads>>) {
+function getDateLinks(threads: KakologIndexThread[]) {
   const counts = new Map<string, number>()
   for (const thread of threads) {
     const key = toJstDateKey(thread.created_at)
@@ -28,7 +35,7 @@ function getDateLinks(threads: Awaited<ReturnType<typeof getKakologThreads>>) {
   })).slice(0, 8)
 }
 
-function getCategoryLinks(threads: Awaited<ReturnType<typeof getKakologThreads>>) {
+function getCategoryLinks(threads: KakologIndexThread[]) {
   const counts = new Map<string, { name: string; count: number }>()
   for (const thread of threads) {
     const category = thread.categories
@@ -52,15 +59,16 @@ type Props = {
 export default async function KakologPage({ searchParams }: Props) {
   const { page: pageString } = await searchParams
   const page = Math.max(1, parseInt(pageString ?? '1') || 1)
-  const [threads, categories] = await Promise.all([
-    getKakologThreads({ limit: 240 }),
+  const offset = (page - 1) * THREAD_PAGE_SIZE
+  const [threads, totalCount, indexThreads, categories] = await Promise.all([
+    getKakologThreads({ limit: THREAD_PAGE_SIZE, offset }),
+    getKakologThreadCount(),
+    getKakologIndexThreads(),
     getCachedCategories(),
   ])
-  const dateLinks = getDateLinks(threads)
-  const categoryLinks = getCategoryLinks(threads)
-  const totalPages = Math.max(1, Math.ceil(threads.length / THREAD_PAGE_SIZE))
-  const offset = (page - 1) * THREAD_PAGE_SIZE
-  const pageThreads = threads.slice(offset, offset + THREAD_PAGE_SIZE)
+  const dateLinks = getDateLinks(indexThreads)
+  const categoryLinks = getCategoryLinks(indexThreads)
+  const totalPages = Math.max(1, Math.ceil(totalCount / THREAD_PAGE_SIZE))
 
   return (
     <main className="mx-auto max-w-screen-xl px-2 py-3 text-sm">
@@ -80,7 +88,7 @@ export default async function KakologPage({ searchParams }: Props) {
       </section>
 
       <section>
-        {pageThreads.length === 0 ? (
+        {threads.length === 0 ? (
           <div className="border border-gray-300 bg-white px-4 py-12 text-center">
             <h3 className="text-base font-bold text-gray-800">過去ログはまだありません</h3>
             <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-gray-600">
@@ -97,7 +105,7 @@ export default async function KakologPage({ searchParams }: Props) {
           </div>
         ) : (
           <div className="grid grid-cols-3 border-l border-t border-gray-300 md:grid-cols-5">
-            {pageThreads.map((thread, index) => (
+            {threads.map((thread, index) => (
               <ThreadCard key={thread.id} thread={thread} priority={index === 0} />
             ))}
           </div>
