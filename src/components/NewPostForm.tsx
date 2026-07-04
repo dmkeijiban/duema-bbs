@@ -264,7 +264,7 @@ export function NewPostForm({
         </p>
         {authState.status === 'anon' && (
           <p>
-            <Link href="/login?mode=signup" className="font-bold text-blue-700 hover:underline">アカウント作成</Link> で投稿管理が行え便利です。※登録なしでも匿名投稿できます。
+            <Link href="/login?mode=signup" className="font-bold text-blue-700 hover:underline">アカウント作成</Link> で投稿管理が行え便利です。※登録なしで匿名投稿できます。
           </p>
         )}
       </div>
@@ -328,9 +328,6 @@ export function NewPostForm({
                 本文
               </td>
               <td className="p-2 min-w-0">
-                <p className="mb-1 text-xs leading-relaxed text-gray-500">
-                  一言だけでもOKです。デッキ相談・感想・思い出話など、気軽にどうぞ。
-                </p>
                 <textarea
                   id="reply-textarea"
                   name="body"
