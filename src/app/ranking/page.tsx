@@ -309,8 +309,19 @@ function UserRankingList({
         </div>
       </div>
       {rows.length === 0 ? (
-        <div className="px-3 py-6 text-center text-sm text-gray-500">
-          まだランキング対象者はいません
+        <div className="px-4 py-8 text-center">
+          <h4 className="text-sm font-bold text-gray-800">まだランキング対象者はいません</h4>
+          <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-gray-600">
+            アカウント作成後にスレッド投稿、コメント、思い出図鑑の評価・レビューをするとランキング対象になります。
+          </p>
+          <div className="mt-4 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
+            <Link href="/login?mode=signup" className="inline-flex min-h-9 items-center justify-center border border-blue-600 bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700">
+              アカウント作成
+            </Link>
+            <Link href="/thread/new" className="inline-flex min-h-9 items-center justify-center border border-gray-300 bg-gray-50 px-4 text-sm font-bold text-gray-700 hover:bg-gray-100">
+              スレを立てる
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="space-y-2 p-2">
@@ -438,8 +449,19 @@ async function RankingList({ page, period }: { page: number; period: ThreadPerio
 
   if (withImages.length === 0) {
     return (
-      <div className="border border-gray-300 bg-white py-16 text-center text-gray-500">
-        <p>スレッドがまだありません</p>
+      <div className="border border-gray-300 bg-white px-4 py-12 text-center">
+        <h2 className="text-base font-bold text-gray-800">ランキング対象のスレッドがまだありません</h2>
+        <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-gray-600">
+          コメントが集まると人気スレッドとして表示されます。話したいカードやデッキがあれば、まずはスレッドを立ててみてください。
+        </p>
+        <div className="mt-4 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
+          <Link href="/thread/new" className="inline-flex min-h-9 items-center justify-center border border-blue-600 bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700">
+            スレを立てる
+          </Link>
+          <Link href="/" className="inline-flex min-h-9 items-center justify-center border border-gray-300 bg-gray-50 px-4 text-sm font-bold text-gray-700 hover:bg-gray-100">
+            トップへ戻る
+          </Link>
+        </div>
       </div>
     )
   }
@@ -491,7 +513,7 @@ export default async function RankingPage({ searchParams }: Props) {
   const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
   const activeTab = typeParam === 'author' || typeParam === 'users' ? 'author' : 'thread'
   const activePeriod = periodParam === 'all' || periodParam === 'total' ? 'all' : 'month'
-  // TODO: 投稿数が増えたら today/week も有効化する（内部ロジックは保持済み）
+  // 保留メモ: 投稿数が増えた後、today/week の公開タブ化は別PRで検討する。
   const threadPeriod: ThreadPeriod =
     periodParam === 'today' ? 'today' : periodParam === 'week' ? 'week' : 'all'
   const categories = await getCachedCategories()
