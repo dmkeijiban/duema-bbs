@@ -156,6 +156,17 @@ export default async function ZukanCardPage({
             <h1 className="text-xl font-bold text-gray-800">{card.name}</h1>
             <ShareButtons cardName={card.name} />
           </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <a
+              href="#card-review-form"
+              className="inline-flex min-h-8 items-center border border-blue-600 bg-blue-600 px-3 text-xs font-bold text-white transition-colors hover:bg-blue-700"
+            >
+              思い出を書く
+            </a>
+            <span className="text-xs leading-relaxed text-gray-500">
+              使った記憶や当時の評価を残せます。
+            </span>
+          </div>
           {pack && (
             <div className="mt-1 text-xs text-gray-500">
               収録：<Link href={packHref} className="text-blue-600 hover:underline">{packLabel}</Link>

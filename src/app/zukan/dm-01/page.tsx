@@ -309,6 +309,17 @@ export default async function ZukanDm01Page({
             <div><dt className="inline font-bold">パック内容：</dt><dd className="inline">5枚入り 150円（税込）</dd></div>
           </dl>
           <div className="mt-auto pt-4">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <a
+                href="#pack-review-form"
+                className="inline-flex min-h-8 items-center border border-blue-600 bg-blue-600 px-3 text-xs font-bold text-white transition-colors hover:bg-blue-700"
+              >
+                思い出を書く
+              </a>
+              <span className="text-xs leading-relaxed text-gray-500">
+                当時開けた記憶や好きだったカードを残せます。
+              </span>
+            </div>
             <div className="mb-2 text-xs font-bold text-gray-700">このページをシェア</div>
             <PackShareButtons packName={`${pack.code} ${pack.name}`} />
           </div>
@@ -502,7 +513,11 @@ export default async function ZukanDm01Page({
         {packReviews !== null && packReviews.length === 0 && (
           <p className="mb-3 border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">まだ投稿はありません。最初の思い出を書いてみませんか？</p>
         )}
-        {isDbReady && pack.id && <PackReviewForm packId={pack.id} />}
+        {isDbReady && pack.id && (
+          <div id="pack-review-form" className="scroll-mt-20">
+            <PackReviewForm packId={pack.id} />
+          </div>
+        )}
         {!isDbReady && <p className="border border-gray-200 bg-white px-3 py-3 text-xs text-gray-400">DBが準備中のため投稿できません</p>}
       </section>
     </div>
