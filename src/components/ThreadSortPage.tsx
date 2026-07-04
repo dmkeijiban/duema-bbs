@@ -27,9 +27,9 @@ import {
 const PAGE_SIZE = 60
 
 export const NAV_LINKS = [
-  { label: '🔄 更新順一覧', href: '/update' },
-  { label: '📊 ランキング', href: '/ranking' },
-  { label: '🎲 ランダム', href: '/random' },
+  { label: '🔄 更新順一覧', href: '/update', order: 'order-1' },
+  { label: '📊 ランキング', href: '/ranking', order: 'order-2' },
+  { label: '🎲 ランダム', href: '/random', order: 'order-3' },
 ]
 
 interface Props {
@@ -266,7 +266,7 @@ export function BottomNav({
     <nav className="mt-3 -mb-5" aria-label="共通スレッド一覧ナビ">
       <ul className="grid grid-cols-2 gap-1.5 text-sm sm:grid-cols-5">
       {NAV_LINKS.map((btn) => (
-        <li key={btn.href}>
+        <li key={btn.href} className={`${btn.order} sm:order-none`}>
           <Link
             href={btn.href}
             className={
@@ -280,9 +280,13 @@ export function BottomNav({
         </li>
       ))}
       {categories.length > 0 ? (
-        <CategoryDropdown currentCategory={currentCategory} categories={categories} />
+        <CategoryDropdown
+          currentCategory={currentCategory}
+          categories={categories}
+          className="order-5 sm:order-4"
+        />
       ) : (
-        <li className="col-span-2 sm:col-span-1">
+        <li className="col-span-2 order-5 sm:order-4 sm:col-span-1">
           <Link
             href="/"
             className={
@@ -295,7 +299,7 @@ export function BottomNav({
           </Link>
         </li>
       )}
-      <li>
+      <li className="order-4 sm:order-5">
         <Link
           href="/kakolog"
           className={

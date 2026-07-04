@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { BottomNav } from '@/components/ThreadSortPage'
 import { ThreadCard } from '@/components/ThreadCard'
+import { getCachedCategories } from '@/lib/cached-queries'
 import { formatJstDateLabel, getKakologThreads, toJstDateKey } from '@/lib/kakolog-queries'
 import { SITE_URL } from '@/lib/site-config'
 
@@ -43,7 +45,10 @@ function getCategoryLinks(threads: Awaited<ReturnType<typeof getKakologThreads>>
 }
 
 export default async function KakologPage() {
-  const threads = await getKakologThreads({ limit: 240 })
+  const [threads, categories] = await Promise.all([
+    getKakologThreads({ limit: 240 }),
+    getCachedCategories(),
+  ])
   const dateLinks = getDateLinks(threads)
   const categoryLinks = getCategoryLinks(threads)
 
@@ -128,6 +133,9 @@ export default async function KakologPage() {
           </div>
         )}
       </section>
+
+      <BottomNav current="/kakolog" categories={categories} />
+      <div className="mb-6" />
     </main>
   )
 }

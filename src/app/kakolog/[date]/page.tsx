@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { BottomNav } from '@/components/ThreadSortPage'
 import { ThreadCard } from '@/components/ThreadCard'
+import { getCachedCategories } from '@/lib/cached-queries'
 import { formatJstDateLabel, getJstDateRange, getKakologThreads } from '@/lib/kakolog-queries'
 import { SITE_URL } from '@/lib/site-config'
 
@@ -23,7 +25,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function KakologDatePage({ params }: Props) {
   const { date } = await params
   const range = getJstDateRange(date)
-  const threads = range ? await getKakologThreads({ ...range, limit: 160 }) : []
+  const [threads, categories] = await Promise.all([
+    range ? getKakologThreads({ ...range, limit: 160 }) : Promise.resolve([]),
+    getCachedCategories(),
+  ])
   const label = formatJstDateLabel(date)
 
   return (
@@ -51,6 +56,9 @@ export default async function KakologDatePage({ params }: Props) {
           ))}
         </div>
       )}
+
+      <BottomNav current="/kakolog" categories={categories} />
+      <div className="mb-6" />
     </main>
   )
 }
