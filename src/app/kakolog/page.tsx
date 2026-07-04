@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { BottomNav } from '@/components/ThreadSortPage'
+import { Pagination } from '@/components/Pagination'
 import { ThreadCard } from '@/components/ThreadCard'
-import { getCachedCategories } from '@/lib/cached-queries'
+import { getCachedCategories, THREAD_PAGE_SIZE } from '@/lib/cached-queries'
 import { formatJstDateLabel, getKakologThreads, toJstDateKey } from '@/lib/kakolog-queries'
 import { SITE_URL } from '@/lib/site-config'
 
@@ -44,13 +45,22 @@ function getCategoryLinks(threads: Awaited<ReturnType<typeof getKakologThreads>>
   })).slice(0, 8)
 }
 
-export default async function KakologPage() {
+type Props = {
+  searchParams: Promise<{ page?: string }>
+}
+
+export default async function KakologPage({ searchParams }: Props) {
+  const { page: pageString } = await searchParams
+  const page = Math.max(1, parseInt(pageString ?? '1') || 1)
   const [threads, categories] = await Promise.all([
     getKakologThreads({ limit: 240 }),
     getCachedCategories(),
   ])
   const dateLinks = getDateLinks(threads)
   const categoryLinks = getCategoryLinks(threads)
+  const totalPages = Math.max(1, Math.ceil(threads.length / THREAD_PAGE_SIZE))
+  const offset = (page - 1) * THREAD_PAGE_SIZE
+  const pageThreads = threads.slice(offset, offset + THREAD_PAGE_SIZE)
 
   return (
     <main className="mx-auto max-w-screen-xl px-2 py-3 text-sm">
@@ -68,49 +78,11 @@ export default async function KakologPage() {
         <p className="text-xs leading-relaxed text-gray-700">
           過去ログでは、30日を超えた公開スレッドを閲覧できます。最近のログから探すほか、日付別・カテゴリ別にもたどれます。
         </p>
-        {(dateLinks.length > 0 || categoryLinks.length > 0) && (
-          <div className="mt-2 grid gap-2 md:grid-cols-2">
-            {dateLinks.length > 0 && (
-              <div>
-                <h2 className="mb-1 text-xs font-bold text-gray-800">日付別に見る</h2>
-                <div className="flex flex-wrap gap-1.5">
-                  {dateLinks.map(item => (
-                    <Link
-                      key={item.date}
-                      href={`/kakolog/${item.date}`}
-                      className="inline-flex min-h-7 items-center border border-gray-300 bg-gray-50 px-2 text-xs text-gray-700 hover:bg-gray-100"
-                    >
-                      {item.label}
-                      <span className="ml-1 text-gray-500">({item.count})</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-            {categoryLinks.length > 0 && (
-              <div>
-                <h2 className="mb-1 text-xs font-bold text-gray-800">カテゴリ別に見る</h2>
-                <div className="flex flex-wrap gap-1.5">
-                  {categoryLinks.map(item => (
-                    <Link
-                      key={item.slug}
-                      href={`/kakolog/category/${item.slug}`}
-                      className="inline-flex min-h-7 items-center border border-gray-300 bg-gray-50 px-2 text-xs text-gray-700 hover:bg-gray-100"
-                    >
-                      {item.name}
-                      <span className="ml-1 text-gray-500">({item.count})</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </section>
 
       <section>
         <h2 className="mb-2 border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-gray-800">最近の過去ログ</h2>
-        {threads.length === 0 ? (
+        {pageThreads.length === 0 ? (
           <div className="border border-gray-300 bg-white px-4 py-12 text-center">
             <h3 className="text-base font-bold text-gray-800">過去ログはまだありません</h3>
             <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-gray-600">
@@ -127,12 +99,58 @@ export default async function KakologPage() {
           </div>
         ) : (
           <div className="grid grid-cols-3 border-l border-t border-gray-300 md:grid-cols-5">
-            {threads.slice(0, 60).map((thread, index) => (
+            {pageThreads.map((thread, index) => (
               <ThreadCard key={thread.id} thread={thread} priority={index === 0} />
             ))}
           </div>
         )}
+        <div className="mt-3">
+          <Pagination currentPage={page} totalPages={totalPages} basePath="/kakolog" />
+        </div>
       </section>
+
+      {(dateLinks.length > 0 || categoryLinks.length > 0) && (
+        <section className="mt-3 border border-gray-300 bg-white">
+          <div className="border-b border-gray-200 px-3 py-2">
+            <h2 className="text-sm font-bold text-gray-800">もっと探す</h2>
+            <p className="mt-0.5 text-xs leading-relaxed text-gray-500">日付別・カテゴリ別の過去ログリンクです。</p>
+          </div>
+
+          {dateLinks.length > 0 && (
+            <div className="border-b border-gray-100 px-3 py-3">
+              <h3 className="mb-2 text-xs font-bold text-gray-700">日付別</h3>
+              <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
+                {dateLinks.map(item => (
+                  <Link
+                    key={item.date}
+                    href={`/kakolog/${item.date}`}
+                    className="min-w-0 rounded border border-gray-300 bg-white px-2.5 py-1.5 text-center text-xs text-blue-700 hover:border-blue-400 hover:bg-blue-50 sm:text-left"
+                  >
+                    <span className="whitespace-nowrap">{item.label}（{item.count}）</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {categoryLinks.length > 0 && (
+            <div className="px-3 py-3">
+              <h3 className="mb-2 text-xs font-bold text-gray-700">カテゴリ別</h3>
+              <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
+                {categoryLinks.map(item => (
+                  <Link
+                    key={item.slug}
+                    href={`/kakolog/category/${item.slug}`}
+                    className="min-w-0 rounded border border-gray-300 bg-white px-2.5 py-1.5 text-center text-xs text-blue-700 hover:border-blue-400 hover:bg-blue-50 sm:text-left"
+                  >
+                    <span className="whitespace-nowrap">{item.name}（{item.count}）</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       <BottomNav current="/kakolog" categories={categories} />
       <div className="mb-6" />
