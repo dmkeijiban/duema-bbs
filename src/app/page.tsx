@@ -167,8 +167,11 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
     const totalPages = Math.max(1, Math.ceil((count ?? 0) / TOP_THREAD_PAGE_SIZE))
     return (
       <>
-        <div className="mb-2 px-3 py-1.5 text-xs border border-gray-300 bg-white text-gray-600">
-          「{searchQ}」の検索結果：{count}件
+        <div className="mb-2 border border-gray-300 bg-white px-3 py-2">
+          <h2 className="text-sm font-bold text-gray-800">「{searchQ}」の検索結果</h2>
+          <p className="mt-0.5 text-xs leading-relaxed text-gray-600">
+            スレッドタイトルから{count}件見つかりました。気になる話題を開いて、続きから参加できます。
+          </p>
         </div>
         <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
           {(threads as unknown as (Thread & { categories: Category | null })[]).map((thread) => (
@@ -237,14 +240,31 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
 }
 
 function ThreadEmpty({ searchQ }: { searchQ?: string }) {
+  if (searchQ) {
+    return (
+      <div className="bg-white border border-gray-300 px-4 py-12 text-center">
+        <h2 className="text-base font-bold text-gray-800">「{searchQ}」の検索結果がありません</h2>
+        <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-gray-600">
+          別のカード名・デッキ名・略称で探すと見つかることがあります。まだ話題がなければ、新しいスレッドも立てられます。
+        </p>
+        <div className="mt-4 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
+          <Link href="/" className="inline-flex min-h-9 items-center justify-center border border-gray-300 bg-gray-50 px-4 text-sm font-bold text-gray-700 hover:bg-gray-100">
+            トップに戻る
+          </Link>
+          <Link href="/thread/new" className="inline-flex min-h-9 items-center justify-center border border-blue-600 bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700">
+            スレを立てる
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="text-center py-16 text-gray-500 bg-white border border-gray-300">
-      <p>{searchQ ? `「${searchQ}」の検索結果がありません` : 'スレッドがまだありません'}</p>
-      {!searchQ && (
-        <Link href="/thread/new" className="mt-3 inline-block text-blue-600 hover:underline text-sm">
-          最初のスレッドを立てる →
-        </Link>
-      )}
+      <p>スレッドがまだありません</p>
+      <Link href="/thread/new" className="mt-3 inline-block text-blue-600 hover:underline text-sm">
+        最初のスレッドを立てる →
+      </Link>
     </div>
   )
 }
