@@ -17,7 +17,10 @@ export default async function RevivalPage() {
 
   const supabase = await createClient()
 
-  const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000)
+  const now = new Date()
+  const nowTime = now.getTime()
+  const seventyTwoHoursAgo = new Date(now)
+  seventyTwoHoursAgo.setDate(seventyTwoHoursAgo.getDate() - 3)
 
   // 【PostgREST行数上限対策】is_deleted=false のpost が存在するthread_id を全件取得
   // .limit(100000) を明示しないと途中で切れ、有効レスがあるスレが誤検出される
@@ -51,7 +54,7 @@ export default async function RevivalPage() {
   ).length
 
   function formatAge(dateStr: string) {
-    const hours = Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60))
+    const hours = Math.floor((nowTime - new Date(dateStr).getTime()) / (1000 * 60 * 60))
     if (hours < 24) return `${hours}時間前`
     const days = Math.floor(hours / 24)
     return `${days}日前`

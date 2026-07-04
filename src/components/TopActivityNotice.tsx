@@ -36,7 +36,7 @@ export function TopActivityNotice() {
           : 'border-green-600/50 bg-white/80 text-green-800 hover:bg-green-50'
       }`}
     >
-      🔔 新しいお知らせ
+      {hasNotifications ? '🔔 新しいお知らせがあります' : '🔔 新しいお知らせ'}
     </Link>
   )
 }

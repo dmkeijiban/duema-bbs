@@ -12,6 +12,13 @@ type ShowcaseEntry = {
   points: number
 }
 
+type ShowcaseContainerProps = {
+  title: string
+  subtitle?: string
+  entries: ShowcaseEntry[]
+  variant?: 'campaign' | 'monthly'
+}
+
 const AVATAR_RING_COLORS = [
   'bg-yellow-50 text-yellow-700 ring-yellow-200',
   'bg-gray-100 text-gray-600 ring-gray-200',
@@ -86,12 +93,7 @@ function ShowcaseContainer({
   subtitle,
   entries,
   variant = 'monthly',
-}: {
-  title: string
-  subtitle?: string
-  entries: ShowcaseEntry[]
-  variant?: 'campaign' | 'monthly'
-}) {
+}: ShowcaseContainerProps) {
   const isCampaign = variant === 'campaign'
   return (
     <div className={`mb-2 border bg-white ${isCampaign ? 'border-yellow-300' : 'border-gray-300'}`}>
@@ -125,6 +127,8 @@ function ShowcaseContainer({
 }
 
 export async function TopRankingShowcase() {
+  let showcase: ShowcaseContainerProps | null = null
+
   try {
     const { settings, ranking: campaignResult } = await getCachedCampaignRanking()
     const state = resolveCampaignState(settings)
@@ -138,36 +142,35 @@ export async function TopRankingShowcase() {
         points: e.totalPoints,
       }))
       if (entries.length === 0) return null
-      return (
-        <ShowcaseContainer
-          title="🏆 キャンペーンランキング TOP10"
-          subtitle="（1日1回更新）"
-          entries={entries}
-          variant="campaign"
-        />
-      )
+      showcase = {
+        title: '🏆 キャンペーンランキング TOP10',
+        subtitle: '（1日1回更新）',
+        entries,
+        variant: 'campaign',
+      }
+    } else {
+      const { monthly } = await getCachedUserRankings()
+      const entries: ShowcaseEntry[] = monthly.slice(0, 10).map((row, i) => ({
+        rank: i + 1,
+        displayName: row.display_name,
+        profileSlug: row.profile_slug,
+        avatarUrl: row.avatar_url,
+        points: row.points,
+      }))
+      if (entries.length === 0) return null
+      showcase = {
+        title: '👑 今月の投稿者ランキング TOP10',
+        entries,
+        variant: 'monthly',
+      }
     }
-
-    const { monthly } = await getCachedUserRankings()
-    const entries: ShowcaseEntry[] = monthly.slice(0, 10).map((row, i) => ({
-      rank: i + 1,
-      displayName: row.display_name,
-      profileSlug: row.profile_slug,
-      avatarUrl: row.avatar_url,
-      points: row.points,
-    }))
-    if (entries.length === 0) return null
-    return (
-      <ShowcaseContainer
-        title="👑 今月の投稿者ランキング TOP10"
-        entries={entries}
-        variant="monthly"
-      />
-    )
   } catch (error) {
     console.warn('TopRankingShowcase fetch failed:', error)
     return null
   }
+
+  if (!showcase) return null
+  return <ShowcaseContainer {...showcase} />
 }
 
 export function TopRankingShowcaseSkeleton() {

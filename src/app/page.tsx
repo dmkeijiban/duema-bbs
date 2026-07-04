@@ -27,7 +27,7 @@ import type { Metadata } from 'next'
 import { AdBanner } from '@/components/AdBanner'
 import { getCategoryIdsForSlug } from '@/lib/categories'
 import { ADSENSE_REVIEW_MODE, isAdSenseRiskyThreadTitle, isPrNoticeForAdSenseReview } from '@/lib/adsense-review-mode'
-import { TopActivityNotice } from '@/components/TopActivityNotice'
+import { GreenCtaBanner } from '@/components/GreenCtaBanner'
 import {
   filterPublicVisibleUserContent,
   getCachedPublicHiddenUserIds,
@@ -270,43 +270,11 @@ function ThreadEmpty({ searchQ }: { searchQ?: string }) {
 }
 
 function HomeBannerFallback() {
-  return <HomeGuideBanner />
-}
-
-function HomeGuideBanner() {
-  return (
-    <div
-      className="mb-1.5 flex flex-col gap-1.5 border px-3 py-1.5 text-sm text-green-900 md:flex-row md:items-center md:justify-between"
-      style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb' }}
-    >
-      <p className="font-bold leading-relaxed">
-        初めての方は
-        <Link href="/guide" className="underline underline-offset-2 hover:opacity-80">
-          スレッドの立て方
-        </Link>
-        をご確認ください。
-      </p>
-      <div className="grid w-full shrink-0 grid-cols-3 gap-1 md:flex md:w-auto md:flex-wrap md:gap-1.5">
-        <Link
-          href="/login?mode=signup"
-          className="inline-flex min-h-8 min-w-0 items-center justify-center rounded border border-green-700 bg-white px-1.5 py-1 text-center text-[11px] font-bold leading-tight whitespace-nowrap text-green-800 transition-colors hover:bg-green-50 md:min-h-0 md:px-2.5 md:text-xs"
-        >
-          アカウント作成
-        </Link>
-        <Link
-          href="/zukan"
-          className="inline-flex min-h-8 min-w-0 items-center justify-center rounded border border-green-700 bg-white px-1.5 py-1 text-center text-[11px] font-bold leading-tight whitespace-nowrap text-green-800 transition-colors hover:bg-green-50 md:min-h-0 md:px-2.5 md:text-xs"
-        >
-          思い出図鑑を見る
-        </Link>
-        <TopActivityNotice />
-      </div>
-    </div>
-  )
+  return <GreenCtaBanner />
 }
 
 function HomeBannerServer() {
-  return <HomeGuideBanner />
+  return <GreenCtaBanner />
 }
 
 async function TopNoticesServer() {
