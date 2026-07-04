@@ -3,6 +3,7 @@ import { getCachedFixedPage } from '@/lib/cached-queries'
 import { renderBlock } from '@/components/FixedPageBlocks'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
+import type { Block } from '@/types/fixed-pages'
 
 // 固定ページはほぼ変わらないため1時間キャッシュ
 export const revalidate = 3600
@@ -78,6 +79,8 @@ const DEFAULT_TERMS = `1. はじめに
 ・通報があり、内容が不適切と判断された場合
 ・掲示板の健全な運営に支障があると判断した場合
 また、長期間利用されていないスレッドは整理のため削除されることがあります。
+また、ルールはすべてのケースを網羅するものではありません。
+ルール違反に該当しない場合でも、コミュニティ全体の利用しやすさや雰囲気を著しく損なうと運営が判断した投稿・利用方法については、投稿の編集・非表示・削除・利用制限など、必要な対応を行う場合があります。
 
 7. 免責事項
 当サイトは、ユーザーが投稿した内容の正確性・安全性について保証しません。
@@ -96,8 +99,68 @@ const DEFAULT_TERMS = `1. はじめに
 10. お問い合わせ
 本規約に関するお問い合わせは、専用フォームよりご連絡ください。`
 
+const COMMUNITY_NOTICE = `また、ルールはすべてのケースを網羅するものではありません。
+ルール違反に該当しない場合でも、コミュニティ全体の利用しやすさや雰囲気を著しく損なうと運営が判断した投稿・利用方法については、投稿の編集・非表示・削除・利用制限など、必要な対応を行う場合があります。`
+
+const COMMUNITY_NOTICE_HTML = COMMUNITY_NOTICE
+  .split('\n')
+  .map(line => `<p>${line}</p>`)
+  .join('')
+
+function appendCommunityNotice(content: Block[]): Block[] {
+  if (content.some(block => block.type === 'text' && block.content.includes(COMMUNITY_NOTICE.split('\n')[0]))) {
+    return content
+  }
+
+  let inserted = false
+  const updated = content.map(block => {
+    if (inserted || block.type !== 'text') {
+      return block
+    }
+
+    const replacements = [
+      {
+        target: '<p>■免責事項</p>',
+        replacement: `${COMMUNITY_NOTICE_HTML}<p><br></p><p>■免責事項</p>`,
+      },
+      {
+        target: '<p>■ 免責事項</p>',
+        replacement: `${COMMUNITY_NOTICE_HTML}<p><br></p><p>■ 免責事項</p>`,
+      },
+      {
+        target: '7. 免責事項',
+        replacement: `${COMMUNITY_NOTICE}\n\n7. 免責事項`,
+      },
+      {
+        target: '■免責事項',
+        replacement: `${COMMUNITY_NOTICE}\n\n■免責事項`,
+      },
+      {
+        target: '■ 免責事項',
+        replacement: `${COMMUNITY_NOTICE}\n\n■ 免責事項`,
+      },
+    ]
+
+    for (const { target, replacement } of replacements) {
+      if (block.content.includes(target)) {
+        inserted = true
+        return {
+          ...block,
+          content: block.content.replace(target, replacement),
+        }
+      }
+    }
+
+    return block
+  })
+
+  if (inserted) return updated
+  return [...content, { type: 'text', content: COMMUNITY_NOTICE }]
+}
+
 export default async function TermsPage() {
   const fixedPage = await getCachedFixedPage('terms')
+  const termsContent = fixedPage?.content.length ? appendCommunityNotice(fixedPage.content) : null
 
   return (
     <div className="max-w-screen-xl mx-auto px-3 py-4 text-sm">
@@ -134,9 +197,9 @@ export default async function TermsPage() {
       </nav>
       <div className="bg-white border border-gray-300 p-5 leading-relaxed text-gray-800">
         <h1 className="text-base font-bold border-b border-gray-200 pb-2 mb-4">■ 利用規約（デュエマ掲示板）</h1>
-        {fixedPage?.content.length ? (
+        {termsContent ? (
           <div className="space-y-4">
-            {fixedPage.content.map((block, i) => renderBlock(block, i))}
+            {termsContent.map((block, i) => renderBlock(block, i))}
           </div>
         ) : (
           <div style={{ whiteSpace: 'pre-wrap' }} className="text-sm text-gray-800">
