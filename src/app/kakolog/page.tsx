@@ -4,6 +4,7 @@ import { BottomNav } from '@/components/ThreadSortPage'
 import { Pagination } from '@/components/Pagination'
 import { ThreadCard } from '@/components/ThreadCard'
 import { getCachedCategories, THREAD_PAGE_SIZE } from '@/lib/cached-queries'
+import { getCategoryIdsForSlug, getConsolidatedCategories } from '@/lib/categories'
 import {
   formatJstDateLabel,
   formatJstMonthLabel,
@@ -16,6 +17,7 @@ import {
   type KakologIndexThread,
 } from '@/lib/kakolog-queries'
 import { SITE_URL } from '@/lib/site-config'
+import type { Category } from '@/types'
 
 export const revalidate = 3600
 
@@ -52,21 +54,22 @@ function getDateLinksForMonth(threads: KakologIndexThread[], month: string) {
   })).sort((a, b) => b.date.localeCompare(a.date))
 }
 
-function getCategoryLinks(threads: KakologIndexThread[]) {
-  const counts = new Map<string, { name: string; count: number }>()
+function getCategoryLinks(threads: KakologIndexThread[], categories: Category[]) {
+  const countsByCategoryId = new Map<number, number>()
   for (const thread of threads) {
-    const category = thread.categories
-    if (!category?.slug) continue
-    const current = counts.get(category.slug)
-    counts.set(category.slug, {
-      name: category.name,
-      count: (current?.count ?? 0) + 1,
-    })
+    if (thread.category_id === null) continue
+    countsByCategoryId.set(thread.category_id, (countsByCategoryId.get(thread.category_id) ?? 0) + 1)
   }
-  return Array.from(counts, ([slug, item]) => ({
-    slug,
-    ...item,
-  }))
+
+  return getConsolidatedCategories(categories).map(category => {
+    const categoryIds = getCategoryIdsForSlug(category.slug, categories)
+    const count = categoryIds.reduce((total, id) => total + (countsByCategoryId.get(id) ?? 0), 0)
+    return {
+      slug: category.slug,
+      name: category.name,
+      count,
+    }
+  })
 }
 
 type Props = {
@@ -90,7 +93,7 @@ export default async function KakologPage({ searchParams }: Props) {
   ])
   const monthLinks = getMonthLinks(indexThreads)
   const dateLinks = selectedMonth ? getDateLinksForMonth(indexThreads, selectedMonth) : []
-  const categoryLinks = getCategoryLinks(indexThreads)
+  const categoryLinks = getCategoryLinks(indexThreads, categories as Category[])
   const totalPages = Math.max(1, Math.ceil(totalCount / THREAD_PAGE_SIZE))
 
   return (
