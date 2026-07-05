@@ -11,6 +11,7 @@ import {
   applyLegacyKakologThreadFilter,
   isArchiveSchemaMissing,
 } from '@/lib/thread-archive'
+import { getDisplayCategory } from '@/lib/categories'
 
 export type KakologThread = Thread & { categories: Category | null }
 export type KakologIndexThread = Pick<Thread, 'id' | 'user_id' | 'created_at' | 'category_id'> & {
@@ -69,7 +70,11 @@ export async function getKakologThreads({
   }
 
   const visible = filterPublicVisibleUserContent((raw ?? []) as unknown as Thread[], hiddenUserIds)
-  return withFallbackThumbnails(supabase, visible) as unknown as Promise<KakologThread[]>
+  const normalized = visible.map(thread => ({
+    ...thread,
+    categories: getDisplayCategory(thread.categories),
+  }))
+  return withFallbackThumbnails(supabase, normalized) as unknown as Promise<KakologThread[]>
 }
 
 export async function getKakologThreadCount({
