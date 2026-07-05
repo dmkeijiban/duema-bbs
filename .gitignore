@@ -53,3 +53,12 @@ revival-preview*/
 recovery-dry-run*/
 page8-revival-preview.*
 page8-revival-targets.csv
+
+# Codex local logs and temporary outputs
+.codex-*.log
+.codex-*.err.log
+.codex-tmp-*/
+
+# local test / browser artifacts
+output/playwright/
+test-results/
