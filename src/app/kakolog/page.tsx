@@ -61,15 +61,26 @@ function getCategoryLinks(threads: KakologIndexThread[], categories: Category[])
     countsByCategoryId.set(thread.category_id, (countsByCategoryId.get(thread.category_id) ?? 0) + 1)
   }
 
-  return getConsolidatedCategories(categories).map(category => {
+  const links = getConsolidatedCategories(categories).map(category => {
     const categoryIds = getCategoryIdsForSlug(category.slug, categories)
     const count = categoryIds.reduce((total, id) => total + (countsByCategoryId.get(id) ?? 0), 0)
     return {
       slug: category.slug,
       name: category.name,
       count,
+      href: `/kakolog/category/${category.slug}`,
     }
   })
+
+  return [
+    {
+      slug: 'all',
+      name: 'すべて',
+      count: threads.length,
+      href: '/kakolog',
+    },
+    ...links,
+  ]
 }
 
 type Props = {
@@ -199,14 +210,14 @@ export default async function KakologPage({ searchParams }: Props) {
           {categoryLinks.length > 0 && (
             <div className="px-3 py-3">
               <h3 className="mb-2 text-xs font-bold text-gray-700">カテゴリ別</h3>
-              <div className="grid grid-cols-2 gap-1.5 md:[grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]">
+              <div className="grid grid-cols-2 gap-1.5 md:[grid-template-columns:repeat(5,minmax(0,1fr))]">
                 {categoryLinks.map(item => (
                   <Link
                     key={item.slug}
-                    href={`/kakolog/category/${item.slug}`}
+                    href={item.href}
                     className="flex min-w-0 items-center justify-between gap-2 rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-blue-700 hover:border-blue-400 hover:bg-blue-50"
                   >
-                    <span className="truncate">{item.name}</span>
+                    <span className="min-w-0 break-words leading-snug">{item.name}</span>
                     <span className="shrink-0 text-gray-500">{item.count}件</span>
                   </Link>
                 ))}
