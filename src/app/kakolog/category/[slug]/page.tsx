@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { Pagination } from '@/components/Pagination'
 import { ThreadCard } from '@/components/ThreadCard'
@@ -23,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${name}の過去ログ | デュエマ掲示板`,
     description: `デュエマ掲示板の「${name}」カテゴリの過去ログスレッド一覧です。`,
-    alternates: { canonical: `${SITE_URL}/kakolog/category/${slug}` },
+    alternates: { canonical: `${SITE_URL}/kakolog/category/${category?.slug ?? slug}` },
   }
 }
 
@@ -34,6 +35,7 @@ export default async function KakologCategoryPage({ params, searchParams }: Prop
   const offset = (page - 1) * THREAD_PAGE_SIZE
   const categories = await getCachedCategories()
   const category = getDisplayCategoryBySlug(slug, categories)
+  if (category && slug !== category.slug) redirect(`/kakolog/category/${category.slug}`)
   const categoryIds = getCategoryIdsForSlug(slug, categories)
   const [threads, totalCount] = categoryIds.length > 0
     ? await Promise.all([

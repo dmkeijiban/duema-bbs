@@ -122,7 +122,8 @@ export function getConsolidatedCategoryBySlug(slug: string | null | undefined) {
 
 export function getCategoryAliases(slug: string | null | undefined): string[] {
   const category = getConsolidatedCategoryBySlug(slug)
-  return category ? category.aliases : slug ? [slug] : []
+  if (!category) return slug ? [slug] : []
+  return Array.from(new Set([category.slug, category.primarySlug, ...category.aliases]))
 }
 
 export function getDisplayCategory(category: Category | null | undefined): Category | null {
@@ -144,6 +145,7 @@ export function getDisplayCategoryBySlug(slug: string, categories: Category[]): 
   if (!consolidated) return categories.find(category => category.slug === slug) ?? null
 
   const base =
+    categories.find(category => category.slug === consolidated.slug) ??
     categories.find(category => category.slug === consolidated.primarySlug) ??
     categories.find(category => consolidated.aliases.includes(category.slug))
 
@@ -169,6 +171,7 @@ export function getCategoryIdsForSlug(slug: string | null | undefined, categorie
 export function getConsolidatedCategories(categories: Category[]): Category[] {
   return CONSOLIDATED_CATEGORIES.flatMap(consolidated => {
     const base =
+      categories.find(category => category.slug === consolidated.slug) ??
       categories.find(category => category.slug === consolidated.primarySlug) ??
       categories.find(category => consolidated.aliases.includes(category.slug))
 
