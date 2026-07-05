@@ -127,15 +127,15 @@ async function saveTypefullyError(postedDate: string, errorMessage: string): Pro
   return error?.message
 }
 
-function isTypefullyValidationError(error: string): boolean {
-  return /Typefully API error 422|VALIDATION_ERROR/i.test(error)
+function shouldRetryTypefullyWithoutMedia(error: string): boolean {
+  return /Typefully API error (400|422)|VALIDATION_ERROR|media|image|画像|url/i.test(error)
 }
 
 async function createTypefullyPost({
   postedDate,
   threadId,
   cardName,
-  imageUrl,
+  imageUrl: imageCandidateUrl,
 }: {
   postedDate: string
   threadId: number
@@ -143,8 +143,18 @@ async function createTypefullyPost({
   imageUrl: string
 }): Promise<TypefullyOutcome> {
   const text = buildTypefullyText(cardName, `${SITE_URL}/thread/${threadId}`)
-  const mediaUrls = imageUrl ? [imageUrl] : []
+  const mediaUrls: string[] = []
   const typefullyScheduleDate = getTypefullyScheduleDate()
+
+  console.log('[daily-zukan-thread] typefully start', {
+    postedDate,
+    threadId,
+    scheduledAt: typefullyScheduleDate,
+    mediaCount: mediaUrls.length,
+    hasImageCandidate: Boolean(imageCandidateUrl),
+    hasTypefullyApiKey: Boolean(process.env.TYPEFULLY_API_KEY),
+    hasTypefullySocialSetId: Boolean(process.env.TYPEFULLY_SOCIAL_SET_ID),
+  })
 
   let tf = await createTypefullyDraft({
     threadLines: [text],
@@ -154,7 +164,7 @@ async function createTypefullyPost({
   let usedMediaUrls = mediaUrls
   let imageFallback: string | undefined
 
-  if ('error' in tf && mediaUrls.length > 0 && isTypefullyValidationError(tf.error)) {
+  if ('error' in tf && mediaUrls.length > 0 && shouldRetryTypefullyWithoutMedia(tf.error)) {
     console.error('[daily-zukan-thread] typefully image payload rejected; retrying text-only', {
       postedDate,
       threadId,
@@ -169,10 +179,11 @@ async function createTypefullyPost({
   }
 
   if ('error' in tf) {
-    console.error('[daily-zukan-thread] typefully error', {
+    console.error('[daily-zukan-thread] thread_created_typefully_failed', {
       postedDate,
       threadId,
       error: tf.error,
+      mediaCount: usedMediaUrls.length,
     })
     const persistError = await saveTypefullyError(postedDate, tf.error)
     if (persistError) {
@@ -376,6 +387,13 @@ export async function GET(req: NextRequest) {
       if (['already_posted_today', 'schedule_already_completed', 'race_already_posted'].includes(result.reason)) {
         const retry = await createTypefullyForPostedDate(result.postedDate)
         typefully = retry.typefully
+        console.log('[daily-zukan-thread] skipped_typefully_retry_result', {
+          postedDate: result.postedDate,
+          skipReason: result.reason,
+          threadId: retry.threadId,
+          typefullyStatus: typefully.status,
+          httpStatus: retry.httpStatus,
+        })
       }
     } else {
       console.error('[daily-zukan-thread] error', result)

@@ -92,7 +92,6 @@ export async function createTypefullyDraft(
   const body: Record<string, unknown> = {
     platforms: {
       x: {
-        enabled: true,
         posts: params.threadLines.map((text, index) => ({
           text,
           ...(index === 0 && params.imageUrls && params.imageUrls.length > 0
