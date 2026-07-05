@@ -8,7 +8,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { runDailyZukanThread, getDailyZukanThreadForRetry } from '@/lib/daily-zukan-thread'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { createTypefullyDraft } from '@/lib/typefully'
 import { SITE_URL } from '@/lib/site-config'
 
 export const runtime = 'nodejs'
@@ -16,7 +15,18 @@ export const maxDuration = 60
 
 // Typefully投稿の結果（APIレスポンス・ログ用）。
 type TypefullyOutcome =
-  | { status: 'posted'; id: string; shareUrl: string; postedAt: string; scheduledAt: string; text: string; mediaUrls: string[]; imageFallback?: string; persistError?: string }
+  | {
+      status: 'posted'
+      id: string
+      shareUrl: string
+      postedAt: string
+      scheduledAt: string
+      text: string
+      mediaUrls: string[]
+      imageSource: string
+      mediaId: string
+      persistError?: string
+    }
   | { status: 'error'; error: string; persistError?: string }
   | { status: 'skipped'; reason: string; typefullyId?: string | null }
 
@@ -74,9 +84,405 @@ function shortenError(error: string): string {
 }
 
 const TYPEFULLY_SCHEDULE_DELAY_MINUTES = 5
+const TYPEFULLY_API_BASE = 'https://api.typefully.com/v2'
+const TYPEFULLY_MEDIA_POLL_ATTEMPTS = 6
+const TYPEFULLY_MEDIA_POLL_DELAY_MS = 1000
+
+type ImageCandidate = {
+  imageUrl: string
+  imageSource: 'card_image' | 'thread_og_fallback'
+}
+
+type PreparedImage = ImageCandidate & {
+  bytes: ArrayBuffer
+  contentType: string
+  finalUrl: string
+  fileName: string
+}
+
+type TypefullyDraftResponse = {
+  id?: string | number
+  private_url?: string | null
+  share_url?: string | null
+  url?: string | null
+}
+
+type TypefullyMediaUploadResponse = {
+  media_id?: string
+  upload_url?: string
+}
+
+type TypefullyMediaStatusResponse = {
+  status?: string
+  error_reason?: string | null
+}
 
 function getTypefullyScheduleDate(now = new Date()): string {
   return new Date(now.getTime() + TYPEFULLY_SCHEDULE_DELAY_MINUTES * 60 * 1000).toISOString()
+}
+
+function normalizeApiKey(apiKey: string): string {
+  return apiKey
+    .replace(/\uFEFF/g, '')
+    .replace(/^Bearer\s+/i, '')
+    .trim()
+}
+
+function cleanEnvValue(value: string | undefined): string {
+  return value?.replace(/\uFEFF/g, '').trim() ?? ''
+}
+
+function truncateLogBody(text: string, maxLength = 2000): string {
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
+}
+
+function formatTypefullyError(status: number, text: string): string {
+  if (!text) return `Typefully API error ${status}`
+
+  try {
+    const data = JSON.parse(text) as {
+      error?: { code?: unknown; message?: unknown; details?: unknown }
+      message?: unknown
+      detail?: unknown
+    }
+    if (typeof data.message === 'string') return `Typefully API error ${status}: ${data.message}`
+    if (typeof data.detail === 'string') return `Typefully API error ${status}: ${data.detail}`
+    if (data.error && typeof data.error === 'object') {
+      const message = typeof data.error.message === 'string' ? data.error.message : JSON.stringify(data.error)
+      const code = typeof data.error.code === 'string' ? ` (${data.error.code})` : ''
+      const details = data.error.details ? ` details=${JSON.stringify(data.error.details).slice(0, 500)}` : ''
+      return `Typefully API error ${status}${code}: ${message}${details}`
+    }
+  } catch {
+    // JSONではないレスポンスは下で短く返す。
+  }
+
+  return `Typefully API error ${status}: ${text.slice(0, 500)}`
+}
+
+function getImageExtension(contentType: string, imageUrl: string): string {
+  const normalizedType = contentType.split(';')[0]?.trim().toLowerCase()
+  if (normalizedType === 'image/jpeg') return 'jpg'
+  if (normalizedType === 'image/png') return 'png'
+  if (normalizedType === 'image/webp') return 'webp'
+  if (normalizedType === 'image/gif') return 'gif'
+
+  try {
+    const ext = new URL(imageUrl).pathname.split('.').pop()?.toLowerCase()
+    if (ext && ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) return ext === 'jpeg' ? 'jpg' : ext
+  } catch {
+    // URLとして解釈できない場合は既定値を使う。
+  }
+
+  return 'jpg'
+}
+
+function buildTypefullyFileName(postedDate: string, threadId: number, imageSource: string, extension: string): string {
+  return `daily-zukan-${postedDate}-${threadId}-${imageSource}.${extension}`.replace(/[^a-zA-Z0-9_.()-]/g, '-')
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function prepareImageForTypefully({
+  candidate,
+  postedDate,
+  threadId,
+  cardName,
+  cardUrl,
+}: {
+  candidate: ImageCandidate
+  postedDate: string
+  threadId: number
+  cardName: string
+  cardUrl: string
+}): Promise<PreparedImage | { error: string }> {
+  if (!/^https?:\/\//i.test(candidate.imageUrl)) {
+    return { error: `画像URLがhttp(s)ではありません: ${candidate.imageUrl}` }
+  }
+
+  try {
+    const res = await fetch(candidate.imageUrl, { redirect: 'follow' })
+    const contentType = res.headers.get('content-type') ?? ''
+
+    console.log('[daily-zukan-thread] typefully image fetch result', {
+      postedDate,
+      threadId,
+      cardName,
+      cardPageUrl: cardUrl,
+      imageUrl: candidate.imageUrl,
+      imageSource: candidate.imageSource,
+      status: res.status,
+      contentType,
+      finalUrl: res.url,
+    })
+
+    if (!res.ok) {
+      return { error: `画像取得失敗: status=${res.status}` }
+    }
+    if (!contentType.toLowerCase().startsWith('image/')) {
+      return {
+        error: `画像のcontent-typeではありません: ${contentType || 'unknown'}`,
+      }
+    }
+
+    const bytes = await res.arrayBuffer()
+    if (bytes.byteLength === 0) {
+      return { error: '画像取得結果が0バイトです' }
+    }
+
+    const extension = getImageExtension(contentType, res.url || candidate.imageUrl)
+    return {
+      ...candidate,
+      bytes,
+      contentType,
+      finalUrl: res.url || candidate.imageUrl,
+      fileName: buildTypefullyFileName(postedDate, threadId, candidate.imageSource, extension),
+    }
+  } catch (e) {
+    return { error: `画像取得リクエスト失敗: ${String(e)}` }
+  }
+}
+
+async function createTypefullyMediaUpload({
+  image,
+  apiKey,
+  socialSetId,
+  postedDate,
+  threadId,
+  cardName,
+  cardUrl,
+}: {
+  image: PreparedImage
+  apiKey: string
+  socialSetId: string
+  postedDate: string
+  threadId: number
+  cardName: string
+  cardUrl: string
+}): Promise<TypefullyMediaUploadResponse | { error: string }> {
+  const requestPayloadImagePart = { file_name: image.fileName }
+  const res = await fetch(`${TYPEFULLY_API_BASE}/social-sets/${socialSetId}/media/upload`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestPayloadImagePart),
+  })
+  const responseBody = await res.text()
+
+  console.log('[daily-zukan-thread] typefully media upload response', {
+    postedDate,
+    threadId,
+    cardName,
+    cardPageUrl: cardUrl,
+    imageUrl: image.imageUrl,
+    imageSource: image.imageSource,
+    typefullyStatus: res.status,
+    typefullyResponseBody: truncateLogBody(responseBody),
+    typefullyRequestPayloadImagePart: requestPayloadImagePart,
+  })
+
+  if (!res.ok) {
+    return { error: formatTypefullyError(res.status, responseBody) }
+  }
+
+  try {
+    return JSON.parse(responseBody) as TypefullyMediaUploadResponse
+  } catch {
+    return { error: 'Typefully media upload response is not JSON' }
+  }
+}
+
+async function putTypefullyMediaBytes({
+  uploadUrl,
+  image,
+  postedDate,
+  threadId,
+  cardName,
+  cardUrl,
+}: {
+  uploadUrl: string
+  image: PreparedImage
+  postedDate: string
+  threadId: number
+  cardName: string
+  cardUrl: string
+}): Promise<{ ok: true } | { error: string }> {
+  const res = await fetch(uploadUrl, {
+    method: 'PUT',
+    body: image.bytes,
+  })
+  const responseBody = await res.text().catch(() => '')
+
+  console.log('[daily-zukan-thread] typefully media bytes upload response', {
+    postedDate,
+    threadId,
+    cardName,
+    cardPageUrl: cardUrl,
+    imageUrl: image.imageUrl,
+    imageSource: image.imageSource,
+    typefullyStatus: res.status,
+    typefullyResponseBody: truncateLogBody(responseBody),
+    byteLength: image.bytes.byteLength,
+  })
+
+  if (!res.ok) {
+    return {
+      error: `Typefully media bytes upload failed ${res.status}: ${responseBody.slice(0, 500)}`,
+    }
+  }
+
+  return { ok: true }
+}
+
+async function waitForTypefullyMediaReady({
+  mediaId,
+  image,
+  apiKey,
+  socialSetId,
+  postedDate,
+  threadId,
+  cardName,
+  cardUrl,
+}: {
+  mediaId: string
+  image: PreparedImage
+  apiKey: string
+  socialSetId: string
+  postedDate: string
+  threadId: number
+  cardName: string
+  cardUrl: string
+}): Promise<{ ok: true } | { error: string }> {
+  for (let attempt = 1; attempt <= TYPEFULLY_MEDIA_POLL_ATTEMPTS; attempt += 1) {
+    const res = await fetch(`${TYPEFULLY_API_BASE}/social-sets/${socialSetId}/media/${mediaId}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    })
+    const responseBody = await res.text()
+
+    console.log('[daily-zukan-thread] typefully media status response', {
+      postedDate,
+      threadId,
+      cardName,
+      cardPageUrl: cardUrl,
+      imageUrl: image.imageUrl,
+      imageSource: image.imageSource,
+      mediaId,
+      attempt,
+      typefullyStatus: res.status,
+      typefullyResponseBody: truncateLogBody(responseBody),
+    })
+
+    if (!res.ok) {
+      return { error: formatTypefullyError(res.status, responseBody) }
+    }
+
+    let data: TypefullyMediaStatusResponse
+    try {
+      data = JSON.parse(responseBody) as TypefullyMediaStatusResponse
+    } catch {
+      return { error: 'Typefully media status response is not JSON' }
+    }
+
+    if (data.status === 'ready') return { ok: true }
+    if (data.status === 'failed')
+      return {
+        error: data.error_reason || 'Typefully media processing failed',
+      }
+
+    if (attempt < TYPEFULLY_MEDIA_POLL_ATTEMPTS) {
+      await delay(TYPEFULLY_MEDIA_POLL_DELAY_MS)
+    }
+  }
+
+  return { error: 'Typefully media processing did not become ready in time' }
+}
+
+async function createTypefullyDraftWithMediaId({
+  text,
+  mediaId,
+  image,
+  apiKey,
+  socialSetId,
+  scheduleDate,
+  postedDate,
+  threadId,
+  cardName,
+  cardUrl,
+}: {
+  text: string
+  mediaId: string
+  image: PreparedImage
+  apiKey: string
+  socialSetId: string
+  scheduleDate: string
+  postedDate: string
+  threadId: number
+  cardName: string
+  cardUrl: string
+}): Promise<TypefullyDraftResponse | { error: string }> {
+  const requestPayloadImagePart = {
+    platforms: {
+      x: {
+        posts: [{ media_ids: [mediaId] }],
+      },
+    },
+  }
+  const body = {
+    platforms: {
+      x: {
+        enabled: true,
+        posts: [{ text, media_ids: [mediaId] }],
+      },
+    },
+    publish_at: scheduleDate,
+  }
+
+  console.log('[daily-zukan-thread] typefully draft request', {
+    postedDate,
+    threadId,
+    cardName,
+    cardPageUrl: cardUrl,
+    imageUrl: image.imageUrl,
+    imageSource: image.imageSource,
+    mediaId,
+    typefullyRequestPayloadImagePart: requestPayloadImagePart,
+  })
+
+  const res = await fetch(`${TYPEFULLY_API_BASE}/social-sets/${socialSetId}/drafts`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  const responseBody = await res.text()
+
+  console.log('[daily-zukan-thread] typefully draft response', {
+    postedDate,
+    threadId,
+    cardName,
+    cardPageUrl: cardUrl,
+    imageUrl: image.imageUrl,
+    imageSource: image.imageSource,
+    mediaId,
+    typefullyStatus: res.status,
+    typefullyResponseBody: truncateLogBody(responseBody),
+  })
+
+  if (!res.ok) {
+    return { error: formatTypefullyError(res.status, responseBody) }
+  }
+
+  try {
+    return JSON.parse(responseBody) as TypefullyDraftResponse
+  } catch {
+    return { error: 'Typefully draft response is not JSON' }
+  }
 }
 
 async function getTypefullyGuard(postedDate: string): Promise<TypefullyGuard | { error: string }> {
@@ -128,10 +534,6 @@ async function saveTypefullyError(postedDate: string, errorMessage: string): Pro
   return error?.message
 }
 
-function shouldRetryTypefullyWithoutMedia(error: string): boolean {
-  return /Typefully API error (400|422)|VALIDATION_ERROR|media|image|画像|url/i.test(error)
-}
-
 async function createTypefullyPost({
   postedDate,
   threadId,
@@ -147,91 +549,249 @@ async function createTypefullyPost({
 }): Promise<TypefullyOutcome> {
   const text = buildTypefullyText(cardName, cardUrl)
   const fallbackImageUrl = `${SITE_URL}/og/thread/${threadId}.jpg`
-  const mediaUrls = [cardImageUrl || fallbackImageUrl]
-  const imageSource = cardImageUrl ? 'card_image' : 'thread_og_fallback'
+  const imageCandidates: ImageCandidate[] = [
+    ...(cardImageUrl.trim() ? [{ imageUrl: cardImageUrl.trim(), imageSource: 'card_image' as const }] : []),
+    { imageUrl: fallbackImageUrl, imageSource: 'thread_og_fallback' },
+  ]
   const typefullyScheduleDate = getTypefullyScheduleDate()
+  const apiKey = normalizeApiKey(process.env.TYPEFULLY_API_KEY ?? '')
+  const socialSetId = cleanEnvValue(process.env.TYPEFULLY_SOCIAL_SET_ID)
 
   console.log('[daily-zukan-thread] typefully start', {
     postedDate,
     threadId,
+    cardName,
+    cardPageUrl: cardUrl,
     scheduledAt: typefullyScheduleDate,
-    mediaCount: mediaUrls.length,
-    imageSource,
-    cardUrl,
+    imageCandidates: imageCandidates.map((candidate) => ({
+      imageUrl: candidate.imageUrl,
+      imageSource: candidate.imageSource,
+    })),
     hasTypefullyApiKey: Boolean(process.env.TYPEFULLY_API_KEY),
     hasTypefullySocialSetId: Boolean(process.env.TYPEFULLY_SOCIAL_SET_ID),
   })
 
-  let tf = await createTypefullyDraft({
-    threadLines: [text],
-    imageUrls: mediaUrls,
-    scheduleDate: typefullyScheduleDate,
-  })
-  let usedMediaUrls = mediaUrls
-  let imageFallback: string | undefined
-
-  if ('error' in tf && mediaUrls.length > 0 && shouldRetryTypefullyWithoutMedia(tf.error)) {
-    console.error('[daily-zukan-thread] typefully image payload rejected; retrying text-only', {
-      postedDate,
-      threadId,
-      error: tf.error,
-      imageSource,
-    })
-    imageFallback = tf.error
-    tf = await createTypefullyDraft({
-      threadLines: [text],
-      scheduleDate: typefullyScheduleDate,
-    })
-    usedMediaUrls = []
+  if (!apiKey) {
+    const error = 'TYPEFULLY_API_KEY が設定されていません'
+    const persistError = await saveTypefullyError(postedDate, error)
+    return {
+      status: 'error',
+      error,
+      ...(persistError ? { persistError } : {}),
+    }
+  }
+  if (!socialSetId) {
+    const error = 'TYPEFULLY_SOCIAL_SET_ID が設定されていません'
+    const persistError = await saveTypefullyError(postedDate, error)
+    return {
+      status: 'error',
+      error,
+      ...(persistError ? { persistError } : {}),
+    }
   }
 
-  if ('error' in tf) {
-    console.error('[daily-zukan-thread] thread_created_typefully_failed', {
+  const candidateErrors: string[] = []
+
+  for (const candidate of imageCandidates) {
+    const prepared = await prepareImageForTypefully({
+      candidate,
       postedDate,
       threadId,
-      error: tf.error,
-      mediaCount: usedMediaUrls.length,
-      imageSource,
+      cardName,
+      cardUrl,
     })
-    const persistError = await saveTypefullyError(postedDate, tf.error)
+    if ('error' in prepared) {
+      candidateErrors.push(`${candidate.imageSource}: ${prepared.error}`)
+      console.error('[daily-zukan-thread] typefully image candidate failed', {
+        postedDate,
+        threadId,
+        cardName,
+        cardPageUrl: cardUrl,
+        imageUrl: candidate.imageUrl,
+        imageSource: candidate.imageSource,
+        error: prepared.error,
+      })
+      continue
+    }
+
+    const upload = await createTypefullyMediaUpload({
+      image: prepared,
+      apiKey,
+      socialSetId,
+      postedDate,
+      threadId,
+      cardName,
+      cardUrl,
+    })
+    if ('error' in upload || !upload.media_id || !upload.upload_url) {
+      const error = 'error' in upload ? upload.error : 'Typefully media upload response missing media_id or upload_url'
+      candidateErrors.push(`${prepared.imageSource}: ${error}`)
+      console.error('[daily-zukan-thread] typefully media upload failed', {
+        postedDate,
+        threadId,
+        cardName,
+        cardPageUrl: cardUrl,
+        imageUrl: prepared.imageUrl,
+        imageSource: prepared.imageSource,
+        error,
+      })
+      continue
+    }
+
+    const putResult = await putTypefullyMediaBytes({
+      uploadUrl: upload.upload_url,
+      image: prepared,
+      postedDate,
+      threadId,
+      cardName,
+      cardUrl,
+    })
+    if ('error' in putResult) {
+      candidateErrors.push(`${prepared.imageSource}: ${putResult.error}`)
+      console.error('[daily-zukan-thread] typefully media bytes upload failed', {
+        postedDate,
+        threadId,
+        cardName,
+        cardPageUrl: cardUrl,
+        imageUrl: prepared.imageUrl,
+        imageSource: prepared.imageSource,
+        mediaId: upload.media_id,
+        error: putResult.error,
+      })
+      continue
+    }
+
+    const ready = await waitForTypefullyMediaReady({
+      mediaId: upload.media_id,
+      image: prepared,
+      apiKey,
+      socialSetId,
+      postedDate,
+      threadId,
+      cardName,
+      cardUrl,
+    })
+    if ('error' in ready) {
+      candidateErrors.push(`${prepared.imageSource}: ${ready.error}`)
+      console.error('[daily-zukan-thread] typefully media processing failed', {
+        postedDate,
+        threadId,
+        cardName,
+        cardPageUrl: cardUrl,
+        imageUrl: prepared.imageUrl,
+        imageSource: prepared.imageSource,
+        mediaId: upload.media_id,
+        error: ready.error,
+      })
+      continue
+    }
+
+    const tf = await createTypefullyDraftWithMediaId({
+      text,
+      mediaId: upload.media_id,
+      image: prepared,
+      apiKey,
+      socialSetId,
+      scheduleDate: typefullyScheduleDate,
+      postedDate,
+      threadId,
+      cardName,
+      cardUrl,
+    })
+
+    if ('error' in tf) {
+      const error = tf.error
+      console.error('[daily-zukan-thread] thread_created_typefully_failed', {
+        postedDate,
+        threadId,
+        cardName,
+        cardPageUrl: cardUrl,
+        imageUrl: prepared.imageUrl,
+        imageSource: prepared.imageSource,
+        mediaId: upload.media_id,
+        error,
+      })
+      const persistError = await saveTypefullyError(postedDate, error)
+      if (persistError) {
+        console.error('[daily-zukan-thread] typefully error persistence failed', {
+          postedDate,
+          threadId,
+          error: persistError,
+        })
+      }
+      return {
+        status: 'error',
+        error,
+        ...(persistError ? { persistError } : {}),
+      }
+    }
+
+    const id = String(tf.id ?? '')
+    if (!id) {
+      const error = 'Typefully API response missing draft id'
+      const persistError = await saveTypefullyError(postedDate, error)
+      return {
+        status: 'error',
+        error,
+        ...(persistError ? { persistError } : {}),
+      }
+    }
+
+    const shareUrl = String(tf.private_url ?? tf.share_url ?? tf.url ?? '')
+
+    console.log('[daily-zukan-thread] typefully posted', {
+      postedDate,
+      threadId,
+      cardName,
+      cardPageUrl: cardUrl,
+      id,
+      shareUrl,
+      scheduledAt: typefullyScheduleDate,
+      imageUrl: prepared.imageUrl,
+      imageSource: prepared.imageSource,
+      mediaId: upload.media_id,
+    })
+    const persistError = await saveTypefullySuccess(postedDate, id, shareUrl, typefullyScheduleDate)
     if (persistError) {
-      console.error('[daily-zukan-thread] typefully error persistence failed', {
+      console.error('[daily-zukan-thread] typefully success persistence failed', {
         postedDate,
         threadId,
         error: persistError,
       })
     }
-    return { status: 'error', error: tf.error, ...(persistError ? { persistError } : {}) }
+    return {
+      status: 'posted',
+      id,
+      shareUrl,
+      postedAt: typefullyScheduleDate,
+      scheduledAt: typefullyScheduleDate,
+      text,
+      mediaUrls: [prepared.imageUrl],
+      imageSource: prepared.imageSource,
+      mediaId: upload.media_id,
+      ...(persistError ? { persistError } : {}),
+    }
   }
 
-  console.log('[daily-zukan-thread] typefully posted', {
+  const error = `Typefully投稿用の画像を1枚も添付できませんでした: ${candidateErrors.join(' | ')}`
+  console.error('[daily-zukan-thread] thread_created_typefully_failed', {
     postedDate,
     threadId,
-    id: tf.id,
-    shareUrl: tf.share_url,
-    scheduledAt: typefullyScheduleDate,
-    mediaCount: usedMediaUrls.length,
-    imageSource,
+    cardName,
+    cardPageUrl: cardUrl,
+    error,
+    candidateErrors,
   })
-  const persistError = await saveTypefullySuccess(postedDate, tf.id, tf.share_url, typefullyScheduleDate)
+  const persistError = await saveTypefullyError(postedDate, error)
   if (persistError) {
-    console.error('[daily-zukan-thread] typefully success persistence failed', {
+    console.error('[daily-zukan-thread] thread_created_typefully_failed', {
       postedDate,
       threadId,
-      error: persistError,
+      error,
+      persistError,
     })
   }
-  return {
-    status: 'posted',
-    id: tf.id,
-    shareUrl: tf.share_url,
-    postedAt: typefullyScheduleDate,
-    scheduledAt: typefullyScheduleDate,
-    text,
-    mediaUrls: usedMediaUrls,
-    ...(imageFallback ? { imageFallback } : {}),
-    ...(persistError ? { persistError } : {}),
-  }
+  return { status: 'error', error, ...(persistError ? { persistError } : {}) }
 }
 
 async function createTypefullyForPostedDate(postedDate: string): Promise<{
@@ -245,11 +805,18 @@ async function createTypefullyForPostedDate(postedDate: string): Promise<{
       postedDate,
       error: guard.error,
     })
-    return { typefully: { status: 'error', error: guard.error }, httpStatus: 500 }
+    return {
+      typefully: { status: 'error', error: guard.error },
+      httpStatus: 500,
+    }
   }
   if (guard.status === 'success' || guard.id) {
     return {
-      typefully: { status: 'skipped', reason: 'already_success', typefullyId: guard.id },
+      typefully: {
+        status: 'skipped',
+        reason: 'already_success',
+        typefullyId: guard.id,
+      },
       httpStatus: 200,
     }
   }
@@ -260,10 +827,16 @@ async function createTypefullyForPostedDate(postedDate: string): Promise<{
       postedDate,
       error: lookup.error,
     })
-    return { typefully: { status: 'error', error: lookup.error }, httpStatus: 500 }
+    return {
+      typefully: { status: 'error', error: lookup.error },
+      httpStatus: 500,
+    }
   }
   if (lookup.status === 'not_found') {
-    return { typefully: { status: 'error', error: lookup.reason }, httpStatus: 404 }
+    return {
+      typefully: { status: 'error', error: lookup.reason },
+      httpStatus: 404,
+    }
   }
 
   const typefully = await createTypefullyPost({
@@ -301,13 +874,16 @@ async function handleRetryTypefully(postedDate: string): Promise<NextResponse> {
   }
 
   const { threadId, typefully, httpStatus } = await createTypefullyForPostedDate(postedDate)
-  return NextResponse.json({
-    ok: typefully.status === 'posted' || typefully.status === 'skipped',
-    mode: 'retry_typefully',
-    postedDate,
-    threadId,
-    typefully,
-  }, { status: httpStatus })
+  return NextResponse.json(
+    {
+      ok: typefully.status === 'posted' || typefully.status === 'skipped',
+      mode: 'retry_typefully',
+      postedDate,
+      threadId,
+      typefully,
+    },
+    { status: httpStatus },
+  )
 }
 
 // 安全確認用（?preview_typefully=YYYY-MM-DD）。
@@ -327,14 +903,16 @@ async function handlePreviewTypefully(postedDate: string): Promise<NextResponse>
 
   const lookup = await getDailyZukanThreadForRetry(postedDate)
   if (lookup.status === 'error') {
-    return NextResponse.json(
-      { ok: false, mode: 'preview_typefully', postedDate, error: lookup.error },
-      { status: 500 },
-    )
+    return NextResponse.json({ ok: false, mode: 'preview_typefully', postedDate, error: lookup.error }, { status: 500 })
   }
   if (lookup.status === 'not_found') {
     return NextResponse.json(
-      { ok: false, mode: 'preview_typefully', postedDate, error: lookup.reason },
+      {
+        ok: false,
+        mode: 'preview_typefully',
+        postedDate,
+        error: lookup.reason,
+      },
       { status: 404 },
     )
   }
