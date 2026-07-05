@@ -192,7 +192,7 @@ POST /api/x-posts/send
 
 ### 7-1. 接続方式
 
-MCP ツール `mcp__typefully__typefully_create_draft` は Claude Code からのみ呼び出し可能。  
+MCP ツール `mcp__typefully__typefully_create_draft` は旧 Claude Code MCP 環境で使っていたツール名。現行の ChatGPT + Codex 運用では、利用可能な接続が明示されている場合だけ下書き作成に使う。
 **アプリ内（Next.js Server Action）からは REST API を直接呼ぶ**。
 
 ### 7-2. Typefully REST API
