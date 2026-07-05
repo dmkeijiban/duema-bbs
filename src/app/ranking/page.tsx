@@ -10,6 +10,7 @@ import { ThreadListTopContent } from '@/components/ThreadListTopContent'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { AuthorRankingTabs } from '@/components/AuthorRankingTabs'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
+import { applyActiveThreadFilter, applyLegacyActiveThreadFilter, isArchiveSchemaMissing } from '@/lib/thread-archive'
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { resolveCampaignState, toDisplayJst } from '@/lib/campaign-ranking'
@@ -423,10 +424,10 @@ async function RankingList({ page, period }: { page: number; period: ThreadPerio
   const hiddenUserIds = await getCachedPublicHiddenUserIds()
   const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
 
-  let dataQuery = supabase
+  let dataQuery = applyActiveThreadFilter(supabase
     .from('threads')
     .select('*, categories(id,name,slug,color,description,sort_order)')
-    .eq('is_archived', false)
+  )
 
   if (publicUserFilter) dataQuery = dataQuery.or(publicUserFilter)
 
@@ -440,7 +441,24 @@ async function RankingList({ page, period }: { page: number; period: ThreadPerio
     .order('post_count', { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1)
 
-  const { data: rawThreads } = await dataQuery
+  const result = await dataQuery
+  let rawThreads = result.data
+  if (isArchiveSchemaMissing(result.error)) {
+    let retryQuery = applyLegacyActiveThreadFilter(supabase
+      .from('threads')
+      .select('*, categories(id,name,slug,color,description,sort_order)')
+    )
+    if (publicUserFilter) retryQuery = retryQuery.or(publicUserFilter)
+    if (period !== 'all') {
+      const since = new Date()
+      since.setDate(since.getDate() - (period === 'today' ? 1 : 7))
+      retryQuery = retryQuery.gte('last_posted_at', since.toISOString())
+    }
+    const retry = await retryQuery
+      .order('post_count', { ascending: false })
+      .range(offset, offset + PAGE_SIZE - 1)
+    rawThreads = retry.data
+  }
   const visibleThreads = filterPublicVisibleUserContent(rawThreads, hiddenUserIds)
 
   const withImages = visibleThreads.length > 0

@@ -296,10 +296,10 @@ export function getCachedRelatedThreads(
       if (categoryId === null) {
         sameCategoryQuery = Promise.resolve({ data: [] })
       } else {
-        let query = supabase
+        let query = applyActiveThreadFilter(supabase
           .from('threads')
           .select(select)
-          .eq('is_archived', false)
+        )
           .eq('category_id', categoryId)
           .neq('id', threadId)
 
@@ -310,10 +310,10 @@ export function getCachedRelatedThreads(
           .limit(80)
       }
 
-      let popularQuery = supabase
+      let popularQuery = applyActiveThreadFilter(supabase
         .from('threads')
         .select(select)
-        .eq('is_archived', false)
+      )
         .neq('id', threadId)
 
       if (publicUserFilter) popularQuery = popularQuery.or(publicUserFilter)

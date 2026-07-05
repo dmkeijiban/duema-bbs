@@ -16,6 +16,7 @@ type AutoCloseThread = {
   comment_locked?: boolean | null
   auto_lock_exempt?: boolean | null
   created_at?: string | null
+  last_posted_at?: string | null
   categories?: {
     name?: string | null
     slug?: string | null
@@ -37,11 +38,19 @@ export function getThreadArchiveCutoff(now = new Date()) {
 }
 
 export function isOlderThanCommentWindow(createdAt: string | null | undefined, now = new Date()) {
-  if (!createdAt) return false
-  const date = new Date(createdAt)
+  return isOlderThanCommentWindowFrom(createdAt, now)
+}
+
+export function isOlderThanCommentWindowFrom(value: string | null | undefined, now = new Date()) {
+  if (!value) return false
+  const date = new Date(value)
   if (Number.isNaN(date.getTime())) return false
   const closeAt = date.getTime() + THREAD_COMMENT_CLOSE_DAYS * 24 * 60 * 60 * 1000
   return now.getTime() >= closeAt
+}
+
+export function getThreadLastResponseAt(thread: AutoCloseThread) {
+  return thread.last_posted_at ?? thread.created_at ?? null
 }
 
 export function isMemoryZukanMidnightThread(thread: AutoCloseThread) {
@@ -70,7 +79,7 @@ export function isThreadAutoClosed(thread: AutoCloseThread) {
 export function isThreadAgeClosed(thread: AutoCloseThread, now = new Date()) {
   if (thread.auto_lock_exempt === true) return false
   if (isMemoryZukanMidnightThread(thread)) return false
-  return isOlderThanCommentWindow(thread.created_at, now)
+  return isOlderThanCommentWindowFrom(getThreadLastResponseAt(thread), now)
 }
 
 export function isThreadAutoArchived(thread: AutoCloseThread, now = new Date()) {

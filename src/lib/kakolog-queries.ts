@@ -7,6 +7,7 @@ import {
   getPublicVisibleUserContentOrFilter,
 } from '@/lib/public-visibility'
 import {
+  applyThreadArchiveBaseRange,
   applyKakologThreadFilter,
   applyLegacyKakologThreadFilter,
   isArchiveSchemaMissing,
@@ -14,7 +15,7 @@ import {
 import { getDisplayCategory } from '@/lib/categories'
 
 export type KakologThread = Thread & { categories: Category | null }
-export type KakologIndexThread = Pick<Thread, 'id' | 'user_id' | 'created_at' | 'category_id'> & {
+export type KakologIndexThread = Pick<Thread, 'id' | 'user_id' | 'created_at' | 'last_posted_at' | 'category_id'> & {
   categories: Pick<Category, 'name' | 'slug'> | null
 }
 
@@ -42,13 +43,12 @@ export async function getKakologThreads({
     .select('id, title, user_id, image_url, thumbnail_url, post_count, is_archived, auto_lock_exempt, archived_at, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
   query = applyKakologThreadFilter(query)
   if (publicUserFilter) query = query.or(publicUserFilter)
-  if (startIso) query = query.gte('created_at', startIso)
-  if (endIso) query = query.lt('created_at', endIso)
+  query = applyThreadArchiveBaseRange(query, startIso, endIso)
   if (categoryIds.length === 1) query = query.eq('category_id', categoryIds[0])
   if (categoryIds.length > 1) query = query.in('category_id', categoryIds)
 
   const result = await query
-    .order('created_at', { ascending: false })
+    .order('last_posted_at', { ascending: false })
     .range(offset, offset + limit - 1)
   let raw = result.data as unknown[] | null
   const error = result.error
@@ -59,12 +59,11 @@ export async function getKakologThreads({
       .select('id, title, user_id, image_url, thumbnail_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
     )
     if (publicUserFilter) retry = retry.or(publicUserFilter)
-    if (startIso) retry = retry.gte('created_at', startIso)
-    if (endIso) retry = retry.lt('created_at', endIso)
+    retry = applyThreadArchiveBaseRange(retry, startIso, endIso)
     if (categoryIds.length === 1) retry = retry.eq('category_id', categoryIds[0])
     if (categoryIds.length > 1) retry = retry.in('category_id', categoryIds)
     const retryResult = await retry
-      .order('created_at', { ascending: false })
+      .order('last_posted_at', { ascending: false })
       .range(offset, offset + limit - 1)
     raw = retryResult.data as unknown[] | null
   }
@@ -91,8 +90,7 @@ export async function getKakologThreadCount({
     .select('id', { count: 'exact', head: true })
   query = applyKakologThreadFilter(query)
   if (publicUserFilter) query = query.or(publicUserFilter)
-  if (startIso) query = query.gte('created_at', startIso)
-  if (endIso) query = query.lt('created_at', endIso)
+  query = applyThreadArchiveBaseRange(query, startIso, endIso)
   if (categoryIds.length === 1) query = query.eq('category_id', categoryIds[0])
   if (categoryIds.length > 1) query = query.in('category_id', categoryIds)
 
@@ -104,8 +102,7 @@ export async function getKakologThreadCount({
     .select('id', { count: 'exact', head: true })
   )
   if (publicUserFilter) retry = retry.or(publicUserFilter)
-  if (startIso) retry = retry.gte('created_at', startIso)
-  if (endIso) retry = retry.lt('created_at', endIso)
+  retry = applyThreadArchiveBaseRange(retry, startIso, endIso)
   if (categoryIds.length === 1) retry = retry.eq('category_id', categoryIds[0])
   if (categoryIds.length > 1) retry = retry.in('category_id', categoryIds)
 
@@ -125,12 +122,12 @@ export async function getKakologIndexThreads(): Promise<KakologIndexThread[]> {
   while (true) {
     let query = supabase
       .from('threads')
-      .select('id, user_id, created_at, category_id, categories(name,slug)')
+      .select('id, user_id, created_at, last_posted_at, category_id, categories(name,slug)')
     query = useLegacyFilter ? applyLegacyKakologThreadFilter(query) : applyKakologThreadFilter(query)
     if (publicUserFilter) query = query.or(publicUserFilter)
 
     const result = await query
-      .order('created_at', { ascending: false })
+      .order('last_posted_at', { ascending: false })
       .range(offset, offset + pageSize - 1)
 
     if (!useLegacyFilter && isArchiveSchemaMissing(result.error)) {
