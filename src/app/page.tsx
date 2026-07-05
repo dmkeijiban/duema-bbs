@@ -35,7 +35,9 @@ import {
 } from '@/lib/public-visibility'
 import {
   applyActiveThreadFilter,
+  applyKakologThreadFilter,
   applyLegacyActiveThreadFilter,
+  applyLegacyKakologThreadFilter,
   isArchiveSchemaMissing,
 } from '@/lib/thread-archive'
 
@@ -138,15 +140,27 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
     const hiddenUserIds = await getCachedPublicHiddenUserIds()
     const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
     const offset = (page - 1) * TOP_THREAD_PAGE_SIZE
-    let countQ = supabase
+    let countQ = isArchived
+      ? applyKakologThreadFilter(supabase
+        .from('threads')
+        .select('id', { count: 'exact', head: true })
+      )
+      : applyActiveThreadFilter(supabase
       .from('threads')
       .select('id', { count: 'exact', head: true })
-      .eq('is_archived', isArchived)
+      )
+    countQ = countQ
       .ilike('title', `%${searchQ}%`)
-    let dataQ = supabase
+    let dataQ = isArchived
+      ? applyKakologThreadFilter(supabase
+        .from('threads')
+        .select('id, title, user_id, image_url, thumbnail_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
+      )
+      : applyActiveThreadFilter(supabase
       .from('threads')
       .select('id, title, user_id, image_url, thumbnail_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)')
-      .eq('is_archived', isArchived)
+      )
+    dataQ = dataQ
       .ilike('title', `%${searchQ}%`)
     if (publicUserFilter) {
       countQ = countQ.or(publicUserFilter)
@@ -160,8 +174,38 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
       dataQ = dataQ.in('category_id', categoryIds)
     }
     dataQ = dataQ.order('last_posted_at', { ascending: false }).range(offset, offset + TOP_THREAD_PAGE_SIZE - 1)
-    const [{ count }, { data: raw }] = await Promise.all([countQ, dataQ])
-    const rawThreads = raw ? await withFallbackThumbnails(supabase, filterPublicVisibleUserContent(raw, hiddenUserIds)) : []
+    const [countResult, dataResult] = await Promise.all([countQ, dataQ])
+    let count = countResult.count
+    let raw = dataResult.data
+    if (isArchiveSchemaMissing(countResult.error) || isArchiveSchemaMissing(dataResult.error)) {
+      let legacyCountQ = isArchived
+        ? applyLegacyKakologThreadFilter(supabase.from('threads').select('id', { count: 'exact', head: true }))
+        : applyLegacyActiveThreadFilter(supabase.from('threads').select('id', { count: 'exact', head: true }))
+      let legacyDataQ = isArchived
+        ? applyLegacyKakologThreadFilter(supabase.from('threads').select('id, title, user_id, image_url, thumbnail_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)'))
+        : applyLegacyActiveThreadFilter(supabase.from('threads').select('id, title, user_id, image_url, thumbnail_url, post_count, is_archived, created_at, last_posted_at, category_id, categories(id,name,slug,color)'))
+      legacyCountQ = legacyCountQ.ilike('title', `%${searchQ}%`)
+      legacyDataQ = legacyDataQ.ilike('title', `%${searchQ}%`)
+      if (publicUserFilter) {
+        legacyCountQ = legacyCountQ.or(publicUserFilter)
+        legacyDataQ = legacyDataQ.or(publicUserFilter)
+      }
+      if (categoryIds.length === 1) {
+        legacyCountQ = legacyCountQ.eq('category_id', categoryIds[0])
+        legacyDataQ = legacyDataQ.eq('category_id', categoryIds[0])
+      } else if (categoryIds.length > 1) {
+        legacyCountQ = legacyCountQ.in('category_id', categoryIds)
+        legacyDataQ = legacyDataQ.in('category_id', categoryIds)
+      }
+      legacyDataQ = legacyDataQ.order('last_posted_at', { ascending: false }).range(offset, offset + TOP_THREAD_PAGE_SIZE - 1)
+      const [legacyCount, legacyData] = await Promise.all([legacyCountQ, legacyDataQ])
+      count = legacyCount.count
+      raw = legacyData.data as unknown as typeof raw
+    }
+    const normalizedRaw = isArchived
+      ? (raw ?? []).map(thread => ({ ...thread, is_archived: true }))
+      : raw
+    const rawThreads = normalizedRaw ? await withFallbackThumbnails(supabase, filterPublicVisibleUserContent(normalizedRaw, hiddenUserIds)) : []
     const threads = ADSENSE_REVIEW_MODE ? rawThreads.filter(t => !isAdSenseRiskyThreadTitle(t.title)) : rawThreads
     if (threads.length === 0) return <ThreadEmpty searchQ={searchQ} />
     const totalPages = Math.max(1, Math.ceil((count ?? 0) / TOP_THREAD_PAGE_SIZE))

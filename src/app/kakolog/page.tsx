@@ -16,6 +16,7 @@ import {
   toJstMonthKey,
   type KakologIndexThread,
 } from '@/lib/kakolog-queries'
+import { getThreadArchiveBaseAt } from '@/lib/thread-archive'
 import { SITE_URL } from '@/lib/site-config'
 import type { Category } from '@/types'
 
@@ -30,7 +31,9 @@ export const metadata: Metadata = {
 function getMonthLinks(threads: KakologIndexThread[]) {
   const counts = new Map<string, number>()
   for (const thread of threads) {
-    const key = toJstMonthKey(thread.created_at)
+    const baseAt = getThreadArchiveBaseAt(thread)
+    if (!baseAt) continue
+    const key = toJstMonthKey(baseAt)
     counts.set(key, (counts.get(key) ?? 0) + 1)
   }
   return Array.from(counts, ([month, count]) => ({
@@ -43,8 +46,9 @@ function getMonthLinks(threads: KakologIndexThread[]) {
 function getDateLinksForMonth(threads: KakologIndexThread[], month: string) {
   const counts = new Map<string, number>()
   for (const thread of threads) {
-    if (toJstMonthKey(thread.created_at) !== month) continue
-    const key = toJstDateKey(thread.created_at)
+    const baseAt = getThreadArchiveBaseAt(thread)
+    if (!baseAt || toJstMonthKey(baseAt) !== month) continue
+    const key = toJstDateKey(baseAt)
     counts.set(key, (counts.get(key) ?? 0) + 1)
   }
   return Array.from(counts, ([date, count]) => ({

@@ -90,6 +90,7 @@ type PostTargetThread = {
   comment_locked?: boolean
   auto_lock_exempt?: boolean
   created_at?: string
+  last_posted_at?: string | null
   category_id?: number | null
   categories?: { name?: string | null; slug?: string | null } | { name?: string | null; slug?: string | null }[] | null
 }
@@ -488,7 +489,7 @@ export async function createPost(formData: FormData) {
 
   const threadResult = await supabase
     .from('threads')
-    .select('id, title, body, post_count, is_archived, comment_locked, auto_lock_exempt, created_at, category_id, categories(name,slug)')
+    .select('id, title, body, post_count, is_archived, comment_locked, auto_lock_exempt, created_at, last_posted_at, category_id, categories(name,slug)')
     .eq('id', threadId)
     .single()
   let targetThread = threadResult.data as PostTargetThread | null
@@ -497,7 +498,7 @@ export async function createPost(formData: FormData) {
   if (isMissingColumn(threadError, 'comment_locked') || isMissingColumn(threadError, 'auto_lock_exempt')) {
     const retry = await supabase
       .from('threads')
-      .select('id, title, body, post_count, is_archived, comment_locked, created_at, category_id, categories(name,slug)')
+      .select('id, title, body, post_count, is_archived, comment_locked, created_at, last_posted_at, category_id, categories(name,slug)')
       .eq('id', threadId)
       .single()
     targetThread = retry.data as PostTargetThread | null
@@ -506,7 +507,7 @@ export async function createPost(formData: FormData) {
   if (isMissingColumn(threadError, 'comment_locked')) {
     const retry = await supabase
       .from('threads')
-      .select('id, title, body, post_count, is_archived, created_at, category_id, categories(name,slug)')
+      .select('id, title, body, post_count, is_archived, created_at, last_posted_at, category_id, categories(name,slug)')
       .eq('id', threadId)
       .single()
     targetThread = retry.data as PostTargetThread | null

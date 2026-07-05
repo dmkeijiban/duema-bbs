@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const label = formatJstDateLabel(date)
   return {
     title: `${label}の過去ログ | デュエマ掲示板`,
-    description: `${label}に作成されたデュエマ掲示板の過去ログスレッド一覧です。`,
+    description: `${label}のデュエマ掲示板の過去ログスレッド一覧です。`,
     alternates: { canonical: `${SITE_URL}/kakolog/${date}` },
   }
 }
