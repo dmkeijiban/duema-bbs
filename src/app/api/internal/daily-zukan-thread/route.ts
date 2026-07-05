@@ -43,19 +43,20 @@ function summarizeDailyZukanResult(
   }
 }
 
-// 作成済み思い出図鑑スレを X/Typefully へ投稿する文面を組み立てる。
-function buildTypefullyText(cardName: string, threadUrl: string): string {
+// 作成済み思い出図鑑カードを X/Typefully へ投稿する文面を組み立てる。
+function buildTypefullyText(cardName: string, cardUrl: string): string {
   return [
     'みんなの',
     `「${cardName}」に対する`,
     '思い出を募集中‼️',
     '',
     '当時じゃなくて',
-    '今の評価でもOKです💁‍♀️',
+    '今の評価でもOKです🙆‍♀️',
     '',
     'リプでも掲示板でも',
     '気軽にコメント下さい‼️',
-    threadUrl,
+    '',
+    cardUrl,
   ].join('\n')
 }
 
@@ -135,15 +136,19 @@ async function createTypefullyPost({
   postedDate,
   threadId,
   cardName,
-  imageUrl: imageCandidateUrl,
+  cardUrl,
+  cardImageUrl,
 }: {
   postedDate: string
   threadId: number
   cardName: string
-  imageUrl: string
+  cardUrl: string
+  cardImageUrl: string
 }): Promise<TypefullyOutcome> {
-  const text = buildTypefullyText(cardName, `${SITE_URL}/thread/${threadId}`)
-  const mediaUrls: string[] = []
+  const text = buildTypefullyText(cardName, cardUrl)
+  const fallbackImageUrl = `${SITE_URL}/og/thread/${threadId}.jpg`
+  const mediaUrls = [cardImageUrl || fallbackImageUrl]
+  const imageSource = cardImageUrl ? 'card_image' : 'thread_og_fallback'
   const typefullyScheduleDate = getTypefullyScheduleDate()
 
   console.log('[daily-zukan-thread] typefully start', {
@@ -151,7 +156,8 @@ async function createTypefullyPost({
     threadId,
     scheduledAt: typefullyScheduleDate,
     mediaCount: mediaUrls.length,
-    hasImageCandidate: Boolean(imageCandidateUrl),
+    imageSource,
+    cardUrl,
     hasTypefullyApiKey: Boolean(process.env.TYPEFULLY_API_KEY),
     hasTypefullySocialSetId: Boolean(process.env.TYPEFULLY_SOCIAL_SET_ID),
   })
@@ -169,6 +175,7 @@ async function createTypefullyPost({
       postedDate,
       threadId,
       error: tf.error,
+      imageSource,
     })
     imageFallback = tf.error
     tf = await createTypefullyDraft({
@@ -184,6 +191,7 @@ async function createTypefullyPost({
       threadId,
       error: tf.error,
       mediaCount: usedMediaUrls.length,
+      imageSource,
     })
     const persistError = await saveTypefullyError(postedDate, tf.error)
     if (persistError) {
@@ -203,6 +211,7 @@ async function createTypefullyPost({
     shareUrl: tf.share_url,
     scheduledAt: typefullyScheduleDate,
     mediaCount: usedMediaUrls.length,
+    imageSource,
   })
   const persistError = await saveTypefullySuccess(postedDate, tf.id, tf.share_url, typefullyScheduleDate)
   if (persistError) {
@@ -261,7 +270,8 @@ async function createTypefullyForPostedDate(postedDate: string): Promise<{
     postedDate,
     threadId: lookup.threadId,
     cardName: lookup.cardName,
-    imageUrl: lookup.imageUrl,
+    cardUrl: lookup.cardUrl,
+    cardImageUrl: lookup.imageUrl,
   })
 
   return {
@@ -335,8 +345,9 @@ async function handlePreviewTypefully(postedDate: string): Promise<NextResponse>
     mode: 'preview_typefully',
     postedDate,
     threadId: lookup.threadId,
-    text: buildTypefullyText(lookup.cardName, `${SITE_URL}/thread/${lookup.threadId}`),
-    mediaUrls: lookup.imageUrl ? [lookup.imageUrl] : [],
+    text: buildTypefullyText(lookup.cardName, lookup.cardUrl),
+    mediaUrls: [lookup.imageUrl || `${SITE_URL}/og/thread/${lookup.threadId}.jpg`],
+    imageSource: lookup.imageUrl ? 'card_image' : 'thread_og_fallback',
     typefully: 'error' in guard ? { guardError: guard.error } : guard,
   })
 }
@@ -377,7 +388,8 @@ export async function GET(req: NextRequest) {
         postedDate: result.postedDate,
         threadId: result.threadId,
         cardName: result.cardName,
-        imageUrl: result.imageUrl,
+        cardUrl: result.cardUrl,
+        cardImageUrl: result.imageUrl,
       })
     } else if (result.status === 'skipped') {
       console.log('[daily-zukan-thread] skipped', {
