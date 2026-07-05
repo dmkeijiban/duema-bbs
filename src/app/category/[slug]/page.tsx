@@ -9,6 +9,7 @@ const InlineNewThread = dynamic(
 )
 import { RecommendSection } from '@/components/RecommendSection'
 import { BottomNav } from '@/components/ThreadSortPage'
+import { GreenCtaBanner } from '@/components/GreenCtaBanner'
 import { withFallbackThumbnails } from '@/lib/thumbnail'
 import { seededShuffle } from '@/lib/stable-shuffle'
 import { Thread, Category } from '@/types'
@@ -307,6 +308,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         <Suspense fallback={<RecommendSectionSkeleton />}>
           <RecommendSection />
         </Suspense>
+
+        <GreenCtaBanner />
 
         {topNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
       </div>
