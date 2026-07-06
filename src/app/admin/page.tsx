@@ -14,11 +14,13 @@ import {
   adminHidePostsBySession,
   adminToggleAutoLockExempt,
   adminToggleThreadCommentLock,
+  updateTopShowcaseModeAction,
 } from './actions'
 import { SettingEditFormClient } from './SettingEditFormClient'
 import { getAllSettings } from '@/lib/settings'
 import { Notice } from '@/components/NoticeBlock'
 import { verifyAdminCookie } from '@/lib/admin-auth'
+import { TOP_SHOWCASE_MODE_OPTIONS, normalizeTopShowcaseMode } from '@/lib/top-showcase'
 import {
   ADMIN_DASHBOARD_CACHE_SECONDS,
   getGa4DashboardData,
@@ -319,6 +321,8 @@ export default async function AdminPage({
     analyticsDays?: string
     hidden?: string
     unhidden?: string
+    topShowcaseSaved?: string
+    topShowcaseError?: string
   }>
 }) {
   const sp = await searchParams
@@ -434,6 +438,9 @@ export default async function AdminPage({
 
   // サイト設定
   const settings = await getAllSettings()
+  const currentTopShowcaseMode = normalizeTopShowcaseMode(settings.top_showcase_mode)
+  const currentTopShowcaseLabel =
+    TOP_SHOWCASE_MODE_OPTIONS.find(option => option.value === currentTopShowcaseMode)?.label ?? 'みんなのプロフィール'
   const [{ data: ngWords }, { data: sessionBans }] = await Promise.all([
     adminSupabase
       .from('moderation_ng_words')
@@ -820,6 +827,61 @@ export default async function AdminPage({
           label={SETTING_LABELS[editSetting]}
         />
       )}
+
+      <section className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-3 py-2">
+          <div>
+            <h2 className="font-bold text-gray-700">トップ表示設定</h2>
+            <p className="mt-0.5 text-xs text-gray-500">
+              現在: <span className="font-bold text-blue-700">{currentTopShowcaseLabel}</span>
+            </p>
+          </div>
+          {sp.topShowcaseSaved && (
+            <span className="rounded border border-green-200 bg-green-50 px-2 py-1 text-xs font-bold text-green-700">
+              保存しました
+            </span>
+          )}
+          {sp.topShowcaseError && (
+            <span className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs font-bold text-red-700">
+              保存できませんでした
+            </span>
+          )}
+        </div>
+        <form action={updateTopShowcaseModeAction} className="space-y-3 p-3">
+          <div className="grid gap-2 md:grid-cols-2">
+            {TOP_SHOWCASE_MODE_OPTIONS.map(option => (
+              <label
+                key={option.value}
+                className="flex cursor-pointer gap-2 rounded border border-gray-200 bg-gray-50 p-2 text-sm hover:bg-blue-50"
+              >
+                <input
+                  type="radio"
+                  name="top_showcase_mode"
+                  value={option.value}
+                  defaultChecked={option.value === currentTopShowcaseMode}
+                  className="mt-1 shrink-0"
+                />
+                <span className="min-w-0">
+                  <span className="block font-bold text-gray-800">{option.label}</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-gray-500">{option.description}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="submit"
+              className="px-4 py-1.5 text-xs font-medium text-white"
+              style={{ background: '#004085' }}
+            >
+              保存
+            </button>
+            <Link href="/" className="px-3 py-1.5 text-xs text-blue-700 underline">
+              トップを確認
+            </Link>
+          </div>
+        </form>
+      </section>
 
       {/* ─── モデレーション（NGワード・BAN）折り畳み ─── */}
       <details className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
