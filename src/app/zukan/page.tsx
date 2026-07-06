@@ -65,30 +65,30 @@ const CIV_TEXT: Record<string, string> = {
 
 const LINKED_PACK_SLUGS = new Set(['dm-01', 'dm-02', 'dmr-01', 'dmrp-01', 'dm22-rp1'])
 
-const ERA_REPRESENTATIVE_PACKS: Array<{
+const ERA_LINKS: Array<{
   era: string
-  summary: string
-  pack: ZukanPack
+  years: string
+  slug: string
 }> = [
   {
     era: '勝舞編',
-    summary: 'デュエル・マスターズ最初期の入口。',
-    pack: { id: '', slug: 'dm-01', code: 'DM-01', name: '基本セット', released_year: '2002年5月30日', card_count: 120, description: null, is_published: true, sort_order: 1, image_url: null },
+    years: '2002〜2011',
+    slug: 'dm-01',
   },
   {
     era: '勝太編',
-    summary: 'エピソード1から始まる勝太編の入口。',
-    pack: { id: '', slug: 'dmr-01', code: 'DMR-01', name: 'エピソード1 ファースト・コンタクト', released_year: '2011年6月25日', card_count: 120, description: null, is_published: true, sort_order: 101, image_url: null },
+    years: '2011〜2017',
+    slug: 'dmr-01',
   },
   {
-    era: 'ジョー篇',
-    summary: 'ジョーカーズ登場期の入口。',
-    pack: { id: '', slug: 'dmrp-01', code: 'DMRP-01', name: '拡張パック新1弾 ジョーカーズ参上！！', released_year: '2017年3月25日', card_count: 104, description: null, is_published: true, sort_order: 201, image_url: null },
+    era: 'ジョー編',
+    years: '2017〜2022',
+    slug: 'dmrp-01',
   },
   {
-    era: 'ウィン篇',
-    summary: 'アビスが本格始動したウィン篇の入口。',
-    pack: { id: '', slug: 'dm22-rp1', code: 'DM22-RP1', name: 'ゴッド・オブ・アビス 第1弾「伝説の邪神」', released_year: '2022年9月17日', card_count: 84, description: null, is_published: true, sort_order: 301, image_url: null },
+    era: 'ウィン編',
+    years: '2022〜',
+    slug: 'dm22-rp1',
   },
 ]
 
@@ -193,44 +193,23 @@ function PackListCard({ pack }: { pack: ZukanPack }) {
 
 function EraCard({
   era,
-  summary,
-  pack,
-  isAvailable,
+  years,
+  slug,
 }: {
   era: string
-  summary: string
-  pack: ZukanPack
-  isAvailable: boolean
+  years: string
+  slug: string
 }) {
-  const isLinked = LINKED_PACK_SLUGS.has(pack.slug) && isAvailable
-  const body = (
-    <div className="flex h-full flex-col border border-gray-300 bg-white px-3 py-3">
-      <div className="text-xs font-bold text-orange-700">{era}</div>
-      <p className="mt-1 min-h-8 text-xs leading-relaxed text-gray-500">{summary}</p>
-      <div className="mt-3 border-t border-gray-100 pt-2">
-        <div className="font-mono text-xs font-bold text-blue-700">{pack.code}</div>
-        <div className="mt-0.5 text-sm font-bold leading-snug text-gray-800">{pack.name}</div>
-        <dl className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
-          {pack.released_year && (
-            <div><dt className="inline font-bold">発売：</dt><dd className="inline">{pack.released_year}</dd></div>
-          )}
-          {pack.card_count && (
-            <div><dt className="inline font-bold">収録：</dt><dd className="inline">全{pack.card_count}種</dd></div>
-          )}
-        </dl>
-      </div>
-    </div>
-  )
-
-  return isLinked ? (
+  return (
     <Link
-      href={`/zukan/${pack.slug}`}
-      className="block h-full cursor-pointer transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]"
+      href={`/zukan/${slug}`}
+      className="block h-full border border-gray-300 bg-white px-3 py-3 transition-all duration-100 hover:border-blue-400 hover:bg-blue-50/40 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 sm:px-4 sm:py-4 [-webkit-tap-highlight-color:transparent]"
     >
-      {body}
+      <div className="flex items-center justify-center gap-2 whitespace-nowrap sm:block sm:text-left">
+        <span className="text-sm font-bold leading-snug text-blue-700">{era}</span>
+        <span className="text-xs font-bold text-gray-500 sm:mt-1 sm:block">{years}</span>
+      </div>
     </Link>
-  ) : (
-    <div className="h-full opacity-80">{body}</div>
   )
 }
 
@@ -383,18 +362,14 @@ async function MemoriesView() {
           <h2 className="text-sm font-bold text-gray-800">時代から探す</h2>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {ERA_REPRESENTATIVE_PACKS.map(item => {
-            const dbPack = packs.find(pack => pack.slug === item.pack.slug)
-            return (
-              <EraCard
-                key={item.pack.slug}
-                era={item.era}
-                summary={item.summary}
-                pack={dbPack ?? item.pack}
-                isAvailable={item.pack.slug === 'dm-01' || item.pack.slug === 'dm-02' || !!dbPack}
-              />
-            )
-          })}
+          {ERA_LINKS.map(item => (
+            <EraCard
+              key={item.slug}
+              era={item.era}
+              years={item.years}
+              slug={item.slug}
+            />
+          ))}
         </div>
       </section>
 

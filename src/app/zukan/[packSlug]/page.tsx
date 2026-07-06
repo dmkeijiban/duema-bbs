@@ -9,6 +9,10 @@ import { SITE_URL } from '@/lib/site-config'
 
 const PAGE_SIZE = 60
 
+// パック詳細ページは収録カード一覧を主導線にする。
+// 将来「注目カード」枠を復活する場合も、全パック一括ではなく選定方針を決めてからONにする。
+const SHOW_FEATURED_PACK_CARDS = false
+
 const CIV_BADGE: Record<string, string> = {
   火: 'bg-red-100 text-red-700',
   水: 'bg-blue-100 text-blue-700',
@@ -184,7 +188,7 @@ export default async function ZukanPackPage({
 
   const from = (page - 1) * PAGE_SIZE + 1
   const to = Math.min((page - 1) * PAGE_SIZE + sortedCards.length, total)
-  const repCards = page === 1 ? sortedCards.slice(0, 5) : []
+  const featuredCards = SHOW_FEATURED_PACK_CARDS && page === 1 ? sortedCards.slice(0, 5) : []
   const cardGroups = groupCardsBySection(pack.slug, sortedCards)
 
   return (
@@ -222,14 +226,14 @@ export default async function ZukanPackPage({
         </div>
       </header>
 
-      {repCards.length > 0 && (
+      {featuredCards.length > 0 && (
         <section className="mb-5">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border border-gray-300 bg-gray-50 px-3 py-2">
             <h2 className="text-sm font-bold text-gray-800">{pack.code} {pack.name}の代表カード</h2>
             <Link href="#card-list" className="text-xs text-blue-600 hover:underline">収録カードをもっと見る →</Link>
           </div>
           <div className="flex snap-x gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
-            {repCards.map(card => (
+            {featuredCards.map(card => (
               <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="block w-[46%] flex-shrink-0 snap-start border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 sm:w-auto [-webkit-tap-highlight-color:transparent]">
                 <CardFace card={card} />
                 <div className="px-1.5 py-1.5">
