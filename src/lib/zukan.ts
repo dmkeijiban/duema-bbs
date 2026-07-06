@@ -462,6 +462,7 @@ export async function fetchCardBySlug(slug: string): Promise<FetchCardResult> {
       .from('zukan_cards')
       .select(CARD_DETAIL_SELECT)
       .eq('slug', slug)
+      .eq('is_published', true)
       .single()
     if (error) {
       if (isTableMissing(error)) return { status: 'table_missing' }
