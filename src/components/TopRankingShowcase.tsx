@@ -27,7 +27,7 @@ type ShowcaseRankingUser = {
   rank?: number
 }
 
-function ProfileAvatar({ user, index }: { user: ProfileShowcaseUser; index: number }) {
+function ProfileAvatar({ user }: { user: ProfileShowcaseUser }) {
   if (user.avatar_url) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -41,12 +41,21 @@ function ProfileAvatar({ user, index }: { user: ProfileShowcaseUser; index: numb
     )
   }
 
-  const ringColor = AVATAR_RING_COLORS[index % AVATAR_RING_COLORS.length]
   return (
     <span
-      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ring-1 md:h-20 md:w-20 md:-translate-y-2 ${ringColor}`}
+      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-gray-200 md:h-20 md:w-20 md:-translate-y-2"
       aria-hidden="true"
-    />
+    >
+      <svg
+        className="text-gray-400"
+        style={{ width: '45%', height: '45%' }}
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+      </svg>
+    </span>
   )
 }
 
@@ -76,7 +85,7 @@ function RankingAvatar({ user, index }: { user: ShowcaseRankingUser; index: numb
   )
 }
 
-function ProfileIconLink({ user, index }: { user: ProfileShowcaseUser; index: number }) {
+function ProfileIconLink({ user }: { user: ProfileShowcaseUser }) {
   return (
     <Link
       href={`/u/${user.profile_slug}`}
@@ -85,7 +94,7 @@ function ProfileIconLink({ user, index }: { user: ProfileShowcaseUser; index: nu
       prefetch={false}
       className="relative flex h-20 min-w-0 items-center justify-center overflow-hidden bg-white transition-colors hover:bg-gray-50 md:h-24"
     >
-      <ProfileAvatar user={user} index={index} />
+      <ProfileAvatar user={user} />
       <span
         className="absolute inset-x-0 bottom-0 hidden h-5 min-w-0 items-center justify-center border-t border-gray-100 bg-gray-50/95 px-1.5 text-center text-[11px] font-bold leading-none text-slate-700 md:flex"
         title={user.display_name}
@@ -149,8 +158,8 @@ function ProfileShowcase({ users }: { users: ProfileShowcaseUser[] }) {
   return (
     <ShowcaseShell title="👤 みんなのプロフィール" titlePaddingClassName="px-2">
       <div className="grid grid-cols-5 gap-px bg-gray-200 md:grid-cols-10">
-        {users.map((user, index) => (
-          <ProfileIconLink key={user.profile_slug} user={user} index={index} />
+        {users.map(user => (
+          <ProfileIconLink key={user.profile_slug} user={user} />
         ))}
       </div>
     </ShowcaseShell>
