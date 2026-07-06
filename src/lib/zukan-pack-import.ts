@@ -186,40 +186,56 @@ export async function checkZukanImportDuplicates(data: ZukanPackImportData): Pro
 
   const databaseUrl = getDatabaseUrl()
   if (databaseUrl) {
-    const db = await getPool()
-    const client = await db.connect()
     try {
-      const packResult = packSlug
-        ? await client.query<{ slug: string }>('select slug from public.zukan_packs where slug = $1', [packSlug])
-        : { rows: [] }
-      const cardResult = slugs.length > 0
-        ? await client.query<{ slug: string }>('select slug from public.zukan_cards where slug = any($1::text[]) order by slug', [slugs])
-        : { rows: [] }
-      const existingPackSlugs = packResult.rows.map(row => row.slug)
-      const existingCardSlugs = cardResult.rows.map(row => row.slug)
-      if (existingPackSlugs.length > 0) errors.push(`[pack] slug already exists: ${existingPackSlugs.join(', ')}`)
-      if (existingCardSlugs.length > 0) errors.push(`[cards] slug already exists: ${existingCardSlugs.slice(0, 20).join(', ')}${existingCardSlugs.length > 20 ? ' ...' : ''}`)
-      return { checked: true, existingPackSlugs, existingCardSlugs, errors, warnings }
-    } finally {
-      client.release()
+      const db = await getPool()
+      const client = await db.connect()
+      try {
+        const packResult = packSlug
+          ? await client.query<{ slug: string }>('select slug from public.zukan_packs where slug = $1', [packSlug])
+          : { rows: [] }
+        const cardResult = slugs.length > 0
+          ? await client.query<{ slug: string }>('select slug from public.zukan_cards where slug = any($1::text[]) order by slug', [slugs])
+          : { rows: [] }
+        const existingPackSlugs = packResult.rows.map(row => row.slug)
+        const existingCardSlugs = cardResult.rows.map(row => row.slug)
+        if (existingPackSlugs.length > 0) errors.push(`[pack] slug already exists: ${existingPackSlugs.join(', ')}`)
+        if (existingCardSlugs.length > 0) errors.push(`[cards] slug already exists: ${existingCardSlugs.slice(0, 20).join(', ')}${existingCardSlugs.length > 20 ? ' ...' : ''}`)
+        return { checked: true, existingPackSlugs, existingCardSlugs, errors, warnings }
+      } finally {
+        client.release()
+      }
+    } catch {
+      warnings.push('DATABASE_URL / SUPABASE_DB_URL での既存slug重複チェックに失敗しました')
     }
   }
 
   if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    const supabase = createAdminClient()
-    const [packResult, cardResult] = await Promise.all([
-      packSlug
-        ? supabase.from('zukan_packs').select('slug').eq('slug', packSlug)
-        : Promise.resolve({ data: [] }),
-      slugs.length > 0
-        ? supabase.from('zukan_cards').select('slug').in('slug', slugs)
-        : Promise.resolve({ data: [] }),
-    ])
-    const existingPackSlugs = ((packResult.data ?? []) as { slug: string }[]).map(row => row.slug)
-    const existingCardSlugs = ((cardResult.data ?? []) as { slug: string }[]).map(row => row.slug)
-    if (existingPackSlugs.length > 0) errors.push(`[pack] slug already exists: ${existingPackSlugs.join(', ')}`)
-    if (existingCardSlugs.length > 0) errors.push(`[cards] slug already exists: ${existingCardSlugs.slice(0, 20).join(', ')}${existingCardSlugs.length > 20 ? ' ...' : ''}`)
-    return { checked: true, existingPackSlugs, existingCardSlugs, errors, warnings }
+    try {
+      const supabase = createAdminClient()
+      const [packResult, cardResult] = await Promise.all([
+        packSlug
+          ? supabase.from('zukan_packs').select('slug').eq('slug', packSlug)
+          : Promise.resolve({ data: [] }),
+        slugs.length > 0
+          ? supabase.from('zukan_cards').select('slug').in('slug', slugs)
+          : Promise.resolve({ data: [] }),
+      ])
+      if ('error' in packResult && packResult.error) throw packResult.error
+      if ('error' in cardResult && cardResult.error) throw cardResult.error
+      const existingPackSlugs = ((packResult.data ?? []) as { slug: string }[]).map(row => row.slug)
+      const existingCardSlugs = ((cardResult.data ?? []) as { slug: string }[]).map(row => row.slug)
+      if (existingPackSlugs.length > 0) errors.push(`[pack] slug already exists: ${existingPackSlugs.join(', ')}`)
+      if (existingCardSlugs.length > 0) errors.push(`[cards] slug already exists: ${existingCardSlugs.slice(0, 20).join(', ')}${existingCardSlugs.length > 20 ? ' ...' : ''}`)
+      return { checked: true, existingPackSlugs, existingCardSlugs, errors, warnings }
+    } catch {
+      errors.push('既存slug重複チェックに失敗しました')
+      return { checked: false, existingPackSlugs: [], existingCardSlugs: [], errors, warnings }
+    }
+  }
+
+  if (databaseUrl) {
+    errors.push('既存slug重複チェックに失敗しました')
+    return { checked: false, existingPackSlugs: [], existingCardSlugs: [], errors, warnings }
   }
 
   warnings.push('DB接続情報がないため、既存slug重複チェックは未実行です')
