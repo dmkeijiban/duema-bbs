@@ -15,6 +15,371 @@ export const DM02_PACK: ZukanPack = {
 
 type Dm02CardDef = Omit<ZukanCard, 'id' | 'pack_id' | 'mana' | 'illustrator' | 'ability_text' | 'flavor_text' | 'image_url' | 'official_page_url' | 'official_image_url'>
 
+type Dm02CardDetail = Pick<ZukanCard, 'illustrator' | 'ability_text' | 'flavor_text' | 'official_page_url'>
+
+const DM02_CARD_DETAILS: Record<string, Dm02CardDetail> = {
+  'dm02-001': {
+    illustrator: 'Kou1',
+    ability_text: 'ブロッカー(相手クリーチャーが攻撃するとき、このクリーチャーをタップして、その攻撃を阻止してよい。 そのあと、その相手クリーチャーとバトルする。) 進化ー自分のガーディアン１体の上に置く。\nW(ダブル)・ブレイカー(シールドを攻撃したとき、このクリーチャーはシールドを２枚ブレイクする。)',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-s01',
+  },
+  'dm02-002': {
+    illustrator: 'Eiji Kaneda',
+    ability_text: '進化ー自分のリキッド・ピープル１体の上に置く。 このクリーチャーがバトルゾーンに出たとき、バトルゾーンにある「ブロッカー」を持つクリーチャーをすべて、持ち主の手札に戻す。',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-s02',
+  },
+  'dm02-003': {
+    illustrator: 'Hikaru Ikusa',
+    ability_text: '進化ー自分のパラサイトワーム１体の上に置く。\nW(ダブル)・ブレイカー(シールドを攻撃したとき、このクリーチャーはシールドを２枚ブレイクする。)',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-s03',
+  },
+  'dm02-004': {
+    illustrator: 'Hisashi Momose',
+    ability_text: '進化ー自分のヒューマノイド１体の上に置く。\nW(ダブル)・ブレイカー(シールドを攻撃したとき、このクリーチャーはシールドを２枚ブレイクする。)\nこのクリーチャーがバトルゾーンにある間、バトルゾーンにある自分の他のヒューマノイドすべてのパワーは、+1000される。',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-s04',
+  },
+  'dm02-005': {
+    illustrator: 'Ryoya Yuki',
+    ability_text: '進化ー自分のビーストフォーク１体の上に置く。\nこのクリーチャーがバトルゾーンに出たとき、自分の山札の一番上のカードを２枚表にして、自分のマナゾーンに置く。\nW(ダブル)・ブレイカー(シールドを攻撃したとき、このクリーチャーはシールドを２枚ブレイクする。)',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-s05',
+  },
+  'dm02-006': {
+    illustrator: 'Seki',
+    ability_text: 'このクリーチャーはブロックされない。',
+    flavor_text: '精霊の力は、はるかな星空にまで及ぶという。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-001',
+  },
+  'dm02-007': {
+    illustrator: 'Daisuke Izuka',
+    ability_text: 'このクリーチャーが攻撃するとき、バトルゾーンにある相手のクリーチャーと同じ枚数のカードを引いてよい。',
+    flavor_text: '地上侵攻用プログラム。1対多数戦闘を想定し、自動追尾システムを強化。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-002',
+  },
+  'dm02-008': {
+    illustrator: 'Masateru Ikeda',
+    ability_text: 'このクリーチャーが攻撃するとき、相手の手札からカードを１枚見ないで選び、相手はそれを持ち主の墓地に置く。',
+    flavor_text: '闇の軍勢は、フィアナの森を住み慣れた地獄に変えた。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-003',
+  },
+  'dm02-009': {
+    illustrator: 'Dustmoss',
+    ability_text: 'このクリーチャーが攻撃するとき、相手のマナゾーンからカードを１枚選び、持ち主の墓地に置く。',
+    flavor_text: '東のボルシャックが目覚めた時、西のボルザードが咆哮する。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-004',
+  },
+  'dm02-010': {
+    illustrator: 'Katsuya',
+    ability_text: 'このクリーチャーは、パワー5000以下のクリーチャーにブロックされない。\nW(ダブル)・ブレイカー(シールドを攻撃したとき、このクリーチャーはシールドを２枚ブレイクする。)',
+    flavor_text: '闇のワームがその力を飲み込み、平和な森を地獄に変えた。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-005',
+  },
+  'dm02-011': {
+    illustrator: 'Daisuke Izuka',
+    ability_text: 'このクリーチャーがバトルゾーンに出たとき、自分の墓地から呪文を１枚選び、自分の手札に戻してよい。',
+    flavor_text: 'これはまだ演習にすぎない。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-006',
+  },
+  'dm02-012': {
+    illustrator: 'D-Suzuki',
+    ability_text: 'このクリーチャーが攻撃するとき、自分の山札から呪文を１枚さがして相手に見せ、自分の手札に加えてよい。そのあと、山札をシャッフルする。',
+    flavor_text: '大いなる異変を確認するために、予見者は伝道師を派遣した。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-007',
+  },
+  'dm02-013': {
+    illustrator: 'Hisashi Momose',
+    ability_text: 'ブロッカー(相手クリーチャーが攻撃するとき、このクリーチャーをタップして、その攻撃を阻止してよい。そのあと、その相手クリーチャーとバトルする。)\nこのクリーチャーをブロックのためにタップしたときは、バトルのあとでアンタップする。',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-008',
+  },
+  'dm02-014': {
+    illustrator: 'Tomofumi Ogasawara',
+    ability_text: 'このクリーチャーがバトルゾーンにある間、すべてのリキッド・ピープルはブロックされない。\nW(ダブル)・ブレイカー(シールドを攻撃したとき、このクリーチャーはシールドを２枚ブレイクする。)',
+    flavor_text: 'サイバーロードは水の領域最大の生物をも兵器に変えた。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-009',
+  },
+  'dm02-015': {
+    illustrator: 'Ryoya Yuki',
+    ability_text: 'ブロッカー(相手クリーチャーが攻撃するとき、このクリーチャーをタップして、その攻撃を阻止してよい。そのあと、その相手クリーチャーとバトルする。)\nこのクリーチャーがバトルゾーンに出たとき、バトルゾーンにあるクリーチャーを１体選び、持ち主の手札に戻してよい。',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-010',
+  },
+  'dm02-016': {
+    illustrator: 'Youichi Kai',
+    ability_text: 'このクリーチャーが攻撃するとき、カードを１枚引いてよい。',
+    flavor_text: 'サイバーロードは、封印された12のプログラムを入力し、リキッド・ピープルの精鋭を生み出した。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-011',
+  },
+  'dm02-017': {
+    illustrator: 'Hideaki Takamura',
+    ability_text: 'このクリーチャーが攻撃するとき、自分のシールドを１枚選び、自分の墓地に置く。\nW(ダブル)・ブレイカー(シールドを攻撃したとき、このクリーチャーはシールドを２枚ブレイクする。)',
+    flavor_text: 'この日、ダークロードは念願の地上侵略を決意した。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-012',
+  },
+  'dm02-018': {
+    illustrator: 'Masaki Hirooka',
+    ability_text: 'このクリーチャーがバトルゾーンに出たとき、バトルゾーンにあるパワー3000以下の自分のクリーチャーを１体選び、自分の墓地に置く。',
+    flavor_text: '地上のクリーチャーを食い荒らし、ワームたちはさらなる発達をとげた。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-013',
+  },
+  'dm02-019': {
+    illustrator: 'Daisuke Izuka',
+    ability_text: 'このクリーチャーが攻撃するとき、自分の墓地からクリーチャーを１体選び、自分の手札に戻してよい。',
+    flavor_text: '「ちくりとするだけです。すぐに楽になりますよ。」 ー闇道化マルパス',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-014',
+  },
+  'dm02-020': {
+    illustrator: 'Jason',
+    ability_text: 'このクリーチャーが攻撃するとき、相手がブロックする前に、バトルゾーンにある相手の「ブロッカー」を持つクリーチャーを１体選び、持ち主の墓地に置く。\nW(ダブル)・ブレイカー(シールドを攻撃したとき、このクリーチャーはシールドを２枚ブレイクする。)',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-015',
+  },
+  'dm02-021': {
+    illustrator: 'Akira Hamada',
+    ability_text: 'このクリーチャーがバトルゾーンから墓地に置かれるとき、各プレイヤーは自分自身のマナゾーンからカードを２枚ずつ選び、それぞれの墓地に置く。',
+    flavor_text: '「液体岩石内に生息。危険度A。」リキッド・ピープルの報告書。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-016',
+  },
+  'dm02-022': {
+    illustrator: 'Akifumi Yamamoto',
+    ability_text: '攻撃中、このクリーチャーのパワーは、バトルゾーンにある自分の他のタップされているクリーチャー１体につき+2000される。',
+    flavor_text: '「い?やっほおおおっっっ！！！」海岸線に火の領域の最初の援軍が到着した。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-017',
+  },
+  'dm02-023': {
+    illustrator: 'Masaki Hirooka',
+    ability_text: 'このクリーチャーがバトルゾーンに出たとき、相手のマナゾーンからカードを２枚まで選び、持ち主の墓地に置く。',
+    flavor_text: '「なんて分解しがいのあるやつだ。」　ー放浪の勇者ジージョ',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-018',
+  },
+  'dm02-024': {
+    illustrator: 'Ittoku',
+    ability_text: 'このクリーチャーがバトルゾーンに出たとき、自分の山札からクリーチャーを１枚さがして相手に見せ、自分の手札に加える。そのあと、山札をシャッフルする。',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-019',
+  },
+  'dm02-025': {
+    illustrator: 'Yusaku Nakaaki',
+    ability_text: 'このクリーチャーがバトルゾーンにある間、自分のクリーチャーを召喚するとき、支払うコストは１少なくなる。ただし、コストが１のときは少なくならない。',
+    flavor_text: '最初に森に入ったキマイラたちは、森そのものから攻撃を受けた。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-020',
+  },
+  'dm02-026': {
+    illustrator: 'Akifumi Yamamoto',
+    ability_text: '進化ー自分のガーディアン１体の上に置く。\nこのクリーチャーがバトルゾーンに出たとき、バトルゾーンにある相手の「ブロッカー」を持つクリーチャーをすべてタップする。',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-021',
+  },
+  'dm02-027': {
+    illustrator: 'Kou1',
+    ability_text: 'このクリーチャーが攻撃するとき、相手のシールドを１枚選んで見てよい。そのあとそれを元に戻す。',
+    flavor_text: '姿消え行く予言者は、新しい時代を予見した。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-022',
+  },
+  'dm02-028': {
+    illustrator: 'Akifumi Yamamoto',
+    ability_text: 'このターン、バトルゾーンにある自分のクリーチャーはすべて、たとえ召喚酔いであったり、「このクリーチャーは攻撃することができない」または「このクリーチャーは相手プレイヤーを攻撃できない」と書かれていても、相手プレイヤーを攻撃することができる。',
+    flavor_text: '今、光の封印を解き放つ。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-023',
+  },
+  'dm02-029': {
+    illustrator: 'Norikatsu Miyoshi',
+    ability_text: '進化ー自分のリキッド・ピープル１体の上に置く。 W(ダブル)・ブレイカー(シールドを攻撃したとき、このクリーチャーはシールドを２枚ブレイクする。)\nこのクリーチャーはブロックされない。',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-024',
+  },
+  'dm02-030': {
+    illustrator: 'Atsushi Kawasaki',
+    ability_text: 'このクリーチャーが攻撃するとき、相手がブロックする前に、バトルゾーンにある火または自然のクリーチャーを１体選び、持ち主の手札に戻してよい。',
+    flavor_text: '地上侵攻用プログラム。特定領域のクリーチャーへの対応システムを強化。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-025',
+  },
+  'dm02-031': {
+    illustrator: 'Daisuke Izuka',
+    ability_text: 'S(シールド)・トリガー(このカードをシールドゾーンから手札に戻すとき、コストを支払わずにすぐ使ってよい。)\nバトルゾーンにある相手のクリーチャーと同じ枚数のカードを引く。',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-026',
+  },
+  'dm02-032': {
+    illustrator: 'Naoki Saito',
+    ability_text: '進化ー自分のパラサイトワーム１体の上に置く。\nこのクリーチャーがバトルゾーンに出たとき、バトルゾーンにある相手のクリーチャーを１体選び、持ち主の墓地に置いてよい。',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-027',
+  },
+  'dm02-033': {
+    illustrator: 'Nottsuo',
+    ability_text: 'ブロッカー(相手クリーチャーが攻撃するとき、このクリーチャーをタップして、その攻撃を阻止してよい。 そのあと、その相手クリーチャーとバトルする。)\nこのクリーチャーは相手プレイヤーを攻撃できない。',
+    flavor_text: 'むさぼり食うことでは満たされない飢えがある。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-028',
+  },
+  'dm02-034': {
+    illustrator: 'Tomofumi Ogasawara',
+    ability_text: '相手は自分自身の手札をすべて、持ち主の墓地に置く。',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-029',
+  },
+  'dm02-035': {
+    illustrator: 'Dai',
+    ability_text: '進化ー自分のヒューマノイド１体の上に置く。\n攻撃中、このクリーチャーのパワーは、バトルゾーンにある他のヒューマノイド１体につき+2000される。',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-030',
+  },
+  'dm02-036': {
+    illustrator: 'Atsushi Kawasaki',
+    ability_text: 'このクリーチャーは、タップされていないクリーチャーを攻撃できる。',
+    flavor_text: '騎兵たちは、全速で戦場を駆け抜ける。闘いの始まりを報告するために。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-031',
+  },
+  'dm02-037': {
+    illustrator: 'Sansyu',
+    ability_text: 'S(シールド)・トリガー(このカードをシールドゾーンから手札に戻すとき、コストを支払わずにすぐ使ってよい。)\n各プレイヤーは、バトルゾーンにあるパワー2000以下のクリーチャーすべてを、それぞれの墓地に置く。',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-032',
+  },
+  'dm02-038': {
+    illustrator: 'Tsutomu Kawade',
+    ability_text: '進化ー自分のビーストフォーク１体の上に置く。\nこのクリーチャーがバトルゾーンにあり、タップされていれば、バトルゾーンにある自分の他のビーストフォークすべてのパワーは+2000される。',
+    flavor_text: '怒りが究極の力を呼び起こす。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-033',
+  },
+  'dm02-039': {
+    illustrator: 'Sansyu',
+    ability_text: 'パワーアタッカー+2000(攻撃中、このクリーチャーのパワーは+2000される。)',
+    flavor_text: '彼の拳がフィアナの森を救った。その命と引き換えに。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-034',
+  },
+  'dm02-040': {
+    illustrator: 'Tsutomu Kawade',
+    ability_text: 'S(シールド)・トリガー(このカードをシールドゾーンから手札に戻すとき、コストを支払わずにすぐ使ってよい。)\n相手のマナゾーンからカードを１枚選び、持ち主の墓地に置く。',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-035',
+  },
+  'dm02-041': {
+    illustrator: 'Hisanobu Kometani',
+    ability_text: 'このクリーチャーがバトルゾーンに出たとき、カードを１枚引いてよい。',
+    flavor_text: '磁力の使徒よ覚醒せよ。汝の翼は意思の鎖なり。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-036',
+  },
+  'dm02-042': {
+    illustrator: 'Dustmoss',
+    ability_text: 'このクリーチャーがバトルゾーンに出たとき、バトルゾーンにある相手のクリーチャーを１体選び、タップしてよい。',
+    flavor_text: 'くろがねに輝く予言者は、変化を見守ることを選んだ。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-037',
+  },
+  'dm02-043': {
+    illustrator: 'Norikatsu Miyoshi',
+    ability_text: null,
+    flavor_text: '大いなる異変を察知して、まず守護者たちが変化に対応した。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-038',
+  },
+  'dm02-044': {
+    illustrator: 'Atsushi Kawasaki',
+    ability_text: 'S(シールド)・トリガー(このカードをシールドゾーンから手札に戻すとき、コストを支払わずにすぐに使ってよい。)\n自分の山札から呪文を１枚さがして相手に見せ、自分の手札に加える。そのあと、山札をシャッフルする。',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-039',
+  },
+  'dm02-045': {
+    illustrator: 'Hikaru Ikusa',
+    ability_text: 'このクリーチャーがバトルゾーンに出たとき、バトルゾーンにある相手のクリーチャーを１体選び、持ち主の山札の１番上に置く。',
+    flavor_text: 'サイバーロードの科学力をもってしても、水中都市の崩壊は止まらなかった。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-040',
+  },
+  'dm02-046': {
+    illustrator: 'Seki',
+    ability_text: null,
+    flavor_text: '火の領域の海岸線は、上陸した水の軍勢で真っ青に染まった。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-041',
+  },
+  'dm02-047': {
+    illustrator: 'Tsutomu Kawade',
+    ability_text: 'ブロッカー(相手クリーチャーが攻撃するとき、このクリーチャーをタップして、その攻撃を阻止してよい。 そのあと、その相手クリーチャーとバトルする。)',
+    flavor_text: 'リキッド・ピープルはプログラムによりその能力を変える。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-042',
+  },
+  'dm02-048': {
+    illustrator: 'Katsuya',
+    ability_text: '相手のシールドを１枚選んで見る。そのあと、それを元に戻す。 これをあと２回まで行ってよい。',
+    flavor_text: 'なんだ、この程度か。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-043',
+  },
+  'dm02-049': {
+    illustrator: 'Jason',
+    ability_text: 'このクリーチャーがバトルゾーンから自分の墓地に置かれるとき、自分の手札からカードを１枚選んで墓地に置いてよい。 その場合、このクリーチャーを墓地に置くかわりに手札に戻す。',
+    flavor_text: 'ダークロードは、まず痛みを感じないキマイラたちを地上に放った。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-044',
+  },
+  'dm02-050': {
+    illustrator: 'Naoki Saito',
+    ability_text: 'このクリーチャーが攻撃するとき、相手の手札からカードを１枚見ないで選び、相手はそれを持ち主の墓地に置く。',
+    flavor_text: '「良いワームは好き嫌いをしないものだ。」 ー覇王ブラック・モナーク',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-045',
+  },
+  'dm02-051': {
+    illustrator: 'Katsuya',
+    ability_text: 'ブロッカー(相手クリーチャーが攻撃するとき、このクリーチャーをタップして、その攻撃を阻止してよい。そのあと、その相手クリーチャーとバトルする。)\nこのクリーチャーは相手プレイヤーを攻撃したあと、持ち主の墓地に置かれる。',
+    flavor_text: '大災害が闇の住人にすら耐えられない闇をもたらした。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-046',
+  },
+  'dm02-052': {
+    illustrator: 'Nottsuo',
+    ability_text: 'S(シールド)・トリガー(このカードをシールドゾーンから手札に戻すとき、コストを支払わずにすぐ使ってよい。)\nバトルゾーンにある相手の「ブロッカー」を持つクリーチャーを１体選び、持ち主の墓地に置く。',
+    flavor_text: null,
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-047',
+  },
+  'dm02-053': {
+    illustrator: 'Sansyu',
+    ability_text: 'バトルゾーンに他に自分のクリーチャーがなければ、このクリーチャーは「パワーアタッカー+4000」と「W・ブレイカー」を得る。 (攻撃中、そのクリーチャーのパワーは+4000され、シールドを攻撃したとき、シールドを２枚ブレイクする。)',
+    flavor_text: '最初に上陸したリキッド・ピープルの部隊は、大地に触れたとたん蒸発した。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-048',
+  },
+  'dm02-054': {
+    illustrator: 'Ittoku',
+    ability_text: 'パワーアタッカー+1000(攻撃中、このクリーチャーのパワーは+1000される。)\nこのクリーチャーは、毎ターン攻撃しなければならない。',
+    flavor_text: '「絶対、機神装甲を着られるくらい強くなるんだ！」 ー小さな勇者ゲット',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-049',
+  },
+  'dm02-055': {
+    illustrator: 'Seki',
+    ability_text: 'このクリーチャーがバトルゾーンから自分の墓地に置かれるとき、各プレイヤーは自分自身のマナゾーンからカードを１枚選び、それぞれの墓地に置く。',
+    flavor_text: '「完璧完璧、超OK。水の機械の分解なんてお茶の子さいさいさ。」ー技師ピーポ',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-050',
+  },
+  'dm02-056': {
+    illustrator: 'Kou1',
+    ability_text: 'このターン、バトルゾーンにある自分のクリーチャーすべてのパワーは+1000され、タップされていないクリーチャーを攻撃できる。',
+    flavor_text: '安心するのはまだ早いぜ。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-051',
+  },
+  'dm02-057': {
+    illustrator: 'Miho Midorikawa',
+    ability_text: '攻撃中、このクリーチャーのパワーは、バトルゾーンにある自分のクリーチャー１体につき+1000される。',
+    flavor_text: '強く、そして美しい獣たち。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-052',
+  },
+  'dm02-058': {
+    illustrator: 'Syuichi Obata',
+    ability_text: 'このクリーチャーが攻撃するとき、自分の山札の一番上のカードを表にして、自分のマナゾーンに置いてよい。',
+    flavor_text: '銀髭団は立ち上がった。家族と森を守るために。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-053',
+  },
+  'dm02-059': {
+    illustrator: 'Eiji Kaneda',
+    ability_text: 'このクリーチャーがバトルゾーンにある間、自分の呪文を唱えるとき、支払うコストは１少なくなる。 ただし、コストが１のときは少なくならない。',
+    flavor_text: '銀髭団が傷つき倒れた時、美しい妖精たちがその窮地を救った。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-054',
+  },
+  'dm02-060': {
+    illustrator: 'Yusaku Nakaaki',
+    ability_text: '自分の山札からカードを１枚さがして表にし、自分のマナゾーンに置く。 そのあと、山札をシャッフルする。',
+    flavor_text: 'まずは下準備さ。',
+    official_page_url: 'https://dm.takaratomy.co.jp/card/detail/?id=dm02-055',
+  },
+}
+
 const c = (
   sort: number,
   name: string,
@@ -97,18 +462,22 @@ export const DM02_CARDS: ZukanCard[] = [
   c(58, '銀の戦斧', 'C', '自然', 3, 'クリーチャー', 'ビーストフォーク', '1000'),
   c(59, 'ラブ・エルフィン', 'C', '自然', 2, 'クリーチャー', 'ツリーフォーク', '1000'),
   c(60, 'レインボー・ストーン', 'C', '自然', 4, '呪文', null, null),
-].map(card => ({
-  id: '',
-  pack_id: '',
-  mana: card.cost,
-  illustrator: null,
-  ability_text: null,
-  flavor_text: null,
-  image_url: null,
-  official_page_url: null,
-  official_image_url: null,
-  ...card,
-}))
+].map(card => {
+  const details = DM02_CARD_DETAILS[card.slug]
+
+  return {
+    id: '',
+    pack_id: '',
+    mana: card.cost,
+    illustrator: details?.illustrator ?? null,
+    ability_text: details?.ability_text ?? null,
+    flavor_text: details?.flavor_text ?? null,
+    image_url: null,
+    official_page_url: details?.official_page_url ?? null,
+    official_image_url: null,
+    ...card,
+  }
+})
 
 export const DM02_REP_CARD_SLUGS = [
   'dm02-002',
