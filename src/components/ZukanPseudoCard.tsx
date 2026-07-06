@@ -83,7 +83,7 @@ export default function ZukanPseudoCard({
 
   return (
     <div
-      className={`relative flex h-full flex-col overflow-hidden rounded-[6px] border-2 ${frame} shadow-sm ${selected ? 'ring-2 ring-blue-500 ring-offset-1' : ''} ${disabled ? 'opacity-50 grayscale' : ''} ${className}`}
+      className={`relative flex w-full flex-col overflow-hidden rounded-[6px] border-2 ${frame} shadow-sm ${selected ? 'ring-2 ring-blue-500 ring-offset-1' : ''} ${disabled ? 'opacity-50 grayscale' : ''} ${className}`}
       style={{ aspectRatio: '63 / 88' }}
       aria-label={`${name} の擬似カード`}
       aria-disabled={disabled || undefined}

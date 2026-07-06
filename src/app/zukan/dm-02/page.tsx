@@ -64,7 +64,18 @@ function CardFace({ card }: { card: ZukanCard }) {
     )
   }
 
-  return <ZukanPseudoCard name={card.name} civilization={card.civilization} cost={card.cost} cardType={card.card_type} power={card.power} rarity={card.rarity} />
+  return (
+    <ZukanPseudoCard
+      name={card.name}
+      civilization={card.civilization}
+      cost={card.cost}
+      cardType={card.card_type}
+      power={card.power}
+      rarity={card.rarity}
+      size="sm"
+      className="rounded-none shadow-none"
+    />
+  )
 }
 
 export default async function ZukanDm02Page() {
@@ -80,8 +91,9 @@ export default async function ZukanDm02Page() {
   }
 
   const pack = dbPack
+  const sortedCards = [...cards].sort((a, b) => a.sort_order - b.sort_order)
   const repCards = DM02_REP_CARD_SLUGS
-    .map(slug => cards.find(card => card.slug === slug))
+    .map(slug => sortedCards.find(card => card.slug === slug))
     .filter((card): card is ZukanCard => !!card)
 
   return (
@@ -131,7 +143,7 @@ export default async function ZukanDm02Page() {
         </div>
         <div className="flex snap-x gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
           {repCards.map(card => (
-            <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="block w-[46%] flex-shrink-0 snap-start border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 sm:w-auto">
+            <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="block w-[46%] flex-shrink-0 snap-start border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 sm:w-auto [-webkit-tap-highlight-color:transparent]">
               <CardFace card={card} />
               <div className="px-1.5 py-1.5">
                 {card.civilization && <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[card.civilization] ?? 'bg-gray-100 text-gray-600'}`}>{card.civilization}</span>}
@@ -142,16 +154,16 @@ export default async function ZukanDm02Page() {
         </div>
       </section>
 
-      <section id="card-list" className="mb-5">
+      <section id="card-list" className="mb-6">
         <div className="mb-2 flex items-center justify-between border border-gray-300 bg-gray-50 px-3 py-2">
           <h2 className="text-sm font-bold text-gray-800">
             収録カード
-            <span className="ml-1 font-normal text-gray-500 text-xs">全{cards.length}種</span>
+            <span className="ml-1 font-normal text-gray-500 text-xs">全{cards.length}種中 1〜{cards.length}件目</span>
           </h2>
         </div>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-          {cards.map(card => (
-            <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="block border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
+          {sortedCards.map(card => (
+            <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="block border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]">
               <CardFace card={card} />
               <div className="px-1.5 py-1.5">
                 <div className="flex items-center gap-1">
