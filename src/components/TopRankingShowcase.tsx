@@ -1,192 +1,87 @@
-import { getCachedCampaignRanking, getCachedUserRankings } from '@/lib/cached-queries'
-import { resolveCampaignState } from '@/lib/campaign-ranking'
+import { getCachedProfileShowcaseUsers, type ProfileShowcaseUser } from '@/lib/cached-queries'
 import Link from 'next/link'
 
-const MEDALS = ['🥇', '🥈', '🥉']
-
-type ShowcaseEntry = {
-  rank: number
-  displayName: string
-  profileSlug: string
-  avatarUrl: string | null
-  points: number
-}
-
-type ShowcaseContainerProps = {
-  title: string
-  subtitle?: string
-  entries: ShowcaseEntry[]
-  variant?: 'campaign' | 'monthly'
-}
-
 const AVATAR_RING_COLORS = [
-  'bg-yellow-50 text-yellow-700 ring-yellow-200',
-  'bg-gray-100 text-gray-600 ring-gray-200',
-  'bg-orange-50 text-orange-700 ring-orange-200',
   'bg-blue-50 text-blue-700 ring-blue-100',
   'bg-green-50 text-green-700 ring-green-100',
+  'bg-yellow-50 text-yellow-700 ring-yellow-200',
+  'bg-pink-50 text-pink-700 ring-pink-100',
+  'bg-gray-100 text-gray-600 ring-gray-200',
 ]
 
-function RankBadge({ rank }: { rank: number }) {
-  if (rank <= 3) {
-    return (
-      <span className="absolute top-0.5 left-0.5 z-10 text-sm md:text-base leading-none" aria-label={`${rank}位`}>
-        {MEDALS[rank - 1]}
-      </span>
-    )
-  }
-  return (
-    <span className="absolute top-0.5 left-0.5 z-10 text-[9px] md:text-[10px] font-bold text-gray-500 bg-gray-100 rounded px-0.5 py-0.5 leading-none">
-      {rank}位
-    </span>
-  )
-}
-
-function PtBadge({ points }: { points: number }) {
-  return (
-    <span className="absolute top-0.5 right-0.5 z-10 text-[8px] md:text-[9px] font-bold text-white bg-gray-700 rounded px-0.5 py-0.5 leading-none whitespace-nowrap">
-      {points}pt
-    </span>
-  )
-}
-
-function ShowcaseAvatar({ avatarUrl, displayName, rank }: { avatarUrl: string | null; displayName: string; rank: number }) {
-  if (avatarUrl) {
+function ProfileAvatar({ user, index }: { user: ProfileShowcaseUser; index: number }) {
+  if (user.avatar_url) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={avatarUrl}
-        alt={`${displayName}のアイコン`}
+        src={user.avatar_url}
+        alt={`${user.display_name}のプロフィール`}
         loading="lazy"
         decoding="async"
-        className="h-10 w-10 md:h-20 md:w-20 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover"
+        className="h-12 w-12 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover md:h-20 md:w-20"
       />
     )
   }
-  const ringColor = AVATAR_RING_COLORS[(rank - 1) % AVATAR_RING_COLORS.length]
+
+  const ringColor = AVATAR_RING_COLORS[index % AVATAR_RING_COLORS.length]
   return (
     <span
-      className={`flex h-10 w-10 md:h-20 md:w-20 items-center justify-center rounded-full text-sm md:text-xl font-bold ring-1 ${ringColor}`}
+      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ring-1 md:h-20 md:w-20 ${ringColor}`}
       aria-hidden="true"
-    >
-      {displayName.trim().charAt(0) || '?'}
-    </span>
+    />
   )
 }
 
-function RankingCard({ entry }: { entry: ShowcaseEntry }) {
+function ProfileIconLink({ user, index }: { user: ProfileShowcaseUser; index: number }) {
   return (
     <Link
-      href={`/u/${entry.profileSlug}`}
-      title={entry.displayName}
-      className="relative flex flex-col items-center justify-center bg-white px-0.5 py-2 md:px-1 md:py-1 text-center hover:bg-gray-50 transition-colors"
+      href={`/u/${user.profile_slug}`}
+      title={user.display_name}
+      aria-label={`${user.display_name}のプロフィール`}
+      prefetch={false}
+      className="flex h-20 w-20 shrink-0 items-center justify-center bg-white transition-colors hover:bg-gray-50 md:h-24 md:w-auto md:min-w-0"
     >
-      <RankBadge rank={entry.rank} />
-      <PtBadge points={entry.points} />
-      <ShowcaseAvatar avatarUrl={entry.avatarUrl} displayName={entry.displayName} rank={entry.rank} />
+      <ProfileAvatar user={user} index={index} />
     </Link>
   )
 }
 
-function ShowcaseContainer({
-  title,
-  subtitle,
-  entries,
-  variant = 'monthly',
-}: ShowcaseContainerProps) {
-  const isCampaign = variant === 'campaign'
+export async function TopRankingShowcase() {
+  const users = await getCachedProfileShowcaseUsers()
+  if (users.length === 0) return null
+
   return (
-    <div className={`mb-2 border bg-white ${isCampaign ? 'border-yellow-300' : 'border-gray-300'}`}>
-      <Link
-        href="/ranking"
-        className={`flex items-center gap-1.5 px-3 py-1.5 border-b transition-colors ${
-          isCampaign
-            ? 'bg-yellow-50 border-yellow-300 hover:bg-yellow-100'
-            : 'border-gray-300 hover:bg-gray-50'
-        }`}
-      >
-        <span
-          className="font-bold text-sm"
-          style={{ color: isCampaign ? '#78350f' : '#004085' }}
-        >
-          {title}
+    <div className="mb-2 border border-gray-300 bg-white">
+      <div className="flex items-center gap-1.5 border-b border-gray-300 px-3 py-1.5">
+        <span className="font-bold text-sm" style={{ color: '#004085' }}>
+          👤 みんなのプロフィール
         </span>
-        {subtitle && (
-          <span className={`text-xs font-normal ${isCampaign ? 'text-yellow-700' : 'text-gray-500'}`}>
-            {subtitle}
-          </span>
-        )}
-      </Link>
-      <div className="grid grid-cols-5 md:grid-cols-10 gap-px bg-gray-200">
-        {entries.map(entry => (
-          <RankingCard key={entry.profileSlug} entry={entry} />
-        ))}
+      </div>
+      <div className="overflow-x-auto">
+        <div className="flex min-w-max gap-px bg-gray-200 md:grid md:min-w-0 md:grid-cols-10">
+          {users.map((user, index) => (
+            <ProfileIconLink key={user.profile_slug} user={user} index={index} />
+          ))}
+        </div>
       </div>
     </div>
   )
-}
-
-export async function TopRankingShowcase() {
-  let showcase: ShowcaseContainerProps | null = null
-
-  try {
-    const { settings, ranking: campaignResult } = await getCachedCampaignRanking()
-    const state = resolveCampaignState(settings)
-
-    if (state === 'active') {
-      const entries: ShowcaseEntry[] = campaignResult.entries.slice(0, 10).map(e => ({
-        rank: e.rank,
-        displayName: e.displayName,
-        profileSlug: e.profileSlug,
-        avatarUrl: e.avatarUrl,
-        points: e.totalPoints,
-      }))
-      if (entries.length === 0) return null
-      showcase = {
-        title: '🏆 キャンペーンランキング TOP10',
-        subtitle: '（1日1回更新）',
-        entries,
-        variant: 'campaign',
-      }
-    } else {
-      const { monthly } = await getCachedUserRankings()
-      const entries: ShowcaseEntry[] = monthly.slice(0, 10).map((row, i) => ({
-        rank: i + 1,
-        displayName: row.display_name,
-        profileSlug: row.profile_slug,
-        avatarUrl: row.avatar_url,
-        points: row.points,
-      }))
-      if (entries.length === 0) return null
-      showcase = {
-        title: '👑 今月の投稿者ランキング TOP10',
-        entries,
-        variant: 'monthly',
-      }
-    }
-  } catch (error) {
-    console.warn('TopRankingShowcase fetch failed:', error)
-    return null
-  }
-
-  if (!showcase) return null
-  return <ShowcaseContainer {...showcase} />
 }
 
 export function TopRankingShowcaseSkeleton() {
   return (
     <div className="mb-2 border border-gray-300 bg-white animate-pulse">
       <div className="px-3 py-1.5 border-b border-gray-300 flex items-center gap-1.5">
-        <div className="h-5 bg-gray-200 rounded w-52" />
+        <div className="h-5 bg-gray-200 rounded w-44" />
       </div>
-      <div className="grid grid-cols-5 md:grid-cols-10 gap-px bg-gray-200">
-        {[...Array(10)].map((_, i) => (
-          <div key={i} className="relative flex flex-col items-center justify-center bg-white px-0.5 py-2 md:px-1 md:py-1">
-            <div className="absolute top-0.5 left-0.5 h-3.5 w-5 bg-gray-200 rounded" />
-            <div className="absolute top-0.5 right-0.5 h-3 w-4 md:w-5 bg-gray-200 rounded" />
-            <div className="h-10 w-10 md:h-20 md:w-20 bg-gray-200 rounded-full" />
-          </div>
-        ))}
+      <div className="overflow-x-auto">
+        <div className="flex min-w-max gap-px bg-gray-200 md:grid md:min-w-0 md:grid-cols-10">
+          {[...Array(10)].map((_, i) => (
+            <div key={i} className="flex h-20 w-20 shrink-0 items-center justify-center bg-white md:h-24 md:w-auto">
+              <div className="h-12 w-12 rounded-full bg-gray-200 md:h-20 md:w-20" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
