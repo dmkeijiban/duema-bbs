@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { NoticeItem } from '@/components/NoticeBlock'
 import { ADMIN_COOKIE_MAX_AGE_SECONDS, createAdminCookieValue, isAdminPassword, verifyAdminCookie } from '@/lib/admin-auth'
+import { normalizeTopShowcaseMode } from '@/lib/top-showcase'
 
 const ADMIN_COOKIE = 'admin_auth'
 type AdminClient = ReturnType<typeof createAdminClient>
@@ -705,4 +706,30 @@ export async function updateSettingAction(formData: FormData) {
   revalidatePath('/', 'layout')
   revalidatePath('/terms')
   redirect('/admin')
+}
+
+export async function updateTopShowcaseModeAction(formData: FormData) {
+  await checkAdmin()
+  const mode = normalizeTopShowcaseMode(formData.get('top_showcase_mode') as string)
+
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('site_settings')
+    .upsert(
+      {
+        key: 'top_showcase_mode',
+        label: 'トップ表示設定',
+        value: mode,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'key' }
+    )
+
+  if (error) redirect('/admin?topShowcaseError=save_failed')
+
+  revalidatePath('/')
+  revalidatePath('/admin')
+  revalidateTag('site_settings', { expire: 0 })
+  revalidateTag('top-showcase-mode', { expire: 0 })
+  redirect('/admin?topShowcaseSaved=1')
 }

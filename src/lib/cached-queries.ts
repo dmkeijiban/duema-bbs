@@ -24,6 +24,7 @@ import {
   type CampaignSettings,
   type CampaignRankingPublicResult,
 } from './campaign-ranking'
+import { normalizeTopShowcaseMode, type TopShowcaseMode } from './top-showcase'
 import type { NavPage, FixedPage } from '@/types/fixed-pages'
 import { parseBlocks } from '@/types/fixed-pages'
 import type { PublicAuthorProfile } from '@/types'
@@ -606,6 +607,28 @@ export type ProfileShowcaseUser = {
   display_name: string
   profile_slug: string
   avatar_url: string | null
+}
+
+export function getCachedTopShowcaseMode(): Promise<TopShowcaseMode> {
+  return unstable_cache(
+    async (): Promise<TopShowcaseMode> => {
+      try {
+        const supabase = createPublicClient()
+        const { data } = await supabase
+          .from('site_settings')
+          .select('value')
+          .eq('key', 'top_showcase_mode')
+          .maybeSingle()
+
+        return normalizeTopShowcaseMode(data?.value)
+      } catch (error) {
+        console.warn('top showcase mode fetch failed:', error)
+        return 'profiles'
+      }
+    },
+    ['top-showcase-mode-v1'],
+    { revalidate: STANDARD_CACHE_SECONDS, tags: ['site_settings', 'top-showcase-mode'] }
+  )()
 }
 
 const USER_RANKING_PROFILE_LIMIT = 100
