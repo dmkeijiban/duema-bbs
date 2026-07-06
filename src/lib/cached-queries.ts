@@ -27,6 +27,7 @@ import {
 import type { NavPage, FixedPage } from '@/types/fixed-pages'
 import { parseBlocks } from '@/types/fixed-pages'
 import type { PublicAuthorProfile } from '@/types'
+import { seededShuffle } from './stable-shuffle'
 import {
   filterPublicVisibleUserContent,
   getCachedPublicHiddenUserIds,
@@ -601,11 +602,20 @@ export type UserRankingResult = {
   total: UserRankingRow[]
 }
 
+export type ProfileShowcaseUser = {
+  display_name: string
+  profile_slug: string
+  avatar_url: string | null
+}
+
 const USER_RANKING_PROFILE_LIMIT = 100
 const USER_RANKING_LIMIT = 10
 const USER_RANKING_FETCH_LIMIT = 10000
 const USER_RANKING_DAILY_CAP = 24
 const USER_RANKING_CAP_START_DATE_JST = '2026-06-26'
+const PROFILE_SHOWCASE_POOL_LIMIT = 100
+const PROFILE_SHOWCASE_LIMIT = 10
+const PROFILE_SHOWCASE_BUCKET_HOURS = 12
 
 function getJstMonthStartIso() {
   const now = new Date()
@@ -624,8 +634,58 @@ function getJstDateKey(): string {
   return jst.toISOString().slice(0, 10)
 }
 
+function getJstHalfDaySeed(): number {
+  const jst = new Date(Date.now() + 9 * 60 * 60 * 1000)
+  return Math.floor(jst.getTime() / (1000 * 60 * 60 * PROFILE_SHOWCASE_BUCKET_HOURS))
+}
+
 function toJstDateKey(isoString: string): string {
   return new Date(new Date(isoString).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)
+}
+
+export function getCachedProfileShowcaseUsers(): Promise<ProfileShowcaseUser[]> {
+  const seed = getJstHalfDaySeed()
+
+  return unstable_cache(
+    async (): Promise<ProfileShowcaseUser[]> => {
+      try {
+        const supabase = createPublicClient()
+        const baseSelect = 'display_name, profile_slug, avatar_url'
+        const { data } = await supabase
+          .from('profiles')
+          .select(baseSelect)
+          .eq('profile_hidden', false)
+          .eq('rank_excluded', false)
+          .eq('account_suspended', false)
+          .is('withdrawn_at', null)
+          .not('display_name', 'is', null)
+          .not('profile_slug', 'is', null)
+          .neq('display_name', '')
+          .neq('profile_slug', '')
+          .order('created_at', { ascending: false })
+          .limit(PROFILE_SHOWCASE_POOL_LIMIT)
+
+        const profiles = ((data ?? []) as Array<{
+          display_name: string | null
+          profile_slug: string | null
+          avatar_url: string | null
+        }>)
+          .map(profile => ({
+            display_name: String(profile.display_name ?? '').trim(),
+            profile_slug: String(profile.profile_slug ?? '').trim(),
+            avatar_url: typeof profile.avatar_url === 'string' && profile.avatar_url ? profile.avatar_url : null,
+          }))
+          .filter(profile => profile.display_name.length > 0 && profile.profile_slug.length > 0)
+
+        return seededShuffle(profiles, seed).slice(0, PROFILE_SHOWCASE_LIMIT)
+      } catch (error) {
+        console.warn('profile showcase fetch failed:', error)
+        return []
+      }
+    },
+    [`profile-showcase-v1-${seed}`],
+    { revalidate: PROFILE_SHOWCASE_BUCKET_HOURS * 60 * 60, tags: ['profiles'] }
+  )()
 }
 
 function buildDailyPointsMap(
