@@ -39,7 +39,7 @@ function ProfileIconLink({ user, index }: { user: ProfileShowcaseUser; index: nu
       title={user.display_name}
       aria-label={`${user.display_name}のプロフィール`}
       prefetch={false}
-      className="flex h-20 w-20 shrink-0 items-center justify-center bg-white transition-colors hover:bg-gray-50 md:h-24 md:w-auto md:min-w-0"
+      className="flex h-20 min-w-0 items-center justify-center bg-white transition-colors hover:bg-gray-50 md:h-24"
     >
       <ProfileAvatar user={user} index={index} />
     </Link>
@@ -57,12 +57,10 @@ export async function TopRankingShowcase() {
           👤 みんなのプロフィール
         </span>
       </div>
-      <div className="overflow-x-auto">
-        <div className="flex min-w-max gap-px bg-gray-200 md:grid md:min-w-0 md:grid-cols-10">
-          {users.map((user, index) => (
-            <ProfileIconLink key={user.profile_slug} user={user} index={index} />
-          ))}
-        </div>
+      <div className="grid grid-cols-5 gap-px bg-gray-200 md:grid-cols-10">
+        {users.map((user, index) => (
+          <ProfileIconLink key={user.profile_slug} user={user} index={index} />
+        ))}
       </div>
     </div>
   )
@@ -74,14 +72,12 @@ export function TopRankingShowcaseSkeleton() {
       <div className="px-3 py-1.5 border-b border-gray-300 flex items-center gap-1.5">
         <div className="h-5 bg-gray-200 rounded w-44" />
       </div>
-      <div className="overflow-x-auto">
-        <div className="flex min-w-max gap-px bg-gray-200 md:grid md:min-w-0 md:grid-cols-10">
-          {[...Array(10)].map((_, i) => (
-            <div key={i} className="flex h-20 w-20 shrink-0 items-center justify-center bg-white md:h-24 md:w-auto">
-              <div className="h-12 w-12 rounded-full bg-gray-200 md:h-20 md:w-20" />
-            </div>
-          ))}
-        </div>
+      <div className="grid grid-cols-5 gap-px bg-gray-200 md:grid-cols-10">
+        {[...Array(10)].map((_, i) => (
+          <div key={i} className="flex h-20 min-w-0 items-center justify-center bg-white md:h-24">
+            <div className="h-12 w-12 rounded-full bg-gray-200 md:h-20 md:w-20" />
+          </div>
+        ))}
       </div>
     </div>
   )
