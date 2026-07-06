@@ -18,6 +18,14 @@ const CIV_BADGE: Record<string, string> = {
   ゼロ: 'bg-stone-100 text-stone-700',
 }
 
+const PACK_CARD_SECTIONS: Record<string, Array<{ key: string; label: string; from: number; to: number }>> = {
+  'dm22-rp1': [
+    { key: 'base', label: '通常カード', from: 1, to: 84 },
+    { key: 'secret', label: 'シークレット', from: 85, to: 116 },
+    { key: 'treasure', label: 'トレジャー', from: 117, to: 171 },
+  ],
+}
+
 function cardImageUrl(card: ZukanCard) {
   return card.official_image_url ?? card.image_url
 }
@@ -60,6 +68,25 @@ function PackPlaceholder({ code, name }: { code: string; name: string }) {
       <span className="mt-2 text-[10px] text-orange-500">商品画像なし</span>
     </div>
   )
+}
+
+function sectionForCard(packSlug: string, card: ZukanCard) {
+  return PACK_CARD_SECTIONS[packSlug]?.find(section => card.sort_order >= section.from && card.sort_order <= section.to) ?? null
+}
+
+function groupCardsBySection(packSlug: string, cards: ZukanCard[]) {
+  const sections = PACK_CARD_SECTIONS[packSlug]
+  if (!sections) {
+    return [{ key: 'all', label: null, cards }]
+  }
+
+  return sections
+    .map(section => ({
+      key: section.key,
+      label: section.label,
+      cards: cards.filter(card => sectionForCard(packSlug, card)?.key === section.key),
+    }))
+    .filter(group => group.cards.length > 0)
 }
 
 function Pager({
@@ -158,6 +185,7 @@ export default async function ZukanPackPage({
   const from = (page - 1) * PAGE_SIZE + 1
   const to = Math.min((page - 1) * PAGE_SIZE + sortedCards.length, total)
   const repCards = page === 1 ? sortedCards.slice(0, 5) : []
+  const cardGroups = groupCardsBySection(pack.slug, sortedCards)
 
   return (
     <div className="max-w-screen-xl mx-auto px-2 pt-2 pb-0">
@@ -224,19 +252,30 @@ export default async function ZukanPackPage({
         <div className="mb-2">
           <Pager packSlug={pack.slug} page={page} totalPages={totalPages} />
         </div>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-          {sortedCards.map(card => (
-            <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="block border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]">
-              <CardFace card={card} />
-              <div className="px-1.5 py-1.5">
-                <div className="flex items-center gap-1">
-                  {card.civilization && <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[card.civilization] ?? 'bg-gray-100 text-gray-600'}`}>{card.civilization}</span>}
-                  {card.rarity && <span className="font-mono text-[10px] text-gray-400">{card.rarity}</span>}
-                </div>
-                <div className="mt-0.5 truncate text-xs font-bold text-blue-700">{card.name}</div>
-                {card.card_type && <div className="text-[10px] text-gray-400">{card.card_type}</div>}
+        <div className="space-y-4">
+          {cardGroups.map(group => (
+            <div key={group.key}>
+              {group.label && (
+                <h3 className="mb-2 border-l-4 border-blue-500 bg-blue-50 px-2 py-1 text-xs font-bold text-gray-800">
+                  {group.label}
+                </h3>
+              )}
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+                {group.cards.map(card => (
+                  <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="block border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]">
+                    <CardFace card={card} />
+                    <div className="px-1.5 py-1.5">
+                      <div className="flex items-center gap-1">
+                        {card.civilization && <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[card.civilization] ?? 'bg-gray-100 text-gray-600'}`}>{card.civilization}</span>}
+                        {card.rarity && <span className="font-mono text-[10px] text-gray-400">{card.rarity}</span>}
+                      </div>
+                      <div className="mt-0.5 truncate text-xs font-bold text-blue-700">{card.name}</div>
+                      {card.card_type && <div className="text-[10px] text-gray-400">{card.card_type}</div>}
+                    </div>
+                  </Link>
+                ))}
               </div>
-            </Link>
+            </div>
           ))}
         </div>
         <div className="mt-3">

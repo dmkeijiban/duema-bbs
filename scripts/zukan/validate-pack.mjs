@@ -40,6 +40,8 @@ const DETAIL_LABELS = [
   'イラストレーター',
 ]
 
+const CARD_SECTIONS = new Set(['base', 'secret', 'treasure'])
+
 function usage() {
   console.error(`Usage:
   npm run zukan:validate <pack-slug>
@@ -119,6 +121,10 @@ function containsDetailLabel(value) {
   return null
 }
 
+function isPlainCountBreakdown(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
 export function validateZukanPackData(data, expectedPackSlug = null) {
   const errors = []
   const warnings = []
@@ -147,6 +153,31 @@ export function validateZukanPackData(data, expectedPackSlug = null) {
 
   if (pack.card_count !== null && pack.card_count !== undefined && pack.card_count !== cards.length) {
     errors.push(`[pack] pack.card_count (${pack.card_count}) does not match cards.length (${cards.length})`)
+  }
+
+  if (pack.count_breakdown !== null && pack.count_breakdown !== undefined) {
+    if (!isPlainCountBreakdown(pack.count_breakdown)) {
+      errors.push('[pack] count_breakdown must be an object')
+    } else {
+      const expectedSections = Object.entries(pack.count_breakdown)
+      const expectedTotal = expectedSections.reduce((sum, [, count]) => sum + (typeof count === 'number' ? count : 0), 0)
+      if (pack.card_count !== null && pack.card_count !== undefined && expectedTotal !== pack.card_count) {
+        errors.push(`[pack] count_breakdown total (${expectedTotal}) does not match pack.card_count (${pack.card_count})`)
+      }
+      for (const [section, count] of expectedSections) {
+        if (!CARD_SECTIONS.has(section)) {
+          errors.push(`[pack] count_breakdown has an unknown section: ${section}`)
+        }
+        if (typeof count !== 'number' || !Number.isInteger(count) || count < 0) {
+          errors.push(`[pack] count_breakdown.${section} must be a non-negative integer`)
+          continue
+        }
+        const actual = cards.filter(card => card?.section === section).length
+        if (actual !== count) {
+          errors.push(`[pack] section ${section} count (${actual}) does not match count_breakdown (${count})`)
+        }
+      }
+    }
   }
 
   const slugs = new Map()
@@ -185,6 +216,14 @@ export function validateZukanPackData(data, expectedPackSlug = null) {
     for (const field of TEXT_FIELDS) {
       if (hasHtmlFragment(card[field])) {
         errors.push(`${label} ${field} contains an HTML fragment`)
+      }
+    }
+
+    if (pack.count_breakdown !== null && pack.count_breakdown !== undefined) {
+      if (!isNonEmptyString(card.section)) {
+        errors.push(`${label} section is required when pack.count_breakdown is present`)
+      } else if (!CARD_SECTIONS.has(card.section)) {
+        errors.push(`${label} section has an unknown value: ${card.section}`)
       }
     }
 

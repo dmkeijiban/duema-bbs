@@ -222,11 +222,16 @@ function generateSql(data, sourcePath) {
   const cards = [...data.cards].sort((a, b) => a.sort_order - b.sort_order)
   const expectedCount = pack.card_count ?? cards.length
   const cardSlugPattern = slugLikePattern(cards)
+  const countBreakdown = pack.count_breakdown && typeof pack.count_breakdown === 'object' && !Array.isArray(pack.count_breakdown)
+    ? Object.entries(pack.count_breakdown)
+      .map(([section, count]) => `${section}=${count}`)
+      .join(', ')
+    : null
 
   return `-- ============================================================
 -- Zukan seed: ${pack.code} ${pack.name}
 -- Generated from ${sourcePath}
---
+${countBreakdown ? `-- Count breakdown: ${countBreakdown}\n` : ''}--
 -- Manual operation only:
 -- - Review this SQL before applying.
 -- - Apply manually in Supabase SQL Editor.
