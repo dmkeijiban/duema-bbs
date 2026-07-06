@@ -104,6 +104,28 @@ export async function fetchCardsByPack(
   }
 }
 
+export async function fetchCardsByPackSortRange(
+  packId: string,
+  fromSortOrder: number,
+  toSortOrder: number
+): Promise<ZukanCard[] | null> {
+  try {
+    const supabase = createPublicClient()
+    const { data, error } = await supabase
+      .from('zukan_cards')
+      .select(CARD_LIST_SELECT)
+      .eq('pack_id', packId)
+      .eq('is_published', true)
+      .gte('sort_order', fromSortOrder)
+      .lte('sort_order', toSortOrder)
+      .order('sort_order', { ascending: true })
+    if (error) return null
+    return data as ZukanCard[]
+  } catch {
+    return null
+  }
+}
+
 export async function fetchCardsBySlugs(
   packId: string,
   slugs: string[]

@@ -10,6 +10,10 @@ import { SITE_URL } from '@/lib/site-config'
 
 const EXPECTED_DM02_CARD_COUNT = 60
 
+// DM-02もパック詳細では収録カード一覧を主導線にする。
+// 代表カード枠を復活する場合は、DM-01以外の全体方針を決めてからONにする。
+const SHOW_DM02_FEATURED_CARDS = false
+
 export async function generateMetadata() {
   const dbPack = await fetchPack('dm-02')
   const pack = dbPack?.is_published ? dbPack : null
@@ -92,9 +96,11 @@ export default async function ZukanDm02Page() {
 
   const pack = dbPack
   const sortedCards = [...cards].sort((a, b) => a.sort_order - b.sort_order)
-  const repCards = DM02_REP_CARD_SLUGS
-    .map(slug => sortedCards.find(card => card.slug === slug))
-    .filter((card): card is ZukanCard => !!card)
+  const repCards = SHOW_DM02_FEATURED_CARDS
+    ? DM02_REP_CARD_SLUGS
+      .map(slug => sortedCards.find(card => card.slug === slug))
+      .filter((card): card is ZukanCard => !!card)
+    : []
 
   return (
     <div className="max-w-screen-xl mx-auto px-2 pt-2 pb-0">
@@ -136,23 +142,25 @@ export default async function ZukanDm02Page() {
         </div>
       </header>
 
-      <section className="mb-5">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border border-gray-300 bg-gray-50 px-3 py-2">
-          <h2 className="text-sm font-bold text-gray-800">{pack.code} {pack.name}の代表カード</h2>
-          <Link href="#card-list" className="text-xs text-blue-600 hover:underline">収録カードをもっと見る →</Link>
-        </div>
-        <div className="flex snap-x gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
-          {repCards.map(card => (
-            <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="block w-[46%] flex-shrink-0 snap-start border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 sm:w-auto [-webkit-tap-highlight-color:transparent]">
-              <CardFace card={card} />
-              <div className="px-1.5 py-1.5">
-                {card.civilization && <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[card.civilization] ?? 'bg-gray-100 text-gray-600'}`}>{card.civilization}</span>}
-                <div className="mt-1 truncate text-xs font-bold text-blue-700">{card.name}</div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+      {repCards.length > 0 && (
+        <section className="mb-5">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border border-gray-300 bg-gray-50 px-3 py-2">
+            <h2 className="text-sm font-bold text-gray-800">{pack.code} {pack.name}の代表カード</h2>
+            <Link href="#card-list" className="text-xs text-blue-600 hover:underline">収録カードをもっと見る →</Link>
+          </div>
+          <div className="flex snap-x gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
+            {repCards.map(card => (
+              <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="block w-[46%] flex-shrink-0 snap-start border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 sm:w-auto [-webkit-tap-highlight-color:transparent]">
+                <CardFace card={card} />
+                <div className="px-1.5 py-1.5">
+                  {card.civilization && <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[card.civilization] ?? 'bg-gray-100 text-gray-600'}`}>{card.civilization}</span>}
+                  <div className="mt-1 truncate text-xs font-bold text-blue-700">{card.name}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section id="card-list" className="mb-6">
         <div className="mb-2 flex items-center justify-between border border-gray-300 bg-gray-50 px-3 py-2">

@@ -203,10 +203,12 @@ function EraCard({
   return (
     <Link
       href={`/zukan/${slug}`}
-      className="block h-full border border-gray-300 bg-white px-4 py-4 transition-all duration-100 hover:border-blue-400 hover:bg-blue-50/40 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]"
+      className="block h-full border border-gray-300 bg-white px-2 py-2.5 transition-all duration-100 hover:border-blue-400 hover:bg-blue-50/40 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 sm:px-4 sm:py-4 [-webkit-tap-highlight-color:transparent]"
     >
-      <div className="text-sm font-bold leading-snug text-blue-700">{era}</div>
-      <div className="mt-1 text-xs font-bold text-gray-500">{years}</div>
+      <div className="text-center sm:text-left">
+        <span className="block text-sm font-bold leading-snug text-blue-700">{era}</span>
+        <span className="mt-0.5 block text-xs font-bold leading-snug text-gray-500 sm:mt-1">{years}</span>
+      </div>
     </Link>
   )
 }
@@ -359,7 +361,7 @@ async function MemoriesView() {
         <div className="mb-2 border border-gray-300 bg-gray-50 px-3 py-2">
           <h2 className="text-sm font-bold text-gray-800">時代から探す</h2>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           {ERA_LINKS.map(item => (
             <EraCard
               key={item.slug}
