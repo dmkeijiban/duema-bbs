@@ -63,7 +63,7 @@ const CIV_TEXT: Record<string, string> = {
   闇: 'text-gray-400',
 }
 
-const LINKED_PACK_SLUGS = new Set(['dm-01', 'dm-02'])
+const LINKED_PACK_SLUGS = new Set(['dm-01', 'dm-02', 'dmr-01', 'dmrp-01', 'dm22-rp1'])
 
 const ERA_REPRESENTATIVE_PACKS: Array<{
   era: string
@@ -195,12 +195,14 @@ function EraCard({
   era,
   summary,
   pack,
+  isAvailable,
 }: {
   era: string
   summary: string
   pack: ZukanPack
+  isAvailable: boolean
 }) {
-  const isLinked = LINKED_PACK_SLUGS.has(pack.slug)
+  const isLinked = LINKED_PACK_SLUGS.has(pack.slug) && isAvailable
   const body = (
     <div className="flex h-full flex-col border border-gray-300 bg-white px-3 py-3">
       <div className="text-xs font-bold text-orange-700">{era}</div>
@@ -389,6 +391,7 @@ async function MemoriesView() {
                 era={item.era}
                 summary={item.summary}
                 pack={dbPack ?? item.pack}
+                isAvailable={item.pack.slug === 'dm-01' || item.pack.slug === 'dm-02' || !!dbPack}
               />
             )
           })}
