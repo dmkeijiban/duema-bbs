@@ -79,7 +79,7 @@ export function getZukanImportEnvStatus(): ZukanImportEnvStatus {
 }
 
 function getDatabaseUrl() {
-  return process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || null
+  return process.env.SUPABASE_DB_URL || process.env.DATABASE_URL || null
 }
 
 async function getPool() {
