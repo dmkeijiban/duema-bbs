@@ -64,10 +64,29 @@ export type ZukanImportRegisterResult = {
   actualCardCount?: number
 }
 
+type DatabaseUrlEnvName = 'SUPABASE_DB_URL' | 'DATABASE_URL'
+
+type ZukanDatabaseUrlDiagnostic = {
+  envName: DatabaseUrlEnvName | null
+  exists: boolean
+  valueLength: number
+  startsWithPostgres: boolean
+  startsWithPostgresql: boolean
+  parseOk: boolean
+  hostExists: boolean
+  hostEndsWithPoolerSupabaseCom: boolean
+  port: string | null
+  dbPathExists: boolean
+  hasWhitespace: boolean
+  hasWrappingQuotes: boolean
+  hasYourPasswordPlaceholder: boolean
+}
+
 let pool: Pool | null = null
 
 export function getZukanImportEnvStatus(): ZukanImportEnvStatus {
-  const hasDatabaseUrl = Boolean(process.env.DATABASE_URL || process.env.SUPABASE_DB_URL)
+  const databaseUrl = getDatabaseUrlDiagnostic()
+  const hasDatabaseUrl = databaseUrl.exists
   const hasSupabaseAdmin = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
   const canCheckDuplicates = hasDatabaseUrl || hasSupabaseAdmin || Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 
@@ -78,8 +97,89 @@ export function getZukanImportEnvStatus(): ZukanImportEnvStatus {
   }
 }
 
+function getDatabaseUrlEntry(): { envName: DatabaseUrlEnvName | null; value: string | undefined } {
+  if (process.env.SUPABASE_DB_URL !== undefined) {
+    return { envName: 'SUPABASE_DB_URL', value: process.env.SUPABASE_DB_URL }
+  }
+  if (process.env.DATABASE_URL !== undefined) {
+    return { envName: 'DATABASE_URL', value: process.env.DATABASE_URL }
+  }
+  return { envName: null, value: undefined }
+}
+
 function getDatabaseUrl() {
-  return process.env.SUPABASE_DB_URL || process.env.DATABASE_URL || null
+  const entry = getDatabaseUrlEntry()
+  const value = typeof entry.value === 'string' ? entry.value.trim() : ''
+  return value.length > 0 ? value : null
+}
+
+function getDatabaseUrlDiagnostic(): ZukanDatabaseUrlDiagnostic {
+  const entry = getDatabaseUrlEntry()
+  const rawValue = typeof entry.value === 'string' ? entry.value : ''
+  const trimmedValue = rawValue.trim()
+  const valueLength = rawValue.length
+  const hasWrappingQuotes =
+    (trimmedValue.startsWith('"') && trimmedValue.endsWith('"')) ||
+    (trimmedValue.startsWith("'") && trimmedValue.endsWith("'"))
+  let parsedUrl: URL | null = null
+  try {
+    parsedUrl = trimmedValue.length > 0 ? new URL(trimmedValue) : null
+  } catch {
+    parsedUrl = null
+  }
+
+  return {
+    envName: entry.envName,
+    exists: trimmedValue.length > 0,
+    valueLength,
+    startsWithPostgres: trimmedValue.startsWith('postgres://'),
+    startsWithPostgresql: trimmedValue.startsWith('postgresql://'),
+    parseOk: Boolean(parsedUrl),
+    hostExists: Boolean(parsedUrl?.hostname),
+    hostEndsWithPoolerSupabaseCom: Boolean(parsedUrl?.hostname.endsWith('pooler.supabase.com')),
+    port: parsedUrl?.port || null,
+    dbPathExists: Boolean(parsedUrl?.pathname && parsedUrl.pathname !== '/'),
+    hasWhitespace: /\s/.test(rawValue),
+    hasWrappingQuotes,
+    hasYourPasswordPlaceholder: rawValue.includes('[YOUR-PASSWORD]'),
+  }
+}
+
+function isDatabaseUrlDiagnosticUsable(diagnostic: ZukanDatabaseUrlDiagnostic) {
+  return (
+    diagnostic.exists &&
+    (diagnostic.startsWithPostgres || diagnostic.startsWithPostgresql) &&
+    diagnostic.parseOk &&
+    diagnostic.hostExists &&
+    diagnostic.dbPathExists &&
+    !diagnostic.hasWhitespace &&
+    !diagnostic.hasWrappingQuotes &&
+    !diagnostic.hasYourPasswordPlaceholder
+  )
+}
+
+function formatDatabaseUrlDiagnostic(diagnostic: ZukanDatabaseUrlDiagnostic) {
+  return [
+    'DB接続URLの形式を確認してください',
+    `env=${diagnostic.envName ?? 'missing'}`,
+    `exists=${diagnostic.exists}`,
+    `valueLength=${diagnostic.valueLength}`,
+    `startsWithPostgres=${diagnostic.startsWithPostgres}`,
+    `startsWithPostgresql=${diagnostic.startsWithPostgresql}`,
+    `parseOk=${diagnostic.parseOk}`,
+    `hostExists=${diagnostic.hostExists}`,
+    `hostEndsWithPoolerSupabaseCom=${diagnostic.hostEndsWithPoolerSupabaseCom}`,
+    `port=${diagnostic.port ?? '-'}`,
+    `dbPathExists=${diagnostic.dbPathExists}`,
+    `hasWhitespace=${diagnostic.hasWhitespace}`,
+    `hasWrappingQuotes=${diagnostic.hasWrappingQuotes}`,
+    `hasYourPasswordPlaceholder=${diagnostic.hasYourPasswordPlaceholder}`,
+  ].join(' / ')
+}
+
+function isDatabaseConnectionError(error: unknown) {
+  if (!(error instanceof Error)) return false
+  return /getaddrinfo|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|timeout|password authentication|SASL|SSL/i.test(error.message)
 }
 
 async function getPool() {
@@ -373,10 +473,20 @@ export async function registerZukanImport(input: string, confirmed: boolean): Pr
   }
 
   const pack = normalizePack(parsed.data.pack, parsed.data.cards.length)
-  const db = await getPool()
-  const client = await db.connect()
+  const databaseUrlDiagnostic = getDatabaseUrlDiagnostic()
+  if (!isDatabaseUrlDiagnosticUsable(databaseUrlDiagnostic)) {
+    return {
+      ok: false,
+      message: formatDatabaseUrlDiagnostic(databaseUrlDiagnostic),
+      packSlug: pack.slug,
+      expectedCardCount: pack.card_count,
+    }
+  }
 
+  let client: PoolClient | null = null
   try {
+    const db = await getPool()
+    client = await db.connect()
     await client.query('begin')
     const packId = await insertPack(client, pack)
     if (!packId) throw new Error('pack insert failed')
@@ -402,14 +512,19 @@ export async function registerZukanImport(input: string, confirmed: boolean): Pr
       actualCardCount,
     }
   } catch (error) {
-    await client.query('rollback')
+    if (client) {
+      await client.query('rollback').catch(() => undefined)
+    }
+    const message = isDatabaseConnectionError(error)
+      ? formatDatabaseUrlDiagnostic(getDatabaseUrlDiagnostic())
+      : error instanceof Error ? error.message : '登録に失敗しました'
     return {
       ok: false,
-      message: error instanceof Error ? error.message : '登録に失敗しました',
+      message,
       packSlug: pack.slug,
       expectedCardCount: pack.card_count,
     }
   } finally {
-    client.release()
+    client?.release()
   }
 }
