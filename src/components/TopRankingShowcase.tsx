@@ -36,14 +36,14 @@ function ProfileAvatar({ user }: { user: ProfileShowcaseUser }) {
         alt={`${user.display_name}のプロフィール`}
         loading="lazy"
         decoding="async"
-        className="h-12 w-12 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover md:h-20 md:w-20 md:-translate-y-2"
+        className="h-12 w-12 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover md:h-20 md:w-20 md:-translate-y-1"
       />
     )
   }
 
   return (
     <span
-      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-gray-200 md:h-20 md:w-20 md:-translate-y-2"
+      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-gray-200 md:h-20 md:w-20 md:-translate-y-1"
       aria-hidden="true"
     >
       <svg
@@ -236,7 +236,7 @@ export function TopRankingShowcaseSkeleton() {
       <div className="grid grid-cols-5 gap-px bg-gray-200 md:grid-cols-10">
         {[...Array(10)].map((_, i) => (
           <div key={i} className="relative flex h-20 min-w-0 items-center justify-center overflow-hidden bg-white md:h-24">
-            <div className="h-12 w-12 rounded-full bg-gray-200 md:h-20 md:w-20 md:-translate-y-2" />
+            <div className="h-12 w-12 rounded-full bg-gray-200 md:h-20 md:w-20 md:-translate-y-1" />
             <div className="absolute inset-x-0 bottom-0 hidden h-5 border-t border-gray-100 bg-gray-100 md:block" />
           </div>
         ))}
