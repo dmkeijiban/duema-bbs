@@ -1,9 +1,10 @@
 import { Suspense, cache } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { fetchCardBySlug } from '@/lib/zukan'
+import { fetchCardBySlug, fetchCardsByPack, fetchPack } from '@/lib/zukan'
 import type { ZukanCardWithPack } from '@/lib/zukan'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
+import ZukanPseudoCard from '@/components/ZukanPseudoCard'
 import ShareButtons from './ShareButtons'
 import { SITE_URL } from '@/lib/site-config'
 import { ZukanCardMemories, ZukanCardMemoriesSkeleton } from './ZukanCardMemories'
@@ -40,16 +41,17 @@ const CIV_BADGE: Record<string, string> = {
   闇: 'bg-gray-200 text-gray-700',
 }
 
-function CardThumb({ name }: { name: string }) {
-  return (
-    <div
-      className="flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-[10px] text-gray-400"
-      style={{ aspectRatio: '63 / 88' }}
-      aria-label={`${name} のカード画像（準備中）`}
-    >
-      カード画像準備中
-    </div>
-  )
+const EXPECTED_DM02_CARD_COUNT = 60
+
+async function isDm02PackReady(card: ZukanCardWithPack) {
+  if (card.zukan_packs?.slug !== 'dm-02') return true
+
+  const pack = await fetchPack('dm-02')
+  if (!pack?.is_published || pack.id !== card.pack_id) return false
+
+  const cards = await fetchCardsByPack(pack.id, 1)
+  const expectedCount = pack.card_count ?? EXPECTED_DM02_CARD_COUNT
+  return !!cards && cards.length >= expectedCount && cards.length >= EXPECTED_DM02_CARD_COUNT
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -99,6 +101,7 @@ export default async function ZukanCardPage({
 
   if (result.status === 'found') {
     card = result.card
+    if (!(await isDm02PackReady(card))) notFound()
     isDbReady = true
   } else if (result.status === 'not_found') {
     notFound()
@@ -138,7 +141,14 @@ export default async function ZukanCardPage({
               imageClassName="w-full"
             />
           ) : (
-            <CardThumb name={card.name} />
+            <ZukanPseudoCard
+              name={card.name}
+              civilization={card.civilization}
+              cost={card.cost}
+              cardType={card.card_type}
+              power={card.power}
+              rarity={card.rarity}
+            />
           )}
         </div>
         <div>

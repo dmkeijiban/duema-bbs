@@ -112,8 +112,8 @@ function formatDate(value: string) {
 }
 
 function PackListCard({ pack }: { pack: ZukanPack }) {
-  const href = pack.slug === 'dm-01' ? '/zukan/dm-01' : '#'
-  const isLinked = pack.slug === 'dm-01'
+  const href = pack.slug === 'dm-01' || pack.slug === 'dm-02' ? `/zukan/${pack.slug}` : '#'
+  const isLinked = pack.slug === 'dm-01' || pack.slug === 'dm-02'
 
   const body = (
     <div className="flex h-full overflow-hidden border border-gray-300 bg-white transition-all duration-100">
