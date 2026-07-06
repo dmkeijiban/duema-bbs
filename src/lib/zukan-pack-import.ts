@@ -192,6 +192,7 @@ async function getPool() {
       connectionString: databaseUrl,
       ssl: isLocal ? false : { rejectUnauthorized: false },
       max: 1,
+      connectionTimeoutMillis: 8000,
     })
   }
   return pool

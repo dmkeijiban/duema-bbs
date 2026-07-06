@@ -14,6 +14,13 @@ type Props = {
   fileOptions: ZukanPackFileOption[]
 }
 
+function getErrorMessage(data: unknown) {
+  if (!data || typeof data !== 'object') return 'リクエストに失敗しました'
+  const error = 'error' in data && typeof data.error === 'string' ? data.error : null
+  const message = 'message' in data && typeof data.message === 'string' ? data.message : null
+  return error || message || 'リクエストに失敗しました'
+}
+
 const EMPTY_RESULT: ZukanImportValidationResponse = {
   ok: false,
   validation: { errors: [], warnings: [] },
@@ -28,10 +35,9 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   })
-  const data = await response.json().catch(() => null) as T | { error?: string } | null
+  const data = await response.json().catch(() => null) as T | null
   if (!response.ok) {
-    const message = data && typeof data === 'object' && 'error' in data && data.error ? data.error : 'リクエストに失敗しました'
-    throw new Error(message)
+    throw new Error(getErrorMessage(data))
   }
   return data as T
 }
