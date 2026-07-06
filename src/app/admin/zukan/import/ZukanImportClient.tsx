@@ -298,7 +298,7 @@ export default function ZukanImportClient({ initialEnv, fileOptions }: Props) {
           <div className="space-y-3 p-3">
             {!result.env.canRegister && (
               <div className="rounded border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
-                管理用環境変数が未設定です。`DATABASE_URL` または `SUPABASE_DB_URL` をサーバー環境に設定すると登録できます。
+                管理用環境変数が未設定です。`SUPABASE_SERVICE_ROLE_KEY` をサーバー環境に設定すると登録できます。
               </div>
             )}
             <label className="flex gap-2 rounded border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">

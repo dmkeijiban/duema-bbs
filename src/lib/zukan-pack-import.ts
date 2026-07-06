@@ -1,6 +1,6 @@
 import 'server-only'
 
-import type { Pool, PoolClient } from 'pg'
+import type { Pool } from 'pg'
 import { createAdminClient } from '@/lib/supabase-admin'
 import {
   validateZukanPackData,
@@ -84,16 +84,20 @@ type ZukanDatabaseUrlDiagnostic = {
 
 let pool: Pool | null = null
 
+function hasSupabaseAdminEnv() {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
+}
+
 export function getZukanImportEnvStatus(): ZukanImportEnvStatus {
   const databaseUrl = getDatabaseUrlDiagnostic()
   const hasDatabaseUrl = databaseUrl.exists
-  const hasSupabaseAdmin = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
+  const hasSupabaseAdmin = hasSupabaseAdminEnv()
   const canCheckDuplicates = hasDatabaseUrl || hasSupabaseAdmin || Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 
   return {
-    canRegister: hasDatabaseUrl,
+    canRegister: hasSupabaseAdmin,
     canCheckDuplicates,
-    message: hasDatabaseUrl ? null : '管理用環境変数が未設定です',
+    message: hasSupabaseAdmin ? null : 'SUPABASE_SERVICE_ROLE_KEY が未設定です',
   }
 }
 
@@ -143,43 +147,6 @@ function getDatabaseUrlDiagnostic(): ZukanDatabaseUrlDiagnostic {
     hasWrappingQuotes,
     hasYourPasswordPlaceholder: rawValue.includes('[YOUR-PASSWORD]'),
   }
-}
-
-function isDatabaseUrlDiagnosticUsable(diagnostic: ZukanDatabaseUrlDiagnostic) {
-  return (
-    diagnostic.exists &&
-    (diagnostic.startsWithPostgres || diagnostic.startsWithPostgresql) &&
-    diagnostic.parseOk &&
-    diagnostic.hostExists &&
-    diagnostic.dbPathExists &&
-    !diagnostic.hasWhitespace &&
-    !diagnostic.hasWrappingQuotes &&
-    !diagnostic.hasYourPasswordPlaceholder
-  )
-}
-
-function formatDatabaseUrlDiagnostic(diagnostic: ZukanDatabaseUrlDiagnostic) {
-  return [
-    'DB接続URLの形式を確認してください',
-    `env=${diagnostic.envName ?? 'missing'}`,
-    `exists=${diagnostic.exists}`,
-    `valueLength=${diagnostic.valueLength}`,
-    `startsWithPostgres=${diagnostic.startsWithPostgres}`,
-    `startsWithPostgresql=${diagnostic.startsWithPostgresql}`,
-    `parseOk=${diagnostic.parseOk}`,
-    `hostExists=${diagnostic.hostExists}`,
-    `hostEndsWithPoolerSupabaseCom=${diagnostic.hostEndsWithPoolerSupabaseCom}`,
-    `port=${diagnostic.port ?? '-'}`,
-    `dbPathExists=${diagnostic.dbPathExists}`,
-    `hasWhitespace=${diagnostic.hasWhitespace}`,
-    `hasWrappingQuotes=${diagnostic.hasWrappingQuotes}`,
-    `hasYourPasswordPlaceholder=${diagnostic.hasYourPasswordPlaceholder}`,
-  ].join(' / ')
-}
-
-function isDatabaseConnectionError(error: unknown) {
-  if (!(error instanceof Error)) return false
-  return /getaddrinfo|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|timeout|password authentication|SASL|SSL/i.test(error.message)
 }
 
 async function getPool() {
@@ -285,32 +252,7 @@ export async function checkZukanImportDuplicates(data: ZukanPackImportData): Pro
     return { checked: false, existingPackSlugs: [], existingCardSlugs: [], errors, warnings }
   }
 
-  const databaseUrl = getDatabaseUrl()
-  if (databaseUrl) {
-    try {
-      const db = await getPool()
-      const client = await db.connect()
-      try {
-        const packResult = packSlug
-          ? await client.query<{ slug: string }>('select slug from public.zukan_packs where slug = $1', [packSlug])
-          : { rows: [] }
-        const cardResult = slugs.length > 0
-          ? await client.query<{ slug: string }>('select slug from public.zukan_cards where slug = any($1::text[]) order by slug', [slugs])
-          : { rows: [] }
-        const existingPackSlugs = packResult.rows.map(row => row.slug)
-        const existingCardSlugs = cardResult.rows.map(row => row.slug)
-        if (existingPackSlugs.length > 0) errors.push(`[pack] slug already exists: ${existingPackSlugs.join(', ')}`)
-        if (existingCardSlugs.length > 0) errors.push(`[cards] slug already exists: ${existingCardSlugs.slice(0, 20).join(', ')}${existingCardSlugs.length > 20 ? ' ...' : ''}`)
-        return { checked: true, existingPackSlugs, existingCardSlugs, errors, warnings }
-      } finally {
-        client.release()
-      }
-    } catch {
-      warnings.push('DATABASE_URL / SUPABASE_DB_URL での既存slug重複チェックに失敗しました')
-    }
-  }
-
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (hasSupabaseAdminEnv()) {
     try {
       const supabase = createAdminClient()
       const [packResult, cardResult] = await Promise.all([
@@ -334,9 +276,30 @@ export async function checkZukanImportDuplicates(data: ZukanPackImportData): Pro
     }
   }
 
+  const databaseUrl = getDatabaseUrl()
   if (databaseUrl) {
-    errors.push('既存slug重複チェックに失敗しました')
-    return { checked: false, existingPackSlugs: [], existingCardSlugs: [], errors, warnings }
+    try {
+      const db = await getPool()
+      const client = await db.connect()
+      try {
+        const packResult = packSlug
+          ? await client.query<{ slug: string }>('select slug from public.zukan_packs where slug = $1', [packSlug])
+          : { rows: [] }
+        const cardResult = slugs.length > 0
+          ? await client.query<{ slug: string }>('select slug from public.zukan_cards where slug = any($1::text[]) order by slug', [slugs])
+          : { rows: [] }
+        const existingPackSlugs = packResult.rows.map(row => row.slug)
+        const existingCardSlugs = cardResult.rows.map(row => row.slug)
+        if (existingPackSlugs.length > 0) errors.push(`[pack] slug already exists: ${existingPackSlugs.join(', ')}`)
+        if (existingCardSlugs.length > 0) errors.push(`[cards] slug already exists: ${existingCardSlugs.slice(0, 20).join(', ')}${existingCardSlugs.length > 20 ? ' ...' : ''}`)
+        return { checked: true, existingPackSlugs, existingCardSlugs, errors, warnings }
+      } finally {
+        client.release()
+      }
+    } catch {
+      errors.push('既存slug重複チェックに失敗しました')
+      return { checked: false, existingPackSlugs: [], existingCardSlugs: [], errors, warnings }
+    }
   }
 
   warnings.push('DB接続情報がないため、既存slug重複チェックは未実行です')
@@ -407,44 +370,65 @@ function normalizeCard(card: ZukanPackImportCard, packId: string) {
   }
 }
 
-async function insertPack(client: PoolClient, pack: ReturnType<typeof normalizePack>) {
-  const result = await client.query<{ id: string }>(
-    `insert into public.zukan_packs
-      (slug, code, name, released_year, card_count, description, is_published, sort_order, image_url)
-     values ($1, $2, $3, $4, $5, $6, true, $7, $8)
-     returning id`,
-    [pack.slug, pack.code, pack.name, pack.released_year, pack.card_count, pack.description, pack.sort_order, pack.image_url],
-  )
-  return result.rows[0]?.id
+async function cleanupInsertedZukanPack(packId: string) {
+  const supabase = createAdminClient()
+  const cardsResult = await supabase.from('zukan_cards').delete().eq('pack_id', packId)
+  if (cardsResult.error) throw cardsResult.error
+  const packResult = await supabase.from('zukan_packs').delete().eq('id', packId)
+  if (packResult.error) throw packResult.error
 }
 
-async function insertCards(client: PoolClient, cards: ReturnType<typeof normalizeCard>[]) {
-  for (const card of cards) {
-    await client.query(
-      `insert into public.zukan_cards
-        (pack_id, slug, name, card_type, civilization, cost, mana, race, power, rarity, illustrator, ability_text, flavor_text, image_url, official_page_url, official_image_url, is_published, sort_order)
-       values
-        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, true, $17)`,
-      [
-        card.pack_id,
-        card.slug,
-        card.name,
-        card.card_type,
-        card.civilization,
-        card.cost,
-        card.mana,
-        card.race,
-        card.power,
-        card.rarity,
-        card.illustrator,
-        card.ability_text,
-        card.flavor_text,
-        card.image_url,
-        card.official_page_url,
-        card.official_image_url,
-        card.sort_order,
-      ],
-    )
+async function registerZukanImportWithSupabase(
+  inputPack: ZukanPackImportPack,
+  inputCards: ZukanPackImportCard[],
+): Promise<ZukanImportRegisterResult> {
+  const pack = normalizePack(inputPack, inputCards.length)
+  const supabase = createAdminClient()
+  let insertedPackId: string | null = null
+
+  try {
+    const packResult = await supabase
+      .from('zukan_packs')
+      .insert(pack)
+      .select('id')
+      .single()
+    if (packResult.error) throw packResult.error
+    insertedPackId = (packResult.data as { id?: string } | null)?.id ?? null
+    if (!insertedPackId) throw new Error('pack insert failed')
+    const packId = insertedPackId
+
+    const cards = inputCards.map(card => normalizeCard(card, packId))
+    const cardsResult = await supabase.from('zukan_cards').insert(cards)
+    if (cardsResult.error) throw cardsResult.error
+
+    const countResult = await supabase
+      .from('zukan_cards')
+      .select('id', { count: 'exact', head: true })
+      .eq('pack_id', packId)
+    if (countResult.error) throw countResult.error
+
+    const actualCardCount = countResult.count ?? 0
+    if (actualCardCount !== pack.card_count) {
+      throw new Error(`actual_card_count mismatch: expected=${pack.card_count}, actual=${actualCardCount}`)
+    }
+
+    return {
+      ok: true,
+      message: '登録しました',
+      packSlug: pack.slug,
+      expectedCardCount: pack.card_count,
+      actualCardCount,
+    }
+  } catch (error) {
+    if (insertedPackId) {
+      await cleanupInsertedZukanPack(insertedPackId).catch(() => undefined)
+    }
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : '登録に失敗しました',
+      packSlug: pack.slug,
+      expectedCardCount: pack.card_count,
+    }
   }
 }
 
@@ -473,59 +457,14 @@ export async function registerZukanImport(input: string, confirmed: boolean): Pr
     return { ok: false, message: `既存slugがあります: ${duplicateCheck.errors[0]}` }
   }
 
-  const pack = normalizePack(parsed.data.pack, parsed.data.cards.length)
-  const databaseUrlDiagnostic = getDatabaseUrlDiagnostic()
-  if (!isDatabaseUrlDiagnosticUsable(databaseUrlDiagnostic)) {
+  if (parsed.data.pack.card_count !== parsed.data.cards.length) {
     return {
       ok: false,
-      message: formatDatabaseUrlDiagnostic(databaseUrlDiagnostic),
-      packSlug: pack.slug,
-      expectedCardCount: pack.card_count,
+      message: `card_count mismatch: expected=${parsed.data.pack.card_count}, cards.length=${parsed.data.cards.length}`,
+      packSlug: toRequiredString(parsed.data.pack.slug),
+      expectedCardCount: toRequiredInteger(parsed.data.pack.card_count, parsed.data.cards.length),
     }
   }
 
-  let client: PoolClient | null = null
-  try {
-    const db = await getPool()
-    client = await db.connect()
-    await client.query('begin')
-    const packId = await insertPack(client, pack)
-    if (!packId) throw new Error('pack insert failed')
-
-    const cards = parsed.data.cards.map(card => normalizeCard(card, packId))
-    await insertCards(client, cards)
-
-    const countResult = await client.query<{ count: string }>(
-      'select count(*)::int as count from public.zukan_cards where pack_id = $1',
-      [packId],
-    )
-    const actualCardCount = Number(countResult.rows[0]?.count ?? 0)
-    if (actualCardCount !== pack.card_count) {
-      throw new Error(`actual_card_count mismatch: expected=${pack.card_count}, actual=${actualCardCount}`)
-    }
-
-    await client.query('commit')
-    return {
-      ok: true,
-      message: '登録しました',
-      packSlug: pack.slug,
-      expectedCardCount: pack.card_count,
-      actualCardCount,
-    }
-  } catch (error) {
-    if (client) {
-      await client.query('rollback').catch(() => undefined)
-    }
-    const message = isDatabaseConnectionError(error)
-      ? formatDatabaseUrlDiagnostic(getDatabaseUrlDiagnostic())
-      : error instanceof Error ? error.message : '登録に失敗しました'
-    return {
-      ok: false,
-      message,
-      packSlug: pack.slug,
-      expectedCardCount: pack.card_count,
-    }
-  } finally {
-    client?.release()
-  }
+  return registerZukanImportWithSupabase(parsed.data.pack, parsed.data.cards)
 }
