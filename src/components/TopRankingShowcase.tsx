@@ -36,7 +36,7 @@ function ProfileAvatar({ user, index }: { user: ProfileShowcaseUser; index: numb
         alt={`${user.display_name}のプロフィール`}
         loading="lazy"
         decoding="async"
-        className="h-12 w-12 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover md:h-20 md:w-20"
+        className="h-12 w-12 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover md:h-20 md:w-20 md:-translate-y-2"
       />
     )
   }
@@ -44,7 +44,7 @@ function ProfileAvatar({ user, index }: { user: ProfileShowcaseUser; index: numb
   const ringColor = AVATAR_RING_COLORS[index % AVATAR_RING_COLORS.length]
   return (
     <span
-      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ring-1 md:h-20 md:w-20 ${ringColor}`}
+      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ring-1 md:h-20 md:w-20 md:-translate-y-2 ${ringColor}`}
       aria-hidden="true"
     />
   )
@@ -83,11 +83,11 @@ function ProfileIconLink({ user, index }: { user: ProfileShowcaseUser; index: nu
       title={user.display_name}
       aria-label={`${user.display_name}のプロフィール`}
       prefetch={false}
-      className="flex h-20 min-w-0 flex-col items-center justify-center bg-white transition-colors hover:bg-gray-50 md:h-28 md:justify-between md:pt-2"
+      className="relative flex h-20 min-w-0 items-center justify-center overflow-hidden bg-white transition-colors hover:bg-gray-50 md:h-24"
     >
       <ProfileAvatar user={user} index={index} />
       <span
-        className="hidden h-5 w-full min-w-0 items-center justify-center border-t border-gray-100 bg-gray-50 px-1.5 text-center text-[11px] font-bold leading-none text-slate-700 md:flex"
+        className="absolute inset-x-0 bottom-0 hidden h-5 min-w-0 items-center justify-center border-t border-gray-100 bg-gray-50/95 px-1.5 text-center text-[11px] font-bold leading-none text-slate-700 md:flex"
         title={user.display_name}
       >
         <span className="block w-full truncate">{user.display_name}</span>
@@ -218,9 +218,9 @@ export function TopRankingShowcaseSkeleton() {
       </div>
       <div className="grid grid-cols-5 gap-px bg-gray-200 md:grid-cols-10">
         {[...Array(10)].map((_, i) => (
-          <div key={i} className="flex h-20 min-w-0 flex-col items-center justify-center bg-white md:h-28 md:justify-between md:pt-2">
-            <div className="h-12 w-12 rounded-full bg-gray-200 md:h-20 md:w-20" />
-            <div className="hidden h-5 w-full border-t border-gray-100 bg-gray-100 md:block" />
+          <div key={i} className="relative flex h-20 min-w-0 items-center justify-center overflow-hidden bg-white md:h-24">
+            <div className="h-12 w-12 rounded-full bg-gray-200 md:h-20 md:w-20 md:-translate-y-2" />
+            <div className="absolute inset-x-0 bottom-0 hidden h-5 border-t border-gray-100 bg-gray-100 md:block" />
           </div>
         ))}
       </div>
