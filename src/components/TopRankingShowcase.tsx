@@ -92,7 +92,7 @@ function ProfileIconLink({ user }: { user: ProfileShowcaseUser }) {
       title={user.display_name}
       aria-label={`${user.display_name}のプロフィール`}
       prefetch={false}
-      className="relative flex h-20 min-w-0 items-center justify-center overflow-hidden bg-white transition-colors hover:bg-gray-50 md:h-24"
+      className="relative flex h-[72px] min-w-0 items-center justify-center overflow-hidden bg-white transition-colors hover:bg-gray-50 md:h-24"
     >
       <ProfileAvatar user={user} />
       <span
@@ -235,7 +235,7 @@ export function TopRankingShowcaseSkeleton() {
       </div>
       <div className="grid grid-cols-5 gap-px bg-gray-200 md:grid-cols-10">
         {[...Array(10)].map((_, i) => (
-          <div key={i} className="relative flex h-20 min-w-0 items-center justify-center overflow-hidden bg-white md:h-24">
+          <div key={i} className="relative flex h-[72px] min-w-0 items-center justify-center overflow-hidden bg-white md:h-24">
             <div className="h-12 w-12 rounded-full bg-gray-200 md:h-20 md:w-20" />
             <div className="absolute inset-x-0 bottom-0 hidden h-5 border-t border-gray-100 bg-gray-100 md:block" />
           </div>
