@@ -172,9 +172,14 @@ export default async function AdminZukanPage({
           <Link href="/admin" className="text-sm text-blue-700 hover:underline">← 管理トップへ戻る</Link>
           <h1 className="mt-1 text-xl font-bold text-gray-900">思い出図鑑 投稿管理</h1>
         </div>
-        <Link href="/admin/zukan/cards" className="rounded border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-bold text-blue-700 hover:bg-blue-100">
-          カードメモ・関連スレ管理 →
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/zukan/import" className="rounded border border-green-300 bg-green-50 px-3 py-1.5 text-sm font-bold text-green-700 hover:bg-green-100">
+            パックJSONインポート →
+          </Link>
+          <Link href="/admin/zukan/cards" className="rounded border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-bold text-blue-700 hover:bg-blue-100">
+            カードメモ・関連スレ管理 →
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}
