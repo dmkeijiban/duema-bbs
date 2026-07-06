@@ -36,7 +36,7 @@ function ProfileAvatar({ user, index }: { user: ProfileShowcaseUser; index: numb
         alt={`${user.display_name}のプロフィール`}
         loading="lazy"
         decoding="async"
-        className="h-12 w-12 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover md:h-20 md:w-20"
+        className="h-12 w-12 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover md:h-20 md:w-20 md:-translate-y-2"
       />
     )
   }
@@ -44,7 +44,7 @@ function ProfileAvatar({ user, index }: { user: ProfileShowcaseUser; index: numb
   const ringColor = AVATAR_RING_COLORS[index % AVATAR_RING_COLORS.length]
   return (
     <span
-      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ring-1 md:h-20 md:w-20 ${ringColor}`}
+      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ring-1 md:h-20 md:w-20 md:-translate-y-2 ${ringColor}`}
       aria-hidden="true"
     />
   )
@@ -83,9 +83,15 @@ function ProfileIconLink({ user, index }: { user: ProfileShowcaseUser; index: nu
       title={user.display_name}
       aria-label={`${user.display_name}のプロフィール`}
       prefetch={false}
-      className="flex h-20 min-w-0 items-center justify-center bg-white transition-colors hover:bg-gray-50 md:h-24"
+      className="relative flex h-20 min-w-0 items-center justify-center overflow-hidden bg-white transition-colors hover:bg-gray-50 md:h-24"
     >
       <ProfileAvatar user={user} index={index} />
+      <span
+        className="absolute inset-x-0 bottom-0 hidden h-5 min-w-0 items-center justify-center border-t border-gray-100 bg-gray-50/95 px-1.5 text-center text-[11px] font-bold leading-none text-slate-700 md:flex"
+        title={user.display_name}
+      >
+        <span className="block w-full truncate">{user.display_name}</span>
+      </span>
     </Link>
   )
 }
@@ -116,10 +122,18 @@ function RankingUserLink({ user, index }: { user: ShowcaseRankingUser; index: nu
   )
 }
 
-function ShowcaseShell({ title, children }: { title: string; children: ReactNode }) {
+function ShowcaseShell({
+  title,
+  children,
+  titlePaddingClassName = 'px-3',
+}: {
+  title: string
+  children: ReactNode
+  titlePaddingClassName?: string
+}) {
   return (
     <div className="mb-2 border border-gray-300 bg-white">
-      <div className="flex items-center gap-1.5 border-b border-gray-300 px-3 py-1.5">
+      <div className={`flex items-center gap-1.5 border-b border-gray-300 py-1.5 ${titlePaddingClassName}`}>
         <span className="font-bold text-sm" style={{ color: '#004085' }}>
           {title}
         </span>
@@ -133,7 +147,7 @@ function ProfileShowcase({ users }: { users: ProfileShowcaseUser[] }) {
   if (users.length === 0) return null
 
   return (
-    <ShowcaseShell title="👤 みんなのプロフィール">
+    <ShowcaseShell title="👤 みんなのプロフィール" titlePaddingClassName="px-2">
       <div className="grid grid-cols-5 gap-px bg-gray-200 md:grid-cols-10">
         {users.map((user, index) => (
           <ProfileIconLink key={user.profile_slug} user={user} index={index} />
@@ -212,8 +226,9 @@ export function TopRankingShowcaseSkeleton() {
       </div>
       <div className="grid grid-cols-5 gap-px bg-gray-200 md:grid-cols-10">
         {[...Array(10)].map((_, i) => (
-          <div key={i} className="flex h-20 min-w-0 items-center justify-center bg-white md:h-24">
-            <div className="h-12 w-12 rounded-full bg-gray-200 md:h-20 md:w-20" />
+          <div key={i} className="relative flex h-20 min-w-0 items-center justify-center overflow-hidden bg-white md:h-24">
+            <div className="h-12 w-12 rounded-full bg-gray-200 md:h-20 md:w-20 md:-translate-y-2" />
+            <div className="absolute inset-x-0 bottom-0 hidden h-5 border-t border-gray-100 bg-gray-100 md:block" />
           </div>
         ))}
       </div>
