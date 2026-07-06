@@ -3,6 +3,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
+import { formatValidationResult, validateZukanPackData } from './validate-pack.mjs'
 
 const DEFAULT_INPUT_DIR = 'data/zukan-packs'
 const DEFAULT_OUTPUT_DIR = 'supabase/migrations/drafts'
@@ -373,7 +374,18 @@ async function main() {
   const options = parseArgs(process.argv.slice(2))
   const inputPath = options.input ?? path.join(DEFAULT_INPUT_DIR, `${options.packSlug}.json`)
   const raw = await readFile(inputPath, 'utf8')
-  const data = validatePackData(JSON.parse(raw), options.packSlug)
+  const parsed = JSON.parse(raw)
+  const validation = validateZukanPackData(parsed, options.packSlug)
+
+  if (validation.errors.length > 0) {
+    throw new Error(`Zukan pack validation failed: ${inputPath}\n${formatValidationResult(validation)}`)
+  }
+
+  if (validation.warnings.length > 0) {
+    console.warn(formatValidationResult({ errors: [], warnings: validation.warnings }))
+  }
+
+  const data = validatePackData(parsed, options.packSlug)
   const sql = generateSql(data, inputPath.replaceAll('\\', '/'))
 
   if (options.stdout) {
@@ -402,6 +414,8 @@ async function main() {
 
 main().catch(error => {
   console.error(error.message)
-  usage()
+  if (!String(error.message).startsWith('Zukan pack validation failed:')) {
+    usage()
+  }
   process.exit(1)
 })
