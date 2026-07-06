@@ -134,18 +134,21 @@ function RankingUserLink({ user, index }: { user: ShowcaseRankingUser; index: nu
 function ShowcaseShell({
   title,
   children,
+  action,
   titlePaddingClassName = 'px-3',
 }: {
   title: string
   children: ReactNode
+  action?: ReactNode
   titlePaddingClassName?: string
 }) {
   return (
     <div className="mb-2 border border-gray-300 bg-white">
-      <div className={`flex items-center gap-1.5 border-b border-gray-300 py-1.5 ${titlePaddingClassName}`}>
-        <span className="font-bold text-sm" style={{ color: '#004085' }}>
+      <div className={`flex items-center justify-between gap-2 border-b border-gray-300 py-1.5 ${titlePaddingClassName}`}>
+        <span className="min-w-0 truncate font-bold text-sm" style={{ color: '#004085' }}>
           {title}
         </span>
+        {action}
       </div>
       {children}
     </div>
@@ -156,7 +159,20 @@ function ProfileShowcase({ users }: { users: ProfileShowcaseUser[] }) {
   if (users.length === 0) return null
 
   return (
-    <ShowcaseShell title="👤 みんなのプロフィール" titlePaddingClassName="px-2">
+    <ShowcaseShell
+      title="👤 みんなのプロフィール"
+      titlePaddingClassName="px-2"
+      action={
+        <Link
+          href="/ranking"
+          prefetch={false}
+          className="shrink-0 rounded px-1.5 py-0.5 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-50 hover:text-blue-800"
+          aria-label="ランキングページはこちら"
+        >
+          ランキングはこちら →
+        </Link>
+      }
+    >
       <div className="grid grid-cols-5 gap-px bg-gray-200 md:grid-cols-10">
         {users.map(user => (
           <ProfileIconLink key={user.profile_slug} user={user} />
