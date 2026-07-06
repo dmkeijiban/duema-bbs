@@ -4,6 +4,7 @@ export type ZukanPackImportPack = {
   name?: unknown
   released_year?: unknown
   card_count?: unknown
+  count_breakdown?: unknown
   description?: unknown
   is_published?: unknown
   sort_order?: unknown
@@ -28,6 +29,7 @@ export type ZukanPackImportCard = {
   official_image_url?: unknown
   is_published?: unknown
   sort_order?: unknown
+  section?: unknown
 }
 
 export type ZukanPackImportData = {
@@ -74,6 +76,8 @@ const DETAIL_LABELS = [
   'イラストレーター',
 ]
 
+const CARD_SECTIONS = new Set(['base', 'secret', 'treasure'])
+
 function cardLabel(card: ZukanPackImportCard | null | undefined, index: number) {
   return typeof card?.slug === 'string' && card.slug ? `[${card.slug}]` : `[cards[${index}]]`
 }
@@ -114,6 +118,10 @@ function containsDetailLabel(value: unknown) {
     if (lines.includes(label)) return label
   }
   return null
+}
+
+function isPlainCountBreakdown(value: unknown): value is Record<string, unknown> {
+  return isRecord(value)
 }
 
 function isValidUrl(value: unknown) {
@@ -161,6 +169,31 @@ export function validateZukanPackData(data: unknown, expectedPackSlug: string | 
 
   if (pack.card_count !== null && pack.card_count !== undefined && pack.card_count !== cards.length) {
     errors.push(`[pack] pack.card_count (${String(pack.card_count)}) does not match cards.length (${cards.length})`)
+  }
+
+  if (pack.count_breakdown !== null && pack.count_breakdown !== undefined) {
+    if (!isPlainCountBreakdown(pack.count_breakdown)) {
+      errors.push('[pack] count_breakdown must be an object')
+    } else {
+      const entries = Object.entries(pack.count_breakdown)
+      const expectedTotal = entries.reduce((sum, [, count]) => sum + (typeof count === 'number' ? count : 0), 0)
+      if (typeof pack.card_count === 'number' && expectedTotal !== pack.card_count) {
+        errors.push(`[pack] count_breakdown total (${expectedTotal}) does not match pack.card_count (${pack.card_count})`)
+      }
+      for (const [section, count] of entries) {
+        if (!CARD_SECTIONS.has(section)) {
+          errors.push(`[pack] count_breakdown has an unknown section: ${section}`)
+        }
+        if (typeof count !== 'number' || !Number.isInteger(count) || count < 0) {
+          errors.push(`[pack] count_breakdown.${section} must be a non-negative integer`)
+          continue
+        }
+        const actual = cards.filter(card => isRecord(card) && card.section === section).length
+        if (actual !== count) {
+          errors.push(`[pack] section ${section} count (${actual}) does not match count_breakdown (${count})`)
+        }
+      }
+    }
   }
 
   if (pack.card_count !== null && pack.card_count !== undefined && (typeof pack.card_count !== 'number' || !Number.isInteger(pack.card_count))) {
@@ -218,9 +251,17 @@ export function validateZukanPackData(data: unknown, expectedPackSlug: string | 
       }
     }
 
+    if (pack.count_breakdown !== null && pack.count_breakdown !== undefined) {
+      if (!isNonEmptyString(card.section)) {
+        errors.push(`${label} section is required when pack.count_breakdown is present`)
+      } else if (!CARD_SECTIONS.has(card.section)) {
+        errors.push(`${label} section has an unknown value: ${card.section}`)
+      }
+    }
+
     if (isSpellCard(card.card_type)) {
       if (card.race !== null && card.race !== undefined && card.race !== '') {
-        errors.push(`${label} spell card race must be null`)
+        warnings.push(`${label} spell card race is not null: ${String(card.race)}`)
       }
       if (card.power !== null && card.power !== undefined && card.power !== '') {
         errors.push(`${label} spell card power must be null`)
