@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { isMultiCivilization, ZukanCivilizationBadge, ZukanRainbowBand } from './ZukanCivilizationBadge'
+import { isMultiCivilization, splitCivilizations, ZukanCivilizationBadge } from './ZukanCivilizationBadge'
 
 type ZukanPseudoCardProps = {
   name: string
@@ -23,6 +23,15 @@ const CIV_STYLE: Record<string, { frame: string; header: string; badge: string }
   闇: { frame: 'border-gray-500 bg-gray-100', header: 'bg-gray-700 text-white', badge: 'bg-gray-700 text-white' },
   火: { frame: 'border-red-300 bg-red-50', header: 'bg-red-100 text-red-800', badge: 'bg-red-200 text-red-900' },
   自然: { frame: 'border-green-300 bg-green-50', header: 'bg-green-100 text-green-800', badge: 'bg-green-200 text-green-900' },
+}
+
+const MULTI_CIV_BACKGROUND: Record<string, string> = {
+  光: '#fef9c3',
+  水: '#dbeafe',
+  闇: '#e5e7eb',
+  火: '#fee2e2',
+  自然: '#dcfce7',
+  ゼロ: '#f5f5f4',
 }
 
 const SIZE_STYLE = {
@@ -76,20 +85,21 @@ export default function ZukanPseudoCard({
   className = '',
   children,
 }: ZukanPseudoCardProps) {
-  const style = civilization && !isMultiCivilization(civilization) ? CIV_STYLE[civilization] : null
+  const isMulti = isMultiCivilization(civilization)
+  const style = civilization && !isMulti ? CIV_STYLE[civilization] : null
   const frame = style?.frame ?? 'border-gray-300 bg-gray-50'
-  const header = style?.header ?? 'bg-gray-100 text-gray-700'
+  const header = style?.header ?? (isMulti ? 'bg-white/65 text-gray-800' : 'bg-gray-100 text-gray-700')
   const badge = style?.badge ?? 'bg-gray-200 text-gray-700'
   const sizeStyle = SIZE_STYLE[size]
+  const multiBackground = isMulti ? buildMultiCivilizationBackground(civilization) : undefined
 
   return (
     <div
       className={`relative flex w-full flex-col overflow-hidden rounded-[6px] border-2 ${frame} shadow-sm ${selected ? 'ring-2 ring-blue-500 ring-offset-1' : ''} ${disabled ? 'opacity-50 grayscale' : ''} ${className}`}
-      style={{ aspectRatio: '63 / 88' }}
+      style={{ aspectRatio: '63 / 88', backgroundImage: multiBackground }}
       aria-label={`${name} の擬似カード`}
       aria-disabled={disabled || undefined}
     >
-      <ZukanRainbowBand civilization={civilization} />
       {count !== undefined && count > 0 && (
         <span className="absolute right-1 top-8 z-10 rounded-full bg-gray-900/85 px-1.5 py-0.5 text-[10px] font-black leading-none text-white">
           x{count}
@@ -129,4 +139,17 @@ export default function ZukanPseudoCard({
       </div>
     </div>
   )
+}
+
+function buildMultiCivilizationBackground(civilization: string | null | undefined): string | undefined {
+  const colors = splitCivilizations(civilization).map(civ => MULTI_CIV_BACKGROUND[civ] ?? '#f3f4f6')
+  if (colors.length <= 1) return undefined
+
+  const stops = colors.flatMap((color, index) => {
+    const from = (index / colors.length) * 100
+    const to = ((index + 1) / colors.length) * 100
+    return [`${color} ${from}%`, `${color} ${to}%`]
+  })
+
+  return `linear-gradient(90deg, ${stops.join(', ')})`
 }

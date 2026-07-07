@@ -4,7 +4,7 @@ import { fetchCardsByPack, fetchCardsByPackSortRange, fetchPack } from '@/lib/zu
 import type { ZukanCard } from '@/lib/zukan'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import ZukanPseudoCard from '@/components/ZukanPseudoCard'
-import { ZukanCivilizationBadge, ZukanRainbowBand } from '@/components/ZukanCivilizationBadge'
+import { ZukanCivilizationBadge } from '@/components/ZukanCivilizationBadge'
 import PackShareButtons from '../dm-01/PackShareButtons'
 import { SITE_URL } from '@/lib/site-config'
 
@@ -240,7 +240,6 @@ export default async function ZukanPackPage({
           <div className="flex snap-x gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
             {featuredCards.map(card => (
               <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="relative block w-[46%] flex-shrink-0 snap-start overflow-hidden border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 sm:w-auto [-webkit-tap-highlight-color:transparent]">
-                <ZukanRainbowBand civilization={card.civilization} />
                 <CardFace card={card} />
                 <div className="px-1.5 py-1.5">
                   {card.civilization && <ZukanCivilizationBadge civilization={card.civilization} />}
@@ -273,7 +272,6 @@ export default async function ZukanPackPage({
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
                 {group.cards.map(card => (
                   <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="relative block overflow-hidden border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]">
-                    <ZukanRainbowBand civilization={card.civilization} />
                     <CardFace card={card} />
                     <div className="px-1.5 py-1.5">
                       <div className="flex items-center gap-1">
