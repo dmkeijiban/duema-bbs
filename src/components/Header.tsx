@@ -63,6 +63,7 @@ function buildHeaderNavItems(navPages: NavPage[]): HeaderNavItem[] {
     newProduct ? toItem(newProduct) : null,
     { key: 'ranking', label: 'ランキング', href: '/ranking' },
     { key: 'zukan', label: '思い出図鑑', href: '/zukan' },
+    { key: 'zukan-articles', label: '記事一覧', href: '/zukan/articles' },
     youtube ? toItem(youtube) : null,
     guide ? toItem(guide) : null,
     ...remaining.map(toItem),
