@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { fetchCardsByIdentifiers, fetchPack } from '@/lib/zukan'
+import { fetchCardBySlug, fetchCardsByIdentifiers, fetchPack } from '@/lib/zukan'
 import type { ZukanPack } from '@/lib/zukan'
 import { getZukanArticleCardIdentifiers, loadPublishedZukanArticleBySlug } from '@/lib/zukan-articles'
 import { ZukanArticleRenderer } from '@/components/ZukanArticleRenderer'
@@ -38,10 +38,25 @@ export default async function ZukanArticleDetailPage({
   const article = await loadPublishedZukanArticleBySlug(slug)
   if (!article) notFound()
 
+  const targetCardResult = article.targetType === 'card_article'
+    ? await fetchCardBySlug(article.targetSlug)
+    : null
   const pack = article.targetType === 'pack_article'
     ? (await fetchPack(article.targetSlug)) ?? fallbackPack(article.targetSlug)
-    : HALL_ARTICLE_PACK
+    : targetCardResult?.status === 'found' && targetCardResult.card.zukan_packs
+      ? {
+        ...HALL_ARTICLE_PACK,
+        slug: targetCardResult.card.zukan_packs.slug,
+        code: targetCardResult.card.zukan_packs.code,
+        name: targetCardResult.card.zukan_packs.name,
+      }
+      : HALL_ARTICLE_PACK
   const cards = await fetchCardsByIdentifiers(getZukanArticleCardIdentifiers(article))
+  const targetHref = article.targetType === 'pack_article'
+    ? `/zukan/${article.targetSlug}`
+    : article.targetType === 'card_article'
+      ? `/zukan/card/${article.targetSlug}`
+      : `/zukan/hall-of-fame/${article.targetSlug}`
 
   return (
     <div className="mx-auto max-w-screen-lg px-2 pt-2 pb-6">
@@ -62,7 +77,7 @@ export default async function ZukanArticleDetailPage({
           ← 図鑑記事一覧へ戻る
         </Link>
         <Link
-          href={article.targetType === 'pack_article' ? `/zukan/${article.targetSlug}` : `/zukan/hall-of-fame/${article.targetSlug}`}
+          href={targetHref}
           className="border border-gray-300 bg-white px-3 py-1.5 text-blue-600 hover:border-blue-400 hover:underline"
         >
           対象ページを見る

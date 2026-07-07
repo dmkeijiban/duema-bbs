@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { verifyAdminCookie } from '@/lib/admin-auth'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { fetchCardsByIdentifiers, fetchPack } from '@/lib/zukan'
+import { fetchCardBySlug, fetchCardsByIdentifiers, fetchPack } from '@/lib/zukan'
 import type { ZukanPack } from '@/lib/zukan'
 import {
   getZukanArticleCardIdentifiers,
@@ -13,7 +13,7 @@ import {
   type ZukanArticleTargetType,
 } from '@/lib/zukan-articles'
 import { ZukanArticleRenderer } from '@/components/ZukanArticleRenderer'
-import { saveZukanArticle } from './actions'
+import { ZukanArticleEditorForm } from './ZukanArticleEditorForm'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,23 +30,6 @@ type ArticleRow = {
   published_at: string | null
 }
 
-const SAMPLE_BLOCKS = `[
-  {
-    "type": "heading",
-    "level": 2,
-    "text": "見出し"
-  },
-  {
-    "type": "paragraph",
-    "text": "本文をここに入れます。"
-  },
-  {
-    "type": "card",
-    "slug": "bolshack-dragon",
-    "caption": "記事内ではcompact表示になります。"
-  }
-]`
-
 const HALL_PREVIEW_PACK: ZukanPack = {
   id: '',
   slug: 'hall-of-fame',
@@ -58,6 +41,17 @@ const HALL_PREVIEW_PACK: ZukanPack = {
   is_published: true,
   sort_order: 0,
   image_url: null,
+}
+
+type PackOption = {
+  slug: string
+  code: string
+  name: string
+}
+
+type CardOption = {
+  slug: string
+  name: string
 }
 
 async function requireAdmin() {
@@ -90,20 +84,58 @@ function articleFromRow(row: ArticleRow): ZukanArticle | null {
 }
 
 function statusBadge(status: ZukanArticleStatus) {
-  return status === 'published'
-    ? 'bg-green-50 text-green-700 border-green-200'
-    : 'bg-gray-50 text-gray-600 border-gray-200'
+  if (status === 'published') return 'bg-green-50 text-green-700 border-green-200'
+  if (status === 'archived') return 'bg-gray-100 text-gray-500 border-gray-200'
+  return 'bg-amber-50 text-amber-700 border-amber-200'
+}
+
+function statusLabel(status: ZukanArticleStatus) {
+  if (status === 'published') return '公開中'
+  if (status === 'archived') return '非公開 / 保管'
+  return '下書き'
+}
+
+function articleTypeLabel(articleType: ZukanArticleTargetType) {
+  if (articleType === 'pack_article') return 'パック紹介記事'
+  if (articleType === 'card_article') return 'カード紹介記事'
+  return '殿堂図鑑記事'
+}
+
+function targetLabel(row: ArticleRow, packsBySlug: Map<string, PackOption>, cardsBySlug: Map<string, CardOption>) {
+  if (row.article_type === 'pack_article') {
+    const pack = packsBySlug.get(row.target_id)
+    return pack ? `${pack.code} ${pack.name}` : row.target_id
+  }
+  if (row.article_type === 'card_article') {
+    const card = cardsBySlug.get(row.target_id)
+    return card ? card.name : row.target_id
+  }
+  return row.target_id
+}
+
+function fallbackPack(slug: string): ZukanPack {
+  return {
+    ...HALL_PREVIEW_PACK,
+    slug,
+    code: slug.toUpperCase(),
+    name: slug,
+  }
 }
 
 async function ArticlePreview({ article }: { article: ZukanArticle }) {
+  const targetCardResult = article.targetType === 'card_article'
+    ? await fetchCardBySlug(article.targetSlug)
+    : null
   const pack = article.targetType === 'pack_article'
-    ? (await fetchPack(article.targetSlug)) ?? {
-      ...HALL_PREVIEW_PACK,
-      slug: article.targetSlug,
-      code: article.targetSlug.toUpperCase(),
-      name: article.targetSlug,
-    }
-    : HALL_PREVIEW_PACK
+    ? (await fetchPack(article.targetSlug)) ?? fallbackPack(article.targetSlug)
+    : targetCardResult?.status === 'found' && targetCardResult.card.zukan_packs
+      ? {
+        ...HALL_PREVIEW_PACK,
+        slug: targetCardResult.card.zukan_packs.slug,
+        code: targetCardResult.card.zukan_packs.code,
+        name: targetCardResult.card.zukan_packs.name,
+      }
+      : HALL_PREVIEW_PACK
   const cards = await fetchCardsByIdentifiers(getZukanArticleCardIdentifiers(article))
 
   return (
@@ -140,6 +172,25 @@ export default async function AdminZukanArticlesPage({
   const rows = tableMissing ? [] : ((data ?? []) as ArticleRow[])
   const selected = rows.find(row => row.id === sp.edit) ?? null
   const selectedArticle = selected ? articleFromRow(selected) : null
+  const [{ data: packsData }, { data: cardsData }] = tableMissing
+    ? [{ data: [] as PackOption[] }, { data: [] as CardOption[] }]
+    : await Promise.all([
+      supabase
+        .from('zukan_packs')
+        .select('slug, code, name')
+        .order('sort_order', { ascending: true })
+        .limit(500),
+      supabase
+        .from('zukan_cards')
+        .select('slug, name')
+        .eq('is_published', true)
+        .order('name', { ascending: true })
+        .limit(2000),
+    ])
+  const packOptions = (packsData ?? []) as PackOption[]
+  const cardOptions = (cardsData ?? []) as CardOption[]
+  const packsBySlug = new Map(packOptions.map(pack => [pack.slug, pack]))
+  const cardsBySlug = new Map(cardOptions.map(card => [card.slug, card]))
 
   return (
     <div className="mx-auto max-w-6xl px-3 py-6">
@@ -148,7 +199,7 @@ export default async function AdminZukanArticlesPage({
           <Link href="/admin/zukan" className="text-sm text-blue-700 hover:underline">← 図鑑管理へ戻る</Link>
           <h1 className="mt-1 text-xl font-bold text-gray-900">図鑑記事管理</h1>
           <p className="mt-1 text-xs leading-relaxed text-gray-500">
-            思い出図鑑/殿堂図鑑の記事をJSONブロックで保存し、draftで確認してからpublishedにできます。
+            思い出図鑑のパックページやカードページに表示する読み物記事を作成・編集できます。
           </p>
         </div>
         <Link href="/admin" className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">
@@ -177,59 +228,20 @@ export default async function AdminZukanArticlesPage({
           <div className="border-b border-gray-100 px-3 py-2">
             <h2 className="text-sm font-bold text-gray-800">{selected ? '記事を編集' : '新規記事を作成'}</h2>
           </div>
-          <form action={saveZukanArticle} className="space-y-3 px-3 py-3">
-            <input type="hidden" name="id" value={selected?.id ?? ''} />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-xs font-bold text-gray-700">
-                対象タイプ
-                <select name="article_type" defaultValue={selected?.article_type ?? 'pack_article'} className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-xs">
-                  <option value="pack_article">pack_article</option>
-                  <option value="hall_of_fame_article">hall_of_fame_article</option>
-                </select>
-              </label>
-              <label className="block text-xs font-bold text-gray-700">
-                対象ID
-                <input name="target_id" defaultValue={selected?.target_id ?? 'dm-01'} placeholder="dm-01 / 2004" className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-xs" />
-              </label>
-            </div>
-            <label className="block text-xs font-bold text-gray-700">
-              記事URL slug
-              <input name="slug" defaultValue={selected?.slug ?? 'dm-01'} placeholder="dm-01" className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-xs" />
-            </label>
-            <label className="block text-xs font-bold text-gray-700">
-              タイトル
-              <input name="title" defaultValue={selected?.title ?? ''} className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-xs" />
-            </label>
-            <label className="block text-xs font-bold text-gray-700">
-              説明文
-              <textarea name="description" defaultValue={selected?.description ?? ''} rows={2} className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-xs" />
-            </label>
-            <label className="block text-xs font-bold text-gray-700">
-              状態
-              <select name="status" defaultValue={selected?.status ?? 'draft'} className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-xs">
-                <option value="draft">draft</option>
-                <option value="published">published</option>
-              </select>
-            </label>
-            <label className="block text-xs font-bold text-gray-700">
-              本文ブロックJSON
-              <textarea
-                name="blocks_json"
-                defaultValue={selected ? JSON.stringify(selected.blocks, null, 2) : SAMPLE_BLOCKS}
-                rows={20}
-                spellCheck={false}
-                className="mt-1 w-full rounded border border-gray-300 px-2 py-2 font-mono text-[11px] leading-5"
-              />
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <button name="intent" value="draft" className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">
-                下書き保存
-              </button>
-              <button name="intent" value="publish" className="rounded border border-green-300 bg-green-50 px-3 py-1.5 text-xs font-bold text-green-700 hover:bg-green-100">
-                公開保存
-              </button>
-            </div>
-          </form>
+          <ZukanArticleEditorForm
+            selected={selected ? {
+              id: selected.id,
+              slug: selected.slug,
+              article_type: selected.article_type,
+              target_id: selected.target_id,
+              title: selected.title,
+              description: selected.description ?? '',
+              status: selected.status,
+              blocks: selected.blocks,
+            } : null}
+            packOptions={packOptions}
+            cardOptions={cardOptions}
+          />
         </section>
 
         <aside className="rounded border border-gray-200 bg-white">
@@ -241,10 +253,10 @@ export default async function AdminZukanArticlesPage({
               <Link key={row.id} href={`/admin/zukan/articles?edit=${row.id}&preview=1`} className="block px-3 py-2 text-xs hover:bg-blue-50">
                 <div className="flex items-center justify-between gap-2">
                   <span className="line-clamp-1 font-bold text-blue-700">{row.title}</span>
-                  <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-bold ${statusBadge(row.status)}`}>{row.status}</span>
+                  <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-bold ${statusBadge(row.status)}`}>{statusLabel(row.status)}</span>
                 </div>
                 <div className="mt-1 text-[10px] text-gray-500">
-                  {row.article_type} / {row.target_id} / {row.slug}
+                  {articleTypeLabel(row.article_type)} / {targetLabel(row, packsBySlug, cardsBySlug)} / {row.slug}
                 </div>
                 <div className="mt-0.5 text-[10px] text-gray-400">更新 {formatDate(row.updated_at)}</div>
               </Link>

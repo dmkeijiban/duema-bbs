@@ -4,9 +4,9 @@ import { loadPublishedZukanArticles } from '@/lib/zukan-articles'
 export const dynamic = 'force-dynamic'
 
 function targetLabel(articleType: string, targetSlug: string) {
-  return articleType === 'hall_of_fame_article'
-    ? `殿堂図鑑 / ${targetSlug}`
-    : `思い出図鑑 / ${targetSlug}`
+  if (articleType === 'card_article') return `カード紹介記事 / ${targetSlug}`
+  if (articleType === 'hall_of_fame_article') return `殿堂図鑑 / ${targetSlug}`
+  return `パック紹介記事 / ${targetSlug}`
 }
 
 export default async function ZukanArticlesPage() {
@@ -25,7 +25,7 @@ export default async function ZukanArticlesPage() {
       <header className="mb-4 border border-gray-300 bg-white px-4 py-4">
         <h1 className="text-lg font-bold text-gray-800">図鑑記事</h1>
         <p className="mt-1 text-sm leading-relaxed text-gray-600">
-          パックや殿堂発表を振り返る、運営者作成の読み物です。
+          パックやカードを振り返る、運営者作成の読み物です。
         </p>
       </header>
 
