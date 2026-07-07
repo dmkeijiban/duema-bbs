@@ -16,7 +16,7 @@ const CIV_STRIPE_COLORS: Record<string, string> = {
   ゼロ: '#a8a29e',
 }
 
-function splitCivilizations(civilization: string | null | undefined): string[] {
+export function splitCivilizations(civilization: string | null | undefined): string[] {
   return String(civilization ?? '')
     .split('/')
     .map(civ => civ.trim())
@@ -40,24 +40,6 @@ export function zukanRainbowStyle(civilization: string | null | undefined) {
   return {
     backgroundImage: `linear-gradient(135deg, ${stops.join(', ')})`,
   }
-}
-
-export function ZukanRainbowBand({
-  civilization,
-  className = 'absolute left-0 top-0 z-10 h-1.5 w-full',
-}: {
-  civilization: string | null | undefined
-  className?: string
-}) {
-  if (!isMultiCivilization(civilization)) return null
-
-  return (
-    <span
-      aria-hidden="true"
-      className={`${className} border-b border-white/50 shadow-[0_1px_2px_rgba(0,0,0,0.2)]`}
-      style={zukanRainbowStyle(civilization)}
-    />
-  )
 }
 
 export function ZukanCivilizationBadge({
