@@ -115,3 +115,29 @@ export async function saveZukanArticle(formData: FormData) {
   revalidatePath(`/zukan/articles/${slug}`)
   redirect(`/admin/zukan/articles?edit=${encodeURIComponent(data.id)}&saved=1&preview=1`)
 }
+
+export async function archiveZukanArticle(formData: FormData) {
+  await requireAdmin()
+
+  const id = String(formData.get('id') ?? '').trim()
+  const slug = String(formData.get('slug') ?? '').trim()
+  if (!id) redirect('/admin/zukan/articles?error=missing_id')
+
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('zukan_articles')
+    .update({
+      status: 'archived',
+      published_at: null,
+    })
+    .eq('id', id)
+
+  if (error) {
+    redirect(`/admin/zukan/articles?error=${encodeURIComponent(error.message)}`)
+  }
+
+  revalidatePath('/admin/zukan/articles')
+  revalidatePath('/zukan/articles')
+  if (slug) revalidatePath(`/zukan/articles/${slug}`)
+  redirect(`/admin/zukan/articles?edit=${encodeURIComponent(id)}&archived=1`)
+}

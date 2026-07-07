@@ -267,7 +267,7 @@ export function ZukanArticleEditorForm({
           <option value="archived">{statusLabel('archived')}</option>
         </select>
         <span className="mt-1 block text-[11px] font-normal leading-relaxed text-gray-500">
-          下書きは管理画面だけに保存されます。公開中にすると記事ページに表示されます。
+          選んだ状態で保存されます。公開中だけ記事ページに表示され、下書き・非公開 / 保管は管理画面だけに残ります。
         </span>
       </label>
 
@@ -396,9 +396,6 @@ export function ZukanArticleEditorForm({
       <div className="flex flex-wrap gap-2">
         <button name="intent" value="save" className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">
           保存
-        </button>
-        <button name="intent" value="publish" className="rounded border border-green-300 bg-green-50 px-3 py-1.5 text-xs font-bold text-green-700 hover:bg-green-100">
-          公開保存
         </button>
       </div>
     </form>
