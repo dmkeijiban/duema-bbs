@@ -407,6 +407,13 @@ export async function runDailyZukanThread(): Promise<DailyZukanResult> {
   const cardUrl = `${SITE_URL}/zukan/card/${card.slug}`
   const title = `${card.name}について語ろう`
   const body = buildBody(card.name, cardUrl)
+  const imageUrl = card.official_image_url?.trim()
+  if (!imageUrl) {
+    await admin.from('daily_zukan_thread_logs').delete().eq('id', logRow.id)
+    const error = `missing_card_image: ${card.slug}`
+    if (schedule) await markScheduleError(admin, postedDate, error)
+    return { status: 'error', error, schedule: scheduleFill }
+  }
 
   const { data: categoryRow } = await admin
     .from('categories')
@@ -423,7 +430,7 @@ export async function runDailyZukanThread(): Promise<DailyZukanResult> {
       category_id: categoryId,
       author_name: '名無しのデュエリスト',
       auto_lock_exempt: true,
-      ...(card.official_image_url ? { image_url: card.official_image_url } : {}),
+      image_url: imageUrl,
     })
     .select('id')
     .single()
@@ -436,7 +443,7 @@ export async function runDailyZukanThread(): Promise<DailyZukanResult> {
         body,
         category_id: categoryId,
         author_name: '名無しのデュエリスト',
-        ...(card.official_image_url ? { image_url: card.official_image_url } : {}),
+        image_url: imageUrl,
       })
       .select('id')
       .single()
@@ -481,7 +488,7 @@ export async function runDailyZukanThread(): Promise<DailyZukanResult> {
     cardSlug: card.slug,
     cardName: card.name,
     cardUrl,
-    imageUrl: card.official_image_url ?? '',
+    imageUrl,
     threadId: thread.id,
     cycleNo,
     postedDate,
