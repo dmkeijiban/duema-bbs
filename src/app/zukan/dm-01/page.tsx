@@ -1,13 +1,11 @@
 import Link from 'next/link'
 import { cookies } from 'next/headers'
-import { fetchPack, fetchCardsByPack, fetchCardsBySlugs, fetchPackReviews, attachReviewProfiles, fetchCardsByIdentifiers } from '@/lib/zukan'
+import { fetchPack, fetchCardsByPack, fetchCardsBySlugs, fetchPackReviews, attachReviewProfiles } from '@/lib/zukan'
 import type { ZukanPack, ZukanCard } from '@/lib/zukan'
-import { getZukanArticleCardIdentifiers, loadZukanArticle } from '@/lib/zukan-articles'
 import { normalizeZukanDisplayName } from '@/lib/zukan-display'
 import { verifyAdminCookie, ADMIN_COOKIE } from '@/lib/admin-auth'
 import { ZukanReviewAuthor } from '@/components/ZukanReviewAuthor'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
-import { ZukanArticleRenderer } from '@/components/ZukanArticleRenderer'
 import PackShareButtons from './PackShareButtons'
 import PackReviewForm from './PackReviewForm'
 import AdminPackReviewControls from './AdminPackReviewControls'
@@ -258,10 +256,6 @@ export default async function ZukanDm01Page({
   const hasNextPage = total ? page * PAGE_SIZE < total : cards.length === PAGE_SIZE
   const latestPackReviews = packReviews?.slice(0, 3) ?? []
   const morePackReviews = packReviews?.slice(3) ?? []
-  const article = page === 1 ? await loadZukanArticle('dm-01') : null
-  const articleCards = article
-    ? await fetchCardsByIdentifiers(getZukanArticleCardIdentifiers(article))
-    : null
 
   return (
     <div className="max-w-screen-xl mx-auto px-2 pt-2 pb-0">
@@ -331,10 +325,6 @@ export default async function ZukanDm01Page({
           </div>
         </div>
       </header>
-
-      {article && article.targetType === 'pack' && article.targetSlug === 'dm-01' && (
-        <ZukanArticleRenderer article={article} pack={pack} cards={articleCards ?? []} />
-      )}
 
       {/* 代表カード（page=1 のみ） */}
       {page === 1 && (
