@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase-server'
 import { createPublicClient } from '@/lib/supabase-public'
-import { verifyAdminCookie } from '@/lib/admin-auth'
+import { createAdminRateLimitBypassToken, verifyAdminCookie } from '@/lib/admin-auth'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -37,6 +37,7 @@ export async function GET(request: NextRequest, { params }: Props) {
   const cookieStore = await cookies()
   const sessionId = cookieStore.get('bbs_session')?.value ?? ''
   const isAdmin = verifyAdminCookie(cookieStore.get('admin_auth')?.value)
+  const adminRateLimitToken = isAdmin ? createAdminRateLimitBypassToken(threadId) : null
   const todayKey = getJstDateKey()
   const viewCookieName = `thread_viewed_${threadId}`
   const shouldCountView =
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest, { params }: Props) {
   }
 
   const response = NextResponse.json(
-    { sessionId, currentUserId, isAdmin, isFavorited },
+    { sessionId, currentUserId, isAdmin, isFavorited, adminRateLimitToken },
     { headers: { 'Cache-Control': 'private, no-store' } },
   )
 
