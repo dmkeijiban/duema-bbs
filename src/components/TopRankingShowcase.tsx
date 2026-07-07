@@ -68,7 +68,7 @@ function RankingAvatar({ user, index }: { user: ShowcaseRankingUser; index: numb
         alt={`${user.displayName}のプロフィール`}
         loading="lazy"
         decoding="async"
-        className="h-10 w-10 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover md:h-12 md:w-12"
+        className="h-10 w-10 shrink-0 rounded-full border border-gray-200 bg-gray-100 object-cover md:h-20 md:w-20"
       />
     )
   }
@@ -77,10 +77,36 @@ function RankingAvatar({ user, index }: { user: ShowcaseRankingUser; index: numb
   const initial = user.displayName.trim().charAt(0) || '?'
   return (
     <span
-      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ring-1 md:h-12 md:w-12 ${ringColor}`}
+      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ring-1 md:h-20 md:w-20 md:text-xl ${ringColor}`}
       aria-hidden="true"
     >
       {initial}
+    </span>
+  )
+}
+
+function RankBadge({ rank }: { rank: number }) {
+  const medal = RANK_MEDALS[rank - 1]
+
+  if (medal) {
+    return (
+      <span className="absolute left-0.5 top-0.5 z-10 text-sm leading-none md:text-base" aria-label={`${rank}位`}>
+        {medal}
+      </span>
+    )
+  }
+
+  return (
+    <span className="absolute left-0.5 top-0.5 z-10 rounded bg-gray-100 px-0.5 py-0.5 text-[9px] font-bold leading-none text-gray-500 md:text-[10px]">
+      {rank}位
+    </span>
+  )
+}
+
+function PointsBadge({ points }: { points: number }) {
+  return (
+    <span className="absolute right-0.5 top-0.5 z-10 whitespace-nowrap rounded bg-gray-700 px-0.5 py-0.5 text-[8px] font-bold leading-none text-white md:text-[9px]">
+      {points}pt
     </span>
   )
 }
@@ -107,7 +133,6 @@ function ProfileIconLink({ user }: { user: ProfileShowcaseUser }) {
 
 function RankingUserLink({ user, index }: { user: ShowcaseRankingUser; index: number }) {
   const rank = user.rank ?? index + 1
-  const medal = RANK_MEDALS[rank - 1]
 
   return (
     <Link
@@ -115,18 +140,11 @@ function RankingUserLink({ user, index }: { user: ShowcaseRankingUser; index: nu
       title={`${rank}位 ${user.displayName} ${user.points}pt`}
       aria-label={`${rank}位 ${user.displayName}のプロフィール`}
       prefetch={false}
-      className="flex h-20 min-w-0 flex-col items-center justify-center gap-0.5 bg-white px-1 text-center transition-colors hover:bg-gray-50 md:h-24"
+      className="relative flex h-14 min-w-0 items-center justify-center bg-white px-0.5 py-2 text-center transition-colors hover:bg-gray-50 md:h-24 md:px-1 md:py-1"
     >
-      <div className="flex h-4 items-center justify-center text-[11px] font-black leading-none text-gray-700 md:text-xs">
-        <span>{medal ?? `${rank}位`}</span>
-      </div>
+      <RankBadge rank={rank} />
+      <PointsBadge points={user.points} />
       <RankingAvatar user={user} index={index} />
-      <div className="w-full truncate text-[10px] font-bold leading-tight text-gray-700 md:text-xs">
-        {user.displayName}
-      </div>
-      <div className="font-mono text-[10px] font-black leading-none text-blue-700 md:text-xs">
-        {user.points}pt
-      </div>
     </Link>
   )
 }
