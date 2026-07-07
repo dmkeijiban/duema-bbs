@@ -1,11 +1,11 @@
 create table if not exists public.zukan_articles (
   id uuid primary key default gen_random_uuid(),
   slug text not null,
-  article_type text not null check (article_type in ('pack_article', 'hall_of_fame_article')),
+  article_type text not null check (article_type in ('pack_article', 'card_article', 'hall_of_fame_article')),
   target_id text not null,
   title text not null,
   description text,
-  status text not null default 'draft' check (status in ('draft', 'published')),
+  status text not null default 'draft' check (status in ('draft', 'published', 'archived')),
   blocks jsonb not null default '[]'::jsonb,
   published_at timestamptz,
   created_at timestamptz not null default now(),

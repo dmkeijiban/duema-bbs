@@ -5,8 +5,8 @@ export type ZukanArticleLink = {
   href: string
 }
 
-export type ZukanArticleStatus = 'draft' | 'published'
-export type ZukanArticleTargetType = 'pack_article' | 'hall_of_fame_article'
+export type ZukanArticleStatus = 'draft' | 'published' | 'archived'
+export type ZukanArticleTargetType = 'pack_article' | 'card_article' | 'hall_of_fame_article'
 
 export type ZukanArticleBlock =
   | { type: 'heading'; level?: 2 | 3; text: string }
@@ -123,12 +123,13 @@ export function parseZukanArticleBlock(value: unknown): ZukanArticleBlock | null
 
 export function normalizeZukanArticleTargetType(value: unknown): ZukanArticleTargetType | null {
   if (value === 'pack_article' || value === 'pack') return 'pack_article'
+  if (value === 'card_article' || value === 'card') return 'card_article'
   if (value === 'hall_of_fame_article' || value === 'hall-of-fame') return 'hall_of_fame_article'
   return null
 }
 
 export function normalizeZukanArticleStatus(value: unknown): ZukanArticleStatus | null {
-  if (value === 'draft' || value === 'published') return value
+  if (value === 'draft' || value === 'published' || value === 'archived') return value
   return null
 }
 

@@ -45,6 +45,14 @@ function parseBlocksInput(raw: string): { blocks: ZukanArticleBlock[]; title?: s
   return { blocks: article.blocks, title: article.title, description: article.description }
 }
 
+function blocksFromBodyText(raw: string): ZukanArticleBlock[] {
+  return raw
+    .split(/\n{2,}/)
+    .map(text => text.trim())
+    .filter(Boolean)
+    .map(text => ({ type: 'paragraph', text }))
+}
+
 export async function saveZukanArticle(formData: FormData) {
   await requireAdmin()
 
@@ -59,17 +67,22 @@ export async function saveZukanArticle(formData: FormData) {
       ? 'draft'
       : normalizeZukanArticleStatus(formData.get('status')) ?? 'draft'
   const blocksRaw = String(formData.get('blocks_json') ?? '').trim()
+  const bodyText = String(formData.get('body_text') ?? '').trim()
 
   if (!articleType) redirect('/admin/zukan/articles?error=invalid_type')
   if (!targetId) redirect('/admin/zukan/articles?error=missing_target')
   if (!slug) redirect('/admin/zukan/articles?error=missing_slug')
-  if (!blocksRaw) redirect('/admin/zukan/articles?error=missing_blocks')
+  if (!blocksRaw && !bodyText) redirect('/admin/zukan/articles?error=missing_blocks')
 
   let parsed: { blocks: ZukanArticleBlock[]; title?: string; description?: string }
-  try {
-    parsed = parseBlocksInput(blocksRaw)
-  } catch (error) {
-    redirect(`/admin/zukan/articles?error=${encodeURIComponent(error instanceof Error ? error.message : 'invalid json')}`)
+  if (blocksRaw) {
+    try {
+      parsed = parseBlocksInput(blocksRaw)
+    } catch (error) {
+      redirect(`/admin/zukan/articles?error=${encodeURIComponent(error instanceof Error ? error.message : 'invalid json')}`)
+    }
+  } else {
+    parsed = { blocks: blocksFromBodyText(bodyText) }
   }
 
   const title = String(formData.get('title') ?? '').trim() || parsed.title
