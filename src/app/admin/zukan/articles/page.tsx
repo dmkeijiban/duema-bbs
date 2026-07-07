@@ -115,6 +115,17 @@ function targetLabel(row: ArticleRow, packsBySlug: Map<string, PackOption>, card
   return row.target_id
 }
 
+function errorMessage(error: string) {
+  if (error === 'existing_target') {
+    return 'この対象の記事はすでに存在します。右の記事一覧から既存記事を編集してください。'
+  }
+  if (error === 'existing_slug' || error === 'duplicate_slug') {
+    return '同じ記事URL slugの記事がすでに存在します。既存記事を編集するか、上級者向け欄で別のslugを指定してください。'
+  }
+  if (error === 'missing_slug') return '記事URL slugを自動生成できませんでした。タイトルを入力して保存してください。'
+  return error
+}
+
 function fallbackPack(slug: string): ZukanPack {
   return {
     ...HALL_PREVIEW_PACK,
@@ -159,7 +170,7 @@ async function ArticlePreview({ article }: { article: ZukanArticle }) {
 export default async function AdminZukanArticlesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edit?: string; saved?: string; archived?: string; preview?: string; error?: string }>
+  searchParams: Promise<{ edit?: string; saved?: string; archived?: string; preview?: string; error?: string; existing?: string }>
 }) {
   await requireAdmin()
   const sp = await searchParams
@@ -226,7 +237,12 @@ export default async function AdminZukanArticlesPage({
       )}
       {sp.error && (
         <div className="mb-4 border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-700">
-          保存できませんでした: {sp.error}
+          <span>保存できませんでした: {errorMessage(sp.error)}</span>
+          {sp.existing && (
+            <Link href={`/admin/zukan/articles?edit=${encodeURIComponent(sp.existing)}&preview=1`} className="ml-2 font-bold text-blue-700 hover:underline">
+              既存記事を編集する →
+            </Link>
+          )}
         </div>
       )}
 

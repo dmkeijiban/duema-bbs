@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { ZukanArticleStatus, ZukanArticleTargetType } from '@/lib/zukan-articles'
 import { zukanArticleBlocksToBodyText } from '@/lib/zukan-article-markdown'
+import { buildDefaultArticleSlug } from '@/lib/zukan-article-slug'
 import { saveZukanArticle } from './actions'
 
 type ArticleFormValue = {
@@ -58,7 +59,12 @@ export function ZukanArticleEditorForm({
 }) {
   const [articleType, setArticleType] = useState<ZukanArticleTargetType>(selected?.article_type ?? 'pack_article')
   const [targetId, setTargetId] = useState(selected?.target_id ?? packOptions[0]?.slug ?? 'dm-01')
-  const [slug, setSlug] = useState(selected?.slug ?? targetId)
+  const [slug, setSlug] = useState(selected?.slug ?? buildDefaultArticleSlug({
+    articleType: selected?.article_type ?? 'pack_article',
+    targetId: selected?.target_id ?? packOptions[0]?.slug ?? 'dm-01',
+    title: selected?.title,
+  }))
+  const [slugTouched, setSlugTouched] = useState(!!selected)
   const [articleText, setArticleText] = useState(() => zukanArticleBlocksToBodyText(selected?.blocks, selected?.target_id))
   const [title, setTitle] = useState(selected?.title ?? '')
   const [description, setDescription] = useState(selected?.description ?? '')
@@ -77,12 +83,23 @@ export function ZukanArticleEditorForm({
       : packOptions[0]?.slug ?? 'dm-01'
     setArticleType(next)
     setTargetId(nextTarget)
-    setSlug(current => current && current !== targetId ? current : nextTarget)
+    if (!selected && !slugTouched) {
+      setSlug(buildDefaultArticleSlug({ articleType: next, targetId: nextTarget, title }))
+    }
   }
 
   function updateTarget(next: string) {
     setTargetId(next)
-    setSlug(current => current && current !== targetId ? current : next)
+    if (!selected && !slugTouched) {
+      setSlug(buildDefaultArticleSlug({ articleType, targetId: next, title }))
+    }
+  }
+
+  function updateTitle(next: string) {
+    setTitle(next)
+    if (!selected && !slugTouched && articleType !== 'pack_article' && articleType !== 'card_article') {
+      setSlug(buildDefaultArticleSlug({ articleType, targetId, title: next }))
+    }
   }
 
   return (
@@ -135,13 +152,8 @@ export function ZukanArticleEditorForm({
       </div>
 
       <label className="block text-xs font-bold text-gray-700">
-        記事URL slug
-        <input name="slug" value={slug} onChange={event => setSlug(event.target.value)} placeholder="dm-01" className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-xs" />
-      </label>
-
-      <label className="block text-xs font-bold text-gray-700">
         タイトル
-        <input name="title" value={title} onChange={event => setTitle(event.target.value)} className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-xs" />
+        <input name="title" value={title} onChange={event => updateTitle(event.target.value)} className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-xs" />
       </label>
 
       <label className="block text-xs font-bold text-gray-700">
@@ -195,7 +207,23 @@ natural-trap
       </section>
 
       <details className="rounded border border-gray-200 bg-gray-50 px-3 py-2">
-        <summary className="cursor-pointer text-xs font-bold text-gray-700">上級者向け：本文ブロックJSON</summary>
+        <summary className="cursor-pointer text-xs font-bold text-gray-700">上級者向け：URL slug / 本文ブロックJSON</summary>
+        <label className="mt-3 block text-xs font-bold text-gray-700">
+          記事URL slug
+          <input
+            name="slug"
+            value={slug}
+            onChange={event => {
+              setSlugTouched(true)
+              setSlug(event.target.value)
+            }}
+            placeholder="自動設定されます"
+            className="mt-1 w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-xs"
+          />
+          <span className="mt-1 block text-[11px] font-normal leading-relaxed text-gray-500">
+            新規作成では対象パック / 対象カードから自動設定されます。必要な場合のみ変更してください。
+          </span>
+        </label>
         <p className="mt-2 text-[11px] leading-relaxed text-gray-500">
           記事本文をブロック形式で保存するための内部データです。通常は直接編集しなくてOKです。
         </p>
