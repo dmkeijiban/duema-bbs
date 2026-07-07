@@ -6,6 +6,7 @@ import {
   type ProfileShowcaseUser,
   type UserRankingRow,
 } from '@/lib/cached-queries'
+import { RecommendSection } from '@/components/RecommendSection'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
@@ -227,6 +228,10 @@ function toRankingUsers(rows: UserRankingRow[]): ShowcaseRankingUser[] {
 export async function TopRankingShowcase() {
   const mode = await getCachedTopShowcaseMode()
   if (mode === 'hidden') return null
+
+  if (mode === 'recommended') {
+    return <RecommendSection />
+  }
 
   if (mode === 'monthly_ranking' || mode === 'overall_ranking') {
     const rankings = await getCachedUserRankings()

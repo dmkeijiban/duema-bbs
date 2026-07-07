@@ -4,6 +4,7 @@ import { seededShuffle } from '@/lib/stable-shuffle'
 import { DEFAULT_THREAD_THUMBNAIL } from '@/lib/thumbnail'
 import { SafeThumbnail } from '@/components/SafeThumbnail'
 import { isAdSenseRiskyThreadTitle } from '@/lib/adsense-review-mode'
+import type { ReactNode } from 'react'
 
 /** CLS防止用スケルトン — fallback={null}の代わりに使う */
 export function RecommendSectionSkeleton() {
@@ -32,9 +33,22 @@ interface Props {
   threadId?: number
   title?: string
   categoryId?: number | null
+  headerAction?: ReactNode
 }
 
-export async function RecommendSection({ threadId, title, categoryId = null }: Props = {}) {
+function DefaultHeaderAction() {
+  return (
+    <Link
+      href="/ranking"
+      prefetch={false}
+      className="shrink-0 rounded px-1.5 py-0.5 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-50 hover:text-blue-800"
+    >
+      ランキングはこちら
+    </Link>
+  )
+}
+
+export async function RecommendSection({ threadId, title, categoryId = null, headerAction = <DefaultHeaderAction /> }: Props = {}) {
   const raw = await (async () => {
     try {
       return threadId && title
@@ -55,9 +69,12 @@ export async function RecommendSection({ threadId, title, categoryId = null }: P
 
   return (
     <div className="mb-2 border border-gray-300 bg-white">
-      <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-gray-300" style={{ background: '#fff' }}>
-        <span style={{ color: '#004085', fontSize: 13 }}>🔖</span>
-        <span className="font-bold text-sm" style={{ color: '#004085' }}>おすすめ</span>
+      <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-gray-300" style={{ background: '#fff' }}>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span style={{ color: '#004085', fontSize: 13 }}>🔖</span>
+          <span className="font-bold text-sm" style={{ color: '#004085' }}>おすすめ</span>
+        </div>
+        {headerAction}
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 border-l border-t border-gray-300">
         {threads.map((thread, idx) => {
