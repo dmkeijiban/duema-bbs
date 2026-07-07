@@ -71,16 +71,21 @@ export function ZukanArticleRenderer({
 
           if (block.type === 'packHero') {
             return (
-              <figure key={index} className="mx-auto max-w-[260px]">
+              <figure key={index} className="mr-auto max-w-[190px] sm:max-w-[220px]">
                 {pack.image_url ? (
-                  <ZukanImagePreview src={pack.image_url} alt={`${pack.code} ${pack.name} パック画像`} aspectRatio="3 / 4" />
+                  <ZukanImagePreview
+                    src={pack.image_url}
+                    alt={`${pack.code} ${pack.name} パック画像`}
+                    aspectRatio="63 / 88"
+                    imageClassName="object-contain"
+                  />
                 ) : (
-                  <div className="flex flex-col items-center justify-center border border-gray-200 bg-gray-50 text-center text-xs font-bold text-gray-500" style={{ aspectRatio: '3 / 4' }}>
+                  <div className="flex flex-col items-center justify-center border border-gray-200 bg-gray-50 text-center text-xs font-bold text-gray-500" style={{ aspectRatio: '63 / 88' }}>
                     <span className="font-mono text-2xl">{pack.code}</span>
                     <span className="mt-1">{pack.name}</span>
                   </div>
                 )}
-                {block.caption && <figcaption className="mt-1 text-center text-xs text-gray-500">{block.caption}</figcaption>}
+                {block.caption && <figcaption className="mt-1 text-left text-xs text-gray-500">{block.caption}</figcaption>}
               </figure>
             )
           }
@@ -90,7 +95,7 @@ export function ZukanArticleRenderer({
             const card = findCard(cards, identifier)
             if (!card || !cardImageUrl(card)) return null
 
-            return <figure key={index} className="mx-auto max-w-[190px]"><ArticleCardImage card={card} /></figure>
+            return <figure key={index} className="mr-auto max-w-[190px] sm:max-w-[220px]"><ArticleCardImage card={card} /></figure>
           }
 
           if (block.type === 'cardGrid') {
