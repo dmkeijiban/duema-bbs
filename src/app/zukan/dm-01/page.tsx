@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { cookies } from 'next/headers'
-import { fetchPack, fetchCardsByPack, fetchCardsBySlugs, fetchPackReviews, attachReviewProfiles } from '@/lib/zukan'
+import { fetchPack, fetchAllCardsByPack, fetchCardsBySlugs, fetchPackReviews, attachReviewProfiles } from '@/lib/zukan'
 import type { ZukanPack, ZukanCard } from '@/lib/zukan'
 import { normalizeZukanDisplayName } from '@/lib/zukan-display'
 import { verifyAdminCookie, ADMIN_COOKIE } from '@/lib/admin-auth'
@@ -43,6 +43,22 @@ export async function generateMetadata() {
 }
 
 const PAGE_SIZE = 60
+
+function dm01OfficialSortOrder(card: ZukanCard): number {
+  const officialId = card.official_page_url?.match(/[?&]id=([^&]+)/)?.[1]?.toLowerCase()
+  const cardNumber = officialId?.match(/^dm01-(s\d+|\d+)$/)?.[1]
+  if (!cardNumber) return Number.MAX_SAFE_INTEGER
+  if (cardNumber.startsWith('s')) return Number(cardNumber.slice(1))
+  return 10 + Number(cardNumber)
+}
+
+function sortDm01CardsByOfficialNumber(cards: ZukanCard[]): ZukanCard[] {
+  return [...cards].sort((a, b) => {
+    const officialDiff = dm01OfficialSortOrder(a) - dm01OfficialSortOrder(b)
+    if (officialDiff !== 0) return officialDiff
+    return a.sort_order - b.sort_order
+  })
+}
 
 
 // --- モックフォールバック ---------------------------------------------------
@@ -207,11 +223,12 @@ export default async function ZukanDm01Page({
 
   const [dbCards, dbRepCards] = dbPack
     ? await Promise.all([
-        fetchCardsByPack(dbPack.id, page),
+        fetchAllCardsByPack(dbPack.id),
         page === 1 ? fetchCardsBySlugs(dbPack.id, REP_CARDS.map(r => r.slug)) : Promise.resolve(null),
       ])
     : [null, null]
-  const cards = dbCards ?? (page === 1 ? MOCK_CARDS : [])
+  const orderedCards = dbCards ? sortDm01CardsByOfficialNumber(dbCards) : (page === 1 ? MOCK_CARDS : [])
+  const cards = orderedCards.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
   const isDbReady = dbPack !== null
 
   type AdminPackReview = {

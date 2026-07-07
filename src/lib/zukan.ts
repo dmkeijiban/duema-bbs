@@ -42,7 +42,7 @@ export type ZukanCardWithPack = ZukanCard & {
 
 const PAGE_SIZE = 60
 const PACK_SELECT = 'id, slug, code, name, released_year, card_count, description, is_published, sort_order, image_url'
-const CARD_LIST_SELECT = 'id, pack_id, slug, name, card_type, civilization, cost, mana, race, power, rarity, official_image_url, sort_order'
+const CARD_LIST_SELECT = 'id, pack_id, slug, name, card_type, civilization, cost, mana, race, power, rarity, official_page_url, official_image_url, sort_order'
 const CARD_DETAIL_SELECT = 'id, pack_id, slug, name, card_type, civilization, cost, mana, race, power, rarity, illustrator, ability_text, flavor_text, image_url, official_page_url, official_image_url, sort_order, zukan_packs(slug, code, name)'
 
 // テーブル未作成エラーコード (PostgreSQL: undefined_table)
@@ -97,6 +97,23 @@ export async function fetchCardsByPack(
       .eq('is_published', true)
       .order('sort_order', { ascending: true })
       .range(from, to)
+    if (error) return null
+    return data as ZukanCard[]
+  } catch {
+    return null
+  }
+}
+
+export async function fetchAllCardsByPack(packId: string): Promise<ZukanCard[] | null> {
+  try {
+    const supabase = createPublicClient()
+    const { data, error } = await supabase
+      .from('zukan_cards')
+      .select(CARD_LIST_SELECT)
+      .eq('pack_id', packId)
+      .eq('is_published', true)
+      .order('sort_order', { ascending: true })
+      .limit(500)
     if (error) return null
     return data as ZukanCard[]
   } catch {
