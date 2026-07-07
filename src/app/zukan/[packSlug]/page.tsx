@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { fetchCardsByPack, fetchPack } from '@/lib/zukan'
+import { fetchCardsByPack, fetchCardsByPackSortRange, fetchPack } from '@/lib/zukan'
 import type { ZukanCard } from '@/lib/zukan'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import ZukanPseudoCard from '@/components/ZukanPseudoCard'
@@ -24,6 +24,14 @@ const PACK_CARD_SECTIONS: Record<string, Array<{ key: string; label: string; fro
     { key: 'base', label: '通常カード', from: 1, to: 84 },
     { key: 'secret', label: 'シークレット', from: 85, to: 116 },
     { key: 'treasure', label: 'トレジャー', from: 117, to: 171 },
+  ],
+}
+
+const PACK_PAGE_RANGES: Record<string, Array<{ from: number; to: number }>> = {
+  'dm22-rp1': [
+    { from: 1, to: 60 },
+    { from: 61, to: 116 },
+    { from: 117, to: 171 },
   ],
 }
 
@@ -172,19 +180,27 @@ export default async function ZukanPackPage({
   const pack = await fetchPack(packSlug)
   if (!pack?.is_published) notFound()
 
-  const cards = await fetchCardsByPack(pack.id, page)
+  const customPageRanges = PACK_PAGE_RANGES[pack.slug] ?? null
+  const customPageRange = customPageRanges?.[page - 1] ?? null
+  if (customPageRanges && !customPageRange) notFound()
+
+  const cards = customPageRange
+    ? await fetchCardsByPackSortRange(pack.id, customPageRange.from, customPageRange.to)
+    : await fetchCardsByPack(pack.id, page)
   if (!cards || (page > 1 && cards.length === 0)) notFound()
 
   const sortedCards = [...cards].sort((a, b) => a.sort_order - b.sort_order)
   const total = pack.card_count ?? sortedCards.length
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const totalPages = customPageRanges?.length ?? Math.max(1, Math.ceil(total / PAGE_SIZE))
   if (page > totalPages) notFound()
 
-  const expectedCardsOnPage = Math.max(0, Math.min(PAGE_SIZE, total - (page - 1) * PAGE_SIZE))
+  const expectedCardsOnPage = customPageRange
+    ? customPageRange.to - customPageRange.from + 1
+    : Math.max(0, Math.min(PAGE_SIZE, total - (page - 1) * PAGE_SIZE))
   if (sortedCards.length < expectedCardsOnPage) notFound()
 
-  const from = (page - 1) * PAGE_SIZE + 1
-  const to = Math.min((page - 1) * PAGE_SIZE + sortedCards.length, total)
+  const from = customPageRange?.from ?? (page - 1) * PAGE_SIZE + 1
+  const to = customPageRange?.to ?? Math.min((page - 1) * PAGE_SIZE + sortedCards.length, total)
   const featuredCards = SHOW_FEATURED_PACK_CARDS && page === 1 ? sortedCards.slice(0, 5) : []
   const cardGroups = groupCardsBySection(pack.slug, sortedCards)
 
