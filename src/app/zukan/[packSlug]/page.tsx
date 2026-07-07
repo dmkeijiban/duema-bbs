@@ -4,20 +4,12 @@ import { fetchCardsByPack, fetchCardsByPackSortRange, fetchPack } from '@/lib/zu
 import type { ZukanCard } from '@/lib/zukan'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import ZukanPseudoCard from '@/components/ZukanPseudoCard'
+import { ZukanCivilizationBadge, ZukanRainbowBand } from '@/components/ZukanCivilizationBadge'
 import PackShareButtons from '../dm-01/PackShareButtons'
 import { SITE_URL } from '@/lib/site-config'
 
 const PAGE_SIZE = 60
 const SHOW_FEATURED_PACK_CARDS = false
-
-const CIV_BADGE: Record<string, string> = {
-  火: 'bg-red-100 text-red-700',
-  水: 'bg-blue-100 text-blue-700',
-  自然: 'bg-green-100 text-green-700',
-  光: 'bg-yellow-100 text-yellow-700',
-  闇: 'bg-gray-200 text-gray-700',
-  ゼロ: 'bg-stone-100 text-stone-700',
-}
 
 const PACK_CARD_SECTIONS: Record<string, Array<{ key: string; label: string; from: number; to: number }>> = {
   'dm22-rp1': [
@@ -247,10 +239,11 @@ export default async function ZukanPackPage({
           </div>
           <div className="flex snap-x gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
             {featuredCards.map(card => (
-              <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="block w-[46%] flex-shrink-0 snap-start border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 sm:w-auto [-webkit-tap-highlight-color:transparent]">
+              <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="relative block w-[46%] flex-shrink-0 snap-start overflow-hidden border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 sm:w-auto [-webkit-tap-highlight-color:transparent]">
+                <ZukanRainbowBand civilization={card.civilization} />
                 <CardFace card={card} />
                 <div className="px-1.5 py-1.5">
-                  {card.civilization && <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[card.civilization] ?? 'bg-gray-100 text-gray-600'}`}>{card.civilization}</span>}
+                  {card.civilization && <ZukanCivilizationBadge civilization={card.civilization} />}
                   <div className="mt-1 truncate text-xs font-bold text-blue-700">{card.name}</div>
                 </div>
               </Link>
@@ -279,11 +272,12 @@ export default async function ZukanPackPage({
               )}
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
                 {group.cards.map(card => (
-                  <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="block border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]">
+                  <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="relative block overflow-hidden border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]">
+                    <ZukanRainbowBand civilization={card.civilization} />
                     <CardFace card={card} />
                     <div className="px-1.5 py-1.5">
                       <div className="flex items-center gap-1">
-                        {card.civilization && <span className={`inline-block rounded px-1 text-[10px] font-bold ${CIV_BADGE[card.civilization] ?? 'bg-gray-100 text-gray-600'}`}>{card.civilization}</span>}
+                        {card.civilization && <ZukanCivilizationBadge civilization={card.civilization} />}
                         {card.rarity && <span className="font-mono text-[10px] text-gray-400">{card.rarity}</span>}
                       </div>
                       <div className="mt-0.5 truncate text-xs font-bold text-blue-700">{card.name}</div>

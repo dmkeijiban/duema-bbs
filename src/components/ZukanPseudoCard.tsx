@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { isMultiCivilization, ZukanCivilizationBadge, ZukanRainbowBand } from './ZukanCivilizationBadge'
 
 type ZukanPseudoCardProps = {
   name: string
@@ -75,7 +76,7 @@ export default function ZukanPseudoCard({
   className = '',
   children,
 }: ZukanPseudoCardProps) {
-  const style = civilization ? CIV_STYLE[civilization] : null
+  const style = civilization && !isMultiCivilization(civilization) ? CIV_STYLE[civilization] : null
   const frame = style?.frame ?? 'border-gray-300 bg-gray-50'
   const header = style?.header ?? 'bg-gray-100 text-gray-700'
   const badge = style?.badge ?? 'bg-gray-200 text-gray-700'
@@ -88,6 +89,7 @@ export default function ZukanPseudoCard({
       aria-label={`${name} の擬似カード`}
       aria-disabled={disabled || undefined}
     >
+      <ZukanRainbowBand civilization={civilization} />
       {count !== undefined && count > 0 && (
         <span className="absolute right-1 top-8 z-10 rounded-full bg-gray-900/85 px-1.5 py-0.5 text-[10px] font-black leading-none text-white">
           x{count}
@@ -108,7 +110,8 @@ export default function ZukanPseudoCard({
       </div>
       <div className={`flex flex-1 flex-col justify-between ${sizeStyle.body}`}>
         <div className="flex flex-wrap gap-1">
-          {civilization && <span className={`rounded px-1 font-bold ${sizeStyle.badge} ${badge}`}>{civilization}</span>}
+          {civilization && !isMultiCivilization(civilization) && <span className={`rounded px-1 font-bold ${sizeStyle.badge} ${badge}`}>{civilization}</span>}
+          {civilization && isMultiCivilization(civilization) && <ZukanCivilizationBadge civilization={civilization} />}
           {rarity && <span className={`rounded bg-white/80 px-1 font-bold text-gray-500 ${sizeStyle.badge}`}>{rarity}</span>}
         </div>
         <div className={`grid flex-1 place-items-center ${sizeStyle.center}`}>
