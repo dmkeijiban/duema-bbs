@@ -12,6 +12,7 @@ import {
   parseZukanArticleJson,
   type ZukanArticleBlock,
 } from '@/lib/zukan-articles'
+import { parseZukanArticleBodyText } from '@/lib/zukan-article-markdown'
 
 function normalizeTargetId(value: FormDataEntryValue | null) {
   return String(value ?? '').trim().toLowerCase()
@@ -45,40 +46,6 @@ function parseBlocksInput(raw: string): { blocks: ZukanArticleBlock[]; title?: s
   return { blocks: article.blocks, title: article.title, description: article.description }
 }
 
-function blocksFromBodyText(raw: string): ZukanArticleBlock[] {
-  return raw
-    .split(/\n{2,}/)
-    .map(text => text.trim())
-    .filter(Boolean)
-    .map((text): ZukanArticleBlock => {
-      const heading = text.match(/^#{2,3}\s+(.+)$/)
-      if (heading?.[1]) {
-        return { type: 'heading', level: text.startsWith('###') ? 3 : 2, text: heading[1].trim() }
-      }
-      return { type: 'paragraph', text }
-    })
-}
-
-function mergeBodyTextWithAdvancedBlocks(bodyText: string, advancedBlocks: ZukanArticleBlock[]): ZukanArticleBlock[] {
-  const textBlocks = blocksFromBodyText(bodyText)
-  const merged: ZukanArticleBlock[] = []
-  let insertedText = false
-
-  for (const block of advancedBlocks) {
-    if (block.type === 'heading' || block.type === 'paragraph') {
-      if (!insertedText) {
-        merged.push(...textBlocks)
-        insertedText = true
-      }
-      continue
-    }
-    merged.push(block)
-  }
-
-  if (!insertedText) merged.unshift(...textBlocks)
-  return merged
-}
-
 export async function saveZukanArticle(formData: FormData) {
   await requireAdmin()
 
@@ -101,17 +68,20 @@ export async function saveZukanArticle(formData: FormData) {
   if (!blocksRaw && !bodyText) redirect('/admin/zukan/articles?error=missing_blocks')
 
   let parsed: { blocks: ZukanArticleBlock[]; title?: string; description?: string }
-  if (blocksRaw) {
+  if (bodyText) {
+    const bodyResult = parseZukanArticleBodyText(bodyText)
+    if (!bodyResult.ok) {
+      redirect(`/admin/zukan/articles?error=${encodeURIComponent(bodyResult.error)}`)
+    }
+    parsed = { blocks: bodyResult.blocks }
+  } else if (blocksRaw) {
     try {
       parsed = parseBlocksInput(blocksRaw)
     } catch (error) {
       redirect(`/admin/zukan/articles?error=${encodeURIComponent(error instanceof Error ? error.message : 'invalid json')}`)
     }
-    if (bodyText) {
-      parsed = { ...parsed, blocks: mergeBodyTextWithAdvancedBlocks(bodyText, parsed.blocks) }
-    }
   } else {
-    parsed = { blocks: blocksFromBodyText(bodyText) }
+    parsed = { blocks: [] }
   }
   if (parsed.blocks.length === 0) redirect('/admin/zukan/articles?error=missing_blocks')
 
