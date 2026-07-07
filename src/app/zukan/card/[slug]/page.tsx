@@ -5,6 +5,7 @@ import { fetchCardBySlug, fetchCardsByPack, fetchPack } from '@/lib/zukan'
 import type { ZukanCardWithPack } from '@/lib/zukan'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import ZukanPseudoCard from '@/components/ZukanPseudoCard'
+import { ZukanCivilizationBadge } from '@/components/ZukanCivilizationBadge'
 import ShareButtons from './ShareButtons'
 import { SITE_URL } from '@/lib/site-config'
 import { ZukanCardMemories, ZukanCardMemoriesSkeleton } from './ZukanCardMemories'
@@ -31,14 +32,6 @@ const MOCK_CARD: ZukanCardWithPack = {
   official_image_url: null,
   sort_order: 1,
   zukan_packs: { slug: 'dm-01', code: 'DM-01', name: '基本セット' },
-}
-
-const CIV_BADGE: Record<string, string> = {
-  火: 'bg-red-100 text-red-700',
-  水: 'bg-blue-100 text-blue-700',
-  自然: 'bg-green-100 text-green-700',
-  光: 'bg-yellow-100 text-yellow-700',
-  闇: 'bg-gray-200 text-gray-700',
 }
 
 const EXPECTED_DM02_CARD_COUNT = 60
@@ -154,9 +147,7 @@ export default async function ZukanCardPage({
         <div>
           <div className="flex items-center gap-2">
             {card.civilization && (
-              <span className={`inline-block rounded px-1.5 text-xs font-bold ${CIV_BADGE[card.civilization] ?? 'bg-gray-100 text-gray-600'}`}>
-                {card.civilization}
-              </span>
+              <ZukanCivilizationBadge civilization={card.civilization} size="sm" />
             )}
             {card.rarity && (
               <span className="font-mono text-xs text-gray-400">{card.rarity}</span>
