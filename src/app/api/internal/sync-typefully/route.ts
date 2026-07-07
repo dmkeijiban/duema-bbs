@@ -25,7 +25,7 @@ const ERROR_MAX_LENGTH = 500
 const FIXED_POST_JST_HOURS = [7, 12, 19, 22]
 const FIXED_SLOT_TOLERANCE_MINUTES = 45
 const PUBLISHED_FALLBACK_GRACE_MINUTES = 0
-const CANCELLED_SOURCE_STATUSES = new Set(['cancelled', 'canceled', 'deleted'])
+const CANCELLED_SOURCE_STATUSES = new Set(['cancelled', 'canceled', 'deleted', 'daily_zukan_skipped'])
 const ELIGIBLE_X_POST_STATUSES = ['scheduled', 'posted', 'published', 'sent', 'typefully_drafted']
 
 type SupabaseAdmin = ReturnType<typeof createAdminClient>
@@ -114,7 +114,7 @@ interface XPostDueRow {
 interface ThreadSyncResult {
   xPostId: number
   typefullyId: string | null
-  status: 'created' | 'duplicate' | 'skipped' | 'error'
+  status: 'created' | 'duplicate' | 'skipped' | 'skipped_daily_zukan' | 'error'
   threadId?: number
   threadUrl?: string
   imageUrl?: string
@@ -318,6 +318,18 @@ function getPrimaryImageUrl(urls: string[] | null): string | null {
   return (urls ?? []).find((url) => isHttpUrl(url))?.trim() ?? null
 }
 
+function isDailyZukanTypefullyPost(text: string): boolean {
+  const normalized = text.replace(/\s+/g, '')
+  const hasThreadLink = /https?:\/\/(?:www\.)?duema-bbs\.com\/thread\/\d+/i.test(text)
+  const hasOldMarker = normalized.includes('本日の思い出図鑑スレ')
+  const hasCurrentMarker =
+    normalized.includes('思い出を募集中') &&
+    normalized.includes('今の評価でもOK') &&
+    normalized.includes('掲示板')
+
+  return hasThreadLink && (hasOldMarker || hasCurrentMarker)
+}
+
 function summarizeTypefullyPosts(posts: TodayTypefullyPost[]): TypefullyPostSummary[] {
   return posts.map((post) => ({
     typefullyId: post.typefullyId,
@@ -388,6 +400,7 @@ async function fetchTodayTypefullyPosts(
     const body = getDraftText(draft, detail)
     const imageUrls = getDraftImageUrls(draft, detail)
     if (!scheduledAt || !isTodayInJst(scheduledAt)) continue
+    if (isDailyZukanTypefullyPost(body)) continue
 
     const typefullyId = draftId || `scheduled:${scheduledAt}:${hashText(body)}`
     posts.push({
@@ -457,6 +470,10 @@ async function fetchTodayPublishedFallbackPosts(
     const body = getDraftText(draft, detail)
     if (!body) {
       incrementSkipReason(skipReasons, 'empty_body')
+      continue
+    }
+    if (isDailyZukanTypefullyPost(body)) {
+      incrementSkipReason(skipReasons, 'daily_zukan')
       continue
     }
 
@@ -760,6 +777,25 @@ async function markXPostError(
     .is('thread_id', null)
 }
 
+async function markXPostSkippedDailyZukan(
+  supabase: SupabaseAdmin,
+  row: XPostDueRow,
+): Promise<void> {
+  await supabase
+    .from('x_posts')
+    .update({
+      source_status: 'daily_zukan_skipped',
+      sync_error: null,
+      last_attempt_at: new Date().toISOString(),
+      meta: {
+        ...(row.meta ?? {}),
+        skipped_reason: 'daily_zukan_typefully_post',
+      },
+    })
+    .eq('id', row.id)
+    .is('thread_id', null)
+}
+
 async function createThreadFromXPost(
   supabase: SupabaseAdmin,
   row: XPostDueRow,
@@ -772,6 +808,15 @@ async function createThreadFromXPost(
   if (!body) {
     if (!dryRun) await markXPostError(supabase, row, 'empty_body')
     return { xPostId: row.id, typefullyId: row.typefully_id, status: 'skipped', error: 'empty_body' }
+  }
+  if (isDailyZukanTypefullyPost(body)) {
+    if (!dryRun) await markXPostSkippedDailyZukan(supabase, row)
+    return {
+      xPostId: row.id,
+      typefullyId: row.typefully_id,
+      status: 'skipped_daily_zukan',
+      error: 'daily_zukan_typefully_post',
+    }
   }
 
   const { data: latestRow, error: latestError } = await supabase
@@ -988,6 +1033,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     errors = results.filter((result) => result.status === 'error').length
     skipped = results.filter((result) => result.status === 'skipped').length
   }
+  const skippedDailyZukan = results.filter((result) => result.status === 'skipped_daily_zukan').length
 
   console.log(
     `[sync-typefully] mode=${mode} dryRun=${dryRun}` +
@@ -996,7 +1042,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     ` publishedFallbackFetched=${publishedFallbackFetched} publishedFallbackNormalized=${publishedFallbackNormalized}` +
     ` publishedFallbackSaved=${publishedFallbackSaved} publishedFallbackSkipped=${publishedFallbackSkipped}` +
     ` lockedThreaded=${lockedThreadedPosts} saveErrors=${saveErrors}` +
-    ` duePosts=${dueRows.length} created=${created} duplicate=${duplicate} skipped=${skipped} errors=${errors}`,
+    ` duePosts=${dueRows.length} created=${created} duplicate=${duplicate}` +
+    ` skipped=${skipped} skippedDailyZukan=${skippedDailyZukan} errors=${errors}`,
   )
 
   const summaryErrors = errors + saveErrors
@@ -1035,6 +1082,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     duplicate,
     errors,
     skipped,
+    skippedDailyZukan,
     results,
   })
 }
