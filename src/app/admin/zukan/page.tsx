@@ -173,6 +173,9 @@ export default async function AdminZukanPage({
           <h1 className="mt-1 text-xl font-bold text-gray-900">思い出図鑑 投稿管理</h1>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href="/admin/zukan/articles" className="rounded border border-purple-300 bg-purple-50 px-3 py-1.5 text-sm font-bold text-purple-700 hover:bg-purple-100">
+            図鑑記事管理 →
+          </Link>
           <Link href="/admin/zukan/import" className="rounded border border-green-300 bg-green-50 px-3 py-1.5 text-sm font-bold text-green-700 hover:bg-green-100">
             パックJSONインポート →
           </Link>
