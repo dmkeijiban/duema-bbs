@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import Link from 'next/link'
+import { useActionState, useState } from 'react'
 import type { ZukanArticleStatus, ZukanArticleTargetType } from '@/lib/zukan-articles'
 import { zukanArticleBlocksToBodyText } from '@/lib/zukan-article-markdown'
 import { buildDefaultArticleSlug } from '@/lib/zukan-article-slug'
@@ -40,6 +41,21 @@ function statusLabel(value: ZukanArticleStatus) {
   return '下書き'
 }
 
+function errorMessage(error: string) {
+  if (error === 'invalid_type') return '記事の種類が正しくありません。'
+  if (error === 'missing_target') return '対象パック / 対象カードを選択してください。'
+  if (error === 'missing_blocks') return '記事本文を入力してください。'
+  if (error === 'missing_title') return 'タイトルを入力してください。'
+  if (error === 'existing_target') {
+    return 'この対象の記事はすでに存在します。右の記事一覧から既存記事を編集してください。'
+  }
+  if (error === 'existing_slug' || error === 'duplicate_slug') {
+    return '同じ記事URL slugの記事がすでに存在します。既存記事を編集するか、上級者向け欄で別のslugを指定してください。'
+  }
+  if (error === 'missing_slug') return '記事URL slugを自動生成できませんでした。タイトルを入力して保存してください。'
+  return error
+}
+
 function formatPackOption(option: PackOption) {
   return `${option.code} ${option.name}（${option.slug}）`
 }
@@ -57,6 +73,7 @@ export function ZukanArticleEditorForm({
   packOptions: PackOption[]
   cardOptions: CardOption[]
 }) {
+  const [actionState, formAction, isPending] = useActionState(saveZukanArticle, {})
   const [articleType, setArticleType] = useState<ZukanArticleTargetType>(selected?.article_type ?? 'pack_article')
   const [targetId, setTargetId] = useState(selected?.target_id ?? packOptions[0]?.slug ?? 'dm-01')
   const [slug, setSlug] = useState(selected?.slug ?? buildDefaultArticleSlug({
@@ -68,6 +85,7 @@ export function ZukanArticleEditorForm({
   const [articleText, setArticleText] = useState(() => zukanArticleBlocksToBodyText(selected?.blocks, selected?.target_id))
   const [title, setTitle] = useState(selected?.title ?? '')
   const [description, setDescription] = useState(selected?.description ?? '')
+  const [status, setStatus] = useState<ZukanArticleStatus>(selected?.status ?? 'draft')
   const [advancedJson, setAdvancedJson] = useState(() => (
     selected ? JSON.stringify(selected.blocks, null, 2) : '[]'
   ))
@@ -103,8 +121,20 @@ export function ZukanArticleEditorForm({
   }
 
   return (
-    <form action={saveZukanArticle} className="space-y-4 px-3 py-3">
+    <form action={formAction} className="space-y-4 px-3 py-3">
       <input type="hidden" name="id" value={selected?.id ?? ''} />
+
+      {actionState.error && (
+        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-700">
+          <span className="font-bold">保存できませんでした: </span>
+          <span>{errorMessage(actionState.error)}</span>
+          {actionState.existingId && (
+            <Link href={`/admin/zukan/articles?edit=${encodeURIComponent(actionState.existingId)}&preview=1`} className="ml-2 font-bold text-blue-700 hover:underline">
+              既存記事を編集する →
+            </Link>
+          )}
+        </div>
+      )}
 
       <div className="rounded border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-900">
         ここでは、思い出図鑑のパックページやカードページに表示する読み物記事を作成できます。
@@ -163,7 +193,7 @@ export function ZukanArticleEditorForm({
 
       <label className="block text-xs font-bold text-gray-700">
         公開状態
-        <select name="status" defaultValue={selected?.status ?? 'draft'} className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-xs">
+        <select name="status" value={status} onChange={event => setStatus(event.target.value as ZukanArticleStatus)} className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-xs">
           <option value="draft">{statusLabel('draft')}</option>
           <option value="published">{statusLabel('published')}</option>
           <option value="archived">{statusLabel('archived')}</option>
@@ -238,8 +268,8 @@ natural-trap
       </details>
 
       <div className="flex flex-wrap gap-2">
-        <button name="intent" value="save" className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">
-          保存
+        <button name="intent" value="save" disabled={isPending} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-60">
+          {isPending ? '保存中...' : '保存'}
         </button>
       </div>
     </form>

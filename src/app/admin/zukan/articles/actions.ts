@@ -15,6 +15,25 @@ import {
 import { parseZukanArticleBodyText } from '@/lib/zukan-article-markdown'
 import { buildDefaultArticleSlug, normalizeArticleSlug } from '@/lib/zukan-article-slug'
 
+export type ZukanArticleFormValues = {
+  id: string
+  articleType: string
+  targetId: string
+  slug: string
+  title: string
+  description: string
+  status: string
+  bodyText: string
+  blocksJson: string
+}
+
+export type SaveZukanArticleState = {
+  ok?: boolean
+  error?: string
+  existingId?: string
+  values?: ZukanArticleFormValues
+}
+
 function normalizeTargetId(value: FormDataEntryValue | null) {
   return String(value ?? '').trim().toLowerCase()
 }
@@ -43,7 +62,30 @@ function parseBlocksInput(raw: string): { blocks: ZukanArticleBlock[]; title?: s
   return { blocks: article.blocks, title: article.title, description: article.description }
 }
 
-export async function saveZukanArticle(formData: FormData) {
+function submittedValues(formData: FormData): ZukanArticleFormValues {
+  return {
+    id: String(formData.get('id') ?? '').trim(),
+    articleType: String(formData.get('article_type') ?? ''),
+    targetId: String(formData.get('target_id') ?? ''),
+    slug: String(formData.get('slug') ?? ''),
+    title: String(formData.get('title') ?? ''),
+    description: String(formData.get('description') ?? ''),
+    status: String(formData.get('status') ?? ''),
+    bodyText: String(formData.get('body_text') ?? ''),
+    blocksJson: String(formData.get('blocks_json') ?? ''),
+  }
+}
+
+function formError(formData: FormData, error: string, existingId?: string): SaveZukanArticleState {
+  return {
+    ok: false,
+    error,
+    existingId,
+    values: submittedValues(formData),
+  }
+}
+
+export async function saveZukanArticle(_prevState: SaveZukanArticleState, formData: FormData): Promise<SaveZukanArticleState> {
   await requireAdmin()
 
   const id = String(formData.get('id') ?? '').trim()
@@ -55,8 +97,8 @@ export async function saveZukanArticle(formData: FormData) {
     : intent === 'draft'
       ? 'draft'
       : normalizeZukanArticleStatus(formData.get('status')) ?? 'draft'
-  const blocksRaw = String(formData.get('blocks_json') ?? '').trim()
-  const bodyText = String(formData.get('body_text') ?? '').trim()
+  const blocksRaw = String(formData.get('blocks_json') ?? '')
+  const bodyText = String(formData.get('body_text') ?? '')
   const titleInput = String(formData.get('title') ?? '').trim()
   const slug = normalizeArticleSlug(String(formData.get('slug') ?? '')) || buildDefaultArticleSlug({
     articleType,
@@ -64,32 +106,32 @@ export async function saveZukanArticle(formData: FormData) {
     title: titleInput,
   })
 
-  if (!articleType) redirect('/admin/zukan/articles?error=invalid_type')
-  if (!targetId) redirect('/admin/zukan/articles?error=missing_target')
-  if (!slug) redirect('/admin/zukan/articles?error=missing_slug')
-  if (!blocksRaw && !bodyText) redirect('/admin/zukan/articles?error=missing_blocks')
+  if (!articleType) return formError(formData, 'invalid_type')
+  if (!targetId) return formError(formData, 'missing_target')
+  if (!slug) return formError(formData, 'missing_slug')
+  if (!blocksRaw.trim() && !bodyText.trim()) return formError(formData, 'missing_blocks')
 
   let parsed: { blocks: ZukanArticleBlock[]; title?: string; description?: string }
-  if (bodyText) {
+  if (bodyText.trim()) {
     const bodyResult = parseZukanArticleBodyText(bodyText)
     if (!bodyResult.ok) {
-      redirect(`/admin/zukan/articles?error=${encodeURIComponent(bodyResult.error)}`)
+      return formError(formData, bodyResult.error)
     }
     parsed = { blocks: bodyResult.blocks }
-  } else if (blocksRaw) {
+  } else if (blocksRaw.trim()) {
     try {
       parsed = parseBlocksInput(blocksRaw)
     } catch (error) {
-      redirect(`/admin/zukan/articles?error=${encodeURIComponent(error instanceof Error ? error.message : 'invalid json')}`)
+      return formError(formData, error instanceof Error ? error.message : 'invalid json')
     }
   } else {
     parsed = { blocks: [] }
   }
-  if (parsed.blocks.length === 0) redirect('/admin/zukan/articles?error=missing_blocks')
+  if (parsed.blocks.length === 0) return formError(formData, 'missing_blocks')
 
   const title = titleInput || parsed.title
   const description = String(formData.get('description') ?? '').trim() || parsed.description || null
-  if (!title) redirect('/admin/zukan/articles?error=missing_title')
+  if (!title) return formError(formData, 'missing_title')
 
   const supabase = createAdminClient()
   if (!id) {
@@ -100,7 +142,7 @@ export async function saveZukanArticle(formData: FormData) {
       .eq('target_id', targetId)
       .limit(1)
     if (existingTarget?.[0]?.id) {
-      redirect(`/admin/zukan/articles?error=existing_target&existing=${encodeURIComponent(existingTarget[0].id)}`)
+      return formError(formData, 'existing_target', existingTarget[0].id)
     }
 
     const { data: existingSlug } = await supabase
@@ -109,7 +151,7 @@ export async function saveZukanArticle(formData: FormData) {
       .eq('slug', slug)
       .limit(1)
     if (existingSlug?.[0]?.id) {
-      redirect(`/admin/zukan/articles?error=existing_slug&existing=${encodeURIComponent(existingSlug[0].id)}`)
+      return formError(formData, 'existing_slug', existingSlug[0].id)
     }
   }
 
@@ -131,9 +173,9 @@ export async function saveZukanArticle(formData: FormData) {
   const { data, error } = await query
   if (error || !data) {
     if (error?.code === '23505') {
-      redirect('/admin/zukan/articles?error=duplicate_slug')
+      return formError(formData, 'duplicate_slug')
     }
-    redirect(`/admin/zukan/articles?error=${encodeURIComponent(error?.message ?? 'save failed')}`)
+    return formError(formData, error?.message ?? 'save failed')
   }
 
   revalidatePath('/admin/zukan/articles')
