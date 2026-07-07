@@ -13,7 +13,9 @@ import {
   type ZukanArticleTargetType,
 } from '@/lib/zukan-articles'
 import { ZukanArticleRenderer } from '@/components/ZukanArticleRenderer'
+import { ConfirmDeleteButton } from '@/components/admin/ConfirmDeleteButton'
 import { ZukanArticleEditorForm } from './ZukanArticleEditorForm'
+import { archiveZukanArticle } from './actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -157,7 +159,7 @@ async function ArticlePreview({ article }: { article: ZukanArticle }) {
 export default async function AdminZukanArticlesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edit?: string; saved?: string; preview?: string; error?: string }>
+  searchParams: Promise<{ edit?: string; saved?: string; archived?: string; preview?: string; error?: string }>
 }) {
   await requireAdmin()
   const sp = await searchParams
@@ -217,6 +219,11 @@ export default async function AdminZukanArticlesPage({
           保存しました。下のプレビューで表示を確認できます。
         </div>
       )}
+      {sp.archived && (
+        <div className="mb-4 border border-green-200 bg-green-50 px-3 py-2 text-xs font-bold text-green-700">
+          記事を非公開 / 保管にしました。
+        </div>
+      )}
       {sp.error && (
         <div className="mb-4 border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-700">
           保存できませんでした: {sp.error}
@@ -225,10 +232,23 @@ export default async function AdminZukanArticlesPage({
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <section className="rounded border border-gray-200 bg-white">
-          <div className="border-b border-gray-100 px-3 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-3 py-2">
             <h2 className="text-sm font-bold text-gray-800">{selected ? '記事を編集' : '新規記事を作成'}</h2>
+            {selected && selected.status !== 'archived' && (
+              <form action={archiveZukanArticle}>
+                <input type="hidden" name="id" value={selected.id} />
+                <input type="hidden" name="slug" value={selected.slug} />
+                <ConfirmDeleteButton
+                  message={`「${selected.title}」を非公開 / 保管にしますか？記事一覧と記事詳細ページからは表示されなくなります。`}
+                  className="rounded border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                >
+                  非公開にする
+                </ConfirmDeleteButton>
+              </form>
+            )}
           </div>
           <ZukanArticleEditorForm
+            key={selected?.id ?? 'new'}
             selected={selected ? {
               id: selected.id,
               slug: selected.slug,
