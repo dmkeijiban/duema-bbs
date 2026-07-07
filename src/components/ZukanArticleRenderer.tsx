@@ -2,7 +2,6 @@ import Link from 'next/link'
 import type { ZukanArticle } from '@/lib/zukan-articles'
 import type { ZukanCard, ZukanPack } from '@/lib/zukan'
 import ZukanImagePreview from './ZukanImagePreview'
-import { ZukanCardTile } from './ZukanCardTile'
 
 function cardIdentifier(card: ZukanCard) {
   return [card.id, card.slug]
@@ -13,11 +12,29 @@ function findCard(cards: ZukanCard[], identifier?: string) {
   return cards.find(card => cardIdentifier(card).includes(identifier)) ?? null
 }
 
-function MissingCard({ identifier }: { identifier: string }) {
+function cardImageUrl(card: ZukanCard) {
+  return card.official_image_url ?? card.image_url
+}
+
+function ArticleCardImage({ card }: { card: ZukanCard }) {
+  const imageUrl = cardImageUrl(card)
+  if (!imageUrl) return null
+
   return (
-    <div className="border border-dashed border-gray-300 bg-gray-50 px-3 py-4 text-xs text-gray-400">
-      記事内カードを準備中です: {identifier}
-    </div>
+    <Link
+      href={`/zukan/card/${card.slug}`}
+      className="block bg-white [-webkit-tap-highlight-color:transparent]"
+      aria-label={`${card.name} の図鑑ページへ`}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={imageUrl}
+        alt={`${card.name} カード画像`}
+        loading="lazy"
+        decoding="async"
+        className="h-auto w-full"
+      />
+    </Link>
   )
 }
 
@@ -33,7 +50,6 @@ export function ZukanArticleRenderer({
   return (
     <section className="mb-6 border border-gray-300 bg-white" aria-labelledby="zukan-article-title">
       <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
-        <div className="text-[11px] font-bold text-blue-700">運営者作成記事</div>
         <h1 id="zukan-article-title" className="mt-0.5 text-base font-bold text-gray-800">
           {article.title}
         </h1>
@@ -72,39 +88,34 @@ export function ZukanArticleRenderer({
           if (block.type === 'card') {
             const identifier = block.id ?? block.slug ?? ''
             const card = findCard(cards, identifier)
-            return (
-              <figure key={index} className="mx-auto max-w-[190px]">
-                {card ? <ZukanCardTile card={card} variant="compact" /> : <MissingCard identifier={identifier} />}
-                {block.caption && <figcaption className="mt-1 text-center text-xs leading-relaxed text-gray-500">{block.caption}</figcaption>}
-              </figure>
-            )
+            if (!card || !cardImageUrl(card)) return null
+
+            return <figure key={index} className="mx-auto max-w-[190px]"><ArticleCardImage card={card} /></figure>
           }
 
           if (block.type === 'cardGrid') {
             const identifiers = [...(block.ids ?? []), ...(block.slugs ?? [])].slice(0, 6)
-            const gridCards = identifiers.map(identifier => ({ identifier, card: findCard(cards, identifier) }))
+            const gridCards = identifiers
+              .map(identifier => findCard(cards, identifier))
+              .filter((card): card is ZukanCard => !!card && !!cardImageUrl(card))
+            if (gridCards.length === 0) return null
 
             return (
               <div key={index}>
                 {block.title && <h2 className="mb-2 text-sm font-bold text-gray-800">{block.title}</h2>}
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                  {gridCards.map(({ identifier, card }) => (
-                    <div key={identifier} className="min-w-0">
-                      {card ? <ZukanCardTile card={card} variant="compact" /> : <MissingCard identifier={identifier} />}
+                  {gridCards.map(card => (
+                    <div key={card.id} className="min-w-0">
+                      <ArticleCardImage card={card} />
                     </div>
                   ))}
                 </div>
-                {block.caption && <p className="mt-2 text-xs leading-relaxed text-gray-500">{block.caption}</p>}
               </div>
             )
           }
 
           if (block.type === 'note') {
-            return (
-              <p key={index} className="border-l-4 border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
-                {block.text}
-              </p>
-            )
+            return null
           }
 
           if (block.type === 'relatedLinks') {
