@@ -3,6 +3,7 @@ export const TOP_SHOWCASE_MODE_VALUES = [
   'monthly_ranking',
   'overall_ranking',
   'campaign_ranking',
+  'recommended',
   'hidden',
 ] as const
 
@@ -30,6 +31,11 @@ export const TOP_SHOWCASE_MODE_OPTIONS: Array<{ value: TopShowcaseMode; label: s
     value: 'campaign_ranking',
     label: 'キャンペーンランキング',
     description: '開催中または終了済みキャンペーンのランキングを表示します。',
+  },
+  {
+    value: 'recommended',
+    label: 'おすすめ',
+    description: 'おすすめスレッドをトップ上部に表示します。',
   },
   {
     value: 'hidden',
