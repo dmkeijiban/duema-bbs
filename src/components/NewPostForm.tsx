@@ -29,6 +29,7 @@ interface Props {
   onPostFailed: (optimisticId: string) => void
   rules?: string
   isAdmin?: boolean
+  adminRateLimitToken?: string | null
 }
 
 export function NewPostForm({
@@ -39,6 +40,7 @@ export function NewPostForm({
   onOptimisticPost,
   onPostSucceeded,
   onPostFailed,
+  adminRateLimitToken,
 }: Props) {
   const [authorName, setAuthorName] = useState('')
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
@@ -120,6 +122,7 @@ export function NewPostForm({
     fd.set('thread_id', String(threadId))
     fd.set('body', submittedBody)
     fd.set('author_name', authorName)
+    if (adminRateLimitToken) fd.set('admin_rate_limit_token', adminRateLimitToken)
     const file = fileInputRef.current?.files?.[0]
     if (file) fd.set('image', file)
     const previewUrl = file ? URL.createObjectURL(file) : null

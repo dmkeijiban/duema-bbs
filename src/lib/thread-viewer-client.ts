@@ -7,9 +7,8 @@ export interface ThreadViewerState {
   currentUserId: string
   isAdmin: boolean
   isFavorited: boolean
+  adminRateLimitToken: string | null
 }
-
-const viewerStateCache = new Map<number, Promise<ThreadViewerState>>()
 
 function getJstDateKey() {
   const jstNow = new Date(Date.now() + 9 * 60 * 60 * 1000)
@@ -31,13 +30,10 @@ function shouldCountThreadView(threadId: number) {
 }
 
 export function getThreadViewerState(threadId: number) {
-  const cached = viewerStateCache.get(threadId)
-  if (cached) return cached
-
   const countView = shouldCountThreadView(threadId)
   if (countView) capturePostHogEvent('thread_view', { thread_id: threadId })
 
-  const request = fetch(`/api/thread/${threadId}/viewer${countView ? '?view=1' : ''}`)
+  return fetch(`/api/thread/${threadId}/viewer${countView ? '?view=1' : ''}`, { cache: 'no-store' })
     .then(res => {
       if (!res.ok) throw new Error('Failed to load thread viewer state')
       return res.json()
@@ -47,9 +43,13 @@ export function getThreadViewerState(threadId: number) {
       currentUserId: typeof data?.currentUserId === 'string' ? data.currentUserId : '',
       isAdmin: typeof data?.isAdmin === 'boolean' ? data.isAdmin : false,
       isFavorited: typeof data?.isFavorited === 'boolean' ? data.isFavorited : false,
+      adminRateLimitToken: typeof data?.adminRateLimitToken === 'string' ? data.adminRateLimitToken : null,
     }))
-    .catch(() => ({ sessionId: '', currentUserId: '', isAdmin: false, isFavorited: false }))
-
-  viewerStateCache.set(threadId, request)
-  return request
+    .catch(() => ({
+      sessionId: '',
+      currentUserId: '',
+      isAdmin: false,
+      isFavorited: false,
+      adminRateLimitToken: null,
+    }))
 }

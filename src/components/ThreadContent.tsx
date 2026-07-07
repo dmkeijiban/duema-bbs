@@ -99,6 +99,7 @@ export function ThreadContent({
   const [sessionId, setSessionId] = useState('')
   const [viewerUserId, setViewerUserId] = useState(currentUserId)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [adminRateLimitToken, setAdminRateLimitToken] = useState<string | null>(null)
   const [optimisticPosts, setOptimisticPosts] = useState<OptimisticPost[]>([])
 
   useEffect(() => {
@@ -109,6 +110,7 @@ export function ThreadContent({
         setSessionId(data.sessionId)
         setViewerUserId(data.currentUserId)
         setIsAdmin(data.isAdmin)
+        setAdminRateLimitToken(data.adminRateLimitToken)
       })
     return () => {
       cancelled = true
@@ -276,6 +278,7 @@ export function ThreadContent({
             onPostFailed={removeOptimisticPost}
             rules={threadRules}
             isAdmin={isAdmin}
+            adminRateLimitToken={adminRateLimitToken}
           />
         </div>
       )}

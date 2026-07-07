@@ -71,3 +71,47 @@ function createAdminCookieSignature(password: string, secret: string, issuedAtMs
     .update(`${ADMIN_COOKIE_VERSION}:${issuedAtMs}:${password}`)
     .digest('hex')
 }
+
+function createAdminRateLimitBypassSignature(
+  password: string,
+  secret: string,
+  threadId: number,
+  expiresAtMs: number,
+): string {
+  return createHmac('sha256', secret)
+    .update(`admin-rate-limit-bypass:v1:${threadId}:${expiresAtMs}:${password}`)
+    .digest('hex')
+}
+
+export function createAdminRateLimitBypassToken(threadId: number): string | null {
+  const password = getAdminPassword()
+  const secret = getAdminSecret()
+  if (!password || !secret || !Number.isFinite(threadId) || threadId <= 0) return null
+
+  const expiresAtMs = Date.now() + 15 * 60 * 1000
+  const signature = createAdminRateLimitBypassSignature(password, secret, threadId, expiresAtMs)
+  return `v1.${expiresAtMs}.${signature}`
+}
+
+export function verifyAdminRateLimitBypassToken(
+  value: string | undefined | null,
+  threadId: number,
+): boolean {
+  const password = getAdminPassword()
+  const secret = getAdminSecret()
+  if (!password || !secret || !value || !Number.isFinite(threadId) || threadId <= 0) return false
+
+  const [version, expiresAtRaw, signature] = value.split('.')
+  if (version !== 'v1' || !expiresAtRaw || !signature) return false
+
+  const expiresAtMs = Number.parseInt(expiresAtRaw, 10)
+  if (!Number.isSafeInteger(expiresAtMs) || String(expiresAtMs) !== expiresAtRaw) return false
+  if (expiresAtMs < Date.now()) return false
+
+  const expected = createAdminRateLimitBypassSignature(password, secret, threadId, expiresAtMs)
+  const actualBuffer = Buffer.from(signature, 'hex')
+  const expectedBuffer = Buffer.from(expected, 'hex')
+
+  if (actualBuffer.length !== expectedBuffer.length) return false
+  return timingSafeEqual(actualBuffer, expectedBuffer)
+}

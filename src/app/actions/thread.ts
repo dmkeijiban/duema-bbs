@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { uploadImage, validateImageFile } from '@/lib/upload'
 import { sendPushNotifications } from '@/app/actions/push-subscription'
 import { notifyNewThread } from '@/lib/discord'
-import { verifyAdminCookie } from '@/lib/admin-auth'
+import { ADMIN_COOKIE, verifyAdminCookie, verifyAdminRateLimitBypassToken } from '@/lib/admin-auth'
 import { checkModerationBan, checkNgWords, checkPostingBan, hashModerationValue } from '@/lib/moderation'
 import { getThreadCommentClosedMessage } from '@/lib/thread-auto-close'
 import { checkValueRateLimitRules } from '@/lib/rate-limit'
@@ -75,6 +75,27 @@ async function getIpHash(): Promise<string | null> {
   const realIp = headerStore.get('x-real-ip')?.trim()
   const candidate = forwardedFor || realIp
   return candidate ? hashModerationValue(candidate) : null
+}
+
+async function isCurrentAdmin(): Promise<boolean> {
+  const cookieStore = await cookies()
+  const cookieValue = cookieStore.get(ADMIN_COOKIE)?.value
+  if (verifyAdminCookie(cookieValue)) return true
+
+  const headerStore = await headers()
+  const rawCookie = headerStore.get('cookie') ?? ''
+  const headerCookieValue = rawCookie
+    .split(';')
+    .map(part => part.trim())
+    .find(part => part.startsWith(`${ADMIN_COOKIE}=`))
+    ?.slice(ADMIN_COOKIE.length + 1)
+
+  if (!headerCookieValue) return false
+  try {
+    return verifyAdminCookie(decodeURIComponent(headerCookieValue))
+  } catch {
+    return verifyAdminCookie(headerCookieValue)
+  }
 }
 
 function isMissingColumn(error: { code?: string; message?: string } | null, column: string) {
@@ -332,8 +353,7 @@ export async function createThread(formData: FormData) {
       .single()
     const ADMIN_ONLY = ['管理者連絡']
     if (cat && ADMIN_ONLY.includes(cat.name)) {
-      const cookieStore = await cookies()
-      const isAdmin = verifyAdminCookie(cookieStore.get('admin_auth')?.value)
+      const isAdmin = await isCurrentAdmin()
       if (!isAdmin) return { error: 'このカテゴリは管理者のみ使用できます' }
     }
   }
@@ -474,6 +494,7 @@ export async function createPost(formData: FormData) {
   const threadId = parseInt(formData.get('thread_id') as string)
   const body = ((formData.get('body') as string) ?? '').trim()
   const authorName = (formData.get('author_name') as string)?.trim() || '名無しのデュエリスト'
+  const adminRateLimitToken = formData.get('admin_rate_limit_token') as string | null
   const imageFile = formData.get('image') as File | null
   if (!threadId) return { error: 'スレッドIDが無効です' }
   const spamCheck = validateCommentBody(body ?? '')
@@ -525,6 +546,9 @@ export async function createPost(formData: FormData) {
   const { authUserId, activeProfileUserId: userId } = await getPostAuthContext(supabase, timing)
   const ipHash = await getIpHash()
   markPostTiming(timing, 'ip_hash')
+  const isAdmin = await isCurrentAdmin()
+  const hasAdminRateLimitBypass = isAdmin || verifyAdminRateLimitBypassToken(adminRateLimitToken, threadId)
+  markPostTiming(timing, 'admin_rate_limit_bypass_check')
 
   const [
     postingBanned,
@@ -535,7 +559,7 @@ export async function createPost(formData: FormData) {
     checkPostingBan({ sessionId, userId: authUserId }),
     checkModerationBan(supabase, 'ip_hash', ipHash),
     checkNgWords(supabase, [body, authorName]),
-    checkPostRateLimits(supabase, sessionId, ipHash),
+    hasAdminRateLimitBypass ? Promise.resolve(null) : checkPostRateLimits(supabase, sessionId, ipHash),
   ])
   markPostTiming(timing, 'moderation_parallel_checks')
 
