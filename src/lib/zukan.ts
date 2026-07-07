@@ -123,6 +123,57 @@ export async function fetchCardsBySlugs(
   }
 }
 
+function isLikelyUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
+export async function fetchCardsByIdentifiers(
+  identifiers: string[]
+): Promise<ZukanCard[] | null> {
+  const uniqueIdentifiers = Array.from(new Set(identifiers.map(v => v.trim()).filter(Boolean)))
+  if (uniqueIdentifiers.length === 0) return []
+
+  const ids = uniqueIdentifiers.filter(isLikelyUuid)
+  const slugs = uniqueIdentifiers.filter(value => !isLikelyUuid(value))
+
+  try {
+    const supabase = createPublicClient()
+    const cards: ZukanCard[] = []
+
+    if (ids.length > 0) {
+      const { data, error } = await supabase
+        .from('zukan_cards')
+        .select(CARD_LIST_SELECT)
+        .eq('is_published', true)
+        .in('id', ids)
+      if (error) return null
+      cards.push(...((data ?? []) as ZukanCard[]))
+    }
+
+    if (slugs.length > 0) {
+      const { data, error } = await supabase
+        .from('zukan_cards')
+        .select(CARD_LIST_SELECT)
+        .eq('is_published', true)
+        .in('slug', slugs)
+      if (error) return null
+      cards.push(...((data ?? []) as ZukanCard[]))
+    }
+
+    const byIdentifier = new Map<string, ZukanCard>()
+    for (const card of cards) {
+      byIdentifier.set(card.id, card)
+      byIdentifier.set(card.slug, card)
+    }
+
+    return uniqueIdentifiers
+      .map(identifier => byIdentifier.get(identifier))
+      .filter((card): card is ZukanCard => !!card)
+  } catch {
+    return null
+  }
+}
+
 type FetchCardResult =
   | { status: 'found'; card: ZukanCardWithPack }
   | { status: 'not_found' }
