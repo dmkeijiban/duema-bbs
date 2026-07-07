@@ -50,7 +50,33 @@ function blocksFromBodyText(raw: string): ZukanArticleBlock[] {
     .split(/\n{2,}/)
     .map(text => text.trim())
     .filter(Boolean)
-    .map(text => ({ type: 'paragraph', text }))
+    .map((text): ZukanArticleBlock => {
+      const heading = text.match(/^#{2,3}\s+(.+)$/)
+      if (heading?.[1]) {
+        return { type: 'heading', level: text.startsWith('###') ? 3 : 2, text: heading[1].trim() }
+      }
+      return { type: 'paragraph', text }
+    })
+}
+
+function mergeBodyTextWithAdvancedBlocks(bodyText: string, advancedBlocks: ZukanArticleBlock[]): ZukanArticleBlock[] {
+  const textBlocks = blocksFromBodyText(bodyText)
+  const merged: ZukanArticleBlock[] = []
+  let insertedText = false
+
+  for (const block of advancedBlocks) {
+    if (block.type === 'heading' || block.type === 'paragraph') {
+      if (!insertedText) {
+        merged.push(...textBlocks)
+        insertedText = true
+      }
+      continue
+    }
+    merged.push(block)
+  }
+
+  if (!insertedText) merged.unshift(...textBlocks)
+  return merged
 }
 
 export async function saveZukanArticle(formData: FormData) {
@@ -81,9 +107,13 @@ export async function saveZukanArticle(formData: FormData) {
     } catch (error) {
       redirect(`/admin/zukan/articles?error=${encodeURIComponent(error instanceof Error ? error.message : 'invalid json')}`)
     }
+    if (bodyText) {
+      parsed = { ...parsed, blocks: mergeBodyTextWithAdvancedBlocks(bodyText, parsed.blocks) }
+    }
   } else {
     parsed = { blocks: blocksFromBodyText(bodyText) }
   }
+  if (parsed.blocks.length === 0) redirect('/admin/zukan/articles?error=missing_blocks')
 
   const title = String(formData.get('title') ?? '').trim() || parsed.title
   const description = String(formData.get('description') ?? '').trim() || parsed.description || null

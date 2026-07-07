@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import type { ZukanArticleBlock, ZukanArticleStatus, ZukanArticleTargetType } from '@/lib/zukan-articles'
+import { useMemo, useState } from 'react'
+import type { ZukanArticleStatus, ZukanArticleTargetType } from '@/lib/zukan-articles'
 import { saveZukanArticle } from './actions'
 
 type ArticleFormValue = {
@@ -26,52 +26,28 @@ type CardOption = {
   name: string
 }
 
-type EditableBlock =
-  | { type: 'heading'; text: string }
-  | { type: 'paragraph'; text: string }
-  | { type: 'card'; slug: string; caption: string }
-
-function asEditableBlocks(value: unknown): EditableBlock[] {
-  if (!Array.isArray(value)) return [{ type: 'paragraph', text: '' }]
-  const blocks = value
-    .map((block): EditableBlock | null => {
+function blocksToArticleText(value: unknown): string {
+  if (!Array.isArray(value)) return ''
+  return value
+    .map(block => {
       if (!block || typeof block !== 'object') return null
       const record = block as Record<string, unknown>
-      if (record.type === 'heading') return { type: 'heading', text: String(record.text ?? '') }
-      if (record.type === 'paragraph') return { type: 'paragraph', text: String(record.text ?? '') }
-      if (record.type === 'card') {
-        return {
-          type: 'card',
-          slug: String(record.slug ?? record.id ?? ''),
-          caption: String(record.caption ?? ''),
-        }
-      }
+      const text = String(record.text ?? '').trim()
+      if (!text) return null
+      if (record.type === 'heading') return `## ${text}`
+      if (record.type === 'paragraph') return text
       return null
     })
-    .filter((block): block is EditableBlock => !!block)
-  return blocks.length > 0 ? blocks : [{ type: 'paragraph', text: '' }]
+    .filter((text): text is string => !!text)
+    .join('\n\n')
 }
 
-function buildBlocks(blocks: EditableBlock[]): ZukanArticleBlock[] {
-  return blocks
-    .map((block): ZukanArticleBlock | null => {
-      if (block.type === 'heading') {
-        const text = block.text.trim()
-        return text ? { type: 'heading', level: 2, text } : null
-      }
-      if (block.type === 'paragraph') {
-        const text = block.text.trim()
-        return text ? { type: 'paragraph', text } : null
-      }
-      const slug = block.slug.trim()
-      if (!slug) return null
-      return {
-        type: 'card',
-        slug,
-        caption: block.caption.trim() || undefined,
-      }
-    })
-    .filter((block): block is ZukanArticleBlock => !!block)
+function hasBlockCards(value: unknown): boolean {
+  return Array.isArray(value) && value.some(block => {
+    if (!block || typeof block !== 'object') return false
+    const type = (block as Record<string, unknown>).type
+    return type === 'card' || type === 'cardGrid'
+  })
 }
 
 function articleTypeLabel(value: ZukanArticleTargetType) {
@@ -112,8 +88,7 @@ export function ZukanArticleEditorForm({
   const [articleType, setArticleType] = useState<ZukanArticleTargetType>(selected?.article_type ?? 'pack_article')
   const [targetId, setTargetId] = useState(selected?.target_id ?? packOptions[0]?.slug ?? 'dm-01')
   const [slug, setSlug] = useState(selected?.slug ?? targetId)
-  const [blocks, setBlocks] = useState<EditableBlock[]>(() => asEditableBlocks(selected?.blocks))
-  const [blocksDirty, setBlocksDirty] = useState(false)
+  const [articleText, setArticleText] = useState(() => blocksToArticleText(selected?.blocks))
   const [title, setTitle] = useState(selected?.title ?? '')
   const [description, setDescription] = useState(selected?.description ?? '')
   const [instruction, setInstruction] = useState('')
@@ -121,18 +96,10 @@ export function ZukanArticleEditorForm({
   const [isGenerating, setIsGenerating] = useState(false)
   const [generateMessage, setGenerateMessage] = useState<string | null>(null)
   const [generateError, setGenerateError] = useState<string | null>(null)
-  const bodyText = useMemo(
-    () => blocks.filter(block => block.type === 'paragraph').map(block => block.text).join('\n\n'),
-    [blocks],
-  )
-  const generatedJson = useMemo(() => JSON.stringify(buildBlocks(blocks), null, 2), [blocks])
   const [advancedJson, setAdvancedJson] = useState(() => (
-    selected ? JSON.stringify(selected.blocks, null, 2) : generatedJson
+    selected ? JSON.stringify(selected.blocks, null, 2) : '[]'
   ))
-
-  useEffect(() => {
-    if (blocksDirty) setAdvancedJson(generatedJson)
-  }, [blocksDirty, generatedJson])
+  const hasAdvancedCards = useMemo(() => hasBlockCards(selected?.blocks), [selected?.blocks])
 
   const targetOptions = articleType === 'card_article'
     ? cardOptions.map(option => ({ value: option.slug, label: formatCardOption(option) }))
@@ -151,11 +118,6 @@ export function ZukanArticleEditorForm({
   function updateTarget(next: string) {
     setTargetId(next)
     setSlug(current => current && current !== targetId ? current : next)
-  }
-
-  function updateBlock(index: number, next: EditableBlock) {
-    setBlocksDirty(true)
-    setBlocks(current => current.map((block, blockIndex) => blockIndex === index ? next : block))
   }
 
   async function generateArticleBody() {
@@ -183,8 +145,8 @@ export function ZukanArticleEditorForm({
       if (!Array.isArray(data.body_blocks)) {
         throw new Error('AI生成結果を本文ブロックとして読み取れませんでした')
       }
-      setBlocksDirty(true)
-      setBlocks(asEditableBlocks(data.body_blocks))
+      setArticleText(blocksToArticleText(data.body_blocks))
+      setAdvancedJson(JSON.stringify(data.body_blocks, null, 2))
       setGenerateMessage('AI生成結果を記事本文に反映しました。まだ保存はしていません。内容を確認してから保存してください。')
     } catch (error) {
       setGenerateError(error instanceof Error ? error.message : 'AI記事本文の作成に失敗しました')
@@ -197,7 +159,6 @@ export function ZukanArticleEditorForm({
     <form action={saveZukanArticle} className="space-y-4 px-3 py-3">
       <input type="hidden" name="id" value={selected?.id ?? ''} />
       <input type="hidden" name="blocks_json" value={advancedJson} />
-      <input type="hidden" name="body_text" value={bodyText} />
 
       <div className="rounded border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-900">
         ここでは、思い出図鑑のパックページやカードページに表示する読み物記事を作成できます。
@@ -316,67 +277,22 @@ export function ZukanArticleEditorForm({
         <div>
           <h3 className="text-xs font-bold text-gray-700">記事本文</h3>
           <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
-            見出し、本文、カード紹介ブロックを追加して記事本文を作ります。
+            記事本文をそのまま入力します。段落は改行で区切れます。
           </p>
         </div>
-        <div className="space-y-2">
-          {blocks.map((block, index) => (
-            <div key={index} className="rounded border border-gray-200 bg-gray-50 px-2 py-2">
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <span className="text-[11px] font-bold text-gray-600">
-                  {block.type === 'heading' ? '見出し' : block.type === 'card' ? 'カード紹介' : '本文'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBlocksDirty(true)
-                    setBlocks(current => current.filter((_, blockIndex) => blockIndex !== index))
-                  }}
-                  className="rounded border border-gray-300 bg-white px-2 py-0.5 text-[11px] font-bold text-gray-600 hover:bg-gray-100"
-                >
-                  削除
-                </button>
-              </div>
-              {block.type === 'heading' && (
-                <input value={block.text} onChange={event => updateBlock(index, { ...block, text: event.target.value })} placeholder="見出しを入力" className="w-full rounded border border-gray-300 px-2 py-1.5 text-xs" />
-              )}
-              {block.type === 'paragraph' && (
-                <textarea value={block.text} onChange={event => updateBlock(index, { ...block, text: event.target.value })} rows={4} placeholder="本文を入力" className="w-full rounded border border-gray-300 px-2 py-1.5 text-xs leading-5" />
-              )}
-              {block.type === 'card' && (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <select value={block.slug} onChange={event => updateBlock(index, { ...block, slug: event.target.value })} className="rounded border border-gray-300 px-2 py-1.5 text-xs">
-                    <option value="">カードを選択</option>
-                    {cardOptions.map(option => (
-                      <option key={option.slug} value={option.slug}>{formatCardOption(option)}</option>
-                    ))}
-                  </select>
-                  <input value={block.caption} onChange={event => updateBlock(index, { ...block, caption: event.target.value })} placeholder="紹介文（任意）" className="rounded border border-gray-300 px-2 py-1.5 text-xs" />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => {
-            setBlocksDirty(true)
-            setBlocks(current => [...current, { type: 'heading', text: '' }])
-          }} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">
-            見出し追加
-          </button>
-          <button type="button" onClick={() => {
-            setBlocksDirty(true)
-            setBlocks(current => [...current, { type: 'paragraph', text: '' }])
-          }} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">
-            本文追加
-          </button>
-          <button type="button" onClick={() => {
-            setBlocksDirty(true)
-            setBlocks(current => [...current, { type: 'card', slug: targetId, caption: '' }])
-          }} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">
-            カード紹介ブロック追加
-          </button>
-        </div>
+        {hasAdvancedCards && (
+          <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
+            この記事にはカード表示ブロックがあります。通常の本文欄には出していませんが、保存時に上級者向けJSON側から引き継がれます。
+          </p>
+        )}
+        <textarea
+          name="body_text"
+          value={articleText}
+          onChange={event => setArticleText(event.target.value)}
+          rows={18}
+          placeholder="記事本文を入力"
+          className="w-full rounded border border-gray-300 px-3 py-2 text-sm leading-7"
+        />
       </section>
 
       <details className="rounded border border-gray-200 bg-gray-50 px-3 py-2">
