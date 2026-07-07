@@ -28,6 +28,12 @@ export type ZukanArticle = {
   blocks: ZukanArticleBlock[]
 }
 
+export type ZukanArticleSummary = Omit<ZukanArticle, 'blocks'> & {
+  targetName: string
+  updatedAt: string | null
+  createdAt: string | null
+}
+
 type ZukanArticleRow = {
   id: string
   slug: string
@@ -37,6 +43,8 @@ type ZukanArticleRow = {
   description: string | null
   status: string
   blocks: unknown
+  updated_at?: string | null
+  created_at?: string | null
 }
 
 const TABLE_NOT_FOUND = '42P01'
@@ -207,6 +215,86 @@ export async function loadPublishedZukanArticles(): Promise<ZukanArticle[]> {
     return ((data ?? []) as ZukanArticleRow[])
       .map(articleFromRow)
       .filter((article): article is ZukanArticle => !!article)
+  } catch {
+    return []
+  }
+}
+
+export async function loadPublishedZukanArticleSummaries(): Promise<ZukanArticleSummary[]> {
+  try {
+    const supabase = createPublicClient()
+    const { data, error } = await supabase
+      .from('zukan_articles')
+      .select('id, slug, article_type, target_id, title, description, status, blocks, updated_at, created_at')
+      .eq('status', 'published')
+      .order('updated_at', { ascending: false })
+      .limit(100)
+    if (error) return []
+
+    const rows = (data ?? []) as ZukanArticleRow[]
+    const articles = rows
+      .map(row => {
+        const article = articleFromRow(row)
+        return article ? { article, row } : null
+      })
+      .filter((item): item is { article: ZukanArticle; row: ZukanArticleRow } => !!item)
+
+    if (articles.length === 0) return []
+
+    const packSlugs = Array.from(new Set(
+      articles
+        .filter(({ article }) => article.targetType === 'pack_article')
+        .map(({ article }) => article.targetSlug),
+    ))
+    const cardSlugs = Array.from(new Set(
+      articles
+        .filter(({ article }) => article.targetType === 'card_article')
+        .map(({ article }) => article.targetSlug),
+    ))
+
+    const packNameMap = new Map<string, string>()
+    const cardNameMap = new Map<string, string>()
+
+    if (packSlugs.length > 0) {
+      const { data: packs } = await supabase
+        .from('zukan_packs')
+        .select('slug, name')
+        .in('slug', packSlugs)
+      for (const pack of packs ?? []) {
+        if (typeof pack.slug === 'string' && typeof pack.name === 'string') {
+          packNameMap.set(pack.slug, pack.name)
+        }
+      }
+    }
+
+    if (cardSlugs.length > 0) {
+      const { data: cards } = await supabase
+        .from('zukan_cards')
+        .select('slug, name')
+        .in('slug', cardSlugs)
+      for (const card of cards ?? []) {
+        if (typeof card.slug === 'string' && typeof card.name === 'string') {
+          cardNameMap.set(card.slug, card.name)
+        }
+      }
+    }
+
+    return articles.map(({ article, row }) => ({
+      id: article.id,
+      slug: article.slug,
+      targetType: article.targetType,
+      targetSlug: article.targetSlug,
+      title: article.title,
+      description: article.description,
+      status: article.status,
+      targetName: article.targetType === 'pack_article'
+        ? packNameMap.get(article.targetSlug) ?? article.targetSlug
+        : article.targetType === 'card_article'
+          ? cardNameMap.get(article.targetSlug) ?? article.targetSlug
+          : article.targetSlug,
+      updatedAt: row.updated_at ?? null,
+      createdAt: row.created_at ?? null,
+    }))
   } catch {
     return []
   }
