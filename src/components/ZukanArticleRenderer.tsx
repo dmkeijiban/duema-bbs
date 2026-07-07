@@ -48,30 +48,30 @@ export function ZukanArticleRenderer({
   cards: ZukanCard[]
 }) {
   return (
-    <section className="mb-6 border border-gray-300 bg-white" aria-labelledby="zukan-article-title">
-      <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
+    <section className="mb-6 max-w-3xl border border-gray-300 bg-white" aria-labelledby="zukan-article-title">
+      <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 sm:px-5">
         <h1 id="zukan-article-title" className="mt-0.5 text-base font-bold text-gray-800">
           {article.title}
         </h1>
         {article.description && <p className="mt-1 text-xs leading-relaxed text-gray-600">{article.description}</p>}
       </div>
 
-      <div className="space-y-4 px-3 py-4">
+      <div className="space-y-7 px-4 py-5 sm:px-5 sm:py-6">
         {article.blocks.map((block, index) => {
           if (block.type === 'heading') {
             const className = block.level === 3
-              ? 'border-l-4 border-gray-300 pl-2 text-sm font-bold text-gray-800'
-              : 'border-l-4 border-blue-500 bg-blue-50 px-2 py-1 text-sm font-bold text-gray-800'
+              ? 'mt-8 border-l-4 border-gray-300 pl-2 text-sm font-bold text-gray-800 first:mt-0'
+              : 'mt-9 border-l-4 border-blue-500 bg-blue-50 px-3 py-2 text-sm font-bold text-gray-800 first:mt-0'
             return <h2 key={index} className={className}>{block.text}</h2>
           }
 
           if (block.type === 'paragraph') {
-            return <p key={index} className="text-sm leading-7 text-gray-800">{block.text}</p>
+            return <p key={index} className="whitespace-pre-wrap break-words text-sm leading-8 text-gray-800 sm:text-[15px]">{block.text}</p>
           }
 
           if (block.type === 'packHero') {
             return (
-              <figure key={index} className="mr-auto max-w-[190px] sm:max-w-[220px]">
+              <figure key={index} className="my-8 mr-auto max-w-[190px] sm:max-w-[220px]">
                 {pack.image_url ? (
                   <ZukanImagePreview
                     src={pack.image_url}
@@ -95,7 +95,7 @@ export function ZukanArticleRenderer({
             const card = findCard(cards, identifier)
             if (!card || !cardImageUrl(card)) return null
 
-            return <figure key={index} className="mr-auto max-w-[190px] sm:max-w-[220px]"><ArticleCardImage card={card} /></figure>
+            return <figure key={index} className="my-8 mr-auto max-w-[190px] sm:max-w-[220px]"><ArticleCardImage card={card} /></figure>
           }
 
           if (block.type === 'cardGrid') {
@@ -106,7 +106,7 @@ export function ZukanArticleRenderer({
             if (gridCards.length === 0) return null
 
             return (
-              <div key={index}>
+              <div key={index} className="my-8">
                 {block.title && <h2 className="mb-2 text-sm font-bold text-gray-800">{block.title}</h2>}
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                   {gridCards.map(card => (
