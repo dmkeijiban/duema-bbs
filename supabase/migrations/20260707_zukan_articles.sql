@@ -105,12 +105,7 @@ select
         "natural-trap",
         "spiral-gate",
         "twin-cannon"
-      ],
-      "caption": "記事内カードグリッドはスマホ2列、PCでは3〜4列で表示します。"
-    },
-    {
-      "type": "note",
-      "text": "この記事は運営者作成コンテンツです。ユーザー投稿の思い出欄とは別に、パックの読み物として今後も追加できます。"
+      ]
     },
     {
       "type": "relatedLinks",
