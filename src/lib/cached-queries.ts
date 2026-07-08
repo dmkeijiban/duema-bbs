@@ -161,6 +161,74 @@ export const getCachedSetting = unstable_cache(
   { revalidate: STANDARD_CACHE_SECONDS, tags: ['settings'] }
 )
 
+// 称号機能のON/OFF。管理画面のトグルが即反映されるよう、他の一般設定より
+// 短いrevalidateと専用タグ（honor-title-enabled）を使う。
+// トグル操作は src/app/actions/honor-title.ts の toggleHonorTitleEnabled から。
+export const getCachedHonorTitleEnabled = unstable_cache(
+  async (): Promise<boolean> => {
+    try {
+      const supabase = createPublicClient()
+      const { data } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'honor_title_enabled')
+        .maybeSingle()
+      return data?.value === 'true'
+    } catch (error) {
+      console.warn('honor title enabled flag fetch failed:', error)
+      return false
+    }
+  },
+  ['honor-title-enabled-v1'],
+  { revalidate: 60, tags: ['honor-title-enabled'] }
+)
+
+export type HonorPointsMap = Record<string, number>
+
+// 称号用の累計ポイント一括取得（任意のuserId群）。ランキングの日次上限や
+// 直近100件プロフィール制限は適用しない、純粋な全期間累計。
+// ポイント単価は既存ランキング計算（ranking-points.ts）をそのまま流用する。
+export function getCachedHonorPointsMap(userIds: string[]): Promise<HonorPointsMap> {
+  const ids = Array.from(new Set(userIds.filter(Boolean))).sort()
+  if (ids.length === 0) return Promise.resolve({})
+  const key = ids.join(',')
+
+  return unstable_cache(
+    async (): Promise<HonorPointsMap> => {
+      try {
+        const supabase = createAdminClient()
+        const [threads, posts, cardRatings, cardReviews, packReviews] = await Promise.all([
+          supabase.from('threads').select('user_id').in('user_id', ids).eq('is_archived', false).limit(USER_RANKING_FETCH_LIMIT),
+          supabase.from('posts').select('user_id, threads!inner(is_archived)').in('user_id', ids).eq('is_deleted', false).eq('threads.is_archived', false).limit(USER_RANKING_FETCH_LIMIT),
+          supabase.from('zukan_card_ratings').select('user_id').in('user_id', ids).eq('is_deleted', false).limit(USER_RANKING_FETCH_LIMIT),
+          supabase.from('zukan_card_reviews').select('user_id').in('user_id', ids).eq('is_deleted', false).eq('is_hidden', false).limit(USER_RANKING_FETCH_LIMIT),
+          supabase.from('zukan_pack_reviews').select('user_id').in('user_id', ids).eq('is_deleted', false).eq('is_hidden', false).limit(USER_RANKING_FETCH_LIMIT),
+        ])
+
+        const totals = new Map<string, number>()
+        const add = (rows: Array<{ user_id: string | null }> | null, pts: number) => {
+          for (const row of rows ?? []) {
+            if (!row.user_id) continue
+            totals.set(row.user_id, (totals.get(row.user_id) ?? 0) + pts)
+          }
+        }
+        add(threads.data, USER_RANKING_THREAD_POINT)
+        add(posts.data, USER_RANKING_POST_POINT)
+        add(cardRatings.data, USER_RANKING_CARD_RATING_POINT)
+        add(cardReviews.data, USER_RANKING_CARD_REVIEW_POINT)
+        add(packReviews.data, USER_RANKING_PACK_REVIEW_POINT)
+
+        return Object.fromEntries(totals)
+      } catch (error) {
+        console.warn('honor points map fetch failed:', error)
+        return {}
+      }
+    },
+    [`honor-points-v1-${key}`],
+    { revalidate: 3600, tags: ['honor-points'] }
+  )()
+}
+
 type ThreadRow = { id: number; title: string; user_id?: string | null; image_url: string | null; thumbnail_url?: string | null; post_count: number }
 type RelatedThreadRow = ThreadRow & {
   category_id: number | null

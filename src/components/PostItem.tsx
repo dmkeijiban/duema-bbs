@@ -8,6 +8,8 @@ import { deleteOwnPost } from '@/app/actions/delete'
 import { ReportButton } from './ReportButton'
 import { ImageViewer } from './ImageViewer'
 import { LinkCard } from './LinkCard'
+import { HonorBadge } from './HonorBadge'
+import type { HonorTitle } from '@/lib/honor-title'
 
 declare global {
   interface Window {
@@ -36,6 +38,7 @@ interface Props {
   currentUserId?: string
   threadId: number
   authorProfile?: PublicAuthorProfile
+  honorTitle?: HonorTitle | null
 }
 
 interface AnchorProps {
@@ -450,9 +453,11 @@ function TimelineAvatar({ src, alt }: { src: string | null | undefined; alt: str
 function PostAuthorName({
   fallbackName,
   profile,
+  honorTitle,
 }: {
   fallbackName: string
   profile?: PublicAuthorProfile
+  honorTitle?: HonorTitle | null
 }) {
   if (!profile) {
     return <span className="font-medium text-gray-700">{fallbackName}</span>
@@ -463,6 +468,7 @@ function PostAuthorName({
       <span className="inline-flex items-center gap-1 font-medium text-gray-600">
         <TimelineAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} />
         <span>{profile.display_name}</span>
+        <HonorBadge title={honorTitle} />
       </span>
     )
   }
@@ -474,6 +480,7 @@ function PostAuthorName({
     >
       <TimelineAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} />
       <span>{profile.display_name}</span>
+      <HonorBadge title={honorTitle} />
     </Link>
   )
 }
@@ -487,6 +494,7 @@ export const PostItem = memo(function PostItem({
   currentUserId = '',
   threadId,
   authorProfile,
+  honorTitle,
 }: Props) {
   const [locallyDeletedByUser, setLocallyDeletedByUser] = useState(false)
   const [deleteError, setDeleteError] = useState('')
@@ -535,7 +543,7 @@ export const PostItem = memo(function PostItem({
           </>
         ) : (
           <>
-            <PostAuthorName fallbackName={post.author_name} profile={authorProfile} />
+            <PostAuthorName fallbackName={post.author_name} profile={authorProfile} honorTitle={honorTitle} />
             <span className="text-gray-400">{formatDateTimeJP(post.created_at)}</span>
             {isOptimistic ? (
               <span className="text-[10px] font-medium text-blue-600">送信中...</span>

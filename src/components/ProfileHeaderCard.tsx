@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { ProfileAvatar } from './ProfileAvatar'
+import { HonorBadge } from './HonorBadge'
+import type { HonorTitle } from '@/lib/honor-title'
 
 type ProfileHeaderCardProps = {
   displayName: string
@@ -14,7 +16,7 @@ type ProfileHeaderCardProps = {
   postCountLabel: string
   monthlyRank: number | null
   totalRank: number | null
-  honorTitle?: { icon: string; label: string } | null
+  honorTitle?: HonorTitle | null
   campaignTitle?: string | null
   campaignRank?: number | null
   campaignPoints?: number | null
@@ -104,9 +106,7 @@ export function ProfileHeaderCard({
                 <div className="flex flex-wrap items-baseline gap-2">
                   <h1 className={titleClassName}>{displayName}</h1>
                   {honorTitle && (
-                    <span className={mobileCompact ? 'hidden text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-300 sm:inline-block' : 'inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-300'}>
-                      {honorTitle.icon} {honorTitle.label}
-                    </span>
+                    <HonorBadge title={honorTitle} className="text-lg" />
                   )}
                   {(monthlyRank === 1 || totalRank === 1) && (
                     <span className={mobileCompact ? 'hidden text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 border border-yellow-300 sm:inline-block' : 'inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 border border-yellow-300'}>
