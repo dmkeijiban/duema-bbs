@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useState, useMemo, useCallback, Fragment } from 'react'
 import Link from 'next/link'
 import { Post, Thread, Category, PublicAuthorProfile } from '@/types'
 import { PostItem, renderBody } from './PostItem'
@@ -101,6 +101,7 @@ export function ThreadContent({
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminRateLimitToken, setAdminRateLimitToken] = useState<string | null>(null)
   const [optimisticPosts, setOptimisticPosts] = useState<OptimisticPost[]>([])
+  const [justPostedId, setJustPostedId] = useState<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -177,6 +178,7 @@ export function ThreadContent({
     setOptimisticPosts(current => current.map(item => (
       item.optimisticId === optimisticId ? post : item
     )))
+    setJustPostedId(post.id)
   }, [])
 
   const removeOptimisticPost = useCallback((optimisticId: string) => {
@@ -219,17 +221,46 @@ export function ThreadContent({
         </div>
 
         {visiblePosts.map(post => (
-          <PostItem
-            key={post.optimisticId ?? post.id}
-            post={post}
-            allPosts={visiblePosts as Post[]}
-            onAnchorClick={handleAnchorClick}
-            displayNumber={post.displayNumber}
-            sessionId={sessionId}
-            currentUserId={viewerUserId}
-            threadId={threadId}
-            authorProfile={post.user_id ? authorProfiles[post.user_id] : undefined}
-          />
+          <Fragment key={post.optimisticId ?? post.id}>
+            <PostItem
+              post={post}
+              allPosts={visiblePosts as Post[]}
+              onAnchorClick={handleAnchorClick}
+              displayNumber={post.displayNumber}
+              sessionId={sessionId}
+              currentUserId={viewerUserId}
+              threadId={threadId}
+              authorProfile={post.user_id ? authorProfiles[post.user_id] : undefined}
+            />
+            {post.id === justPostedId && (
+              <div
+                className="px-3 py-2.5 flex items-center justify-between gap-2 text-sm border-b border-gray-200"
+                style={{ background: '#eafaf1' }}
+              >
+                <span className="text-gray-700 leading-snug">
+                  コメントありがとうございます！<br />
+                  次はあなたの好きな話題でスレッド投稿してみよう！
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Link
+                    href="/new"
+                    className="px-3 py-1.5 text-xs font-bold text-white whitespace-nowrap"
+                    style={{ background: '#0d6efd' }}
+                  >
+                    スレを立てる
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setJustPostedId(null)}
+                    aria-label="閉じる"
+                    className="text-gray-400 hover:text-gray-600 text-lg leading-none px-1"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            )}
+          </Fragment>
         ))}
       </div>
 
