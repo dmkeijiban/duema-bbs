@@ -36,6 +36,17 @@ import { AdminLoginView } from './AdminLoginView'
 const ADMIN_COOKIE = 'admin_auth'
 const THREADS_PER_PAGE = 30
 
+// 管理メニュー：カテゴリ行（見出し＋ボタン群）とボタンの共通スタイル。
+// スマホ=2列グリッド、PC=固定幅(sm:w-[175px])で折り返すflex-wrapに切り替える。
+const ADMIN_MENU_ROW_CLASS = 'flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3'
+const ADMIN_MENU_LABEL_CLASS = 'text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:w-32 sm:shrink-0'
+const ADMIN_MENU_GROUP_CLASS = 'grid grid-cols-2 gap-2 sm:flex sm:flex-wrap'
+const ADMIN_MENU_BTN_BASE =
+  'flex min-h-9 min-w-0 items-center justify-center gap-1 rounded border px-2.5 py-1.5 text-center text-xs leading-tight sm:w-[175px] sm:shrink-0'
+const ADMIN_MENU_BTN_NEUTRAL = `${ADMIN_MENU_BTN_BASE} border-gray-300 text-gray-600 hover:bg-gray-50`
+const ADMIN_MENU_BTN_WARN = `${ADMIN_MENU_BTN_BASE} border-orange-300 text-orange-700 hover:bg-orange-50`
+const ADMIN_MENU_BTN_GREEN = `${ADMIN_MENU_BTN_BASE} border-green-400 text-green-700 hover:bg-green-50`
+
 type SortKey = 'last_posted_at' | 'created_at' | 'post_count' | 'view_count'
 type SortOrder = 'asc' | 'desc'
 
@@ -640,58 +651,58 @@ export default async function AdminPage({
           <span className="text-gray-400 text-xs">▶</span>
           <span>管理メニュー</span>
         </summary>
-        <div className="min-w-0 space-y-1.5 border-t border-gray-100 px-3 py-2">
+        <div className="min-w-0 space-y-2 border-t border-gray-100 px-3 py-2">
 
-          {/* 各カテゴリ：見出し＋ボタン群を横並び（PC=見出し左・ボタン右で1行寄せ／スマホ=見出し上・ボタン下に折り返し）。
-              ボタンは flex-wrap で自然に折り返し、横スクロールは発生させない */}
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:w-32 sm:shrink-0 sm:pt-1.5">コンテンツ</p>
-            <div className="flex min-w-0 flex-wrap gap-1.5">
-              <Link href="/admin/categories" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">🗂 カテゴリ</Link>
-              <Link href="/admin/pages" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">📄 固定ページ</Link>
-              <Link href="/admin/notices" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">📢 お知らせ</Link>
-              <Link href="/admin/summary" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">📊 まとめ生成</Link>
-              <Link href="/admin/daily-zukan" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">🃏 図鑑カードスレ自動生成</Link>
-              <Link href="/admin/zukan/articles" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">図鑑記事管理</Link>
-              <Link href="/admin/article-drafts" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">記事下書き取り込み</Link>
-              <Link href="/admin/comment-import" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">コメント一括取り込み</Link>
-              <Link href="/admin/seo" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">🔍 SEO管理</Link>
+          {/* 各カテゴリ：見出し＋ボタン群（スマホ=2列グリッド／PC=等幅ボタンのflex-wrap）。
+              横スクロールは発生させない。注意系のみ色付け、その他はグレー系で統一 */}
+          <div className={ADMIN_MENU_ROW_CLASS}>
+            <p className={ADMIN_MENU_LABEL_CLASS}>主要操作</p>
+            <div className={ADMIN_MENU_GROUP_CLASS}>
+              <Link href="/admin/x-posts" className={ADMIN_MENU_BTN_NEUTRAL}>🐦 X投稿管理</Link>
+              <Link href="/admin/x-schedule" className={ADMIN_MENU_BTN_NEUTRAL}>📅 スケジュール</Link>
+              <Link href="/admin/x-buzz" className={ADMIN_MENU_BTN_NEUTRAL}>X話題URLストック</Link>
+              <Link href="/admin/zukan/articles" className={ADMIN_MENU_BTN_NEUTRAL}>図鑑記事管理</Link>
+              <Link href="/admin/comment-import" className={ADMIN_MENU_BTN_NEUTRAL}>コメント一括取り込み</Link>
+              <Link href="/admin/users" className={ADMIN_MENU_BTN_NEUTRAL}>👤 登録ユーザー</Link>
             </div>
           </div>
 
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:w-32 sm:shrink-0 sm:pt-1.5">X / SNS</p>
-            <div className="flex min-w-0 flex-wrap gap-1.5">
-              <Link href="/admin/x-posts" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">🐦 X投稿管理</Link>
-              <Link href="/admin/x-schedule" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">📅 スケジュール</Link>
-              <Link href="/admin/x-buzz" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">X話題URLストック</Link>
+          <div className={ADMIN_MENU_ROW_CLASS}>
+            <p className={ADMIN_MENU_LABEL_CLASS}>サイト管理</p>
+            <div className={ADMIN_MENU_GROUP_CLASS}>
+              <Link href="/admin/categories" className={ADMIN_MENU_BTN_NEUTRAL}>🗂 カテゴリ</Link>
+              <Link href="/admin/pages" className={ADMIN_MENU_BTN_NEUTRAL}>📄 固定ページ</Link>
+              <Link href="/admin/notices" className={ADMIN_MENU_BTN_NEUTRAL}>📢 お知らせ</Link>
+              <Link href="/admin/seo" className={ADMIN_MENU_BTN_NEUTRAL}>🔍 SEO管理</Link>
+              <Link href="/admin/ranking-preview" className={ADMIN_MENU_BTN_NEUTRAL}>🏆 ランキングプレビュー</Link>
             </div>
           </div>
 
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:w-32 sm:shrink-0 sm:pt-1.5">ユーティリティ</p>
-            <div className="flex min-w-0 flex-wrap gap-1.5">
-              <Link href="/admin/cleanup" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">🧹 データ整理</Link>
-              <Link href="/admin/deleted-posts" className="px-2.5 py-1 text-xs border border-orange-300 text-orange-600 hover:bg-orange-50 rounded">🗑️ 削除済みレス</Link>
-              <Link href="/admin/revival" className="px-2.5 py-1 text-xs border border-green-400 text-green-700 hover:bg-green-50 rounded">♻️ リバイバル</Link>
+          <div className={ADMIN_MENU_ROW_CLASS}>
+            <p className={ADMIN_MENU_LABEL_CLASS}>生成・取り込み</p>
+            <div className={ADMIN_MENU_GROUP_CLASS}>
+              <Link href="/admin/summary" className={ADMIN_MENU_BTN_NEUTRAL}>📊 まとめ生成</Link>
+              <Link href="/admin/daily-zukan" className={ADMIN_MENU_BTN_NEUTRAL}>🃏 図鑑カードスレ自動生成</Link>
+              <Link href="/admin/article-drafts" className={ADMIN_MENU_BTN_NEUTRAL}>記事下書き取り込み</Link>
             </div>
           </div>
 
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:w-32 sm:shrink-0 sm:pt-1.5">通報管理</p>
-            <div className="flex flex-wrap gap-1.5">
-              <Link href="/admin/reports" className="px-2.5 py-1 text-xs border border-orange-300 text-orange-700 hover:bg-orange-50 rounded">🚨 通報管理</Link>
-              <Link href="/admin/report-mutes" className="px-2.5 py-1 text-xs border border-orange-300 text-orange-700 hover:bg-orange-50 rounded">🔇 受付停止一覧</Link>
+          <div className={ADMIN_MENU_ROW_CLASS}>
+            <p className={ADMIN_MENU_LABEL_CLASS}>運営管理</p>
+            <div className={ADMIN_MENU_GROUP_CLASS}>
+              <Link href="/admin/reports" className={ADMIN_MENU_BTN_WARN}>🚨 通報管理</Link>
+              <Link href="/admin/report-mutes" className={ADMIN_MENU_BTN_WARN}>🔇 受付停止一覧</Link>
+              <Link href="/admin/deleted-posts" className={ADMIN_MENU_BTN_WARN}>🗑️ 削除済みレス</Link>
+              <Link href="/admin/revival" className={ADMIN_MENU_BTN_GREEN}>♻️ リバイバル</Link>
+              <Link href="/admin/cleanup" className={ADMIN_MENU_BTN_NEUTRAL}>🧹 データ整理</Link>
             </div>
           </div>
 
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:w-32 sm:shrink-0 sm:pt-1.5">ユーザー・ランキング</p>
-            <div className="flex flex-wrap gap-1.5">
-              <Link href="/admin/users" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">👤 登録ユーザー</Link>
-              <Link href="/admin/ranking-preview" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">🏆 ランキングプレビュー</Link>
-              <Link href="/admin/campaign-ranking" className="px-2.5 py-1 text-xs border border-yellow-300 text-yellow-700 hover:bg-yellow-50 rounded">🎯 キャンペーンランキング</Link>
-              <Link href="/admin/duema-stats" className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 rounded">📊 デュエマプロフィール統計</Link>
+          <div className={ADMIN_MENU_ROW_CLASS}>
+            <p className={ADMIN_MENU_LABEL_CLASS}>分析・ランキング</p>
+            <div className={ADMIN_MENU_GROUP_CLASS}>
+              <Link href="/admin/campaign-ranking" className={ADMIN_MENU_BTN_NEUTRAL}>🎯 キャンペーンランキング</Link>
+              <Link href="/admin/duema-stats" className={ADMIN_MENU_BTN_NEUTRAL}>📊 デュエマプロフィール統計</Link>
             </div>
           </div>
 
