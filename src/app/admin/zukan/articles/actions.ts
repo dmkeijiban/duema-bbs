@@ -135,16 +135,6 @@ export async function saveZukanArticle(_prevState: SaveZukanArticleState, formDa
 
   const supabase = createAdminClient()
   if (!id) {
-    const { data: existingTarget } = await supabase
-      .from('zukan_articles')
-      .select('id')
-      .eq('article_type', articleType)
-      .eq('target_id', targetId)
-      .limit(1)
-    if (existingTarget?.[0]?.id) {
-      return formError(formData, 'existing_target', existingTarget[0].id)
-    }
-
     const { data: existingSlug } = await supabase
       .from('zukan_articles')
       .select('id')
