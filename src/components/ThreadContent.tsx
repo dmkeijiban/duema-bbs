@@ -237,7 +237,7 @@ export function ThreadContent({
                 className="px-3 py-2.5 text-sm text-gray-700 leading-snug border-b border-gray-200"
                 style={{ background: '#eafaf1' }}
               >
-                コメントありがとうございます！<br />
+                コメントありがとうございます！<br className="md:hidden" />{' '}
                 次はあなたの好きな話題でスレッド投稿してみよう！
               </div>
             )}
