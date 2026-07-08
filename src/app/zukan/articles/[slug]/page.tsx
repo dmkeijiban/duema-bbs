@@ -59,7 +59,7 @@ export default async function ZukanArticleDetailPage({
       : `/zukan/hall-of-fame/${article.targetSlug}`
 
   return (
-    <div className="mx-auto max-w-screen-lg px-2 pt-2 pb-6">
+    <div className="mx-auto w-full max-w-3xl px-2 pt-2 pb-6">
       <nav className="mb-2 flex flex-wrap items-center gap-x-1 text-xs text-gray-500">
         <Link href="/" className="text-blue-600 hover:underline">TOP</Link>
         <span>{'>'}</span>
