@@ -27,8 +27,8 @@ export default async function NewThreadPage() {
     : allCategories.filter(c => !ADMIN_ONLY_CATEGORIES.includes(c.name))
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <div className="mb-6">
+    <div className="max-w-2xl mx-auto px-3 py-5 sm:px-4 sm:py-8">
+      <div className="mb-4">
         <Link
           href="/"
           className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 transition-colors"
@@ -38,18 +38,20 @@ export default async function NewThreadPage() {
         </Link>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-purple-50">
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <PenSquare className="w-5 h-5 text-indigo-600" />
+      <div className="border border-gray-300 bg-white">
+        <div className="px-3 py-2 font-bold text-sm text-white" style={{ background: '#888' }}>
+          <h1 className="flex items-center gap-2">
+            <PenSquare className="w-4 h-4" />
             スレッドを立てる
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+        </div>
+        <div className="px-3 py-2 text-xs border-b border-gray-200" style={{ background: '#f5f5f5' }}>
+          <p className="text-gray-700">
             タイトルと本文には日本語を含めてください（スパム対策）
           </p>
         </div>
         {/* 注意書き */}
-        <div className="mx-6 mt-5 px-4 py-3 bg-sky-50 border border-sky-200 rounded text-xs text-sky-800 leading-relaxed">
+        <div className="px-3 py-2 text-xs text-sky-800 leading-relaxed" style={{ background: '#d1ecf1', borderBottom: '1px solid #bee5eb' }}>
           <p>
             投稿する前に、<Link href="/guide" className="underline">投稿ルール</Link>をご確認ください。
           </p>
