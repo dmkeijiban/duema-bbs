@@ -37,12 +37,12 @@ const ADMIN_COOKIE = 'admin_auth'
 const THREADS_PER_PAGE = 30
 
 // 管理メニュー：カテゴリ行（見出し＋ボタン群）とボタンの共通スタイル。
-// スマホ=2列グリッド、PC=等幅(min-w-150px)で折り返すflex-wrapに切り替える。
+// スマホ=2列グリッド、PC=固定幅(sm:w-[175px])で折り返すflex-wrapに切り替える。
 const ADMIN_MENU_ROW_CLASS = 'flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3'
 const ADMIN_MENU_LABEL_CLASS = 'text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:w-32 sm:shrink-0'
 const ADMIN_MENU_GROUP_CLASS = 'grid grid-cols-2 gap-2 sm:flex sm:flex-wrap'
 const ADMIN_MENU_BTN_BASE =
-  'flex min-h-9 min-w-0 items-center justify-center gap-1 rounded border px-2.5 py-1.5 text-center text-xs leading-tight sm:min-w-[150px]'
+  'flex min-h-9 min-w-0 items-center justify-center gap-1 rounded border px-2.5 py-1.5 text-center text-xs leading-tight sm:w-[175px] sm:shrink-0'
 const ADMIN_MENU_BTN_NEUTRAL = `${ADMIN_MENU_BTN_BASE} border-gray-300 text-gray-600 hover:bg-gray-50`
 const ADMIN_MENU_BTN_WARN = `${ADMIN_MENU_BTN_BASE} border-orange-300 text-orange-700 hover:bg-orange-50`
 const ADMIN_MENU_BTN_GREEN = `${ADMIN_MENU_BTN_BASE} border-green-400 text-green-700 hover:bg-green-50`
@@ -664,7 +664,6 @@ export default async function AdminPage({
               <Link href="/admin/zukan/articles" className={ADMIN_MENU_BTN_NEUTRAL}>図鑑記事管理</Link>
               <Link href="/admin/comment-import" className={ADMIN_MENU_BTN_NEUTRAL}>コメント一括取り込み</Link>
               <Link href="/admin/users" className={ADMIN_MENU_BTN_NEUTRAL}>👤 登録ユーザー</Link>
-              <Link href="/admin/ranking-preview" className={ADMIN_MENU_BTN_NEUTRAL}>🏆 ランキングプレビュー</Link>
             </div>
           </div>
 
@@ -675,6 +674,7 @@ export default async function AdminPage({
               <Link href="/admin/pages" className={ADMIN_MENU_BTN_NEUTRAL}>📄 固定ページ</Link>
               <Link href="/admin/notices" className={ADMIN_MENU_BTN_NEUTRAL}>📢 お知らせ</Link>
               <Link href="/admin/seo" className={ADMIN_MENU_BTN_NEUTRAL}>🔍 SEO管理</Link>
+              <Link href="/admin/ranking-preview" className={ADMIN_MENU_BTN_NEUTRAL}>🏆 ランキングプレビュー</Link>
             </div>
           </div>
 
