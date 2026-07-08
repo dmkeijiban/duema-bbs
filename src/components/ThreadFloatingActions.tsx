@@ -12,7 +12,7 @@ const ICON_PROPS = {
   strokeWidth: 1.75,
   strokeLinecap: 'round',
   strokeLinejoin: 'round',
-  className: 'h-4 w-4',
+  className: 'h-5 w-5',
 } as const
 
 function TriangleIcon(props: IconProps) {
