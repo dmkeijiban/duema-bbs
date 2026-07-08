@@ -4,7 +4,6 @@ import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createThread } from '@/app/actions/thread'
 import { ImageUploadField } from '@/components/ImageUploadField'
-import { PenSquare } from '@/components/Icons'
 import Link from 'next/link'
 import { getPostableConsolidatedCategories } from '@/lib/categories'
 import type { Category } from '@/types'
@@ -74,122 +73,141 @@ export function NewThreadFormClient({ categories }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="px-6 py-6 space-y-5">
+    <form onSubmit={handleSubmit}>
       <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
-      {/* カテゴリ */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          カテゴリ <span className="text-red-500">*</span>
-        </label>
-        <select
-          name="category_id"
-          required
-          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-        >
-          <option value="">カテゴリを選択してください</option>
-          {categoryOptions.map(cat => (
-            <option key={cat.id} value={cat.id}>{cat.name}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* タイトル */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          タイトル <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          name="title"
-          required
-          minLength={2}
-          maxLength={100}
-          placeholder="例：【2024年最新】赤単アグロのデッキ相談"
-          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 placeholder-gray-400"
-        />
-      </div>
-
-      {/* 名前/投稿者 */}
-      {authState.status === 'loading' && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">投稿者</label>
-          <div className="text-sm text-gray-400">ログイン状態を確認中…</div>
-        </div>
-      )}
-      {authState.status === 'anon' && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">名前（省略可）</label>
-          <input
-            type="text"
-            name="author_name"
-            maxLength={30}
-            placeholder="名無しのデュエリスト"
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 placeholder-gray-400"
-          />
-        </div>
-      )}
-      {authState.status === 'user' && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">投稿者</label>
-          <input type="hidden" name="author_name" value={authState.displayName} />
-          <div className="inline-flex items-center gap-1.5 text-sm text-gray-700">
-            <ProfileAvatar src={authState.avatarUrl} alt={`${authState.displayName}のアイコン`} size="sm" />
-            <span className="font-medium">{authState.displayName}</span>
-          </div>
-        </div>
-      )}
-      {authState.status === 'profile_missing' && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">投稿者</label>
-          <p className="text-sm text-red-600">
-            スレッドを作成するにはプロフィールを設定してください。{' '}
-            <Link href="/profile/new" className="underline text-blue-600">プロフィール設定</Link>
-          </p>
-        </div>
-      )}
-
-      {/* 本文 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          本文 <span className="text-red-500">*</span>
-        </label>
-        <textarea
-          name="body"
-          required
-          minLength={5}
-          maxLength={5000}
-          rows={8}
-          placeholder={"今のデュエマの話でも、昔の思い出でも大歓迎です。\n質問・相談・予想など、気軽に書いてください！"}
-          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-y placeholder-gray-400"
-        />
-      </div>
-
-      {/* 画像添付 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          画像添付（省略可）
-        </label>
-        <ImageUploadField name="image" />
-      </div>
+      <table className="w-full text-sm border-collapse" style={{ tableLayout: 'fixed' }}>
+        <tbody>
+          <tr className="border-b border-gray-200">
+            <td className="py-2 px-2 align-middle text-xs font-medium text-gray-700 sm:px-3" style={{ background: '#f5f5f5', width: 86 }}>
+              カテゴリ <span className="text-red-500">*</span>
+            </td>
+            <td className="py-2 px-2 min-w-0 sm:px-3">
+              <select
+                name="category_id"
+                required
+                className="w-full border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-blue-400"
+              >
+                <option value="">カテゴリを選択してください</option>
+                {categoryOptions.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </td>
+          </tr>
+          <tr className="border-b border-gray-200">
+            <td className="py-2 px-2 align-middle text-xs font-medium text-gray-700 sm:px-3" style={{ background: '#f5f5f5' }}>
+              タイトル <span className="text-red-500">*</span>
+            </td>
+            <td className="py-2 px-2 min-w-0 sm:px-3">
+              <input
+                type="text"
+                name="title"
+                required
+                minLength={2}
+                maxLength={100}
+                placeholder="例：【2024年最新】赤単アグロのデッキ相談"
+                className="w-full border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-400"
+              />
+            </td>
+          </tr>
+          {authState.status === 'loading' && (
+            <tr className="border-b border-gray-200">
+              <td className="py-2 px-2 align-middle text-xs font-medium text-gray-700 sm:px-3" style={{ background: '#f5f5f5' }}>
+                投稿者
+              </td>
+              <td className="py-2 px-2 min-w-0 text-sm text-gray-400 sm:px-3">
+                ログイン状態を確認中…
+              </td>
+            </tr>
+          )}
+          {authState.status === 'anon' && (
+            <tr className="border-b border-gray-200">
+              <td className="py-2 px-2 align-middle text-xs font-medium text-gray-700 sm:px-3" style={{ background: '#f5f5f5' }}>
+                名前（省略可）
+              </td>
+              <td className="py-2 px-2 min-w-0 sm:px-3">
+                <input
+                  type="text"
+                  name="author_name"
+                  maxLength={30}
+                  placeholder="名無しのデュエリスト"
+                  className="w-full border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-400"
+                />
+              </td>
+            </tr>
+          )}
+          {authState.status === 'user' && (
+            <tr className="border-b border-gray-200">
+              <td className="py-2 px-2 align-middle text-xs font-medium text-gray-700 sm:px-3" style={{ background: '#f5f5f5' }}>
+                投稿者
+              </td>
+              <td className="py-2 px-2 min-w-0 sm:px-3">
+                <input type="hidden" name="author_name" value={authState.displayName} />
+                <div className="inline-flex items-center gap-1.5 text-sm text-gray-700">
+                  <ProfileAvatar src={authState.avatarUrl} alt={`${authState.displayName}のアイコン`} size="sm" />
+                  <span className="font-medium">{authState.displayName}</span>
+                </div>
+              </td>
+            </tr>
+          )}
+          {authState.status === 'profile_missing' && (
+            <tr className="border-b border-gray-200">
+              <td className="py-2 px-2 align-top text-xs font-medium text-gray-700 sm:px-3" style={{ background: '#f5f5f5', paddingTop: 10 }}>
+                投稿者
+              </td>
+              <td className="py-2 px-2 min-w-0 sm:px-3">
+                <p className="text-sm text-red-600">
+                  スレッドを作成するにはプロフィールを設定してください。{' '}
+                  <Link href="/profile/new" className="underline text-blue-600">プロフィール設定</Link>
+                </p>
+              </td>
+            </tr>
+          )}
+          <tr className="border-b border-gray-200">
+            <td className="py-2 px-2 align-top text-xs font-medium text-gray-700 sm:px-3" style={{ background: '#f5f5f5', paddingTop: 10 }}>
+              本文 <span className="text-red-500">*</span>
+            </td>
+            <td className="py-2 px-2 min-w-0 sm:px-3">
+              <textarea
+                name="body"
+                required
+                minLength={5}
+                maxLength={5000}
+                rows={8}
+                placeholder={"今のデュエマの話でも、昔の思い出でも大歓迎です。\n質問・相談・予想など、気軽に書いてください！"}
+                className="w-full border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-400 resize-y"
+              />
+            </td>
+          </tr>
+          <tr className="border-b border-gray-200">
+            <td className="py-2 px-2 align-middle text-xs font-medium text-gray-700 sm:px-3" style={{ background: '#f5f5f5' }}>
+              画像添付（省略可）
+            </td>
+            <td className="py-2 px-2 min-w-0 sm:px-3">
+              <ImageUploadField name="image" />
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
       {error && (
-        <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        <div className="mx-3 my-1.5 px-2 py-1.5 text-xs" style={{ background: '#f8d7da', color: '#721c24', border: '1px solid #f5c6cb' }}>
           {error}
         </div>
       )}
 
-      <div className="flex gap-3 pt-2">
+      <div className="px-3 py-2.5 space-y-2">
         <button
           type="submit"
           disabled={isPending}
-          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-sm transition-colors"
+          className="w-full py-2 text-sm text-white disabled:opacity-60 disabled:cursor-not-allowed"
+          style={{ background: '#0d6efd' }}
         >
-          <PenSquare className="w-4 h-4" />
           {isPending ? 'スレッドを作成中...' : 'スレッドを立てる'}
         </button>
         <Link
           href="/"
-          className="px-6 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+          className="block w-full border border-gray-300 px-3 py-2 text-center text-sm text-gray-600 hover:bg-gray-50 transition-colors sm:w-auto"
         >
           キャンセル
         </Link>
