@@ -45,6 +45,7 @@ export function NewPostForm({
   const [authorName, setAuthorName] = useState('')
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
   const [error, setError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [, startRefreshTransition] = useTransition()
   const [scrollTarget, setScrollTarget] = useState<number | null>(null)
@@ -110,6 +111,7 @@ export function NewPostForm({
     if (submitInFlightRef.current) return
     submitInFlightRef.current = true
     setError('')
+    setSuccessMessage('')
     setIsSubmitting(true)
 
     const form = e.currentTarget
@@ -190,6 +192,7 @@ export function NewPostForm({
             has_image: Boolean(file),
           })
           setAuthorName('')
+          setSuccessMessage('コメントありがとうございます！\n次はあなたの好きな話題でスレッド投稿してみよう！')
           if (fileInputRef.current) fileInputRef.current.value = ''
           finishSubmit()
           const formReleasedAt = performance.now()
@@ -331,6 +334,10 @@ export function NewPostForm({
                 本文
               </td>
               <td className="p-2 min-w-0">
+                <div className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs leading-relaxed text-amber-800">
+                  <p>一言だけでもコメント大歓迎です！</p>
+                  <p>あなたのコメントでスレを盛り上げましょう！</p>
+                </div>
                 <textarea
                   id="reply-textarea"
                   name="body"
@@ -368,6 +375,11 @@ export function NewPostForm({
         {error && (
           <div className="mx-3 my-1.5 px-2 py-1.5 text-xs" style={{ background: '#f8d7da', color: '#721c24', border: '1px solid #f5c6cb' }}>
             {error}
+          </div>
+        )}
+        {successMessage && (
+          <div className="mx-3 my-1.5 px-2 py-1.5 text-xs leading-relaxed whitespace-pre-line" style={{ background: '#d1e7dd', color: '#0f5132', border: '1px solid #badbcc' }}>
+            {successMessage}
           </div>
         )}
         <div className="px-3 py-2.5">

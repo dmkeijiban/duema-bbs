@@ -89,6 +89,10 @@ export function InlineNewThread({ categories }: Props) {
             className="px-4 py-3 text-xs border-b border-gray-200 leading-relaxed"
             style={{ background: '#d1ecf1', color: '#0c5460' }}
           >
+            <div className="mb-2 font-medium">
+              <p>今のデュエマの話でも、昔の思い出でも大歓迎です。</p>
+              <p>質問・相談・予想など、気軽にスレッドを立ててください！</p>
+            </div>
             <p>
               投稿する前に <Link href="/guide" className="font-bold underline">投稿ルール</Link> をご確認ください。
             </p>
