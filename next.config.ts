@@ -144,6 +144,17 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        // Content-Typeを明示しないとtext/htmlとして解釈され、
+        // ブラウザがtext/plainの改行を1行に畳んで表示することがある
+        source: '/ads.txt',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'text/plain; charset=utf-8',
+          },
+        ],
+      },
     ]
   },
 }
