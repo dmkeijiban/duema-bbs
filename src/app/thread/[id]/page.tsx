@@ -11,6 +11,7 @@ import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
 import { createPublicClient } from '@/lib/supabase-public'
 import { NextReadNav } from '@/components/NextReadNav'
+import { ThreadFloatingActions } from '@/components/ThreadFloatingActions'
 import { AdBanner } from '@/components/AdBanner'
 import { getDisplayCategory } from '@/lib/categories'
 import { isThinThreadForAdSenseReview, isPrNoticeForAdSenseReview } from '@/lib/adsense-review-mode'
@@ -391,6 +392,7 @@ export async function renderThreadPage(threadId: number, page: number) {
           モバイルタップ最適化（min-h-[44px]）。全ページに表示。
           GA4 next_read_click イベント計測 + prefetch={true} 付き。 */}
       <NextReadNav threadId={threadId} />
+      <ThreadFloatingActions />
     </div>
   )
 }
