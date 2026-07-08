@@ -30,7 +30,7 @@ type CardOption = {
 }
 
 function articleTypeLabel(value: ZukanArticleTargetType) {
-  if (value === 'pack_article') return 'パック紹介記事'
+  if (value === 'pack_article') return 'パック関連・紹介記事'
   if (value === 'card_article') return 'カード紹介記事'
   return '殿堂図鑑記事'
 }
@@ -115,7 +115,7 @@ export function ZukanArticleEditorForm({
 
   function updateTitle(next: string) {
     setTitle(next)
-    if (!selected && !slugTouched && articleType !== 'pack_article' && articleType !== 'card_article') {
+    if (!selected && !slugTouched) {
       setSlug(buildDefaultArticleSlug({ articleType, targetId, title: next }))
     }
   }
@@ -138,7 +138,7 @@ export function ZukanArticleEditorForm({
 
       <div className="rounded border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-900">
         ここでは、思い出図鑑のパックページやカードページに表示する読み物記事を作成できます。
-        ChatGPTで作ったタイトル・説明文・本文を貼り付け、保存すると本文が自動で内部ブロックに変換されます。
+        同じパックに複数の記事を作れます。ChatGPTで作ったタイトル・説明文・本文を貼り付け、保存すると本文が自動で内部ブロックに変換されます。
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -157,7 +157,7 @@ export function ZukanArticleEditorForm({
             )}
           </select>
           <span className="mt-1 block text-[11px] font-normal leading-relaxed text-gray-500">
-            この記事を、パックページ用に作るか、カードページ用に作るかを選びます。
+            パック記事は同じパックに複数作れます。総合紹介、文明特集、S・トリガー特集などに使えます。
           </span>
         </label>
 
@@ -247,11 +247,11 @@ natural-trap
               setSlugTouched(true)
               setSlug(event.target.value)
             }}
-            placeholder="自動設定されます"
+            placeholder="タイトルから自動設定されます"
             className="mt-1 w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-xs"
           />
           <span className="mt-1 block text-[11px] font-normal leading-relaxed text-gray-500">
-            新規作成では対象パック / 対象カードから自動設定されます。必要な場合のみ変更してください。
+            新規作成ではタイトルから自動設定されます。必要な場合のみ変更してください。
           </span>
         </label>
         <p className="mt-2 text-[11px] leading-relaxed text-gray-500">
