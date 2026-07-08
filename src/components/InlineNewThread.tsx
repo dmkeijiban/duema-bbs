@@ -114,7 +114,6 @@ export function InlineNewThread({ categories }: Props) {
                   name="title"
                   required
                   maxLength={100}
-                  placeholder="スレッドタイトルを入力(64文字以内)"
                   className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400"
                 />
               </div>
