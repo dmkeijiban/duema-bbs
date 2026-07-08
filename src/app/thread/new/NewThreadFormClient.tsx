@@ -3,7 +3,6 @@
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createThread } from '@/app/actions/thread'
-import { ImageUploadField } from '@/components/ImageUploadField'
 import Link from 'next/link'
 import { getPostableConsolidatedCategories } from '@/lib/categories'
 import type { Category } from '@/types'
@@ -78,8 +77,8 @@ export function NewThreadFormClient({ categories }: Props) {
       <table className="w-full text-sm border-collapse" style={{ tableLayout: 'fixed' }}>
         <tbody>
           <tr className="border-b border-gray-200">
-            <td className="py-2 px-2 align-middle text-xs font-medium text-gray-700 sm:px-3" style={{ background: '#f5f5f5', width: 86 }}>
-              カテゴリ <span className="text-red-500">*</span>
+            <td className="py-2 px-2 align-middle text-xs font-medium text-gray-700 sm:px-3" style={{ background: '#f5f5f5', width: 72 }}>
+              カテゴリ
             </td>
             <td className="py-2 px-2 min-w-0 sm:px-3">
               <select
@@ -96,7 +95,7 @@ export function NewThreadFormClient({ categories }: Props) {
           </tr>
           <tr className="border-b border-gray-200">
             <td className="py-2 px-2 align-middle text-xs font-medium text-gray-700 sm:px-3" style={{ background: '#f5f5f5' }}>
-              タイトル <span className="text-red-500">*</span>
+              タイトル
             </td>
             <td className="py-2 px-2 min-w-0 sm:px-3">
               <input
@@ -105,7 +104,6 @@ export function NewThreadFormClient({ categories }: Props) {
                 required
                 minLength={2}
                 maxLength={100}
-                placeholder="例：【2024年最新】赤単アグロのデッキ相談"
                 className="w-full border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-400"
               />
             </td>
@@ -123,7 +121,7 @@ export function NewThreadFormClient({ categories }: Props) {
           {authState.status === 'anon' && (
             <tr className="border-b border-gray-200">
               <td className="py-2 px-2 align-middle text-xs font-medium text-gray-700 sm:px-3" style={{ background: '#f5f5f5' }}>
-                名前（省略可）
+                名前
               </td>
               <td className="py-2 px-2 min-w-0 sm:px-3">
                 <input
@@ -165,7 +163,7 @@ export function NewThreadFormClient({ categories }: Props) {
           )}
           <tr className="border-b border-gray-200">
             <td className="py-2 px-2 align-top text-xs font-medium text-gray-700 sm:px-3" style={{ background: '#f5f5f5', paddingTop: 10 }}>
-              本文 <span className="text-red-500">*</span>
+              本文
             </td>
             <td className="py-2 px-2 min-w-0 sm:px-3">
               <textarea
@@ -181,10 +179,15 @@ export function NewThreadFormClient({ categories }: Props) {
           </tr>
           <tr className="border-b border-gray-200">
             <td className="py-2 px-2 align-middle text-xs font-medium text-gray-700 sm:px-3" style={{ background: '#f5f5f5' }}>
-              画像添付（省略可）
+              画像
             </td>
             <td className="py-2 px-2 min-w-0 sm:px-3">
-              <ImageUploadField name="image" />
+              <input
+                type="file"
+                name="image"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="text-sm cursor-pointer file:mr-2 file:px-3 file:py-1 file:border file:border-gray-400 file:bg-gray-200 file:text-gray-700 file:text-sm file:cursor-pointer hover:file:bg-gray-300"
+              />
             </td>
           </tr>
         </tbody>
