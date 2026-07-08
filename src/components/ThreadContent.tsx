@@ -9,6 +9,8 @@ import { ReportButton } from './ReportButton'
 import { formatDateTimeJP, resolveImageUrl } from '@/lib/utils'
 import { ImageViewer } from './ImageViewer'
 import { getThreadViewerState } from '@/lib/thread-viewer-client'
+import { HonorBadge } from './HonorBadge'
+import type { HonorTitle } from '@/lib/honor-title'
 
 interface Props {
   posts: Post[]
@@ -16,6 +18,7 @@ interface Props {
   thread: Thread & { categories: Category | null }
   starterImageUrl?: string | null
   authorProfiles?: Record<string, PublicAuthorProfile>
+  honorTitles?: Record<string, HonorTitle>
   currentUserId?: string
   isArchived: boolean
   commentClosedMessage?: string | null
@@ -53,9 +56,11 @@ function ThreadAvatar({ src, alt }: { src: string | null | undefined; alt: strin
 function ThreadAuthorName({
   fallbackName,
   profile,
+  honorTitle,
 }: {
   fallbackName: string
   profile?: PublicAuthorProfile
+  honorTitle?: HonorTitle | null
 }) {
   if (!profile) {
     return <span className="font-medium text-gray-700">{fallbackName}</span>
@@ -66,6 +71,7 @@ function ThreadAuthorName({
       <span className="inline-flex items-center gap-1 font-medium text-gray-600">
         <ThreadAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} />
         <span>{profile.display_name}</span>
+        <HonorBadge title={honorTitle} />
       </span>
     )
   }
@@ -77,6 +83,7 @@ function ThreadAuthorName({
     >
       <ThreadAvatar src={profile.avatar_url} alt={`${profile.display_name}のアイコン`} />
       <span>{profile.display_name}</span>
+      <HonorBadge title={honorTitle} />
     </Link>
   )
 }
@@ -87,6 +94,7 @@ export function ThreadContent({
   thread,
   starterImageUrl = null,
   authorProfiles = {},
+  honorTitles = {},
   currentUserId = '',
   isArchived,
   commentClosedMessage = null,
@@ -186,6 +194,7 @@ export function ThreadContent({
   }, [])
 
   const threadAuthorProfile = thread.user_id ? authorProfiles[thread.user_id] : undefined
+  const threadAuthorHonorTitle = thread.user_id ? honorTitles[thread.user_id] : undefined
   const threadBodyNodes = useMemo(
     () => renderBody(thread.body, visiblePosts as Post[]),
     [thread.body, visiblePosts]
@@ -206,7 +215,7 @@ export function ThreadContent({
               ▶1
             </button>
             <span className="inline-block px-0.5 text-white text-[10px] leading-4" style={{ background: '#dc3545' }}>スレ主</span>
-            <ThreadAuthorName fallbackName={thread.author_name} profile={threadAuthorProfile} />
+            <ThreadAuthorName fallbackName={thread.author_name} profile={threadAuthorProfile} honorTitle={threadAuthorHonorTitle} />
             <span className="text-gray-400 text-[10px]">{formatDateTimeJP(thread.created_at)}</span>
             <ReportButton itemType="thread" itemId={thread.id} itemBody={thread.body} />
           </div>
@@ -231,6 +240,7 @@ export function ThreadContent({
               currentUserId={viewerUserId}
               threadId={threadId}
               authorProfile={post.user_id ? authorProfiles[post.user_id] : undefined}
+              honorTitle={post.user_id ? honorTitles[post.user_id] : undefined}
             />
             {post.id === justPostedId && (
               <div

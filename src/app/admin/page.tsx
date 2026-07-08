@@ -32,6 +32,9 @@ import { AdminSubmitButton } from './AdminSubmitButton'
 import { AccessTrendCard } from './AccessTrendCard'
 import { AdminScrollManager } from './AdminScrollManager'
 import { AdminLoginView } from './AdminLoginView'
+import { HonorTitleToggleButton } from './HonorTitleToggleButton'
+import { HONOR_TITLES } from '@/lib/honor-title'
+import { getHonorTitleTierCounts } from '@/lib/honor-title-stats'
 
 const ADMIN_COOKIE = 'admin_auth'
 const THREADS_PER_PAGE = 30
@@ -449,6 +452,8 @@ export default async function AdminPage({
 
   // サイト設定
   const settings = await getAllSettings()
+  const honorTitleEnabled = settings.honor_title_enabled === 'true'
+  const honorTitleTierCounts = await getHonorTitleTierCounts()
   const currentTopShowcaseMode = normalizeTopShowcaseMode(settings.top_showcase_mode)
   const currentTopShowcaseLabel =
     TOP_SHOWCASE_MODE_OPTIONS.find(option => option.value === currentTopShowcaseMode)?.label ?? 'みんなのプロフィール'
@@ -706,6 +711,34 @@ export default async function AdminPage({
             </div>
           </div>
 
+        </div>
+      </details>
+
+      <details className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
+        <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
+          <span className="text-gray-400 text-xs">▶</span>
+          <span>🎖 称号機能</span>
+          <span className={`ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold ${honorTitleEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+            {honorTitleEnabled ? '有効' : '無効'}
+          </span>
+        </summary>
+        <div className="min-w-0 space-y-3 border-t border-gray-100 p-3">
+          <p className="text-xs leading-relaxed text-gray-600">
+            OFFにしてもポイント計算・集計ロジックは動き続けます。表示だけを止めるので、いつでもすぐに再開できます。
+          </p>
+          <HonorTitleToggleButton enabled={honorTitleEnabled} />
+          <div>
+            <p className="mb-1.5 text-xs font-bold text-gray-500">称号ごとの人数（退会・凍結ユーザーを除く）</p>
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+              {HONOR_TITLES.slice().reverse().map(title => (
+                <div key={title.key} className="rounded border border-gray-200 bg-gray-50 px-2 py-1.5 text-center">
+                  <div className="text-base leading-none">{title.icon}</div>
+                  <div className="mt-1 text-[11px] text-gray-600">{title.label}</div>
+                  <div className="text-sm font-bold text-gray-800">{honorTitleTierCounts[title.key] ?? 0}人</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </details>
 

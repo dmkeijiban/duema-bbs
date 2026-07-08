@@ -5,7 +5,8 @@ import { ShareXButton } from '@/components/ShareXButton'
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { Thread, Post, Category } from '@/types'
 import Link from 'next/link'
-import { DEFAULT_PUBLIC_AUTHOR_NAME, getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, getCachedThreadStarterImageUrl, getCachedRelatedThreads, getCachedPublicAuthorProfiles, getCachedRestrictedAuthorNames, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
+import { DEFAULT_PUBLIC_AUTHOR_NAME, getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, getCachedThreadStarterImageUrl, getCachedRelatedThreads, getCachedPublicAuthorProfiles, getCachedRestrictedAuthorNames, getCachedHonorTitleEnabled, getCachedHonorPointsMap, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
+import { getHonorTitle, type HonorTitle } from '@/lib/honor-title'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
@@ -170,10 +171,16 @@ export async function renderThreadPage(threadId: number, page: number) {
   const typedThread = thread as unknown as Thread & { categories: Category | null }
   const displayCategory = getDisplayCategory(typedThread.categories)
   const starterImageUrl = await getCachedThreadStarterImageUrl(threadId, typedThread.image_url)
-  const authorProfiles = await getCachedPublicAuthorProfiles([
+  const threadParticipantUserIds = [
     typedThread.user_id ?? '',
     ...(posts ?? []).map(post => (post as Post).user_id ?? ''),
-  ])
+  ]
+  const authorProfiles = await getCachedPublicAuthorProfiles(threadParticipantUserIds)
+  const honorTitleEnabled = await getCachedHonorTitleEnabled()
+  const honorPointsMap = honorTitleEnabled ? await getCachedHonorPointsMap(threadParticipantUserIds) : {}
+  const honorTitles: Record<string, HonorTitle> = honorTitleEnabled
+    ? Object.fromEntries(Object.entries(honorPointsMap).map(([userId, points]) => [userId, getHonorTitle(points)]))
+    : {}
   const restrictedAuthorNames = await getCachedRestrictedAuthorNames([
     typedThread.author_name,
     ...(posts ?? []).map(post => (post as Post).author_name),
@@ -364,6 +371,7 @@ export async function renderThreadPage(threadId: number, page: number) {
         thread={publicThread}
         starterImageUrl={starterImageUrl}
         authorProfiles={authorProfiles}
+        honorTitles={honorTitles}
         isArchived={isArchivedForDisplay}
         commentClosedMessage={commentClosedMessage}
         page={page}

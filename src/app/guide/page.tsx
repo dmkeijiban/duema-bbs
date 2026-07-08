@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { SITE_URL } from '@/lib/site-config'
-import { HONOR_TITLE_ENABLED } from '@/lib/honor-title'
+import { HONOR_TITLES } from '@/lib/honor-title'
+import { getCachedHonorTitleEnabled } from '@/lib/cached-queries'
 
 // 固定ページはほぼ変わらないため1時間キャッシュ
 export const revalidate = 3600
@@ -53,6 +54,7 @@ const FAQ_ITEMS = [
 ]
 
 export default async function GuidePage() {
+  const honorTitleEnabled = await getCachedHonorTitleEnabled()
   return (
     <div className="max-w-screen-xl mx-auto px-3 py-4 text-sm">
       <script
@@ -307,45 +309,23 @@ export default async function GuidePage() {
           </dl>
         </section>
 
-        {/* Section 15: 称号について (HONOR_TITLE_ENABLED=true で表示) */}
-        {HONOR_TITLE_ENABLED && (
+        {/* Section 15: 称号について (site_settings.honor_title_enabled で表示切り替え) */}
+        {honorTitleEnabled && (
           <section id="honor-title" className="mb-6">
             <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">15. 称号について</h2>
             <p className="mb-3 text-sm text-gray-700">
-              登録ユーザーには、累計ポイントに応じて称号が自動で付与されます。称号は毎日1回、ランキング更新時に自動更新されます。
+              称号は累計ポイントで上がる活動バッジです。コメントや投稿を続けるほど成長します。ランキングの順位とは別に、これまでの活動量が積み上がっていきます。
             </p>
             <div className="border border-gray-200 rounded divide-y divide-gray-100 text-sm">
-              <div className="grid grid-cols-[6rem_1fr] items-center px-3 py-2">
-                <span className="font-bold text-gray-600">10pt〜</span>
-                <span className="text-gray-700">🟤 ブロンズ</span>
-              </div>
-              <div className="grid grid-cols-[6rem_1fr] items-center px-3 py-2">
-                <span className="font-bold text-gray-600">50pt〜</span>
-                <span className="text-gray-700">⚪ シルバー</span>
-              </div>
-              <div className="grid grid-cols-[6rem_1fr] items-center px-3 py-2">
-                <span className="font-bold text-gray-600">150pt〜</span>
-                <span className="text-gray-700">🟡 ゴールド</span>
-              </div>
-              <div className="grid grid-cols-[6rem_1fr] items-center px-3 py-2">
-                <span className="font-bold text-gray-600">400pt〜</span>
-                <span className="text-gray-700">💎 プラチナ</span>
-              </div>
-              <div className="grid grid-cols-[6rem_1fr] items-center px-3 py-2">
-                <span className="font-bold text-gray-600">800pt〜</span>
-                <span className="text-gray-700">🔷 ダイヤモンド</span>
-              </div>
-              <div className="grid grid-cols-[6rem_1fr] items-center px-3 py-2">
-                <span className="font-bold text-gray-600">1500pt〜</span>
-                <span className="text-gray-700">👑 レジェンド</span>
-              </div>
-              <div className="grid grid-cols-[6rem_1fr] items-center px-3 py-2">
-                <span className="font-bold text-gray-600">3000pt〜</span>
-                <span className="text-gray-700">🌟 殿堂入り</span>
-              </div>
+              {HONOR_TITLES.slice().reverse().map(title => (
+                <div key={title.key} className="grid grid-cols-[6rem_1fr] items-center px-3 py-2">
+                  <span className="font-bold text-gray-600">{title.minPoints.toLocaleString('ja-JP')}pt〜</span>
+                  <span className="text-gray-700">{title.icon} {title.label}</span>
+                </div>
+              ))}
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              称号はプロフィールページ（/u/ユーザー名）と投稿者ランキングの通算タブに表示されます。
+              称号はコメント欄・投稿者ランキングではアイコンのみ、プロフィールページ（/u/ユーザー名）では称号名や次の称号までの進捗とあわせて表示されます。
             </p>
           </section>
         )}

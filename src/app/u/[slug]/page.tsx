@@ -5,9 +5,11 @@ import { ProfileHeaderCard } from '@/components/ProfileHeaderCard'
 import { UserProfileShareButtons } from '@/components/UserProfileShareButtons'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings, getCachedCampaignRanking } from '@/lib/cached-queries'
+import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings, getCachedCampaignRanking, getCachedHonorTitleEnabled } from '@/lib/cached-queries'
 import { resolveCampaignState } from '@/lib/campaign-ranking'
-import { getHonorTitle, HONOR_TITLE_ENABLED } from '@/lib/honor-title'
+import { getHonorTitle, getNextHonorTitle } from '@/lib/honor-title'
+import { HonorTitleCard } from '@/components/HonorTitleCard'
+import { HonorRankUpBanner } from '@/components/HonorRankUpBanner'
 import {
   DUEMA_GENERATION_MAP,
   DUEMA_CIVILIZATION_MAP,
@@ -191,12 +193,13 @@ export default async function UserProfilePage({
     'youtu.be',
   ])
 
-  const [recentThreads, recentPosts, rankings, activityCounts, cachedCampaign] = await Promise.all([
+  const [recentThreads, recentPosts, rankings, activityCounts, cachedCampaign, honorTitleEnabled] = await Promise.all([
     getCachedUserThreads(profile.id),
     getCachedUserPosts(profile.id),
     getCachedUserRankings(),
     getUserActivityCounts(profile.id),
     getCachedCampaignRanking(),
+    getCachedHonorTitleEnabled(),
   ])
 
   const campaignSettings = cachedCampaign.settings
@@ -248,6 +251,7 @@ export default async function UserProfilePage({
     activityCounts.cardReviewCount * USER_RANKING_CARD_REVIEW_POINT +
     activityCounts.packReviewCount * USER_RANKING_PACK_REVIEW_POINT
   const honorTitle = getHonorTitle(totalPoints)
+  const nextHonorTitle = getNextHonorTitle(totalPoints)
 
   const threadDisplayCount = formatCount(activityCounts.threadCount)
   const postDisplayCount = formatCount(activityCounts.postCount)
@@ -275,11 +279,18 @@ export default async function UserProfilePage({
         postCountLabel={postDisplayCount}
         monthlyRank={monthlyRank}
         totalRank={totalRank}
-        honorTitle={HONOR_TITLE_ENABLED ? honorTitle : null}
+        honorTitle={honorTitleEnabled ? honorTitle : null}
         campaignTitle={campaignTitle}
         campaignRank={campaignRank}
         campaignPoints={campaignPoints}
       />
+
+      {honorTitleEnabled && (
+        <>
+          <HonorTitleCard title={honorTitle} points={totalPoints} nextTitle={nextHonorTitle} />
+          {isOwner && <HonorRankUpBanner title={honorTitle} />}
+        </>
+      )}
 
       {profile.profile_hidden && isOwner && (
         <div className="mt-3 rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">

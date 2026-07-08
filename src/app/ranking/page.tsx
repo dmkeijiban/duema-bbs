@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadCard } from '@/components/ThreadCard'
 import { SITE_URL } from '@/lib/site-config'
-import { getCachedCategories, getCachedUserRankings, getCachedCampaignRanking, UserRankingRow } from '@/lib/cached-queries'
+import { getCachedCategories, getCachedUserRankings, getCachedCampaignRanking, getCachedHonorTitleEnabled, UserRankingRow } from '@/lib/cached-queries'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { ThreadListHeader } from '@/components/ThreadListHeader'
@@ -14,7 +14,8 @@ import { applyActiveThreadFilter, applyLegacyActiveThreadFilter, isArchiveSchema
 import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { resolveCampaignState, toDisplayJst } from '@/lib/campaign-ranking'
-import { getHonorTitle, HONOR_TITLE_ENABLED } from '@/lib/honor-title'
+import { getHonorTitle, type HonorTitle } from '@/lib/honor-title'
+import { HonorBadge } from '@/components/HonorBadge'
 import {
   filterPublicVisibleUserContent,
   getCachedPublicHiddenUserIds,
@@ -174,7 +175,7 @@ function RankingUserMeta({
   xUrl: string | null | undefined
   youtubeUrl: string | null | undefined
   href: string
-  honorTitle?: { icon: string; label: string } | null
+  honorTitle?: HonorTitle | null
 }) {
   return (
     <div className="min-w-0">
@@ -182,9 +183,7 @@ function RankingUserMeta({
         <Link href={href} className="text-sm font-bold text-blue-700 hover:underline">
           {name}
         </Link>
-        {honorTitle && (
-          <span className="text-[11px] text-gray-500">{honorTitle.icon} {honorTitle.label}</span>
-        )}
+        <HonorBadge title={honorTitle} />
         <RankingSocialLinks xUrl={xUrl} youtubeUrl={youtubeUrl} />
       </div>
     </div>
@@ -369,12 +368,22 @@ function UserRankingList({
 }
 
 async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
-  const rankings = await getCachedUserRankings()
+  const [rankings, honorTitleEnabled] = await Promise.all([
+    getCachedUserRankings(),
+    getCachedHonorTitleEnabled(),
+  ])
 
   const note = (
-    <p className="mb-3 border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700">
-      投稿者ランキングは、スレッド投稿・コメント・思い出図鑑の評価・思い出レビューなどの活動から集計しています。ランキングは1日1回更新されます。
-    </p>
+    <>
+      <p className="mb-3 border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700">
+        投稿者ランキングは、スレッド投稿・コメント・思い出図鑑の評価・思い出レビューなどの活動から集計しています。ランキングは1日1回更新されます。
+      </p>
+      {honorTitleEnabled && (
+        <p className="mb-3 border border-gray-200 bg-gray-50 px-3 py-2 text-xs leading-relaxed text-gray-600">
+          称号は累計ポイントで上がる活動バッジです。ランキングとは違い、これまでの投稿・コメントの積み重ねで成長します。
+        </p>
+      )}
+    </>
   )
 
   // 今月・総合の両データはここで一度に取得済み。
@@ -397,7 +406,7 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
           title="総合ランキング"
           periodLabel="総合"
           rows={rankings.total}
-          showHonorTitle={HONOR_TITLE_ENABLED}
+          showHonorTitle={honorTitleEnabled}
         />
       }
     />
