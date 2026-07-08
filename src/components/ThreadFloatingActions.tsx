@@ -12,7 +12,7 @@ const ICON_PROPS = {
   strokeWidth: 1.75,
   strokeLinecap: 'round',
   strokeLinejoin: 'round',
-  className: 'h-5 w-5',
+  className: 'h-4 w-4',
 } as const
 
 function TriangleIcon(props: IconProps) {
@@ -51,7 +51,7 @@ function SettingsIcon(props: IconProps) {
 }
 
 const BUTTON_CLASS =
-  'flex h-11 w-11 shrink-0 items-center justify-center text-gray-400 active:bg-gray-200/60'
+  'flex h-9 w-9 shrink-0 items-center justify-center text-gray-400 active:bg-gray-200/60'
 
 export function ThreadFloatingActions() {
   const scrollToTop = () => {
