@@ -332,8 +332,10 @@ export function NewPostForm({
               </td>
               <td className="p-2 min-w-0">
                 <div className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs leading-relaxed text-amber-800">
-                  <p>一言だけでもコメント大歓迎です！</p>
-                  <p>あなたのコメントでスレを盛り上げましょう！</p>
+                  <p>
+                    一言だけでもコメント大歓迎です！<br className="md:hidden" />{' '}
+                    あなたのコメントでスレを盛り上げましょう！
+                  </p>
                 </div>
                 <textarea
                   id="reply-textarea"
