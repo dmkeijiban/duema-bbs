@@ -698,15 +698,17 @@ export default async function AdminPage({
         </div>
       </details>
 
-      <section className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-gray-50">
-        <div className="border-b border-gray-200 px-3 py-2">
-          <h2 className="font-bold text-gray-800">📊 アクセス・人気ダッシュボード</h2>
-          <p className="mt-0.5 text-[11px] text-gray-500">
+      <details open className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-gray-50">
+        <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-100">
+          <span className="text-gray-400 text-xs">▶</span>
+          <span>📊 アクセス・人気ダッシュボード</span>
+          <span className="ml-auto text-[11px] font-normal text-gray-400">GA4 / 内部指標</span>
+        </summary>
+
+        <div className="min-w-0 space-y-4 border-t border-gray-100 p-3">
+          <p className="text-[11px] text-gray-500">
             GA4の表示回数（screenPageViews）と、掲示板内部のスレ閲覧数・コメント数を分けて確認します。
           </p>
-        </div>
-
-        <div className="min-w-0 space-y-4 p-3">
           <div>
             {ga4Dashboard.ok && (
               <div className="mb-4">
@@ -803,7 +805,7 @@ export default async function AdminPage({
             </div>
           </div>
         </div>
-      </section>
+      </details>
       {editPost && sp.thread && (
         <div className="mb-4 border-2 border-green-400 bg-green-50 p-4 rounded">
           <h2 className="font-bold text-green-800 mb-3">✏️ レス編集（#{editPost.post_number + 1} {editPost.author_name}）</h2>
@@ -829,14 +831,13 @@ export default async function AdminPage({
         />
       )}
 
-      <section className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-3 py-2">
-          <div>
-            <h2 className="font-bold text-gray-700">トップ表示設定</h2>
-            <p className="mt-0.5 text-xs text-gray-500">
-              現在: <span className="font-bold text-blue-700">{currentTopShowcaseLabel}</span>
-            </p>
-          </div>
+      <details open className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
+        <summary className="flex cursor-pointer select-none flex-wrap items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
+          <span className="text-gray-400 text-xs">▶</span>
+          <span>トップ表示設定</span>
+          <span className="ml-auto text-xs font-normal text-gray-500">
+            現在: <span className="font-bold text-blue-700">{currentTopShowcaseLabel}</span>
+          </span>
           {sp.topShowcaseSaved && (
             <span className="rounded border border-green-200 bg-green-50 px-2 py-1 text-xs font-bold text-green-700">
               保存しました
@@ -847,8 +848,8 @@ export default async function AdminPage({
               保存できませんでした
             </span>
           )}
-        </div>
-        <form action={updateTopShowcaseModeAction} className="space-y-3 p-3">
+        </summary>
+        <form action={updateTopShowcaseModeAction} className="space-y-3 border-t border-gray-100 p-3">
           <div className="grid gap-2 md:grid-cols-2">
             {TOP_SHOWCASE_MODE_OPTIONS.map(option => (
               <label
@@ -882,7 +883,7 @@ export default async function AdminPage({
             </Link>
           </div>
         </form>
-      </section>
+      </details>
 
       {/* ─── モデレーション（NGワード・BAN）折り畳み ─── */}
       <details className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
