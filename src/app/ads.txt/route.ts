@@ -1,36 +1,163 @@
-import { readFile } from 'fs/promises'
-import path from 'path'
+// public/ads.txt の静的配信・route.tsでのファイル読み込み+動的整形のいずれでも
+// 本番で改行が失われる事象が続いたため、確実性を最優先し本文を直接ハードコードする。
+// レコードは1行1件、必ず改行区切り。更新する場合はこの配列を直接編集する。
+const ADS_TXT_LINES: readonly string[] = [
+  'google.com, pub-1546271448425321, DIRECT, f08c47fec0942fa0',
+  '',
+  '#-- adstir ads.txt - last updated: 2026-02-26 --#',
+  'ad-stir.com, 14673, DIRECT',
+  'zmaticoo.com, 116355, RESELLER',
+  'video.unrulymedia.com, 158727213, RESELLER',
+  'rubiconproject.com, 24362, RESELLER, 0bfd66d529a55807',
+  'pubmatic.com, 161136, RESELLER, 5d62403b186f2ace',
+  'smaato.com, 1100051149, RESELLER, 07bcf65f187117b4',
+  'smaato.com, 1100004890, RESELLER, 07bcf65f187117b4',
+  'martadserver.com, 4457, RESELLER, 060d053dcf45cbf3',
+  'video.unrulymedia.com, 158727213, DIRECT',
+  'Contextweb.com, 562762, RESELLER, 89ff185a4c4e857c',
+  'loopme.com, 11605, RESELLER, 6c8d5f95897a5a3b',
+  'pubmatic.com, 158154, RESELLER, 5d62403b186f2ace',
+  'triplelift.com, 12158, RESELLER, 6c33edb13117fd86',
+  'xandr.com, 13799, RESELLER',
+  'sharethrough.com, 6qlnf8SY, RESELLER, d53b998a7bd4ecd2',
+  'freewheel.tv, 1137745, RESELLER',
+  'freewheel.tv, 1138513, RESELLER',
+  'conversantmedia.com, 100246, RESELLER, 03113cd04947736d',
+  'media.net, 8CUN37DCC, RESELLER',
+  'improvedigital.com, 2110, RESELLER',
+  'improvedigital.com, 1532, RESELLER',
+  'onairglobal.com, 4357627, RESELLER',
+  'thebrave.io, 1234585, RESELLER, c25b2154543746ac',
+  'videoheroes.tv, 212503, RESELLER, 064bc410192443d8',
+  'Se7en.es, 212503, RESELLER, 064bc410192443d8',
+  'opera.com,pub7275292332480,RESELLER,55a0c5fd61378de3',
+  'pokkt.com, 7606, RESELLER, c45702d9311e25fd',
+  'appads.in, 107606, RESELLER',
+  'pubmatic.com, 159382, RESELLER',
+  'pubmatic.com, 161058, RESELLER, 5d62403b186f2ace',
+  'appnexus.com, 6849, RESELLER',
+  'xad.com, 963, RESELLER, 81cbf0a75a5e0e9a',
+  'openx.com, 543878511, RESELLER, 6a698e2ec38604c6',
+  'smaato.com, 1100047589, RESELLER, 07bcf65f187117b4',
+  'inmobi.com, ba5fd3fb82c5412989b23c3eec71baf7, RESELLER, 83e75a7ae333ca9d',
+  'improvedigital.com, 1699, RESELLER',
+  'loopme.com, 9718, RESELLER, 6c8d5f95897a5a3b',
+  'tvp.tv, AR40, RESELLER, 1125b6434104a723',
+  'adelement.com, 36003, RESELLER',
+  'adelement.com, 36004, RESELLER',
+  'betweendigital.com, 44659, RESELLER',
+  'betweendigital.com, 44659, DIRECT',
+  'vidoomy.com, 9148331, RESELLER',
+  'pubmatic.com, 159668, RESELLER, 5d62403b186f2ace',
+  'inmobi.com, 86357825a302443d9a99c0b5dda0eafa, RESELLER, 83e75a7ae333ca9d',
+  'smartyads.com, 100064, RESELLER, fd2bde0ff2e62c5d',
+  'xandr.com, 8678, RESELLER',
+  'appnexus.com, 8678, RESELLER',
+  'pubmatic.com, 160260, RESELLER, 5d62403b186f2ace',
+  'pubmatic.com, 161380, RESELLER, 5d62403b186f2ace',
+  'rubiconproject.com, 12130, RESELLER, 0bfd66d529a55807',
+  'google.com, pub-2801326990568508, RESELLER, f08c47fec0942fa0',
+  'pubmatic.com, 160008, RESELLER, 5d62403b186f2ace',
+  'publishers.logicad.jp, DQMo, DIRECT',
+  'appnexus.com, 3663, RESELLER',
+  'genieesspv.jp, 38266, RESELLER',
+  'appnexus.com, 7122, RESELLER',
+  'appnexus.com, 16480, RESELLER, f5ab79cb980f11d1',
+  'indexexchange.com, 192304, RESELLER, 50b1c356f2c5c8fc',
+  'openx.com, 561733727, RESELLER, 6a698e2ec38604c6',
+  'openx.com, 539320132, RESELLER, 6a698e2ec38604c6',
+  'pubmatic.com, 156704, RESELLER, 5d62403b186f2ace',
+  'rubiconproject.com, 11534, RESELLER, 0bfd66d529a55807',
+  'zmaticoo.com, 115153, DIRECT',
+  'yeahmobi.com, 115153, DIRECT',
+  'rubiconproject.com, 26156, RESELLER, 0bfd66d529a55807',
+  'rubiconproject.com, 26158, RESELLER, 0bfd66d529a55807',
+  'admanmedia.com, 990, RESELLER',
+  'visiblemeasures.com, 1020, RESELLER',
+  'smartadserver.com, 4457, RESELLER, 060d053dcf45cbf3',
+  'pubnative.net, 1009098, RESELLER, d641df8625486a7b',
+  'pubnative.net, 1006576, RESELLER, d641df8625486a7b',
+  'pubnative.net, 1009099, RESELLER, d641df8625486a7b',
+  'rubiconproject.com, 15268, RESELLER, 0bfd66d529a55807',
+  'pubmatic.com, 159277, RESELLER',
+  'contextweb.com, 560138, RESELLER, 89ff185a4c4e857c',
+  'pubnative.net, 1007475, RESELLER, d641df8625486a7b',
+  'pubnative.net, 1007303, RESELLER, d641df8625486a7b',
+  'pubnative.net, 1007311, RESELLER, d641df8625486a7b',
+  'rubiconproject.com, 25482, RESELLER, 0bfd66d529a55807',
+  'admixer.co.kr, 1654, RESELLER',
+  'admixer.co.kr, 2018, RESELLER',
+  'tpmn.io, 663, RESELLER',
+  'tpmn.io, 664, RESELLER',
+  'axonix.com, 59054, RESELLER, bc385f2b4a87b721',
+  'programmaticx.ai, 6845438, RESELLER',
+  'rubiconproject.com, 20744, RESELLER, 0bfd66d529a55807',
+  'contextweb.com, 562499, RESELLER, 89ff185a4c4e857c',
+  'opera.com, pub5865193350528, RESELLER, 55a0c5fd61378de3',
+  'sonobi.com, a85c5f6129, RESELLER, d1a215d9eb5aee9e',
+  'smartadserver.com, 4140, RESELLER',
+  'improvedigital.com, 2276, RESELLER',
+  'inmobi.com, 7847fe1f9ac54b4abe609cde4011243b, RESELLER, 83e75a7ae333ca9d',
+  'rubiconproject.com, 17608, RESELLER, 0bfd66d529a55807',
+  'axonix.com, 59089, RESELLER, bc385f2b4a87b721',
+  'display.io, 173162, RESELLER',
+  'lijit.com, 465542, RESELLER, fafdf38b16bf6b2b',
+  'pubmatic.com, 163420, RESELLER, 5d62403b186f2ace',
+  'vidoomy.com, 4930225, RESELLER',
+  'conversantmedia.com, 100269, RESELLER, 03113cd04947736d',
+  'mman.kr, 33000, RESELLER',
+  'inmobi.com, 38e36193f3c944d0b6254c71e511041b, RESELLER, 83e75a7ae333ca9d',
+  'webeyemob.com, 70104, RESELLER',
+  'meitu.com, 699, RESELLER',
+  'onetag.com, 7a579c11b7a0d25, DIRECT',
+  'onetag.com, 7a579c11b7a0d25-OB, DIRECT',
+  'appnexus.com, 13099, RESELLER',
+  'pubmatic.com, 161593, RESELLER, 5d62403b186f2ace',
+  'rubiconproject.com, 11006, RESELLER, 0bfd66d529a55807',
+  'pubmatic.com, 161748, DIRECT, 5d62403b186f2ace',
+  'admixer.co.kr, 2029, RESELLER',
+  'admixer.co.kr, 2022, RESELLER',
+  'admixer.co.kr, 2017, RESELLER',
+  'inmobi.com, 7be03d94d9fd408dab6de2e099a462f3, RESELLER, 83e75a7ae333ca9d',
+  'conversantmedia.com, 40881, RESELLER, 03113cd04947736d',
+  'rubiconproject.com, 11726, RESELLER, 0bfd66d529a55807',
+  'rubiconproject.com, 12266, RESELLER, 0bfd66d529a55807',
+  'smaato.com, 1100053415, RESELLER, 07bcf65f187117b4',
+  'pubmatic.com, 157097, RESELLER, 5d62403b186f2ace',
+  'loopme.com, 9724, RESELLER, 6c8d5f95897a5a3b',
+  'admanmedia.com, 2063, RESELLER',
+  'opera.com, pub6871903319744, RESELLER, 55a0c5fd61378de3',
+  'mintegral.com, 10003, RESELLER',
+  'pubmatic.com, 156931, RESELLER, 5d62403b186f2ace',
+  'Se7en.es, 212430, RESELLER, 064bc410192443d8',
+  'themediagrid.com, B8N9YH, RESELLER, 35d5010d7789b49d',
+  'eskimi.com, 2020000030, RESELLER',
+  'appnexus.com, 15670, RESELLER',
+  'outbrain.com, 00092743fa380569f00f929c5c50dfccf8, RESELLER',
+  'lijit.com, 502742, RESELLER, fafdf38b16bf6b2b',
+  'axonix.com, 57716, RESELLER',
+  'appnexus.com, 14077, RESELLER',
+  'pubmatic.com, 159035, RESELLER, 5d62403b186f2ace',
+  'smartyads.com, 478, RESELLER, fd2bde0ff2e62c5d',
+  'thebrave.io, 1234568, RESELLER, c25b2154543746ac',
+  'video.unrulymedia.com, 188404962, RESELLER',
+  'blis.com, 33, RESELLER, 61453ae19a4b73f4',
+  'rubiconproject.com, 16928, RESELLER, 0bfd66d529a55807',
+  'zmaticoo.com, 5135082, RESELLER',
+  'contextweb.com, 558638, RESELLER, 89ff185a4c4e857c',
+  'zmaticoo.com, 113149, RESELLER',
+  'apester.com, 2212, RESELLER',
+  'thunder-monetize.com, 3905806597, RESELLER',
+  'outbrain.com, 0073fa86cff719c752763d2c3ee52c8f00, RESELLER',
+  '#-- adstir ads.txt end --#',
+]
 
-// public/ads.txt の静的配信で改行が失われる事象が報告されたため、
-// route handlerで明示的にプレーンテキストとして返す。
-// データ本体は public/ に置くと "conflicting public file and page file" で
-// このrouteと衝突するため src/data/ads.txt に置いている。
+const ADS_TXT_BODY = ADS_TXT_LINES.join('\n') + '\n'
+
 export const dynamic = 'force-dynamic'
 
-// レコードの先頭になりうるトークン（#コメント、または "ドメイン," 形式）の直前で
-// 必ず改行する。配信経路のどこかで改行がスペースに潰されて連結されても、
-// ads.txtとして1レコード1行になるようにするための保険。
-const RECORD_START = /(?<=\S)[ \t]+(?=#|[A-Za-z0-9][A-Za-z0-9.-]*[ \t]*,[ \t]*[^,\n]+[ \t]*,[ \t]*(?:DIRECT|RESELLER)\b)/g
-
-function normalizeAdsTxt(raw: string): string {
-  const unifiedNewlines = raw.replace(/\r\n?/g, '\n')
-  const withForcedBreaks = unifiedNewlines
-    .split('\n')
-    .map(line => line.replace(RECORD_START, '\n'))
-    .join('\n')
-  return withForcedBreaks
-    .split('\n')
-    .map(line => line.trimEnd())
-    .join('\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim() + '\n'
-}
-
 export async function GET() {
-  const filePath = path.join(process.cwd(), 'src', 'data', 'ads.txt')
-  const raw = await readFile(filePath, 'utf-8')
-  const text = normalizeAdsTxt(raw)
-  return new Response(text, {
+  return new Response(ADS_TXT_BODY, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
       'Cache-Control': 'no-store',
