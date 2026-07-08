@@ -85,6 +85,29 @@ function formError(formData: FormData, error: string, existingId?: string): Save
   }
 }
 
+async function makeUniqueArticleSlug(supabase: ReturnType<typeof createAdminClient>, baseSlug: string, currentId?: string) {
+  const normalizedBase = normalizeArticleSlug(baseSlug) || 'article'
+  const candidates = [
+    normalizedBase,
+    ...Array.from({ length: 49 }, (_, index) => `${normalizedBase}-${index + 2}`),
+  ]
+
+  const { data, error } = await supabase
+    .from('zukan_articles')
+    .select('id, slug')
+    .in('slug', candidates)
+
+  if (error) throw new Error(error.message)
+
+  const used = new Set(
+    (data ?? [])
+      .filter(row => !currentId || row.id !== currentId)
+      .map(row => row.slug),
+  )
+
+  return candidates.find(candidate => !used.has(candidate)) ?? `${normalizedBase}-${Date.now()}`
+}
+
 export async function saveZukanArticle(_prevState: SaveZukanArticleState, formData: FormData): Promise<SaveZukanArticleState> {
   await requireAdmin()
 
@@ -100,7 +123,8 @@ export async function saveZukanArticle(_prevState: SaveZukanArticleState, formDa
   const blocksRaw = String(formData.get('blocks_json') ?? '')
   const bodyText = String(formData.get('body_text') ?? '')
   const titleInput = String(formData.get('title') ?? '').trim()
-  const slug = normalizeArticleSlug(String(formData.get('slug') ?? '')) || buildDefaultArticleSlug({
+  const slugInput = normalizeArticleSlug(String(formData.get('slug') ?? ''))
+  const baseSlug = slugInput || buildDefaultArticleSlug({
     articleType,
     targetId,
     title: titleInput,
@@ -108,7 +132,7 @@ export async function saveZukanArticle(_prevState: SaveZukanArticleState, formDa
 
   if (!articleType) return formError(formData, 'invalid_type')
   if (!targetId) return formError(formData, 'missing_target')
-  if (!slug) return formError(formData, 'missing_slug')
+  if (!baseSlug) return formError(formData, 'missing_slug')
   if (!blocksRaw.trim() && !bodyText.trim()) return formError(formData, 'missing_blocks')
 
   let parsed: { blocks: ZukanArticleBlock[]; title?: string; description?: string }
@@ -134,15 +158,11 @@ export async function saveZukanArticle(_prevState: SaveZukanArticleState, formDa
   if (!title) return formError(formData, 'missing_title')
 
   const supabase = createAdminClient()
-  if (!id) {
-    const { data: existingSlug } = await supabase
-      .from('zukan_articles')
-      .select('id')
-      .eq('slug', slug)
-      .limit(1)
-    if (existingSlug?.[0]?.id) {
-      return formError(formData, 'existing_slug', existingSlug[0].id)
-    }
+  let slug: string
+  try {
+    slug = await makeUniqueArticleSlug(supabase, baseSlug, id || undefined)
+  } catch (error) {
+    return formError(formData, error instanceof Error ? error.message : 'slug_check_failed')
   }
 
   const payload = {
@@ -163,7 +183,19 @@ export async function saveZukanArticle(_prevState: SaveZukanArticleState, formDa
   const { data, error } = await query
   if (error || !data) {
     if (error?.code === '23505') {
-      return formError(formData, 'duplicate_slug')
+      const retrySlug = await makeUniqueArticleSlug(supabase, slug, id || undefined)
+      const retryPayload = { ...payload, slug: retrySlug }
+      const retryQuery = id
+        ? supabase.from('zukan_articles').update(retryPayload).eq('id', id).select('id').single()
+        : supabase.from('zukan_articles').insert(retryPayload).select('id').single()
+      const retryResult = await retryQuery
+      if (retryResult.error || !retryResult.data) {
+        return formError(formData, retryResult.error?.message ?? 'save failed')
+      }
+      revalidatePath('/admin/zukan/articles')
+      revalidatePath('/zukan/articles')
+      revalidatePath(`/zukan/articles/${retrySlug}`)
+      redirect(`/admin/zukan/articles?edit=${encodeURIComponent(retryResult.data.id)}&saved=1&preview=1`)
     }
     return formError(formData, error?.message ?? 'save failed')
   }
