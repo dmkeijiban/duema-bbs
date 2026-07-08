@@ -234,30 +234,11 @@ export function ThreadContent({
             />
             {post.id === justPostedId && (
               <div
-                className="px-3 py-2.5 flex items-center justify-between gap-2 text-sm border-b border-gray-200"
+                className="px-3 py-2.5 text-sm text-gray-700 leading-snug border-b border-gray-200"
                 style={{ background: '#eafaf1' }}
               >
-                <span className="text-gray-700 leading-snug">
-                  コメントありがとうございます！<br />
-                  次はあなたの好きな話題でスレッド投稿してみよう！
-                </span>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Link
-                    href="/new"
-                    className="px-3 py-1.5 text-xs font-bold text-white whitespace-nowrap"
-                    style={{ background: '#0d6efd' }}
-                  >
-                    スレを立てる
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => setJustPostedId(null)}
-                    aria-label="閉じる"
-                    className="text-gray-400 hover:text-gray-600 text-lg leading-none px-1"
-                  >
-                    ×
-                  </button>
-                </div>
+                コメントありがとうございます！<br />
+                次はあなたの好きな話題でスレッド投稿してみよう！
               </div>
             )}
           </Fragment>
