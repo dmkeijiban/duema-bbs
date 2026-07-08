@@ -321,13 +321,21 @@ function getPrimaryImageUrl(urls: string[] | null): string | null {
 function isDailyZukanTypefullyPost(text: string): boolean {
   const normalized = text.replace(/\s+/g, '')
   const hasThreadLink = /https?:\/\/(?:www\.)?duema-bbs\.com\/thread\/\d+/i.test(text)
+  const hasZukanCardLink = /(?:https?:\/\/(?:www\.)?duema-bbs\.com)?\/zukan\/card\//i.test(text)
+
   const hasOldMarker = normalized.includes('本日の思い出図鑑スレ')
-  const hasCurrentMarker =
+  const hasThreadPostMarker =
+    normalized.includes('思い出を募集中') &&
+    normalized.includes('今の評価でもOK') &&
+    normalized.includes('思い出図鑑ページ') &&
+    hasZukanCardLink
+
+  const hasCurrentXMarker =
     normalized.includes('思い出を募集中') &&
     normalized.includes('今の評価でもOK') &&
     normalized.includes('掲示板')
 
-  return hasThreadLink && (hasOldMarker || hasCurrentMarker)
+  return hasOldMarker || hasThreadPostMarker || (hasThreadLink && hasCurrentXMarker)
 }
 
 function summarizeTypefullyPosts(posts: TodayTypefullyPost[]): TypefullyPostSummary[] {
