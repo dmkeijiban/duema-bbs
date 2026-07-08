@@ -51,7 +51,7 @@ function SettingsIcon(props: IconProps) {
 }
 
 const BUTTON_CLASS =
-  'flex h-9 w-9 shrink-0 items-center justify-center text-gray-400 active:bg-gray-200/60'
+  'flex h-10 w-10 shrink-0 items-center justify-center border border-gray-300 bg-white/50 text-gray-400 active:bg-gray-200/60'
 
 export function ThreadFloatingActions() {
   const scrollToTop = () => {
@@ -68,7 +68,7 @@ export function ThreadFloatingActions() {
 
   return (
     <div
-      className="md:hidden fixed flex items-center divide-x divide-gray-200 border border-gray-200 bg-white/50"
+      className="md:hidden fixed flex items-center gap-1.5"
       style={{ bottom: 'calc(72px + env(safe-area-inset-bottom))', right: 12, zIndex: 40 }}
     >
       <button type="button" onClick={scrollToTop} aria-label="一番上へ戻る" className={BUTTON_CLASS}>
