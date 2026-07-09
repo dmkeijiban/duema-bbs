@@ -4,7 +4,7 @@ import { loadPublishedZukanArticleSummaries, type ZukanArticleTargetType } from 
 export const dynamic = 'force-dynamic'
 
 const PAGE_TITLE = 'デュエマ記事一覧 | デュエマ掲示板'
-const PAGE_DESCRIPTION = 'デュエル・マスターズのパックやカード、注目テーマをまとめた読み物記事一覧です。'
+const PAGE_DESCRIPTION = 'デュエル・マスターズのパックやカード、注目テーマをまとめた記事まとめです。'
 
 export const metadata = {
   title: PAGE_TITLE,
