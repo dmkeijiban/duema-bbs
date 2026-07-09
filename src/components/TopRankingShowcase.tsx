@@ -154,19 +154,32 @@ function ShowcaseShell({
   title,
   children,
   action,
+  titleHref,
   titlePaddingClassName = 'px-3',
 }: {
   title: string
   children: ReactNode
   action?: ReactNode
+  titleHref?: string
   titlePaddingClassName?: string
 }) {
   return (
     <div className="mb-2 border border-gray-300 bg-white">
       <div className={`flex items-center justify-between gap-2 border-b border-gray-300 py-1.5 ${titlePaddingClassName}`}>
-        <span className="min-w-0 truncate font-bold text-sm" style={{ color: '#004085' }}>
-          {title}
-        </span>
+        {titleHref ? (
+          <Link
+            href={titleHref}
+            prefetch={false}
+            className="min-w-0 truncate font-bold text-sm hover:underline"
+            style={{ color: '#004085' }}
+          >
+            {title}
+          </Link>
+        ) : (
+          <span className="min-w-0 truncate font-bold text-sm" style={{ color: '#004085' }}>
+            {title}
+          </span>
+        )}
         {action}
       </div>
       {children}
@@ -201,11 +214,11 @@ function ProfileShowcase({ users }: { users: ProfileShowcaseUser[] }) {
   )
 }
 
-function RankingShowcase({ title, users }: { title: string; users: ShowcaseRankingUser[] }) {
+function RankingShowcase({ title, users, titleHref }: { title: string; users: ShowcaseRankingUser[]; titleHref?: string }) {
   if (users.length === 0) return null
 
   return (
-    <ShowcaseShell title={title}>
+    <ShowcaseShell title={title} titleHref={titleHref}>
       <div className="grid grid-cols-5 gap-px bg-gray-200 md:grid-cols-10">
         {users.slice(0, 10).map((user, index) => (
           <RankingUserLink key={user.profileSlug} user={user} index={index} />
@@ -239,6 +252,7 @@ export async function TopRankingShowcase() {
     return (
       <RankingShowcase
         title={mode === 'monthly_ranking' ? '🏆 今月の投稿者ランキング TOP10' : '🏆 総合投稿者ランキング TOP10'}
+        titleHref={mode === 'monthly_ranking' ? '/ranking?type=users&period=monthly' : '/ranking?type=users&period=total'}
         users={rankingUsers}
       />
     )
