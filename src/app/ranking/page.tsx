@@ -204,6 +204,7 @@ async function CampaignRankingSection() {
     const m = displayJst.match(/\d{4}\/(\d{2})\/(\d{2})/)
     return m ? `${parseInt(m[1])}/${parseInt(m[2])}` : displayJst
   }
+
   const shortStartLabel = toShortDate(toDisplayJst(settings.startIso))
   const shortEndLabel = toShortDate(toDisplayJst(settings.endIso))
 
@@ -382,16 +383,9 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
   )
 
   const note = (
-    <>
-      <p className="mb-3 border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700">
-        投稿者ランキングは、スレッド投稿・コメント・思い出図鑑の評価・思い出レビューなどの活動から集計しています。ランキングは1日1回更新されます。
-      </p>
-      {honorTitleEnabled && (
-        <p className="mb-3 border border-gray-200 bg-gray-50 px-3 py-2 text-xs leading-relaxed text-gray-600">
-          称号は累計ポイントで上がる活動バッジです。ランキングとは違い、これまでの投稿・コメントの積み重ねで成長します。
-        </p>
-      )}
-    </>
+    <p className="mb-3 border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700">
+      投稿者・称号ランキングは、スレッド投稿・コメント・思い出図鑑の評価・思い出レビューなどの活動から集計しています。ランキングは1日1回更新されます。
+    </p>
   )
 
   // 今月・総合の両データはここで一度に取得済み。
@@ -478,6 +472,7 @@ async function RankingList({ page, period }: { page: number; period: ThreadPerio
       .range(offset, offset + PAGE_SIZE - 1)
     rawThreads = retry.data
   }
+
   const visibleThreads = filterPublicVisibleUserContent(rawThreads, hiddenUserIds)
 
   const withImages = visibleThreads.length > 0
@@ -503,188 +498,83 @@ async function RankingList({ page, period }: { page: number; period: ThreadPerio
     )
   }
 
-  const typedThreads = withImages as TypedThread[]
-
   return (
     <>
-      {/* SEO: ItemList構造化データ */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "ItemList",
-            "name": "人気スレッドランキング",
-            "description": "デュエマ掲示板の人気スレッドランキング",
-            "url": `${SITE_URL}/ranking`,
-            "numberOfItems": typedThreads.length,
-            "itemListElement": typedThreads.map((thread, i) => ({
-              "@type": "ListItem",
-              "position": offset + i + 1,
-              "name": thread.title,
-              "url": `${SITE_URL}/thread/${thread.id}`,
-            })),
-          }),
-        }}
-      />
-
-      {/* モバイル: グリッドカード */}
-      <ThreadRankingMobile threads={typedThreads} offset={offset} />
-
-      {/* デスクトップ: グリッド */}
-      <div className="hidden md:grid md:grid-cols-5 border-l border-t border-gray-300">
-        {typedThreads.map((thread, i) => (
-          <ThreadCard key={thread.id} thread={thread} rank={offset + i + 1} />
-        ))}
+      <ThreadRankingMobile threads={withImages} offset={offset} />
+      <div className="hidden md:block border-l border-t border-gray-300 bg-white">
+        <div className="grid grid-cols-5">
+          {withImages.map((thread, i) => (
+            <ThreadCard key={thread.id} thread={thread} rank={offset + i + 1} />
+          ))}
+        </div>
       </div>
     </>
   )
 }
 
-interface Props {
-  searchParams: Promise<{ page?: string; type?: string; period?: string }>
-}
-
-export default async function RankingPage({ searchParams }: Props) {
-  const { page: pageStr, type: typeParam, period: periodParam } = await searchParams
-  const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
-  const activeTab = typeParam === 'author' || typeParam === 'users' ? 'author' : 'thread'
-  const activePeriod = periodParam === 'all' || periodParam === 'total' ? 'all' : 'month'
-  // 保留メモ: 投稿数が増えた後、today/week の公開タブ化は別PRで検討する。
-  const threadPeriod: ThreadPeriod =
-    periodParam === 'today' ? 'today' : periodParam === 'week' ? 'week' : 'all'
-  const categories = await getCachedCategories()
+function Pagination({ page, period, hasNext }: { page: number; period: ThreadPeriod; hasNext: boolean }) {
+  const baseParams = period === 'all' ? '' : `?period=${period}`
+  const pageParam = baseParams ? `${baseParams}&page=` : '?page='
 
   return (
-    <div className="w-full px-0 py-0">
-      {/* SEO: BreadcrumbList + WebPage 構造化データ */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify([
-            {
-              "@context": "https://schema.org",
-              "@type": "BreadcrumbList",
-              "itemListElement": [
-                { "@type": "ListItem", "position": 1, "name": "TOP", "item": SITE_URL },
-                { "@type": "ListItem", "position": 2, "name": "人気スレッドランキング", "item": `${SITE_URL}/ranking` },
-              ],
-            },
-            {
-              "@context": "https://schema.org",
-              "@type": "WebPage",
-              "@id": `${SITE_URL}/ranking#webpage`,
-              "url": `${SITE_URL}/ranking`,
-              "name": "人気スレッドランキング | デュエマ掲示板",
-              "isPartOf": { "@id": `${SITE_URL}/#website` },
-              "publisher": { "@id": `${SITE_URL}/#organization` },
-              "inLanguage": "ja",
-            },
-          ]),
-        }}
-      />
-
-      <ThreadListTopContent showPopularThreads={false} />
-
-      <ThreadListHeader
-        title="人気ランキング"
-        icon="📊"
-      />
-
-      <div className="mx-auto max-w-screen-xl px-2">
-        {/* キャンペーンランキング（開催中のみ表示） */}
-        <Suspense fallback={null}>
-          <CampaignRankingSection />
-        </Suspense>
-
-        {/* タブナビゲーション */}
-        <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
-          <Link
-            href="/ranking?type=threads"
-            scroll={false}
-            className={`flex flex-1 items-center justify-center gap-1.5 border-r border-gray-300 py-2.5 text-sm font-bold transition-colors ${
-              activeTab === 'thread'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            📋 スレッドランキング
-          </Link>
-          <Link
-            href="/ranking?type=users&period=monthly"
-            scroll={false}
-            className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 text-sm font-bold transition-colors ${
-              activeTab === 'author'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            👑 投稿者ランキング
-          </Link>
-        </div>
-
-        {activeTab === 'thread' ? (
-          <>
-            {/* 期間サブタブ: 投稿数が増えたら有効化する
-            <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
-              {(['today', 'week', 'all'] as const).map((p, i, arr) => (
-                <Link
-                  key={p}
-                  href={`/ranking?type=threads&period=${p}`}
-                  scroll={false}
-                  className={`flex-1 py-2 text-center text-sm font-bold transition-colors ${
-                    i < arr.length - 1 ? 'border-r border-gray-300' : ''
-                  } ${
-                    threadPeriod === p
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  {THREAD_PERIOD_LABELS[p]}
-                </Link>
-              ))}
-            </div>
-            */}
-            <Suspense fallback={
-              <div className="animate-pulse">
-                <div className="mb-2 h-20 border border-gray-200 bg-gray-100 md:hidden" />
-                <div className="mb-2 grid grid-cols-3 border-l border-t border-gray-300 md:hidden">
-                  {[...Array(9)].map((_, i) => (
-                    <div key={i} className="flex border-b border-r border-gray-300 bg-white" style={{ minHeight: 52 }}>
-                      <div className="bg-gray-200 shrink-0" style={{ width: 52, height: 52 }} />
-                      <div className="flex-1 space-y-1.5 p-1.5 pt-2">
-                        <div className="h-2 w-full rounded bg-gray-200" />
-                        <div className="h-2 w-4/5 rounded bg-gray-200" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="hidden border-l border-t border-gray-300 md:grid md:grid-cols-5">
-                  {[...Array(15)].map((_, i) => (
-                    <div key={i} className="flex border-b border-r border-gray-300 bg-white" style={{ minHeight: 52 }}>
-                      <div className="bg-gray-200 shrink-0" style={{ width: 52, height: 52 }} />
-                      <div className="flex-1 space-y-1.5 p-1.5 pt-2">
-                        <div className="h-2 w-full rounded bg-gray-200" />
-                        <div className="h-2 w-4/5 rounded bg-gray-200" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            }>
-              <RankingList page={page} period={threadPeriod} />
-            </Suspense>
-          </>
-        ) : (
-          <Suspense fallback={null}>
-            <UserRankingSection period={activePeriod} />
-          </Suspense>
-        )}
-
-        <SnsCtaCard />
-        <BottomNav current="/ranking" categories={categories} />
-        <div className="mb-6" />
-      </div>
+    <div className="mt-4 flex items-center justify-center gap-3">
+      {page > 1 ? (
+        <Link href={`/ranking${page === 2 && baseParams ? baseParams : page === 2 ? '' : `${pageParam}${page - 1}`}`}
+          className="inline-flex min-h-9 items-center border border-gray-300 bg-white px-4 text-sm font-bold text-blue-700 hover:bg-gray-50">
+          前へ
+        </Link>
+      ) : (
+        <span className="inline-flex min-h-9 items-center border border-gray-200 bg-gray-100 px-4 text-sm font-bold text-gray-400">
+          前へ
+        </span>
+      )}
+      <span className="text-xs text-gray-500">{page}ページ</span>
+      {hasNext ? (
+        <Link href={`/ranking${pageParam}${page + 1}`}
+          className="inline-flex min-h-9 items-center border border-gray-300 bg-white px-4 text-sm font-bold text-blue-700 hover:bg-gray-50">
+          次へ
+        </Link>
+      ) : (
+        <span className="inline-flex min-h-9 items-center border border-gray-200 bg-gray-100 px-4 text-sm font-bold text-gray-400">
+          次へ
+        </span>
+      )}
     </div>
+  )
+}
+
+export default async function RankingPage({ searchParams }: { searchParams?: Promise<{ page?: string; period?: string; author?: string }> }) {
+  const params = await searchParams
+  const page = Math.max(1, Number(params?.page || 1))
+  const periodParam = params?.period
+  const period: ThreadPeriod = periodParam === 'today' || periodParam === 'week' || periodParam === 'all' ? periodParam : 'today'
+  const authorParam = params?.author
+  const authorPeriod: 'month' | 'all' = authorParam === 'all' ? 'all' : 'month'
+  const [categories] = await Promise.all([
+    getCachedCategories(),
+  ])
+
+  return (
+    <main className="max-w-screen-xl mx-auto px-3 py-4 md:px-4">
+      <ThreadListHeader activeSlug="ranking" categories={categories} />
+      <ThreadListTopContent activeSlug="ranking" categories={categories} />
+      <SnsCtaCard />
+
+      <section className="mb-6" aria-label="投稿者ランキング">
+        <Suspense fallback={<div className="border border-gray-300 bg-white p-4 text-sm text-gray-500">投稿者ランキングを読み込み中...</div>}>
+          <UserRankingSection period={authorPeriod} />
+        </Suspense>
+      </section>
+
+      <section aria-label="人気スレッドランキング">
+        <h1 className="mb-3 text-center text-xl font-bold text-gray-900">📊 スレッドランキング</h1>
+        <Suspense key={`${period}-${page}`} fallback={<div className="border border-gray-300 bg-white p-6 text-center text-sm text-gray-500">ランキングを読み込み中...</div>}>
+          <RankingList page={page} period={period} />
+        </Suspense>
+        <Pagination page={page} period={period} hasNext={true} />
+      </section>
+
+      <BottomNav />
+    </main>
   )
 }
