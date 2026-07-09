@@ -89,6 +89,36 @@ export function ProfileHeaderCard({
   const subtleTextClassName = mobileCompact
     ? 'text-xs text-gray-500 mt-0.5 sm:text-sm'
     : 'text-sm text-gray-500 mt-0.5'
+  const linkGroupClassName = mobileCompact
+    ? 'hidden flex-wrap gap-2 sm:flex'
+    : 'flex flex-wrap gap-2'
+
+  const socialLinks = (xUrl || youtubeUrl) ? (
+    <div className={linkGroupClassName}>
+      {xUrl && (
+        <a
+          href={xUrl}
+          target="_blank"
+          rel="nofollow noopener noreferrer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black text-white text-xs font-medium hover:bg-gray-800 transition-colors"
+        >
+          <XIcon />
+          Xを見る
+        </a>
+      )}
+      {youtubeUrl && (
+        <a
+          href={youtubeUrl}
+          target="_blank"
+          rel="nofollow noopener noreferrer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors"
+        >
+          <YouTubeIcon />
+          YouTubeを見る
+        </a>
+      )}
+    </div>
+  ) : null
 
   return (
     <section className="bg-white border border-gray-300 rounded-sm overflow-hidden">
@@ -121,7 +151,11 @@ export function ProfileHeaderCard({
                     </span>
                   )}
                 </div>
-                <p className={subtleTextClassName}>@{slug}</p>
+                <p className={`${subtleTextClassName} flex flex-wrap items-center gap-x-2 gap-y-0.5`}>
+                  <span>@{slug}</span>
+                  <span className="text-gray-300">·</span>
+                  <span>{createdAtLabel} 登録</span>
+                </p>
               </div>
 
               {mobileCompact && mobileEditHref && (
@@ -140,39 +174,20 @@ export function ProfileHeaderCard({
             </div>
 
             {bio ? (
-              <p className={mobileCompact ? 'hidden text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6 sm:block' : 'text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6'}>
-                {bio}
-              </p>
+              <>
+                <p className={mobileCompact ? 'hidden text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6 sm:block' : 'text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6'}>
+                  {bio}
+                </p>
+                {socialLinks && (
+                  <div className="mt-3">{socialLinks}</div>
+                )}
+              </>
             ) : (
-              <p className={mobileCompact ? 'hidden text-sm text-gray-400 mt-2 italic sm:block' : 'text-sm text-gray-400 mt-2 italic'}>
-                自己紹介はまだありません。
-              </p>
-            )}
-
-            {(xUrl || youtubeUrl) && (
-              <div className={mobileCompact ? 'hidden flex-wrap gap-2 mt-3 sm:flex' : 'flex flex-wrap gap-2 mt-3'}>
-                {xUrl && (
-                  <a
-                    href={xUrl}
-                    target="_blank"
-                    rel="nofollow noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black text-white text-xs font-medium hover:bg-gray-800 transition-colors"
-                  >
-                    <XIcon />
-                    Xを見る
-                  </a>
-                )}
-                {youtubeUrl && (
-                  <a
-                    href={youtubeUrl}
-                    target="_blank"
-                    rel="nofollow noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors"
-                  >
-                    <YouTubeIcon />
-                    YouTubeを見る
-                  </a>
-                )}
+              <div className={mobileCompact ? 'hidden items-center gap-3 mt-2 sm:flex' : 'flex flex-wrap items-center gap-3 mt-2'}>
+                <p className="text-sm text-gray-400 italic">
+                  自己紹介はまだありません。
+                </p>
+                {socialLinks}
               </div>
             )}
           </div>
@@ -180,11 +195,11 @@ export function ProfileHeaderCard({
       </div>
 
       <div className={mobileCompact ? 'hidden border-t border-gray-200 bg-gray-50 text-center sm:grid sm:grid-cols-4 sm:divide-x sm:divide-gray-200' : 'border-t border-gray-200 grid grid-cols-2 bg-gray-50 text-center sm:grid-cols-4 sm:divide-x sm:divide-gray-200'}>
-        <div className="border-b border-gray-200 px-3 py-3 sm:border-b-0">
+        <div className="border-b border-gray-200 px-3 py-2.5 sm:border-b-0">
           <p className="text-lg font-bold text-gray-900 leading-none">{threadCountLabel}</p>
           <p className="text-xs text-gray-500 mt-1">スレッド</p>
         </div>
-        <div className="border-b border-gray-200 px-3 py-3 sm:border-b-0">
+        <div className="border-b border-gray-200 px-3 py-2.5 sm:border-b-0">
           <p className="text-lg font-bold text-gray-900 leading-none">{postCountLabel}</p>
           <p className="text-xs text-gray-500 mt-1">コメント</p>
         </div>
@@ -192,7 +207,7 @@ export function ProfileHeaderCard({
           href="/ranking?type=users&period=monthly"
           target="_blank"
           rel="noopener noreferrer"
-          className="px-3 py-3 hover:bg-blue-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
+          className="px-3 py-2.5 hover:bg-blue-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
         >
           <p className="text-lg font-bold text-blue-600 leading-none">
             {monthlyRank ? `${monthlyRank}位` : '—'}
@@ -203,7 +218,7 @@ export function ProfileHeaderCard({
           href="/ranking?type=users&period=total"
           target="_blank"
           rel="noopener noreferrer"
-          className="px-3 py-3 hover:bg-indigo-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400"
+          className="px-3 py-2.5 hover:bg-indigo-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400"
         >
           <p className="text-lg font-bold text-indigo-600 leading-none">
             {totalRank ? `${totalRank}位` : '—'}
@@ -217,10 +232,6 @@ export function ProfileHeaderCard({
           {actions}
         </div>
       )}
-
-      <div className={mobileCompact ? 'hidden border-t border-gray-100 px-4 py-2 text-xs text-gray-400 sm:block' : 'border-t border-gray-100 px-4 py-2 text-xs text-gray-400'}>
-        {createdAtLabel} 登録
-      </div>
     </section>
   )
 }
