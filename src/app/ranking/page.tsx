@@ -419,21 +419,23 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
 
 type TypedThread = Thread & { categories: Category | null }
 
-function ThreadRankingMobile({ threads, offset }: { threads: TypedThread[]; offset: number }) {
+function ThreadRankingMobile({ threads }: { threads: TypedThread[] }) {
   return (
     <div className="md:hidden">
       <div className="grid grid-cols-3 border-l border-t border-gray-300">
         {threads.map((thread, i) => (
-          <ThreadCard key={thread.id} thread={thread} rank={offset + i + 1} />
+          <ThreadCard key={thread.id} thread={thread} rank={i + 1} />
         ))}
       </div>
     </div>
   )
 }
 
-async function RankingList({ page, period }: { page: number; period: ThreadPeriod }) {
+// スレッドランキングはTOP60までを見せるページであり、全件をページ送りする
+// 一覧ではないため、常に上位PAGE_SIZE件のみを取得する（pageパラメータ・
+// ページネーションは持たない）。
+async function RankingList({ period }: { period: ThreadPeriod }) {
   const supabase = createPublicClient()
-  const offset = (page - 1) * PAGE_SIZE
   const hiddenUserIds = await getCachedPublicHiddenUserIds()
   const publicUserFilter = getPublicVisibleUserContentOrFilter(hiddenUserIds)
 
@@ -452,7 +454,7 @@ async function RankingList({ page, period }: { page: number; period: ThreadPerio
 
   dataQuery = dataQuery
     .order('post_count', { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1)
+    .range(0, PAGE_SIZE - 1)
 
   const result = await dataQuery
   let rawThreads = result.data
@@ -469,7 +471,7 @@ async function RankingList({ page, period }: { page: number; period: ThreadPerio
     }
     const retry = await retryQuery
       .order('post_count', { ascending: false })
-      .range(offset, offset + PAGE_SIZE - 1)
+      .range(0, PAGE_SIZE - 1)
     rawThreads = retry.data
   }
 
@@ -500,11 +502,11 @@ async function RankingList({ page, period }: { page: number; period: ThreadPerio
 
   return (
     <>
-      <ThreadRankingMobile threads={withImages} offset={offset} />
+      <ThreadRankingMobile threads={withImages} />
       <div className="hidden md:block border-l border-t border-gray-300 bg-white">
-        <div className="grid grid-cols-5">
+        <div className="grid grid-cols-4">
           {withImages.map((thread, i) => (
-            <ThreadCard key={thread.id} thread={thread} rank={offset + i + 1} />
+            <ThreadCard key={thread.id} thread={thread} rank={i + 1} />
           ))}
         </div>
       </div>
@@ -512,40 +514,8 @@ async function RankingList({ page, period }: { page: number; period: ThreadPerio
   )
 }
 
-function Pagination({ page, period, hasNext }: { page: number; period: ThreadPeriod; hasNext: boolean }) {
-  const baseParams = period === 'all' ? '' : `?period=${period}`
-  const pageParam = baseParams ? `${baseParams}&page=` : '?page='
-
-  return (
-    <div className="mt-4 flex items-center justify-center gap-3">
-      {page > 1 ? (
-        <Link href={`/ranking${page === 2 && baseParams ? baseParams : page === 2 ? '' : `${pageParam}${page - 1}`}`}
-          className="inline-flex min-h-9 items-center border border-gray-300 bg-white px-4 text-sm font-bold text-blue-700 hover:bg-gray-50">
-          前へ
-        </Link>
-      ) : (
-        <span className="inline-flex min-h-9 items-center border border-gray-200 bg-gray-100 px-4 text-sm font-bold text-gray-400">
-          前へ
-        </span>
-      )}
-      <span className="text-xs text-gray-500">{page}ページ</span>
-      {hasNext ? (
-        <Link href={`/ranking${pageParam}${page + 1}`}
-          className="inline-flex min-h-9 items-center border border-gray-300 bg-white px-4 text-sm font-bold text-blue-700 hover:bg-gray-50">
-          次へ
-        </Link>
-      ) : (
-        <span className="inline-flex min-h-9 items-center border border-gray-200 bg-gray-100 px-4 text-sm font-bold text-gray-400">
-          次へ
-        </span>
-      )}
-    </div>
-  )
-}
-
-export default async function RankingPage({ searchParams }: { searchParams?: Promise<{ page?: string; period?: string; author?: string; type?: string }> }) {
+export default async function RankingPage({ searchParams }: { searchParams?: Promise<{ period?: string; author?: string; type?: string }> }) {
   const params = await searchParams
-  const page = Math.max(1, Number(params?.page || 1))
   const typeParam = params?.type
   const activeTab: 'thread' | 'author' = typeParam === 'author' || typeParam === 'users' ? 'author' : 'thread'
   const periodParam = params?.period
@@ -564,6 +534,7 @@ export default async function RankingPage({ searchParams }: { searchParams?: Pro
         <Link
           href="/ranking?type=threads"
           scroll={false}
+          prefetch={false}
           className={`flex flex-1 items-center justify-center gap-1.5 border-r border-gray-300 py-2.5 text-sm font-bold transition-colors ${
             activeTab === 'thread'
               ? 'bg-blue-600 text-white'
@@ -575,6 +546,7 @@ export default async function RankingPage({ searchParams }: { searchParams?: Pro
         <Link
           href="/ranking?type=users"
           scroll={false}
+          prefetch={false}
           className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 text-sm font-bold transition-colors ${
             activeTab === 'author'
               ? 'bg-blue-600 text-white'
@@ -593,15 +565,13 @@ export default async function RankingPage({ searchParams }: { searchParams?: Pro
         </section>
       ) : (
         <section aria-label="人気スレッドランキング">
-          <h1 className="mb-3 text-center text-xl font-bold text-gray-900">📊 スレッドランキング</h1>
-          <Suspense key={`${period}-${page}`} fallback={<div className="border border-gray-300 bg-white p-6 text-center text-sm text-gray-500">ランキングを読み込み中...</div>}>
-            <RankingList page={page} period={period} />
+          <Suspense key={period} fallback={<div className="border border-gray-300 bg-white p-6 text-center text-sm text-gray-500">ランキングを読み込み中...</div>}>
+            <RankingList period={period} />
           </Suspense>
-          <Pagination page={page} period={period} hasNext={true} />
         </section>
       )}
 
-      <BottomNav />
+      <BottomNav current="/ranking" />
     </main>
   )
 }
