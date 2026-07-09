@@ -33,6 +33,7 @@ import { AccessTrendCard } from './AccessTrendCard'
 import { AdminScrollManager } from './AdminScrollManager'
 import { AdminLoginView } from './AdminLoginView'
 import { HonorTitleToggleButton } from './HonorTitleToggleButton'
+import { PersistentDetails } from './PersistentDetails'
 import { HONOR_TITLES } from '@/lib/honor-title'
 import { getHonorTitleTierCounts } from '@/lib/honor-title-stats'
 
@@ -650,8 +651,8 @@ export default async function AdminPage({
         </div>
       )}
 
-      {/* ─── 管理メニュー（折り畳み） ─── */}
-      <details open className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
+      {/* ─── 管理メニュー（折り畳み・開閉状態はlocalStorageに保存） ─── */}
+      <PersistentDetails storageKey="admin-menu" defaultOpen className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
         <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
           <span className="text-gray-400 text-xs">▶</span>
           <span>管理メニュー</span>
@@ -712,7 +713,7 @@ export default async function AdminPage({
           </div>
 
         </div>
-      </details>
+      </PersistentDetails>
 
       <details className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
         <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
@@ -875,7 +876,7 @@ export default async function AdminPage({
         />
       )}
 
-      <details open className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
+      <PersistentDetails storageKey="top-showcase" defaultOpen className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
         <summary className="flex cursor-pointer select-none flex-wrap items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
           <span className="text-gray-400 text-xs">▶</span>
           <span>トップ表示設定</span>
@@ -927,7 +928,7 @@ export default async function AdminPage({
             </Link>
           </div>
         </form>
-      </details>
+      </PersistentDetails>
 
       {/* ─── モデレーション（NGワード・BAN）折り畳み ─── */}
       <details className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
