@@ -8,7 +8,7 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { getCachedUserThreads, getCachedUserPosts, getCachedUserRankings, getCachedCampaignRanking, getCachedHonorTitleEnabled } from '@/lib/cached-queries'
 import { resolveCampaignState } from '@/lib/campaign-ranking'
 import { getHonorTitle, getNextHonorTitle } from '@/lib/honor-title'
-import { HonorTitleCardCompact } from '@/components/HonorTitleCardCompact'
+import { HonorTitleCard } from '@/components/HonorTitleCard'
 import { HonorRankUpBanner } from '@/components/HonorRankUpBanner'
 import {
   DUEMA_GENERATION_MAP,
@@ -252,6 +252,13 @@ export default async function UserProfilePage({
     activityCounts.packReviewCount * USER_RANKING_PACK_REVIEW_POINT
   const honorTitle = getHonorTitle(totalPoints)
   const nextHonorTitle = getNextHonorTitle(totalPoints)
+  const showHonorTitle = honorTitleEnabled && !!honorTitle
+  const hasDuemaFields = !!(
+    profile.duema_generation ||
+    profile.favorite_card ||
+    profile.favorite_civilization ||
+    profile.play_style
+  )
 
   const threadDisplayCount = formatCount(activityCounts.threadCount)
   const postDisplayCount = formatCount(activityCounts.postCount)
@@ -293,51 +300,59 @@ export default async function UserProfilePage({
         </div>
       )}
 
-      {(profile.duema_generation || profile.favorite_card || profile.favorite_civilization || profile.play_style || (honorTitleEnabled && honorTitle)) && (
+      {(hasDuemaFields || showHonorTitle) && (
         <section className="mt-4 rounded-sm border border-gray-200 bg-white px-4 py-4">
           <h2 className="mb-3 text-sm font-bold text-gray-800">デュエマプロフィール</h2>
-          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-            {profile.duema_generation && (
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
-                <dt className="text-xs text-gray-500">どの世代？</dt>
-                <dd className="mt-1 text-base font-bold text-gray-900 break-words">
-                  {DUEMA_GENERATION_MAP[profile.duema_generation] ?? profile.duema_generation}
-                </dd>
-              </div>
+          <div className={hasDuemaFields && showHonorTitle ? 'flex flex-col gap-3 lg:flex-row lg:items-stretch' : ''}>
+            {hasDuemaFields && (
+              <dl className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
+                {profile.duema_generation && (
+                  <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
+                    <dt className="text-xs text-gray-500">どの世代？</dt>
+                    <dd className="mt-1 text-base font-bold text-gray-900 break-words">
+                      {DUEMA_GENERATION_MAP[profile.duema_generation] ?? profile.duema_generation}
+                    </dd>
+                  </div>
+                )}
+                {profile.favorite_card && (
+                  <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
+                    <dt className="text-xs text-gray-500">一番好きなカード</dt>
+                    <dd className="mt-1 text-base font-bold text-gray-900 break-words">
+                      {profile.favorite_card}
+                    </dd>
+                  </div>
+                )}
+                {profile.favorite_civilization && (
+                  <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
+                    <dt className="text-xs text-gray-500">好きな文明</dt>
+                    <dd className="mt-1 text-base font-bold text-gray-900 break-words">
+                      {DUEMA_CIVILIZATION_MAP[profile.favorite_civilization] ?? profile.favorite_civilization}
+                    </dd>
+                  </div>
+                )}
+                {profile.play_style && (
+                  <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
+                    <dt className="text-xs text-gray-500">プレイスタイル</dt>
+                    <dd className="mt-1 text-base font-bold text-gray-900 break-words">
+                      {DUEMA_PLAY_STYLE_MAP[profile.play_style] ?? profile.play_style}
+                    </dd>
+                  </div>
+                )}
+              </dl>
             )}
-            {profile.favorite_card && (
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
-                <dt className="text-xs text-gray-500">一番好きなカード</dt>
-                <dd className="mt-1 text-base font-bold text-gray-900 break-words">
-                  {profile.favorite_card}
-                </dd>
-              </div>
+            {showHonorTitle && (
+              <HonorTitleCard
+                title={honorTitle}
+                points={totalPoints}
+                nextTitle={nextHonorTitle}
+                className={
+                  hasDuemaFields
+                    ? 'lg:w-[280px] lg:shrink-0'
+                    : 'mx-auto w-full max-w-xs sm:max-w-sm'
+                }
+              />
             )}
-            {profile.favorite_civilization && (
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
-                <dt className="text-xs text-gray-500">好きな文明</dt>
-                <dd className="mt-1 text-base font-bold text-gray-900 break-words">
-                  {DUEMA_CIVILIZATION_MAP[profile.favorite_civilization] ?? profile.favorite_civilization}
-                </dd>
-              </div>
-            )}
-            {profile.play_style && (
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
-                <dt className="text-xs text-gray-500">プレイスタイル</dt>
-                <dd className="mt-1 text-base font-bold text-gray-900 break-words">
-                  {DUEMA_PLAY_STYLE_MAP[profile.play_style] ?? profile.play_style}
-                </dd>
-              </div>
-            )}
-            {honorTitleEnabled && honorTitle && (
-              <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
-                <dt className="text-xs text-gray-500">称号</dt>
-                <dd className="mt-1">
-                  <HonorTitleCardCompact title={honorTitle} points={totalPoints} nextTitle={nextHonorTitle} />
-                </dd>
-              </div>
-            )}
-          </dl>
+          </div>
         </section>
       )}
 
