@@ -503,7 +503,7 @@ async function RankingList({ period }: { period: ThreadPeriod }) {
     <>
       <ThreadRankingMobile threads={withImages} />
       <div className="hidden md:block border-l border-t border-gray-300 bg-white">
-        <div className="grid grid-cols-4">
+        <div className="grid grid-cols-5">
           {withImages.map((thread, i) => (
             <ThreadCard key={thread.id} thread={thread} rank={i + 1} />
           ))}
