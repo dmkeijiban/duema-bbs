@@ -89,9 +89,7 @@ export function ProfileHeaderCard({
   const subtleTextClassName = mobileCompact
     ? 'text-xs text-gray-500 mt-0.5 sm:text-sm'
     : 'text-sm text-gray-500 mt-0.5'
-  const linkGroupClassName = mobileCompact
-    ? 'hidden flex-wrap gap-2 sm:flex'
-    : 'flex flex-wrap gap-2'
+  const linkGroupClassName = 'flex flex-wrap justify-end gap-2'
 
   const socialLinks = (xUrl || youtubeUrl) ? (
     <div className={linkGroupClassName}>
@@ -122,7 +120,13 @@ export function ProfileHeaderCard({
 
   return (
     <section className="bg-white border border-gray-300 rounded-sm overflow-hidden">
-      <div className={mobileCompact ? 'px-3 py-3 sm:px-4 sm:pt-5 sm:pb-4' : 'px-4 pt-5 pb-4'}>
+      <div className={mobileCompact ? 'relative px-3 py-3 sm:px-4 sm:pt-5 sm:pb-4' : 'relative px-4 pt-5 pb-4'}>
+        {socialLinks && (
+          <div className="absolute right-4 top-5 z-10 max-w-[calc(100%-7rem)] sm:max-w-[calc(100%-9rem)]">
+            {socialLinks}
+          </div>
+        )}
+
         <div className={mobileCompact ? 'flex flex-row gap-3 sm:gap-4' : 'flex flex-col sm:flex-row gap-4'}>
           {avatarUrl ? (
             <ProfileAvatar src={avatarUrl} alt={`${displayName}のアイコン`} size={avatarSize} />
@@ -170,20 +174,14 @@ export function ProfileHeaderCard({
             </div>
 
             {bio ? (
-              <>
-                <p className={mobileCompact ? 'hidden text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6 sm:block' : 'text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6'}>
-                  {bio}
-                </p>
-                {socialLinks && (
-                  <div className="mt-3">{socialLinks}</div>
-                )}
-              </>
+              <p className={mobileCompact ? 'hidden text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6 sm:block' : 'text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6'}>
+                {bio}
+              </p>
             ) : (
               <div className={mobileCompact ? 'hidden items-center gap-3 mt-2 sm:flex' : 'flex flex-wrap items-center gap-3 mt-2'}>
                 <p className="text-sm text-gray-400 italic">
                   自己紹介はまだありません。
                 </p>
-                {socialLinks}
               </div>
             )}
           </div>
