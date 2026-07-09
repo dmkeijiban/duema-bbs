@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadCard } from '@/components/ThreadCard'
 import { SITE_URL } from '@/lib/site-config'
-import { getCachedCategories, getCachedUserRankings, getCachedCampaignRanking, getCachedHonorTitleEnabled, UserRankingRow } from '@/lib/cached-queries'
+import { getCachedUserRankings, getCachedCampaignRanking, getCachedHonorTitleEnabled, UserRankingRow } from '@/lib/cached-queries'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { BottomNav } from '@/components/ThreadSortPage'
 import { ThreadListHeader } from '@/components/ThreadListHeader'
@@ -550,14 +550,11 @@ export default async function RankingPage({ searchParams }: { searchParams?: Pro
   const period: ThreadPeriod = periodParam === 'today' || periodParam === 'week' || periodParam === 'all' ? periodParam : 'today'
   const authorParam = params?.author
   const authorPeriod: 'month' | 'all' = authorParam === 'all' ? 'all' : 'month'
-  const [categories] = await Promise.all([
-    getCachedCategories(),
-  ])
 
   return (
     <main className="max-w-screen-xl mx-auto px-3 py-4 md:px-4">
-      <ThreadListHeader activeSlug="ranking" categories={categories} />
-      <ThreadListTopContent activeSlug="ranking" categories={categories} />
+      <ThreadListHeader title="人気ランキング" icon="📊" />
+      <ThreadListTopContent />
       <SnsCtaCard />
 
       <section className="mb-6" aria-label="投稿者ランキング">
