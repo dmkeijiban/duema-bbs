@@ -77,7 +77,7 @@ export function ThreadFloatingActions() {
   }
 
   const scrollToCommentForm = () => {
-    document.getElementById('reply-form-bottom')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    document.getElementById('reply-form-bottom')?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }
 
   return (
