@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { createClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { verifyAdminCookie } from '@/lib/admin-auth'
 
 const ADMIN_COOKIE = 'admin_auth'
@@ -19,7 +19,8 @@ export async function toggleHonorTitleEnabled(enabled: boolean): Promise<{ error
   } catch {
     return { error: 'Unauthorized' }
   }
-  const supabase = await createClient()
+  // site_settings の書き込みはサービスロールクライアント経由（RLS で anon/authenticated の書き込みを禁止するため）
+  const supabase = createAdminClient()
   const { error } = await supabase
     .from('site_settings')
     .upsert(
