@@ -531,7 +531,10 @@ export default async function RankingPage({ searchParams }: { searchParams?: Pro
         <SnsCtaCard />
 
         {/* ランキング種別タブ */}
-        <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
+        {/* 投稿者ランキング側は直下のAuthorRankingTabs(今月/総合、mt-4)と
+            枠線を密着させるためこちらの下マージンを付けない。
+            スレッド側は従来通りmb-3を維持する */}
+        <div className={`flex overflow-hidden border border-gray-300 bg-white ${activeTab === 'author' ? '' : 'mb-3'}`}>
           <Link
             href="/ranking?type=threads"
             scroll={false}
@@ -559,7 +562,8 @@ export default async function RankingPage({ searchParams }: { searchParams?: Pro
         </div>
 
         {activeTab === 'author' ? (
-          <section className="mb-6" aria-label="投稿者ランキング">
+          // AuthorRankingTabs内部のmt-4を打ち消し、種別タブと密着させる
+          <section className="-mt-4 mb-6" aria-label="投稿者ランキング">
             <UserRankingSection period={authorPeriod} />
           </section>
         ) : (
