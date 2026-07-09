@@ -195,8 +195,11 @@ export function InlineNewThread({ categories }: Props) {
               </td>
               <td className="p-2 min-w-0">
                 <div className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs leading-relaxed text-amber-800">
-                  <p>今のデュエマの話でも、昔の思い出でも大歓迎です！</p>
-                  <p>質問・相談・予想など、気軽にスレッドを立ててください！</p>
+                  <p className="hidden whitespace-nowrap sm:block">今のデュエマの話でも、昔の思い出でも大歓迎です！質問・相談・予想など、気軽にスレッドを立ててください！</p>
+                  <div className="sm:hidden">
+                    <p>今のデュエマの話でも、昔の思い出でも大歓迎です！</p>
+                    <p>質問・相談・予想など、気軽にスレッドを立ててください！</p>
+                  </div>
                 </div>
                 <textarea
                   id="new-thread-body"
