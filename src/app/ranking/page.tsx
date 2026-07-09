@@ -292,11 +292,13 @@ function UserRankingList({
   periodLabel,
   rows,
   showHonorTitle = false,
+  honorPointsBySlug = {},
 }: {
   title: string
   periodLabel: string
   rows: UserRankingRow[]
   showHonorTitle?: boolean
+  honorPointsBySlug?: Record<string, number>
 }) {
   return (
     <section className="overflow-hidden border border-gray-300 bg-white">
@@ -346,7 +348,7 @@ function UserRankingList({
                 href={`/u/${row.profile_slug}`}
                 xUrl={row.x_url}
                 youtubeUrl={row.youtube_url}
-                honorTitle={showHonorTitle ? getHonorTitle(row.points) : null}
+                honorTitle={showHonorTitle ? getHonorTitle(honorPointsBySlug[row.profile_slug] ?? row.points) : null}
               />
               <div className="col-span-3 flex flex-wrap items-center gap-x-6 gap-y-1 md:col-span-1">
                 <CompactActivityBreakdown
@@ -372,6 +374,12 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
     getCachedUserRankings(),
     getCachedHonorTitleEnabled(),
   ])
+
+  // 称号はランキング期間ではなく累計活動ポイントで決める。
+  // 月間ランキングの行でも、総合ランキング側の累計ポイントを優先してプロフィール表示と揃える。
+  const honorPointsBySlug = Object.fromEntries(
+    rankings.total.map(row => [row.profile_slug, row.points])
+  )
 
   const note = (
     <>
@@ -399,6 +407,7 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
           periodLabel="今月"
           rows={rankings.monthly}
           showHonorTitle={honorTitleEnabled}
+          honorPointsBySlug={honorPointsBySlug}
         />
       }
       total={
@@ -407,6 +416,7 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
           periodLabel="総合"
           rows={rankings.total}
           showHonorTitle={honorTitleEnabled}
+          honorPointsBySlug={honorPointsBySlug}
         />
       }
     />
