@@ -239,9 +239,27 @@ export default async function GuidePage() {
           </p>
         </section>
 
-        {/* Section 9 */}
+        {/* Section 9: 称号について (site_settings.honor_title_enabled で表示切り替え) */}
+        {honorTitleEnabled && (
+          <section id="honor-title" className="mb-6">
+            <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">9. 称号について</h2>
+            <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+              <li>称号は、デュエマ掲示板での活動に応じて上がる活動バッジです。</li>
+              <li>ランキングとは違い、これまでの投稿・コメント・思い出図鑑の評価・レビューなどの累計ポイントによって成長します。</li>
+              <li>プロフィール・コメント欄・投稿者ランキングに表示され、継続して活動するほど上位の称号になります。</li>
+            </ul>
+            <p className="mt-3 mb-1 text-xs font-bold text-gray-600">称号一覧</p>
+            <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+              {HONOR_TITLES.slice().reverse().map(title => (
+                <li key={title.key}>{title.icon} {title.label}（{title.minPoints.toLocaleString('ja-JP')}pt〜）</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* Section 10 */}
         <section id="zukan" className="mb-6">
-          <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">9. 思い出図鑑</h2>
+          <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">10. 思い出図鑑</h2>
           <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
             <li>DM-01の全120枚のカードを収録しています（今後のパックも順次追加予定）</li>
             <li>各カードに「思い出評価」（5段階×5項目）と「思い出レビュー」を投稿できます</li>
@@ -253,9 +271,9 @@ export default async function GuidePage() {
           </p>
         </section>
 
-        {/* Section 10 */}
+        {/* Section 11 */}
         <section id="favorite" className="mb-6">
-          <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">10. お気に入り・個人設定</h2>
+          <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">11. お気に入り・個人設定</h2>
           <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
             <li>スレッドタイトル横の☆ボタンでお気に入り登録できます</li>
             <li>登録したスレッドは「個人設定」から一覧確認できます</li>
@@ -264,9 +282,9 @@ export default async function GuidePage() {
           </ul>
         </section>
 
-        {/* Section 11 */}
+        {/* Section 12 */}
         <section id="delete" className="mb-6">
-          <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">11. 投稿の削除</h2>
+          <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">12. 投稿の削除</h2>
           <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
             <li>自分が投稿したレスは「削除」ボタンで削除できます</li>
             <li>匿名投稿の場合は同じブラウザ・セッション内のみ削除可能です</li>
@@ -276,9 +294,9 @@ export default async function GuidePage() {
           </ul>
         </section>
 
-        {/* Section 12 */}
+        {/* Section 13 */}
         <section id="private" className="mb-6">
-          <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">12. プロフィール非公開・ランキング辞退</h2>
+          <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">13. プロフィール非公開・ランキング辞退</h2>
           <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
             <li>マイページの設定からプロフィールを非公開にできます</li>
             <li>非公開にすると、投稿者ページやランキングなどの一般ページで投稿者情報が表示されなくなります</li>
@@ -286,9 +304,9 @@ export default async function GuidePage() {
           </ul>
         </section>
 
-        {/* Section 13 */}
+        {/* Section 14 */}
         <section id="withdraw" className="mb-6">
-          <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">13. 退会</h2>
+          <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">14. 退会</h2>
           <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
             <li>退会するとアカウントが利用できなくなります</li>
             <li>退会後も過去のスレッド・レス・図鑑レビューのデータは削除されません</li>
@@ -296,9 +314,9 @@ export default async function GuidePage() {
           </ul>
         </section>
 
-        {/* Section 14 */}
+        {/* Section 15 */}
         <section id="faq" className="mb-6">
-          <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">14. よくある質問</h2>
+          <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">15. よくある質問</h2>
           <dl className="space-y-4">
             {FAQ_ITEMS.map(item => (
               <div key={item.question} className="border border-gray-200 rounded p-3">
@@ -308,27 +326,6 @@ export default async function GuidePage() {
             ))}
           </dl>
         </section>
-
-        {/* Section 15: 称号について (site_settings.honor_title_enabled で表示切り替え) */}
-        {honorTitleEnabled && (
-          <section id="honor-title" className="mb-6">
-            <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">15. 称号について</h2>
-            <p className="mb-3 text-sm text-gray-700">
-              称号は累計ポイントで上がる活動バッジです。コメントや投稿を続けるほど成長します。ランキングの順位とは別に、これまでの活動量が積み上がっていきます。
-            </p>
-            <div className="border border-gray-200 rounded divide-y divide-gray-100 text-sm">
-              {HONOR_TITLES.slice().reverse().map(title => (
-                <div key={title.key} className="grid grid-cols-[6rem_1fr] items-center px-3 py-2">
-                  <span className="font-bold text-gray-600">{title.minPoints.toLocaleString('ja-JP')}pt〜</span>
-                  <span className="text-gray-700">{title.icon} {title.label}</span>
-                </div>
-              ))}
-            </div>
-            <p className="mt-2 text-xs text-gray-500">
-              称号はコメント欄・投稿者ランキングではアイコンのみ、プロフィールページ（/u/ユーザー名）では称号名や次の称号までの進捗とあわせて表示されます。
-            </p>
-          </section>
-        )}
 
         {/* Section 16 */}
         <section id="contact" className="mb-2">
