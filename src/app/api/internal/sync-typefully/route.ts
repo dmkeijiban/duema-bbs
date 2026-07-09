@@ -335,7 +335,7 @@ function isDailyZukanTypefullyPost(text: string): boolean {
     normalized.includes('今の評価でもOK') &&
     normalized.includes('掲示板')
 
-  return hasOldMarker || hasThreadPostMarker || (hasThreadLink && hasCurrentXMarker)
+  return hasOldMarker || hasThreadPostMarker || ((hasThreadLink || hasZukanCardLink) && hasCurrentXMarker)
 }
 
 function summarizeTypefullyPosts(posts: TodayTypefullyPost[]): TypefullyPostSummary[] {
