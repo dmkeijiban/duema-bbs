@@ -22,12 +22,11 @@ export function HonorTitleCardCompact({ title, points, nextTitle }: Props) {
     <div className="text-center">
       <div className="text-xl leading-none" aria-hidden="true">{title.icon}</div>
       <p className="mt-1 text-sm font-bold text-gray-900 leading-tight">{title.label}</p>
-      <p className="mt-0.5 text-[11px] text-gray-600">累計 {formatPoints(points)}pt</p>
 
       {nextTitle ? (
-        <div className="mt-1.5">
-          <p className="text-[10px] leading-tight text-gray-500">
-            次まであと{formatPoints(nextTitle.minPoints - points)}pt
+        <div className="mt-0.5">
+          <p className="text-[11px] leading-tight text-gray-600">
+            累計 {formatPoints(points)}pt（次のランクまであと{formatPoints(nextTitle.minPoints - points)}pt）
           </p>
           <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-gray-200">
             <div
@@ -37,7 +36,10 @@ export function HonorTitleCardCompact({ title, points, nextTitle }: Props) {
           </div>
         </div>
       ) : (
-        <p className="mt-1.5 text-[10px] font-bold text-blue-600">最高位の称号です</p>
+        <>
+          <p className="mt-0.5 text-[11px] text-gray-600">累計 {formatPoints(points)}pt</p>
+          <p className="mt-1.5 text-[10px] font-bold text-blue-600">最高位の称号です</p>
+        </>
       )}
     </div>
   )
