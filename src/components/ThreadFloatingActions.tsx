@@ -57,12 +57,16 @@ export function ThreadFloatingActions() {
   const [nearReplyForm, setNearReplyForm] = useState(false)
 
   useEffect(() => {
-    const target = document.getElementById('reply-form-bottom')
+    const target = document.getElementById('reply-submit-button')
     if (!target) return
 
+    // 投稿するボタン自体が画面下部（フローティングバーの表示帯）に
+    // 近づいたタイミングでのみ隠す。フォーム全体ではなくボタンを監視することで、
+    // フォームより前のコンテンツ（おすすめ枠など）がまだ画面に残っている
+    // 段階で早期に消えてしまわないようにする。
     const observer = new IntersectionObserver(
       ([entry]) => setNearReplyForm(entry.isIntersecting),
-      { rootMargin: '0px 0px 80px 0px' }
+      { rootMargin: '0px 0px 130px 0px' }
     )
     observer.observe(target)
     return () => observer.disconnect()

@@ -375,7 +375,7 @@ export function NewPostForm({
             {error}
           </div>
         )}
-        <div className="px-3 py-2.5">
+        <div id="reply-submit-button" className="px-3 py-2.5">
           <button
             type="submit"
             disabled={isSubmitting || authState.status === 'loading' || authState.status === 'profile_missing'}
