@@ -398,7 +398,7 @@ async function UserRankingSection({ period }: { period: 'month' | 'all' }) {
           title="今月のランキング"
           periodLabel="今月"
           rows={rankings.monthly}
-          showHonorTitle={false}
+          showHonorTitle={honorTitleEnabled}
         />
       }
       total={
