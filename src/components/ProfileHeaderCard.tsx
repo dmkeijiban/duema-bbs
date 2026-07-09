@@ -89,10 +89,9 @@ export function ProfileHeaderCard({
   const subtleTextClassName = mobileCompact
     ? 'text-xs text-gray-500 mt-0.5 sm:text-sm'
     : 'text-sm text-gray-500 mt-0.5'
-  const linkGroupClassName = 'flex flex-wrap justify-end gap-2'
 
   const socialLinks = (xUrl || youtubeUrl) ? (
-    <div className={linkGroupClassName}>
+    <div className="flex flex-wrap gap-2">
       {xUrl && (
         <a
           href={xUrl}
@@ -122,7 +121,7 @@ export function ProfileHeaderCard({
     <section className="bg-white border border-gray-300 rounded-sm overflow-hidden">
       <div className={mobileCompact ? 'relative px-3 py-3 sm:px-4 sm:pt-5 sm:pb-4' : 'relative px-4 pt-5 pb-4'}>
         {socialLinks && (
-          <div className="absolute right-4 top-5 z-10 max-w-[calc(100%-7rem)] sm:max-w-[calc(100%-9rem)]">
+          <div className="absolute right-4 top-5 z-10 hidden max-w-[calc(100%-9rem)] sm:block">
             {socialLinks}
           </div>
         )}
@@ -174,14 +173,22 @@ export function ProfileHeaderCard({
             </div>
 
             {bio ? (
-              <p className={mobileCompact ? 'hidden text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6 sm:block' : 'text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6'}>
-                {bio}
-              </p>
+              <>
+                <p className={mobileCompact ? 'hidden text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6 sm:block' : 'text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6'}>
+                  {bio}
+                </p>
+                {!mobileCompact && socialLinks && (
+                  <div className="mt-3 sm:hidden">{socialLinks}</div>
+                )}
+              </>
             ) : (
               <div className={mobileCompact ? 'hidden items-center gap-3 mt-2 sm:flex' : 'flex flex-wrap items-center gap-3 mt-2'}>
                 <p className="text-sm text-gray-400 italic">
                   自己紹介はまだありません。
                 </p>
+                {!mobileCompact && socialLinks && (
+                  <div className="sm:hidden">{socialLinks}</div>
+                )}
               </div>
             )}
           </div>
