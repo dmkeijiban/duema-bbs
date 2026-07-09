@@ -20,6 +20,7 @@ import {
   getCachedActiveNotices,
   getCachedSetting,
   getCachedThreadList,
+  getCachedPostGuidanceSettings,
   THREAD_PAGE_SIZE,
 } from '@/lib/cached-queries'
 import {
@@ -249,7 +250,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const sort = sortParam ?? 'recent'
   const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
 
-  const [categories, notices, newThreadRules] = await Promise.all([
+  const [categories, notices, newThreadRules, postGuidanceSettings] = await Promise.all([
     getCachedCategories(),
     getCachedActiveNotices(),
     getCachedSetting('new_thread_rules', `1.似たスレッドがないか確認してください。
@@ -260,6 +261,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 6.他人が不快になるようなタイトルは避けてください。
 7.スレッド作成は承認制とする場合があります。
 8.不適切と判断した場合は削除・ブロックする事があります。`),
+    getCachedPostGuidanceSettings(),
   ])
 
   const category = getDisplayCategoryBySlug(slug, categories)
@@ -334,7 +336,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
         {botNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
 
-        <InlineNewThread categories={categories} newThreadRules={newThreadRules} />
+        <InlineNewThread categories={categories} newThreadRules={newThreadRules} showFormHint={postGuidanceSettings.showThreadFormHint} />
 
         <div className="mb-6" />
       </div>

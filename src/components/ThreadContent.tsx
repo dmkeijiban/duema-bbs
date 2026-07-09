@@ -26,6 +26,8 @@ interface Props {
   totalPages: number
   recommendSlot?: React.ReactNode
   threadRules?: string
+  showAfterCommentThreadPrompt?: boolean
+  showCommentFormHint?: boolean
 }
 
 type DisplayPost = Post & { displayNumber: number }
@@ -102,6 +104,8 @@ export function ThreadContent({
   totalPages,
   recommendSlot,
   threadRules,
+  showAfterCommentThreadPrompt = true,
+  showCommentFormHint = true,
 }: Props) {
   const [bodyValue, setBodyValue] = useState('')
   const [sessionId, setSessionId] = useState('')
@@ -242,7 +246,7 @@ export function ThreadContent({
               authorProfile={post.user_id ? authorProfiles[post.user_id] : undefined}
               honorTitle={post.user_id ? honorTitles[post.user_id] : undefined}
             />
-            {post.id === justPostedId && (
+            {post.id === justPostedId && showAfterCommentThreadPrompt && (
               <div
                 className="px-3 py-2.5 text-sm text-gray-700 leading-snug border-b border-gray-200"
                 style={{ background: '#eafaf1' }}
@@ -301,6 +305,7 @@ export function ThreadContent({
             rules={threadRules}
             isAdmin={isAdmin}
             adminRateLimitToken={adminRateLimitToken}
+            showFormHint={showCommentFormHint}
           />
         </div>
       )}

@@ -681,6 +681,7 @@ export default async function AdminPage({
               <Link href="/admin/notices" className={ADMIN_MENU_BTN_NEUTRAL}>📢 お知らせ</Link>
               <Link href="/admin/seo" className={ADMIN_MENU_BTN_NEUTRAL}>🔍 SEO管理</Link>
               <Link href="/admin/ranking-preview" className={ADMIN_MENU_BTN_NEUTRAL}>🏆 ランキングプレビュー</Link>
+              <Link href="/admin/post-guidance" className={ADMIN_MENU_BTN_NEUTRAL}>💬 投稿案内設定</Link>
             </div>
           </div>
 
