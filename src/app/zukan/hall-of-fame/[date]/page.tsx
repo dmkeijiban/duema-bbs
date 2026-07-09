@@ -183,10 +183,11 @@ function HallOfFameYearPage({ year }: { year: string }) {
               <Link
                 key={entry.slug}
                 href={`/zukan/hall-of-fame/${entry.slug}`}
-                className="block border border-gray-300 bg-white px-3 py-2 transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]"
+                className="relative block border border-gray-300 bg-white px-3 py-2 transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]"
               >
                 {/* 日付見出し（カード上部・中央・1行コンパクト。「殿堂発表」は付けない） */}
                 <div className="text-center text-sm font-bold leading-tight text-blue-700">{entry.dateLabel}</div>
+                <span className="absolute right-3 top-2 text-xs font-medium text-blue-600">詳細はこちら →</span>
 
                 {/* 代表カード画像（最大3枚・中央寄せ）。枚数（1〜3枚）に関わらず1枚あたりの表示サイズは同一。
                     2カラム化で1カードの横幅が狭くなるため、3枚でも収まる固定幅にして、ページ全体の横スクロールを発生させない。
