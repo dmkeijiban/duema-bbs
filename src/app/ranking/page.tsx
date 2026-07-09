@@ -1,4 +1,3 @@
-import { Suspense } from 'react'
 import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadCard } from '@/components/ThreadCard'
 import { SITE_URL } from '@/lib/site-config'
@@ -524,54 +523,53 @@ export default async function RankingPage({ searchParams }: { searchParams?: Pro
   const authorPeriod: 'month' | 'all' = authorParam === 'all' ? 'all' : 'month'
 
   return (
-    <main className="max-w-screen-xl mx-auto px-3 py-4 md:px-4">
+    <div className="w-full px-0 py-0">
       <ThreadListHeader title="人気ランキング" icon="📊" />
       <ThreadListTopContent />
-      <SnsCtaCard />
 
-      {/* ランキング種別タブ */}
-      <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
-        <Link
-          href="/ranking?type=threads"
-          scroll={false}
-          prefetch={false}
-          className={`flex flex-1 items-center justify-center gap-1.5 border-r border-gray-300 py-2.5 text-sm font-bold transition-colors ${
-            activeTab === 'thread'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          📋 スレッドランキング
-        </Link>
-        <Link
-          href="/ranking?type=users"
-          scroll={false}
-          prefetch={false}
-          className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 text-sm font-bold transition-colors ${
-            activeTab === 'author'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          👑 投稿者ランキング
-        </Link>
-      </div>
+      <div className="max-w-screen-xl mx-auto px-2">
+        <SnsCtaCard />
 
-      {activeTab === 'author' ? (
-        <section className="mb-6" aria-label="投稿者ランキング">
-          <Suspense fallback={<div className="border border-gray-300 bg-white p-4 text-sm text-gray-500">投稿者ランキングを読み込み中...</div>}>
+        {/* ランキング種別タブ */}
+        <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
+          <Link
+            href="/ranking?type=threads"
+            scroll={false}
+            prefetch={false}
+            className={`flex flex-1 items-center justify-center gap-1.5 border-r border-gray-300 py-2.5 text-sm font-bold transition-colors ${
+              activeTab === 'thread'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            📋 スレッドランキング
+          </Link>
+          <Link
+            href="/ranking?type=users"
+            scroll={false}
+            prefetch={false}
+            className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 text-sm font-bold transition-colors ${
+              activeTab === 'author'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            👑 投稿者ランキング
+          </Link>
+        </div>
+
+        {activeTab === 'author' ? (
+          <section className="mb-6" aria-label="投稿者ランキング">
             <UserRankingSection period={authorPeriod} />
-          </Suspense>
-        </section>
-      ) : (
-        <section aria-label="人気スレッドランキング">
-          <Suspense key={period} fallback={<div className="border border-gray-300 bg-white p-6 text-center text-sm text-gray-500">ランキングを読み込み中...</div>}>
+          </section>
+        ) : (
+          <section aria-label="人気スレッドランキング">
             <RankingList period={period} />
-          </Suspense>
-        </section>
-      )}
+          </section>
+        )}
 
-      <BottomNav current="/ranking" />
-    </main>
+        <BottomNav current="/ranking" />
+      </div>
+    </div>
   )
 }
