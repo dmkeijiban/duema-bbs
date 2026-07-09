@@ -163,25 +163,22 @@ function ShowcaseShell({
   titleHref?: string
   titlePaddingClassName?: string
 }) {
+  const headerClassName = `flex items-center justify-between gap-2 border-b border-gray-300 py-1.5 ${titlePaddingClassName}`
+  const titleNode = <span className="min-w-0 truncate font-bold text-sm" style={{ color: '#004085' }}>{title}</span>
+
   return (
     <div className="mb-2 border border-gray-300 bg-white">
-      <div className={`flex items-center justify-between gap-2 border-b border-gray-300 py-1.5 ${titlePaddingClassName}`}>
-        {titleHref ? (
-          <Link
-            href={titleHref}
-            prefetch={false}
-            className="min-w-0 truncate font-bold text-sm hover:underline"
-            style={{ color: '#004085' }}
-          >
-            {title}
-          </Link>
-        ) : (
-          <span className="min-w-0 truncate font-bold text-sm" style={{ color: '#004085' }}>
-            {title}
-          </span>
-        )}
-        {action}
-      </div>
+      {titleHref ? (
+        <Link href={titleHref} prefetch={false} className={`${headerClassName} hover:bg-gray-50`}>
+          {titleNode}
+          {action}
+        </Link>
+      ) : (
+        <div className={headerClassName}>
+          {titleNode}
+          {action}
+        </div>
+      )}
       {children}
     </div>
   )
