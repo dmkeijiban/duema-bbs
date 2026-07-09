@@ -183,6 +183,46 @@ export const getCachedHonorTitleEnabled = unstable_cache(
   { revalidate: 60, tags: ['honor-title-enabled'] }
 )
 
+export type PostGuidanceSettings = {
+  showThreadFormHint: boolean
+  showAfterCommentThreadPrompt: boolean
+  showCommentFormHint: boolean
+}
+
+const POST_GUIDANCE_KEYS = [
+  'show_thread_form_hint',
+  'show_after_comment_thread_prompt',
+  'show_comment_form_hint',
+] as const
+
+// スレッド投稿フォーム・コメント投稿後・コメント投稿フォームの案内文
+// ON/OFF設定。honor_title_enabledと同様、管理画面のトグルが即反映される
+// よう専用タグ（post-guidance-settings）を使う。行が無いキーはON扱い
+// （既存表示を初期値ONのまま維持するため）。
+// トグル操作は src/app/actions/post-guidance.ts から。
+export const getCachedPostGuidanceSettings = unstable_cache(
+  async (): Promise<PostGuidanceSettings> => {
+    try {
+      const supabase = createPublicClient()
+      const { data } = await supabase
+        .from('site_settings')
+        .select('key, value')
+        .in('key', POST_GUIDANCE_KEYS)
+      const map = Object.fromEntries((data ?? []).map(row => [row.key, row.value]))
+      return {
+        showThreadFormHint: map.show_thread_form_hint !== 'false',
+        showAfterCommentThreadPrompt: map.show_after_comment_thread_prompt !== 'false',
+        showCommentFormHint: map.show_comment_form_hint !== 'false',
+      }
+    } catch (error) {
+      console.warn('post guidance settings fetch failed:', error)
+      return { showThreadFormHint: true, showAfterCommentThreadPrompt: true, showCommentFormHint: true }
+    }
+  },
+  ['post-guidance-settings-v1'],
+  { revalidate: 60, tags: ['post-guidance-settings'] }
+)
+
 export type HonorPointsMap = Record<string, number>
 
 // 称号用の累計ポイント一括取得（任意のuserId群）。ランキングの日次上限や

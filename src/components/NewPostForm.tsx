@@ -30,6 +30,7 @@ interface Props {
   rules?: string
   isAdmin?: boolean
   adminRateLimitToken?: string | null
+  showFormHint?: boolean
 }
 
 export function NewPostForm({
@@ -41,6 +42,7 @@ export function NewPostForm({
   onPostSucceeded,
   onPostFailed,
   adminRateLimitToken,
+  showFormHint = true,
 }: Props) {
   const [authorName, setAuthorName] = useState('')
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
@@ -331,11 +333,13 @@ export function NewPostForm({
                 本文
               </td>
               <td className="p-2 min-w-0">
-                <div className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs leading-relaxed text-amber-800">
-                  <p>
-                    一言だけでもコメント大歓迎です！<br className="sm:hidden" />あなたのコメントでスレを盛り上げましょう！
-                  </p>
-                </div>
+                {showFormHint && (
+                  <div className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs leading-relaxed text-amber-800">
+                    <p>
+                      一言だけでもコメント大歓迎です！<br className="sm:hidden" />あなたのコメントでスレを盛り上げましょう！
+                    </p>
+                  </div>
+                )}
                 <textarea
                   id="reply-textarea"
                   name="body"

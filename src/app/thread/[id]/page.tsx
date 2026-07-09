@@ -5,7 +5,7 @@ import { ShareXButton } from '@/components/ShareXButton'
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { Thread, Post, Category } from '@/types'
 import Link from 'next/link'
-import { DEFAULT_PUBLIC_AUTHOR_NAME, getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, getCachedThreadStarterImageUrl, getCachedRelatedThreads, getCachedPublicAuthorProfiles, getCachedRestrictedAuthorNames, getCachedHonorTitleEnabled, getCachedHonorPointsMap, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
+import { DEFAULT_PUBLIC_AUTHOR_NAME, getCachedSetting, getCachedThreadNotices, getCachedThread, getCachedThreadPosts, getCachedThreadStarterImageUrl, getCachedRelatedThreads, getCachedPublicAuthorProfiles, getCachedRestrictedAuthorNames, getCachedHonorTitleEnabled, getCachedHonorPointsMap, getCachedPostGuidanceSettings, THREAD_POSTS_PER_PAGE } from '@/lib/cached-queries'
 import { getHonorTitle, type HonorTitle } from '@/lib/honor-title'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
@@ -154,9 +154,10 @@ export default async function ThreadPage({ params }: Props) {
 }
 
 export async function renderThreadPage(threadId: number, page: number) {
-  const [threadRules, threadNotices] = await Promise.all([
+  const [threadRules, threadNotices, postGuidanceSettings] = await Promise.all([
     getCachedSetting('thread_rules', THREAD_RULES_DEFAULT),
     getCachedThreadNotices(),
+    getCachedPostGuidanceSettings(),
   ])
 
   // スレ・レスはキャッシュ済みクエリで取得（30秒TTL）
@@ -377,6 +378,8 @@ export async function renderThreadPage(threadId: number, page: number) {
         page={page}
         totalPages={totalPages}
         threadRules={threadRules}
+        showAfterCommentThreadPrompt={postGuidanceSettings.showAfterCommentThreadPrompt}
+        showCommentFormHint={postGuidanceSettings.showCommentFormHint}
         recommendSlot={
           <Suspense fallback={<RecommendSectionSkeleton />}>
             <RecommendSection

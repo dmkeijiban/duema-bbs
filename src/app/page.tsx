@@ -20,6 +20,7 @@ import {
   getCachedCategories,
   getCachedActiveNotices,
   getCachedThreadList,
+  getCachedPostGuidanceSettings,
   POPULAR_PAGE_SIZE,
 } from '@/lib/cached-queries'
 import { SITE_URL } from '@/lib/site-config'
@@ -356,8 +357,11 @@ async function BottomNavServer({ params }: { params: SearchParams }) {
 }
 
 async function InlineNewThreadServer() {
-  const categories = await getCachedCategories()
-  return <InlineNewThread categories={categories} />
+  const [categories, postGuidanceSettings] = await Promise.all([
+    getCachedCategories(),
+    getCachedPostGuidanceSettings(),
+  ])
+  return <InlineNewThread categories={categories} showFormHint={postGuidanceSettings.showThreadFormHint} />
 }
 
 export default async function Home({

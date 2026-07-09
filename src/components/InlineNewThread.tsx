@@ -19,11 +19,12 @@ interface Props {
   categories: Category[]
   newThreadRules?: string
   isAdmin?: boolean
+  showFormHint?: boolean
 }
 
 const THREAD_BODY_MAX_LENGTH = 1000
 
-export function InlineNewThread({ categories }: Props) {
+export function InlineNewThread({ categories, showFormHint = true }: Props) {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
@@ -194,13 +195,15 @@ export function InlineNewThread({ categories }: Props) {
                 本文
               </td>
               <td className="p-2 min-w-0">
-                <div className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs leading-relaxed text-amber-800">
-                  <p className="hidden whitespace-nowrap sm:block">今のデュエマの話でも、昔の思い出でも大歓迎です！質問・相談・予想など、気軽にスレッドを立ててください！</p>
-                  <div className="sm:hidden">
-                    <p>今のデュエマの話でも、昔の思い出でも大歓迎です！</p>
-                    <p>質問・相談・予想など、気軽にスレッドを立ててください！</p>
+                {showFormHint && (
+                  <div className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs leading-relaxed text-amber-800">
+                    <p className="hidden whitespace-nowrap sm:block">今のデュエマの話でも、昔の思い出でも大歓迎です！質問・相談・予想など、気軽にスレッドを立ててください！</p>
+                    <div className="sm:hidden">
+                      <p>今のデュエマの話でも、昔の思い出でも大歓迎です！</p>
+                      <p>質問・相談・予想など、気軽にスレッドを立ててください！</p>
+                    </div>
                   </div>
-                </div>
+                )}
                 <textarea
                   id="new-thread-body"
                   name="body"
