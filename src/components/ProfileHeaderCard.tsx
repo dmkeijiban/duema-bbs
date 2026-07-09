@@ -151,11 +151,7 @@ export function ProfileHeaderCard({
                     </span>
                   )}
                 </div>
-                <p className={`${subtleTextClassName} flex flex-wrap items-center gap-x-2 gap-y-0.5`}>
-                  <span>@{slug}</span>
-                  <span className="text-gray-300">·</span>
-                  <span>{createdAtLabel} 登録</span>
-                </p>
+                <p className={subtleTextClassName}>@{slug}（{createdAtLabel} 登録）</p>
               </div>
 
               {mobileCompact && mobileEditHref && (
