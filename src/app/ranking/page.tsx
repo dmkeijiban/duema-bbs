@@ -479,6 +479,10 @@ async function RankingList({ page, period }: { page: number; period: ThreadPerio
     ? await withFallbackThumbnails(supabase, visibleThreads)
     : []
 
+  // rawThreadsがPAGE_SIZE件ちょうど取れていれば次ページがある可能性が高い、という
+  // 簡易判定。取得クエリ・集計ロジック自体は変更していない。
+  const hasNext = (rawThreads?.length ?? 0) === PAGE_SIZE
+
   if (withImages.length === 0) {
     return (
       <div className="border border-gray-300 bg-white px-4 py-12 text-center">
@@ -502,17 +506,20 @@ async function RankingList({ page, period }: { page: number; period: ThreadPerio
     <>
       <ThreadRankingMobile threads={withImages} offset={offset} />
       <div className="hidden md:block border-l border-t border-gray-300 bg-white">
-        <div className="grid grid-cols-5">
+        <div className="grid grid-cols-4">
           {withImages.map((thread, i) => (
             <ThreadCard key={thread.id} thread={thread} rank={offset + i + 1} />
           ))}
         </div>
       </div>
+      <Pagination page={page} period={period} hasNext={hasNext} />
     </>
   )
 }
 
 function Pagination({ page, period, hasNext }: { page: number; period: ThreadPeriod; hasNext: boolean }) {
+  if (page === 1 && !hasNext) return null
+
   const baseParams = period === 'all' ? '' : `?period=${period}`
   const pageParam = baseParams ? `${baseParams}&page=` : '?page='
 
@@ -564,6 +571,7 @@ export default async function RankingPage({ searchParams }: { searchParams?: Pro
         <Link
           href="/ranking?type=threads"
           scroll={false}
+          prefetch={false}
           className={`flex flex-1 items-center justify-center gap-1.5 border-r border-gray-300 py-2.5 text-sm font-bold transition-colors ${
             activeTab === 'thread'
               ? 'bg-blue-600 text-white'
@@ -575,6 +583,7 @@ export default async function RankingPage({ searchParams }: { searchParams?: Pro
         <Link
           href="/ranking?type=users"
           scroll={false}
+          prefetch={false}
           className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 text-sm font-bold transition-colors ${
             activeTab === 'author'
               ? 'bg-blue-600 text-white'
@@ -593,15 +602,13 @@ export default async function RankingPage({ searchParams }: { searchParams?: Pro
         </section>
       ) : (
         <section aria-label="人気スレッドランキング">
-          <h1 className="mb-3 text-center text-xl font-bold text-gray-900">📊 スレッドランキング</h1>
           <Suspense key={`${period}-${page}`} fallback={<div className="border border-gray-300 bg-white p-6 text-center text-sm text-gray-500">ランキングを読み込み中...</div>}>
             <RankingList page={page} period={period} />
           </Suspense>
-          <Pagination page={page} period={period} hasNext={true} />
         </section>
       )}
 
-      <BottomNav />
+      <BottomNav current="/ranking" />
     </main>
   )
 }
