@@ -8,15 +8,15 @@ export default function MyPageLayout({ children }: { children: ReactNode }) {
         dangerouslySetInnerHTML={{
           __html: `
             @media (min-width: 640px) {
-              main.mx-auto > div.w-full > div.border-b.border-gray-300.bg-gray-100:first-child {
-                display: flex;
-                align-items: baseline;
-                gap: 0.75rem;
+              main.mx-auto > div.w-full > div.border-b.border-gray-300.bg-gray-100:first-child > h1::after {
+                content: '（このブラウザから投稿したスレッドとコメントを確認できます。）';
+                font-size: 0.875rem;
+                font-weight: 400;
+                color: #4b5563;
               }
 
               main.mx-auto > div.w-full > div.border-b.border-gray-300.bg-gray-100:first-child > p {
-                margin-top: 0;
-                white-space: nowrap;
+                display: none;
               }
             }
           `,
