@@ -45,6 +45,12 @@ export const metadata = {
 
 type ThreadPeriod = 'today' | 'week' | 'all'
 
+const THREAD_PERIOD_LABELS: Record<ThreadPeriod, string> = {
+  today: '今日',
+  week: '今週',
+  all: '総合',
+}
+
 const PAGE_SIZE = 60
 
 const rankDecoration = [
@@ -565,6 +571,24 @@ export default async function RankingPage({ searchParams }: { searchParams?: Pro
 
       <section aria-label="人気スレッドランキング">
         <h1 className="mb-3 text-center text-xl font-bold text-gray-900">📊 スレッドランキング</h1>
+        <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
+          {(['today', 'week', 'all'] as const).map((p, i, arr) => (
+            <Link
+              key={p}
+              href={`/ranking?period=${p}`}
+              scroll={false}
+              className={`flex-1 py-2 text-center text-sm font-bold transition-colors ${
+                i < arr.length - 1 ? 'border-r border-gray-300' : ''
+              } ${
+                period === p
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {THREAD_PERIOD_LABELS[p]}
+            </Link>
+          ))}
+        </div>
         <Suspense key={`${period}-${page}`} fallback={<div className="border border-gray-300 bg-white p-6 text-center text-sm text-gray-500">ランキングを読み込み中...</div>}>
           <RankingList page={page} period={period} />
         </Suspense>
