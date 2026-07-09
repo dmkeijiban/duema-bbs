@@ -43,7 +43,7 @@ function DefaultHeaderAction() {
       prefetch={false}
       className="shrink-0 rounded px-1.5 py-0.5 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-50 hover:text-blue-800"
     >
-      ランキングはこちら
+      ランキングはこちら→
     </Link>
   )
 }
