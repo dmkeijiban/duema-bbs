@@ -543,11 +543,13 @@ function Pagination({ page, period, hasNext }: { page: number; period: ThreadPer
   )
 }
 
-export default async function RankingPage({ searchParams }: { searchParams?: Promise<{ page?: string; period?: string; author?: string }> }) {
+export default async function RankingPage({ searchParams }: { searchParams?: Promise<{ page?: string; period?: string; author?: string; type?: string }> }) {
   const params = await searchParams
   const page = Math.max(1, Number(params?.page || 1))
+  const typeParam = params?.type
+  const activeTab: 'thread' | 'author' = typeParam === 'author' || typeParam === 'users' ? 'author' : 'thread'
   const periodParam = params?.period
-  const period: ThreadPeriod = periodParam === 'today' || periodParam === 'week' || periodParam === 'all' ? periodParam : 'today'
+  const period: ThreadPeriod = periodParam === 'today' || periodParam === 'week' || periodParam === 'all' ? periodParam : 'all'
   const authorParam = params?.author
   const authorPeriod: 'month' | 'all' = authorParam === 'all' ? 'all' : 'month'
 
@@ -557,19 +559,47 @@ export default async function RankingPage({ searchParams }: { searchParams?: Pro
       <ThreadListTopContent />
       <SnsCtaCard />
 
-      <section className="mb-6" aria-label="投稿者ランキング">
-        <Suspense fallback={<div className="border border-gray-300 bg-white p-4 text-sm text-gray-500">投稿者ランキングを読み込み中...</div>}>
-          <UserRankingSection period={authorPeriod} />
-        </Suspense>
-      </section>
+      {/* ランキング種別タブ */}
+      <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
+        <Link
+          href="/ranking?type=threads"
+          scroll={false}
+          className={`flex flex-1 items-center justify-center gap-1.5 border-r border-gray-300 py-2.5 text-sm font-bold transition-colors ${
+            activeTab === 'thread'
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          📋 スレッドランキング
+        </Link>
+        <Link
+          href="/ranking?type=users"
+          scroll={false}
+          className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 text-sm font-bold transition-colors ${
+            activeTab === 'author'
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          👑 投稿者ランキング
+        </Link>
+      </div>
 
-      <section aria-label="人気スレッドランキング">
-        <h1 className="mb-3 text-center text-xl font-bold text-gray-900">📊 スレッドランキング</h1>
-        <Suspense key={`${period}-${page}`} fallback={<div className="border border-gray-300 bg-white p-6 text-center text-sm text-gray-500">ランキングを読み込み中...</div>}>
-          <RankingList page={page} period={period} />
-        </Suspense>
-        <Pagination page={page} period={period} hasNext={true} />
-      </section>
+      {activeTab === 'author' ? (
+        <section className="mb-6" aria-label="投稿者ランキング">
+          <Suspense fallback={<div className="border border-gray-300 bg-white p-4 text-sm text-gray-500">投稿者ランキングを読み込み中...</div>}>
+            <UserRankingSection period={authorPeriod} />
+          </Suspense>
+        </section>
+      ) : (
+        <section aria-label="人気スレッドランキング">
+          <h1 className="mb-3 text-center text-xl font-bold text-gray-900">📊 スレッドランキング</h1>
+          <Suspense key={`${period}-${page}`} fallback={<div className="border border-gray-300 bg-white p-6 text-center text-sm text-gray-500">ランキングを読み込み中...</div>}>
+            <RankingList page={page} period={period} />
+          </Suspense>
+          <Pagination page={page} period={period} hasNext={true} />
+        </section>
+      )}
 
       <BottomNav />
     </main>
