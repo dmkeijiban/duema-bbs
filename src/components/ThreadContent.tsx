@@ -153,7 +153,18 @@ export function ThreadContent({
     const prompt = kind === 'quiz'
       ? `「${label}」と答えました。\n理由：`
       : `「${label}」を選びました。\n理由：`
-    setBodyValue(current => current.trim() ? current : prompt)
+
+    setBodyValue(current => {
+      if (!current.trim()) return prompt
+
+      const generatedPromptPattern = /^「.*?」(?:を選びました|と答えました)。\n理由：/
+      if (generatedPromptPattern.test(current)) {
+        return current.replace(generatedPromptPattern, prompt)
+      }
+
+      return current
+    })
+
     const form = document.getElementById('reply-form-bottom')
     form?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     setTimeout(() => {
