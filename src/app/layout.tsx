@@ -7,7 +7,7 @@ import { getCachedCategories } from '@/lib/cached-queries'
 import Link from 'next/link'
 import { SITE_URL, SITE_NAME } from '@/lib/site-config'
 // TBT削減: Client Component ラッパー経由で ssr:false dynamic import を使用
-import { LazyFloatingBar, LazyPostHogBridge } from '@/components/LazyClientComponents'
+import { LazyDesktopFloatingActions, LazyFloatingBar, LazyPostHogBridge } from '@/components/LazyClientComponents'
 
 const GA_ID = 'G-HDGDNYNMH4'
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY
@@ -196,6 +196,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-screen antialiased" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
           <Header />
           <main>{children}</main>
+          <LazyDesktopFloatingActions />
           <LazyFloatingBar snsUrls={snsUrls} />
           <LazyPostHogBridge />
           <footer className="bg-white border-t border-gray-200 py-4 mt-0">

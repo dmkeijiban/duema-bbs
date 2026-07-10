@@ -1,9 +1,11 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { type SVGProps } from 'react'
 import {
   moveToCommentForm,
+  moveToNewThreadForm,
   reloadCurrentPage,
   scrollToPageTop,
 } from './floatingActionHandlers'
@@ -56,26 +58,54 @@ function SettingsIcon(props: IconProps) {
 }
 
 const BUTTON_CLASS =
-  'flex h-10 w-10 shrink-0 items-center justify-center border border-gray-300 bg-white/50 text-gray-400 active:bg-gray-200/60'
+  'flex h-12 w-[88px] items-center justify-center gap-1.5 border border-gray-300 bg-white/90 px-2 text-xs text-gray-600 shadow-sm hover:bg-gray-100 active:bg-gray-200'
 
-export function ThreadFloatingActions() {
+function isTargetPage(pathname: string) {
+  if (pathname === '/') return true
+
+  return [
+    '/new',
+    '/update',
+    '/category/',
+    '/ranking',
+    '/random',
+    '/archived',
+    '/kakolog',
+    '/thread/',
+    '/zukan',
+    '/summary',
+  ].some(prefix => pathname === prefix || pathname.startsWith(prefix))
+}
+
+export function DesktopFloatingActions() {
+  const pathname = usePathname()
+  if (!isTargetPage(pathname)) return null
+
+  const isThreadPage = pathname.startsWith('/thread/') && pathname !== '/thread/new'
+  const moveToPostForm = isThreadPage ? moveToCommentForm : moveToNewThreadForm
+  const postLabel = isThreadPage ? 'コメント書く' : 'スレッド立てる'
+
   return (
-    <div
-      className="md:hidden fixed flex items-center gap-1.5 opacity-100"
-      style={{ bottom: 'calc(72px + env(safe-area-inset-bottom))', right: 12, zIndex: 40 }}
+    <nav
+      aria-label="ページ操作"
+      className="fixed right-3 top-1/2 z-40 hidden -translate-y-1/2 flex-col gap-1.5 md:flex"
     >
-      <button type="button" onClick={scrollToPageTop} aria-label="一番上へ戻る" className={BUTTON_CLASS}>
-        <TriangleIcon />
+      <button type="button" onClick={scrollToPageTop} className={BUTTON_CLASS}>
+        <TriangleIcon aria-hidden="true" />
+        <span>上に行く</span>
       </button>
-      <button type="button" onClick={reloadCurrentPage} aria-label="更新" className={BUTTON_CLASS}>
-        <RotateCwIcon />
+      <button type="button" onClick={reloadCurrentPage} className={BUTTON_CLASS}>
+        <RotateCwIcon aria-hidden="true" />
+        <span>更新</span>
       </button>
-      <button type="button" onClick={moveToCommentForm} aria-label="コメントを書く" className={BUTTON_CLASS}>
-        <SquarePenIcon />
+      <button type="button" onClick={moveToPostForm} className={BUTTON_CLASS}>
+        <SquarePenIcon aria-hidden="true" />
+        <span>{postLabel}</span>
       </button>
-      <Link href="/mypage" aria-label="設定" className={BUTTON_CLASS}>
-        <SettingsIcon />
+      <Link href="/mypage" className={BUTTON_CLASS}>
+        <SettingsIcon aria-hidden="true" />
+        <span>設定</span>
       </Link>
-    </div>
+    </nav>
   )
 }

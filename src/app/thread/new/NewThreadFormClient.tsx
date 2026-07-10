@@ -100,6 +100,7 @@ export function NewThreadFormClient({ categories }: Props) {
             </td>
             <td className="py-2 px-2 min-w-0 sm:px-3">
               <input
+                id="new-thread-title"
                 type="text"
                 name="title"
                 required
