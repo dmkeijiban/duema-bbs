@@ -166,10 +166,10 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
                   aria-hidden="true"
                 />
               )}
-              <span className="relative flex min-h-10 items-center justify-between gap-2 px-3 py-2">
+              <span className="relative flex min-h-10 flex-col items-start gap-1 px-3 py-2 md:flex-row md:items-center md:justify-between md:gap-2">
                 <span className="break-words font-medium text-gray-800">{option.label}</span>
                 {viewerState?.hasVoted && (
-                  <span className="shrink-0 text-xs font-bold text-gray-600">
+                  <span className="block shrink-0 text-xs font-bold text-gray-600 md:inline">
                     {percentage}%<span className="ml-1 font-normal text-gray-400">({resultOption?.voteCount ?? 0})</span>
                   </span>
                 )}
