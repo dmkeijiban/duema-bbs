@@ -61,6 +61,27 @@ async function requireAdmin() {
   if (!verifyAdminCookie(cookieStore.get('admin_auth')?.value)) redirect('/admin')
 }
 
+async function loadAllPublishedCardOptions(supabase: ReturnType<typeof createAdminClient>) {
+  const cards: CardOption[] = []
+  const pageSize = 1000
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from('zukan_cards')
+      .select('slug, name')
+      .eq('is_published', true)
+      .order('name', { ascending: true })
+      .order('slug', { ascending: true })
+      .range(from, from + pageSize - 1)
+
+    if (error) return { data: [] as CardOption[], error }
+
+    const batch = (data ?? []) as CardOption[]
+    cards.push(...batch)
+    if (batch.length < pageSize) return { data: cards, error: null }
+  }
+}
+
 function formatDate(value: string | null) {
   if (!value) return '-'
   return new Intl.DateTimeFormat('ja-JP', {
@@ -193,12 +214,7 @@ export default async function AdminZukanArticlesPage({
         .select('slug, code, name')
         .order('sort_order', { ascending: true })
         .limit(500),
-      supabase
-        .from('zukan_cards')
-        .select('slug, name')
-        .eq('is_published', true)
-        .order('name', { ascending: true })
-        .limit(2000),
+      loadAllPublishedCardOptions(supabase),
     ])
   const packOptions = (packsData ?? []) as PackOption[]
   const cardOptions = (cardsData ?? []) as CardOption[]

@@ -2,6 +2,8 @@ import Link from 'next/link'
 import type { ZukanArticle } from '@/lib/zukan-articles'
 import type { ZukanCard, ZukanPack } from '@/lib/zukan'
 import ZukanImagePreview from './ZukanImagePreview'
+import ZukanPseudoCard from './ZukanPseudoCard'
+import { getMultiFaceSupplement, getProxiedZukanCardImageUrl } from '@/lib/zukan-card-faces'
 
 function cardIdentifier(card: ZukanCard) {
   return [card.id, card.slug]
@@ -13,12 +15,13 @@ function findCard(cards: ZukanCard[], identifier?: string) {
 }
 
 function cardImageUrl(card: ZukanCard) {
+  const multiFace = getMultiFaceSupplement(card.slug)
+  if (multiFace) return getProxiedZukanCardImageUrl(multiFace.frontImageUrl)
   return card.official_image_url ?? card.image_url
 }
 
-function ArticleCardImage({ card }: { card: ZukanCard }) {
+function ArticleCardVisual({ card }: { card: ZukanCard }) {
   const imageUrl = cardImageUrl(card)
-  if (!imageUrl) return null
 
   return (
     <Link
@@ -26,14 +29,27 @@ function ArticleCardImage({ card }: { card: ZukanCard }) {
       className="block bg-white [-webkit-tap-highlight-color:transparent]"
       aria-label={`${card.name} の図鑑ページへ`}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={imageUrl}
-        alt={`${card.name} カード画像`}
-        loading="lazy"
-        decoding="async"
-        className="h-auto w-full"
-      />
+      {imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imageUrl}
+          alt={`${card.name} カード画像`}
+          loading="lazy"
+          decoding="async"
+          className="h-auto w-full"
+        />
+      ) : (
+        <ZukanPseudoCard
+          name={card.name}
+          civilization={card.civilization}
+          cost={card.cost}
+          cardType={card.card_type}
+          power={card.power}
+          rarity={card.rarity}
+          size="lg"
+          className="rounded-none shadow-none"
+        />
+      )}
     </Link>
   )
 }
@@ -93,16 +109,16 @@ export function ZukanArticleRenderer({
           if (block.type === 'card') {
             const identifier = block.id ?? block.slug ?? ''
             const card = findCard(cards, identifier)
-            if (!card || !cardImageUrl(card)) return null
+            if (!card) return null
 
-            return <figure key={index} className="my-8 mr-auto max-w-[190px] sm:max-w-[220px]"><ArticleCardImage card={card} /></figure>
+            return <figure key={index} className="my-8 mr-auto max-w-[190px] sm:max-w-[220px]"><ArticleCardVisual card={card} /></figure>
           }
 
           if (block.type === 'cardGrid') {
             const identifiers = [...(block.ids ?? []), ...(block.slugs ?? [])].slice(0, 6)
             const gridCards = identifiers
               .map(identifier => findCard(cards, identifier))
-              .filter((card): card is ZukanCard => !!card && !!cardImageUrl(card))
+              .filter((card): card is ZukanCard => !!card)
             if (gridCards.length === 0) return null
 
             return (
@@ -111,7 +127,7 @@ export function ZukanArticleRenderer({
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                   {gridCards.map(card => (
                     <div key={card.id} className="min-w-0">
-                      <ArticleCardImage card={card} />
+                      <ArticleCardVisual card={card} />
                     </div>
                   ))}
                 </div>
