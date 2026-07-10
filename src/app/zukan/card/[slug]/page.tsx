@@ -184,7 +184,6 @@ export default async function ZukanCardPage({
       )}
 
       <header className="mb-5 border border-gray-300 bg-white p-4">
-        {multiFace && <p className="mb-4 border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800">裏面あり：表面と裏面を続けて表示しています</p>}
         {frontFace ? (
           <div className="space-y-6 divide-y divide-gray-200 [&>section+section]:pt-6">
             <CardFacePanel face={frontFace} label={multiFace ? '表面' : undefined} showShare />
