@@ -244,7 +244,7 @@ export function InlineNewThread({ categories, showFormHint = true }: Props) {
             {error}
           </div>
         )}
-        <div className="px-3 py-2.5">
+        <div className="p-0">
           <button
             type="submit"
             disabled={isPending || authState.status === 'loading' || authState.status === 'profile_missing'}
