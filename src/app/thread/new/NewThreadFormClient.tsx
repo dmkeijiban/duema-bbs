@@ -200,7 +200,7 @@ export function NewThreadFormClient({ categories }: Props) {
         </div>
       )}
 
-      <div className="px-3 py-2.5 space-y-2">
+      <div className="space-y-2">
         <button
           type="submit"
           disabled={isPending}
@@ -209,12 +209,14 @@ export function NewThreadFormClient({ categories }: Props) {
         >
           {isPending ? 'スレッドを作成中...' : 'スレッドを立てる'}
         </button>
-        <Link
-          href="/"
-          className="block w-full border border-gray-300 px-3 py-2 text-center text-sm text-gray-600 hover:bg-gray-50 transition-colors sm:w-auto"
-        >
-          キャンセル
-        </Link>
+        <div className="px-3 pb-2.5">
+          <Link
+            href="/"
+            className="block w-full border border-gray-300 px-3 py-2 text-center text-sm text-gray-600 hover:bg-gray-50 transition-colors sm:w-auto"
+          >
+            キャンセル
+          </Link>
+        </div>
       </div>
     </form>
   )
