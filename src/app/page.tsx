@@ -15,11 +15,13 @@ import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
+import { ThreadFloatingActions } from '@/components/ThreadFloatingActions'
 import { FeaturedSummaries } from '@/components/FeaturedSummaries'
 import {
   getCachedCategories,
   getCachedActiveNotices,
   getCachedThreadList,
+  getCachedPostGuidanceSettings,
   POPULAR_PAGE_SIZE,
 } from '@/lib/cached-queries'
 import { SITE_URL } from '@/lib/site-config'
@@ -28,6 +30,7 @@ import { AdBanner } from '@/components/AdBanner'
 import { getCategoryIdsForSlug } from '@/lib/categories'
 import { ADSENSE_REVIEW_MODE, isAdSenseRiskyThreadTitle, isPrNoticeForAdSenseReview } from '@/lib/adsense-review-mode'
 import { GreenCtaBanner } from '@/components/GreenCtaBanner'
+import { getThreadPollFeatureAvailable } from '@/lib/thread-poll'
 import {
   filterPublicVisibleUserContent,
   getCachedPublicHiddenUserIds,
@@ -356,8 +359,18 @@ async function BottomNavServer({ params }: { params: SearchParams }) {
 }
 
 async function InlineNewThreadServer() {
-  const categories = await getCachedCategories()
-  return <InlineNewThread categories={categories} />
+  const [categories, postGuidanceSettings, interactiveThreadsEnabled] = await Promise.all([
+    getCachedCategories(),
+    getCachedPostGuidanceSettings(),
+    getThreadPollFeatureAvailable(),
+  ])
+  return (
+    <InlineNewThread
+      categories={categories}
+      showFormHint={postGuidanceSettings.showThreadFormHint}
+      interactiveThreadsEnabled={interactiveThreadsEnabled}
+    />
+  )
 }
 
 export default async function Home({
@@ -467,6 +480,8 @@ export default async function Home({
 
         <SnsCtaCard />
       </div>
+
+      <ThreadFloatingActions postAction="thread" />
     </div>
   )
 }

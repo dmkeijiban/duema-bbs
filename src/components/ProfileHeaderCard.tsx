@@ -121,9 +121,16 @@ export function ProfileHeaderCard({
     <section className="bg-white border border-gray-300 rounded-sm overflow-hidden">
       <div className={mobileCompact ? 'relative px-3 py-3 sm:px-4 sm:pt-5 sm:pb-4' : 'relative px-4 pt-5 pb-4'}>
         {socialLinks && (
-          <div className="absolute right-4 top-5 z-10 hidden max-w-[calc(100%-9rem)] sm:block">
-            {socialLinks}
-          </div>
+          <>
+            {!mobileCompact && (
+              <div className="absolute right-3 top-3 z-10 sm:hidden">
+                {socialLinks}
+              </div>
+            )}
+            <div className="absolute right-4 top-5 z-10 hidden max-w-[calc(100%-9rem)] sm:block">
+              {socialLinks}
+            </div>
+          </>
         )}
 
         <div className={mobileCompact ? 'flex flex-row gap-3 sm:gap-4' : 'flex flex-col sm:flex-row gap-4'}>
@@ -177,18 +184,12 @@ export function ProfileHeaderCard({
                 <p className={mobileCompact ? 'hidden text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6 sm:block' : 'text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-6'}>
                   {bio}
                 </p>
-                {!mobileCompact && socialLinks && (
-                  <div className="mt-3 sm:hidden">{socialLinks}</div>
-                )}
               </>
             ) : (
               <div className={mobileCompact ? 'hidden items-center gap-3 mt-2 sm:flex' : 'flex flex-wrap items-center gap-3 mt-2'}>
                 <p className="text-sm text-gray-400 italic">
                   自己紹介はまだありません。
                 </p>
-                {!mobileCompact && socialLinks && (
-                  <div className="sm:hidden">{socialLinks}</div>
-                )}
               </div>
             )}
           </div>

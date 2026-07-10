@@ -8,6 +8,9 @@ import { getPostableConsolidatedCategories } from '@/lib/categories'
 import type { Category } from '@/types'
 import { createClient, getCurrentUser } from '@/lib/supabase'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
+import { POST_SUBMIT_BUTTON_CLASS, POST_SUBMIT_BUTTON_STYLE } from '@/components/postSubmitButtonStyle'
+import { ThreadInteractiveFields } from '@/components/ThreadInteractiveFields'
+import { validateInteractiveThreadUploadSize } from '@/lib/thread-poll-form'
 
 type AuthState =
   | { status: 'loading' }
@@ -17,9 +20,10 @@ type AuthState =
 
 interface Props {
   categories: Category[]
+  interactiveThreadsEnabled?: boolean
 }
 
-export function NewThreadFormClient({ categories }: Props) {
+export function NewThreadFormClient({ categories, interactiveThreadsEnabled = false }: Props) {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
@@ -54,6 +58,11 @@ export function NewThreadFormClient({ categories }: Props) {
     e.preventDefault()
     setError('')
     const formData = new FormData(e.currentTarget)
+    const uploadSizeError = validateInteractiveThreadUploadSize(formData)
+    if (uploadSizeError) {
+      setError(uploadSizeError)
+      return
+    }
     startTransition(async () => {
       try {
         const result = await createThread(formData)
@@ -99,6 +108,7 @@ export function NewThreadFormClient({ categories }: Props) {
             </td>
             <td className="py-2 px-2 min-w-0 sm:px-3">
               <input
+                id="new-thread-title"
                 type="text"
                 name="title"
                 required
@@ -108,6 +118,7 @@ export function NewThreadFormClient({ categories }: Props) {
               />
             </td>
           </tr>
+          <ThreadInteractiveFields enabled={interactiveThreadsEnabled} />
           {authState.status === 'loading' && (
             <tr className="border-b border-gray-200">
               <td className="py-2 px-2 align-middle text-xs font-medium text-gray-700 sm:px-3" style={{ background: '#f5f5f5' }}>
@@ -199,21 +210,23 @@ export function NewThreadFormClient({ categories }: Props) {
         </div>
       )}
 
-      <div className="px-3 py-2.5 space-y-2">
+      <div className="space-y-2">
         <button
           type="submit"
           disabled={isPending}
-          className="w-full py-2 text-sm text-white disabled:opacity-60 disabled:cursor-not-allowed"
-          style={{ background: '#0d6efd' }}
+          className={POST_SUBMIT_BUTTON_CLASS}
+          style={POST_SUBMIT_BUTTON_STYLE}
         >
           {isPending ? 'スレッドを作成中...' : 'スレッドを立てる'}
         </button>
-        <Link
-          href="/"
-          className="block w-full border border-gray-300 px-3 py-2 text-center text-sm text-gray-600 hover:bg-gray-50 transition-colors sm:w-auto"
-        >
-          キャンセル
-        </Link>
+        <div className="px-3 pb-2.5">
+          <Link
+            href="/"
+            className="block w-full border border-gray-300 px-3 py-2 text-center text-sm text-gray-600 hover:bg-gray-50 transition-colors sm:w-auto"
+          >
+            キャンセル
+          </Link>
+        </div>
       </div>
     </form>
   )

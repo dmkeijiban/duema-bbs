@@ -10,6 +10,7 @@ import { createClient, getCurrentUser } from '@/lib/supabase'
 import { ProfileAvatar } from './ProfileAvatar'
 import { getDisplayCategory } from '@/lib/categories'
 import { COMMENT_BODY_MAX_LENGTH } from '@/lib/spam'
+import { POST_SUBMIT_BUTTON_CLASS, POST_SUBMIT_BUTTON_STYLE } from '@/components/postSubmitButtonStyle'
 
 type AuthState =
   | { status: 'loading' }
@@ -30,6 +31,7 @@ interface Props {
   rules?: string
   isAdmin?: boolean
   adminRateLimitToken?: string | null
+  showFormHint?: boolean
 }
 
 export function NewPostForm({
@@ -41,6 +43,7 @@ export function NewPostForm({
   onPostSucceeded,
   onPostFailed,
   adminRateLimitToken,
+  showFormHint = true,
 }: Props) {
   const [authorName, setAuthorName] = useState('')
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
@@ -331,11 +334,13 @@ export function NewPostForm({
                 本文
               </td>
               <td className="p-2 min-w-0">
-                <div className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs leading-relaxed text-amber-800">
-                  <p>
-                    一言だけでもコメント大歓迎です！<br className="sm:hidden" />あなたのコメントでスレを盛り上げましょう！
-                  </p>
-                </div>
+                {showFormHint && (
+                  <div className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs leading-relaxed text-amber-800">
+                    <p>
+                      一言だけでもコメント大歓迎です！<br className="sm:hidden" />あなたのコメントでスレを盛り上げましょう！
+                    </p>
+                  </div>
+                )}
                 <textarea
                   id="reply-textarea"
                   name="body"
@@ -375,12 +380,12 @@ export function NewPostForm({
             {error}
           </div>
         )}
-        <div id="reply-submit-button" className="px-3 py-2.5">
+        <div id="reply-submit-button" className="p-0">
           <button
             type="submit"
             disabled={isSubmitting || authState.status === 'loading' || authState.status === 'profile_missing'}
-            className="w-full py-2 text-sm text-white disabled:opacity-60"
-            style={{ background: '#0d6efd' }}
+            className={POST_SUBMIT_BUTTON_CLASS}
+            style={POST_SUBMIT_BUTTON_STYLE}
           >
             {isSubmitting ? '送信中...' : '投稿する'}
           </button>

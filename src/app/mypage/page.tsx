@@ -319,12 +319,20 @@ function SignupBanner() {
   return (
     <div className="rounded border border-blue-200 bg-blue-50 px-3 py-3 text-sm text-blue-800">
       <p>アカウントを作ると、投稿履歴やプロフィールをまとめて管理できます。</p>
-      <Link
-        href="/login"
-        className="mt-2 inline-flex items-center justify-center rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
-      >
-        アカウントを作る
-      </Link>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <Link
+          href="/login?mode=signup"
+          className="inline-flex items-center justify-center rounded bg-blue-600 px-3 py-2 text-sm font-bold text-white hover:bg-blue-700"
+        >
+          アカウントを作る
+        </Link>
+        <Link
+          href="/login"
+          className="inline-flex items-center justify-center rounded border border-blue-300 bg-white px-3 py-2 text-sm font-bold text-blue-700 hover:bg-blue-100"
+        >
+          ログイン
+        </Link>
+      </div>
     </div>
   )
 }

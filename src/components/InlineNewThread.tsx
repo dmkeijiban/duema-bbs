@@ -8,6 +8,9 @@ import Link from 'next/link'
 import { createClient, getCurrentUser } from '@/lib/supabase'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { capturePostHogEvent } from '@/lib/posthog-events'
+import { POST_SUBMIT_BUTTON_CLASS, POST_SUBMIT_BUTTON_STYLE } from '@/components/postSubmitButtonStyle'
+import { ThreadInteractiveFields } from '@/components/ThreadInteractiveFields'
+import { validateInteractiveThreadUploadSize } from '@/lib/thread-poll-form'
 
 type AuthState =
   | { status: 'loading' }
@@ -19,11 +22,13 @@ interface Props {
   categories: Category[]
   newThreadRules?: string
   isAdmin?: boolean
+  showFormHint?: boolean
+  interactiveThreadsEnabled?: boolean
 }
 
 const THREAD_BODY_MAX_LENGTH = 1000
 
-export function InlineNewThread({ categories }: Props) {
+export function InlineNewThread({ categories, showFormHint = true, interactiveThreadsEnabled = false }: Props) {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
@@ -58,6 +63,11 @@ export function InlineNewThread({ categories }: Props) {
     e.preventDefault()
     setError('')
     const formData = new FormData(e.currentTarget)
+    const uploadSizeError = validateInteractiveThreadUploadSize(formData)
+    if (uploadSizeError) {
+      setError(uploadSizeError)
+      return
+    }
     const imageFile = formData.get('image')
     capturePostHogEvent('thread_create_submit_start', {
       category_id: formData.get('category_id'),
@@ -138,6 +148,8 @@ export function InlineNewThread({ categories }: Props) {
               </td>
             </tr>
 
+            <ThreadInteractiveFields enabled={interactiveThreadsEnabled} />
+
             {authState.status === 'loading' && (
               <tr className="border-b border-gray-200">
                 <td className="py-2 px-3 whitespace-nowrap align-middle text-xs font-medium" style={{ background: '#f5f5f5', width: 72 }}>
@@ -194,13 +206,15 @@ export function InlineNewThread({ categories }: Props) {
                 本文
               </td>
               <td className="p-2 min-w-0">
-                <div className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs leading-relaxed text-amber-800">
-                  <p className="hidden whitespace-nowrap sm:block">今のデュエマの話でも、昔の思い出でも大歓迎です！質問・相談・予想など、気軽にスレッドを立ててください！</p>
-                  <div className="sm:hidden">
-                    <p>今のデュエマの話でも、昔の思い出でも大歓迎です！</p>
-                    <p>質問・相談・予想など、気軽にスレッドを立ててください！</p>
+                {showFormHint && (
+                  <div className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs leading-relaxed text-amber-800">
+                    <p className="hidden whitespace-nowrap sm:block">今のデュエマの話でも、昔の思い出でも大歓迎です！質問・相談・予想など、気軽にスレッドを立ててください！</p>
+                    <div className="sm:hidden">
+                      <p>今のデュエマの話でも、昔の思い出でも大歓迎です！</p>
+                      <p>質問・相談・予想など、気軽にスレッドを立ててください！</p>
+                    </div>
                   </div>
-                </div>
+                )}
                 <textarea
                   id="new-thread-body"
                   name="body"
@@ -240,13 +254,13 @@ export function InlineNewThread({ categories }: Props) {
             {error}
           </div>
         )}
-        <div className="px-3 py-2.5">
+        <div className="p-0">
           <button
             type="submit"
             disabled={isPending || authState.status === 'loading' || authState.status === 'profile_missing'}
             id="respost"
-            className="w-full py-2 text-sm text-white disabled:opacity-60"
-            style={{ background: '#0d6efd' }}
+            className={POST_SUBMIT_BUTTON_CLASS}
+            style={POST_SUBMIT_BUTTON_STYLE}
           >
             {isPending ? '投稿中...' : '投稿する'}
           </button>

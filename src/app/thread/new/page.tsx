@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { verifyAdminCookie } from '@/lib/admin-auth'
 import { createClient } from '@/lib/supabase-server'
+import { getThreadPollFeatureAvailable } from '@/lib/thread-poll'
 
 /** 管理者専用カテゴリ名（このカテゴリはスレ作成を管理者のみに制限） */
 export const metadata = {
@@ -15,7 +16,10 @@ export const metadata = {
 export const ADMIN_ONLY_CATEGORIES = ['管理者連絡']
 
 export default async function NewThreadPage() {
-  const allCategories = await getCachedCategories()
+  const [allCategories, interactiveThreadsEnabled] = await Promise.all([
+    getCachedCategories(),
+    getThreadPollFeatureAvailable(),
+  ])
   const cookieStore = await cookies()
   const isAdmin = verifyAdminCookie(cookieStore.get('admin_auth')?.value)
   const supabase = await createClient()
@@ -62,7 +66,7 @@ export default async function NewThreadPage() {
             </p>
           )}
         </div>
-        <NewThreadFormClient categories={categories} />
+        <NewThreadFormClient categories={categories} interactiveThreadsEnabled={interactiveThreadsEnabled} />
       </div>
     </div>
   )

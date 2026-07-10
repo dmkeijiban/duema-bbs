@@ -8,6 +8,7 @@ import ZukanPseudoCard from '@/components/ZukanPseudoCard'
 import ShareButtons from './ShareButtons'
 import { SITE_URL } from '@/lib/site-config'
 import { ZukanCardMemories, ZukanCardMemoriesSkeleton } from './ZukanCardMemories'
+import { getMultiFaceSupplement, getProxiedZukanCardImageUrl, type ZukanCardFace } from '@/lib/zukan-card-faces'
 
 const getCardBySlugCached = cache(fetchCardBySlug)
 
@@ -64,7 +65,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         ? 'ボルシャック・ドラゴン'
         : slug
   const imageUrl =
-    (result.status === 'found' ? result.card.official_image_url : MOCK_CARD.official_image_url) ??
+    (getMultiFaceSupplement(slug) ? `${SITE_URL}${getProxiedZukanCardImageUrl(getMultiFaceSupplement(slug)!.frontImageUrl)}` :
+      (result.status === 'found' ? result.card.official_image_url : MOCK_CARD.official_image_url)) ??
     `${SITE_URL}/default-thumbnail.jpg`
   const description = `${name}の評価や思い出レビューを募集中。デュエマ思い出図鑑で、当時の思い出や今の評価を残せます。`
   const url = `${SITE_URL}/zukan/card/${slug}`
@@ -86,6 +88,47 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       images: [imageUrl],
     },
   }
+}
+
+type DisplayFace = Pick<ZukanCardFace, 'name' | 'cardType' | 'civilization' | 'cost' | 'mana' | 'race' | 'power' | 'rarity' | 'illustrator' | 'abilityText' | 'flavorText' | 'imageUrl' | 'officialPageUrl'>
+
+function CardFacePanel({ face, label, showShare = false }: { face: DisplayFace; label?: string; showShare?: boolean }) {
+  return (
+    <section className="grid gap-4 md:grid-cols-[170px_minmax(0,1fr)]">
+      <div className="mx-auto w-full max-w-[200px] md:max-w-[170px]">
+        <ZukanImagePreview
+          src={getProxiedZukanCardImageUrl(face.imageUrl)}
+          alt={`${face.name} カード画像`}
+          imageClassName="w-full object-contain"
+          aspectRatio={face.imageUrl.endsWith('b.jpg') ? '650 / 465' : '63 / 88'}
+        />
+      </div>
+      <div className="min-w-0">
+        {label && <p className="mb-1 text-xs font-bold text-gray-500">{label}</p>}
+        <div className="flex flex-wrap items-center gap-2">
+          {face.civilization && <span className={`inline-block rounded px-1.5 text-xs font-bold ${CIV_BADGE[face.civilization] ?? 'bg-gray-100 text-gray-600'}`}>{face.civilization}</span>}
+          {face.rarity && <span className="font-mono text-xs text-gray-400">{face.rarity}</span>}
+        </div>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <h2 className="break-words text-xl font-bold text-gray-800">{face.name}</h2>
+          {showShare && <ShareButtons cardName={face.name} />}
+        </div>
+        <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-gray-600 sm:grid-cols-4">
+          <div><dt className="font-bold text-gray-500">種別</dt><dd>{face.cardType || '—'}</dd></div>
+          <div><dt className="font-bold text-gray-500">文明</dt><dd>{face.civilization || '—'}</dd></div>
+          <div><dt className="font-bold text-gray-500">コスト</dt><dd className="font-mono">{face.cost ?? '—'}</dd></div>
+          <div><dt className="font-bold text-gray-500">マナ</dt><dd className="font-mono">{face.mana ?? '—'}</dd></div>
+          <div><dt className="font-bold text-gray-500">種族</dt><dd>{face.race || '—'}</dd></div>
+          <div><dt className="font-bold text-gray-500">パワー</dt><dd className="font-mono">{face.power || '—'}</dd></div>
+          <div><dt className="font-bold text-gray-500">レアリティ</dt><dd>{face.rarity || '—'}</dd></div>
+          <div><dt className="font-bold text-gray-500">イラスト</dt><dd>{face.illustrator || '—'}</dd></div>
+        </dl>
+        {face.abilityText && <p className="mt-3 whitespace-pre-line break-words border-l-2 border-gray-200 pl-2 text-xs leading-relaxed text-gray-700">{face.abilityText.replace(/^\s*\|\s*/, '')}</p>}
+        {face.flavorText && <p className="mt-2 whitespace-pre-line break-words border-l-2 border-gray-100 pl-2 text-xs italic leading-relaxed text-gray-400">{face.flavorText.replace(/^\s*\|\s*/, '')}</p>}
+        <div className="mt-3"><a href={face.officialPageUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">公式カード詳細 →</a></div>
+      </div>
+    </section>
+  )
 }
 
 export default async function ZukanCardPage({
@@ -113,6 +156,14 @@ export default async function ZukanCardPage({
   const pack = card.zukan_packs
   const packHref = pack ? `/zukan/${pack.slug}` : '/zukan'
   const packLabel = pack ? `${pack.code} ${pack.name}` : '図鑑トップ'
+  const multiFace = getMultiFaceSupplement(slug)
+  const frontImageUrl = multiFace?.frontImageUrl ?? card.official_image_url
+  const frontFace: DisplayFace | null = frontImageUrl ? {
+    name: card.name, cardType: card.card_type ?? '', civilization: card.civilization ?? '', cost: card.cost,
+    mana: card.mana, race: card.race, power: card.power, rarity: card.rarity, illustrator: card.illustrator,
+    abilityText: card.ability_text, flavorText: card.flavor_text, imageUrl: frontImageUrl,
+    officialPageUrl: card.official_page_url ?? multiFace?.officialPageUrl ?? '',
+  } : null
 
   return (
     <div className="mx-auto max-w-screen-xl px-2 pt-2 pb-0">
@@ -132,15 +183,15 @@ export default async function ZukanCardPage({
         </p>
       )}
 
-      <header className="mb-5 grid gap-4 border border-gray-300 bg-white p-4 md:grid-cols-[170px_1fr]">
-        <div className="mx-auto w-full max-w-[200px] md:max-w-[170px]">
-          {card.official_image_url ? (
-            <ZukanImagePreview
-              src={card.official_image_url}
-              alt={`${card.name} カード画像`}
-              imageClassName="w-full"
-            />
-          ) : (
+      <header className="mb-5 border border-gray-300 bg-white p-4">
+        {frontFace ? (
+          <div className="space-y-6 divide-y divide-gray-200 [&>section+section]:pt-6">
+            <CardFacePanel face={frontFace} label={multiFace ? '表面' : undefined} showShare />
+            {multiFace && <CardFacePanel face={multiFace.back} label="裏面" />}
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-[170px_1fr]">
+            <div className="mx-auto w-full max-w-[200px] md:max-w-[170px]">
             <ZukanPseudoCard
               name={card.name}
               civilization={card.civilization}
@@ -149,9 +200,8 @@ export default async function ZukanCardPage({
               power={card.power}
               rarity={card.rarity}
             />
-          )}
-        </div>
-        <div>
+            </div>
+            <div>
           <div className="flex items-center gap-2">
             {card.civilization && (
               <span className={`inline-block rounded px-1.5 text-xs font-bold ${CIV_BADGE[card.civilization] ?? 'bg-gray-100 text-gray-600'}`}>
@@ -203,7 +253,9 @@ export default async function ZukanCardPage({
               </a>
             </div>
           )}
-        </div>
+            </div>
+          </div>
+        )}
       </header>
 
       {isDbReady && (

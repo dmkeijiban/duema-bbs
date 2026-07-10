@@ -27,14 +27,16 @@ export function AuthorRankingTabs({
   const [period, setPeriod] = useState<Period>(initialPeriod)
 
   return (
-    <section className="mb-4 mt-4">
+    <section className="mb-4">
       {/* 期間サブタブ（クライアントstateで切り替え・遷移なし） */}
+      {/* ranking/page.tsxのランキング種別タブ(スレッド/投稿者)と縦幅を
+          揃えるためpy-2.5にしている（種別タブ側と同じ値） */}
       <div className="mb-3 flex overflow-hidden border border-gray-300 bg-white">
         <button
           type="button"
           onClick={() => setPeriod('month')}
           aria-pressed={period === 'month'}
-          className={`flex-1 border-r border-gray-300 py-2 text-center text-sm font-bold transition-colors ${
+          className={`flex-1 border-r border-gray-300 py-2.5 text-center text-sm font-bold transition-colors ${
             period === 'month'
               ? 'bg-blue-600 text-white'
               : 'text-gray-600 hover:bg-gray-50'
@@ -46,7 +48,7 @@ export function AuthorRankingTabs({
           type="button"
           onClick={() => setPeriod('all')}
           aria-pressed={period === 'all'}
-          className={`flex-1 py-2 text-center text-sm font-bold transition-colors ${
+          className={`flex-1 py-2.5 text-center text-sm font-bold transition-colors ${
             period === 'all'
               ? 'bg-blue-600 text-white'
               : 'text-gray-600 hover:bg-gray-50'

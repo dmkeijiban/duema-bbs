@@ -11,6 +11,8 @@ import { ImageViewer } from './ImageViewer'
 import { getThreadViewerState } from '@/lib/thread-viewer-client'
 import { HonorBadge } from './HonorBadge'
 import type { HonorTitle } from '@/lib/honor-title'
+import { ThreadPoll } from '@/components/ThreadPoll'
+import type { ThreadPoll as ThreadPollData, ThreadPollKind } from '@/lib/thread-poll'
 
 interface Props {
   posts: Post[]
@@ -26,6 +28,9 @@ interface Props {
   totalPages: number
   recommendSlot?: React.ReactNode
   threadRules?: string
+  showAfterCommentThreadPrompt?: boolean
+  showCommentFormHint?: boolean
+  poll?: ThreadPollData | null
 }
 
 type DisplayPost = Post & { displayNumber: number }
@@ -102,6 +107,9 @@ export function ThreadContent({
   totalPages,
   recommendSlot,
   threadRules,
+  showAfterCommentThreadPrompt = true,
+  showCommentFormHint = true,
+  poll = null,
 }: Props) {
   const [bodyValue, setBodyValue] = useState('')
   const [sessionId, setSessionId] = useState('')
@@ -139,6 +147,20 @@ export function ThreadContent({
         }
       }, 400)
     }
+  }, [])
+
+  const handleWritePollReason = useCallback((label: string, kind: ThreadPollKind) => {
+    const prompt = kind === 'quiz'
+      ? `「${label}」と答えました。\n理由：`
+      : `「${label}」を選びました。\n理由：`
+    setBodyValue(current => current.trim() ? current : prompt)
+    const form = document.getElementById('reply-form-bottom')
+    form?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setTimeout(() => {
+      const textarea = document.getElementById('reply-textarea') as HTMLTextAreaElement | null
+      textarea?.focus()
+      if (textarea) textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+    }, 400)
   }, [])
 
   const displayPosts = useMemo<DisplayPost[]>(() => posts.map(post => ({
@@ -227,6 +249,9 @@ export function ThreadContent({
               <ImageViewer src={resolveImageUrl(starterImageUrl)!} alt={thread.title} priority />
             </div>
           )}
+          {poll && (
+            <ThreadPoll threadId={threadId} poll={poll} onWriteReason={handleWritePollReason} />
+          )}
         </div>
 
         {visiblePosts.map(post => (
@@ -242,7 +267,7 @@ export function ThreadContent({
               authorProfile={post.user_id ? authorProfiles[post.user_id] : undefined}
               honorTitle={post.user_id ? honorTitles[post.user_id] : undefined}
             />
-            {post.id === justPostedId && (
+            {post.id === justPostedId && showAfterCommentThreadPrompt && (
               <div
                 className="px-3 py-2.5 text-sm text-gray-700 leading-snug border-b border-gray-200"
                 style={{ background: '#eafaf1' }}
@@ -301,6 +326,7 @@ export function ThreadContent({
             rules={threadRules}
             isAdmin={isAdmin}
             adminRateLimitToken={adminRateLimitToken}
+            showFormHint={showCommentFormHint}
           />
         </div>
       )}
