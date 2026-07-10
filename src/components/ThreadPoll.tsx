@@ -49,7 +49,7 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
       : 'md:grid-cols-2'
 
   const handleVote = (optionId: number) => {
-    if (isPending) return
+    if (isPending || (poll.kind === 'quiz' && viewerState?.hasVoted)) return
 
     const previousState = viewerState
     const previouslySelectedId = previousState?.selectedOptionId ?? null
@@ -145,7 +145,7 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
           const voteButtonLabel = selected
             ? (poll.kind === 'quiz' ? '回答済み' : '選択中')
             : viewerState?.hasVoted
-              ? (poll.kind === 'quiz' ? 'この回答に変更' : 'こちらに変更')
+              ? (poll.kind === 'quiz' ? '回答不可' : 'こちらに変更')
               : poll.kind === 'quiz'
                 ? 'この回答を選ぶ'
                 : hasImages
@@ -183,7 +183,7 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
                   画像なし
                 </span>
               )}
-              <div className="relative flex min-h-10 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5 overflow-hidden px-3 py-1.5">
+              <div className="relative flex min-h-[4rem] flex-1 flex-wrap content-center items-center gap-x-2 gap-y-0.5 overflow-hidden px-3 py-1.5 md:min-h-10">
                 {viewerState?.hasVoted && (
                   <span
                     className="absolute inset-y-0 left-0 bg-blue-100/70"
@@ -200,12 +200,14 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
               </div>
               <button
                 type="button"
-                disabled={isPending || selected}
+                disabled={isPending || selected || (poll.kind === 'quiz' && viewerState?.hasVoted)}
                 onClick={() => handleVote(option.id)}
                 className={`relative mx-2 mb-2 min-h-9 border px-2 py-1.5 text-center text-xs font-bold transition-colors ${
                   selected
                     ? 'cursor-default border-blue-500 bg-blue-600 text-white'
-                    : 'border-blue-500 bg-white text-blue-700 hover:bg-blue-50 disabled:cursor-wait disabled:opacity-70'
+                    : poll.kind === 'quiz' && viewerState?.hasVoted
+                      ? 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-400'
+                      : 'border-blue-500 bg-white text-blue-700 hover:bg-blue-50 disabled:cursor-wait disabled:opacity-70'
                 }`}
               >
                 {voteButtonLabel}
