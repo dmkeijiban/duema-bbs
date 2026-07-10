@@ -40,6 +40,7 @@ export default function ZukanImagePreview({
           alt={alt}
           loading="lazy"
           decoding="async"
+          referrerPolicy="no-referrer"
           className={`h-full w-full object-cover ${imageClassName}`}
         />
       </button>
@@ -54,6 +55,7 @@ export default function ZukanImagePreview({
           src={src}
           alt={alt}
           decoding="async"
+          referrerPolicy="no-referrer"
           className="block max-h-[90vh] max-w-[90vw] rounded-md bg-white object-contain shadow-2xl"
         />
       </div>
