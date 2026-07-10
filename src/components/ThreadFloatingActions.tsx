@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { type SVGProps } from 'react'
 import {
   moveToCommentForm,
-  moveToNewThreadForm,
+  moveToHomeNewThreadForm,
   reloadCurrentPage,
   scrollToPageTop,
 } from './floatingActionHandlers'
@@ -64,7 +64,7 @@ export function ThreadFloatingActions({
 }: {
   postAction?: 'comment' | 'thread'
 }) {
-  const moveToPostForm = postAction === 'thread' ? moveToNewThreadForm : moveToCommentForm
+  const moveToPostForm = postAction === 'thread' ? moveToHomeNewThreadForm : moveToCommentForm
   const postActionLabel = postAction === 'thread' ? 'スレッドを立てる' : 'コメントを書く'
 
   return (
