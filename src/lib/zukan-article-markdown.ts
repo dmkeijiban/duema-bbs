@@ -55,9 +55,16 @@ const directiveHandlers: Record<string, DirectiveHandler> = {
   },
   CARDGRID: (arg, body) => {
     const slugs = compactLines(body).map(normalizeIdentifier)
-    return slugs.length > 0
-      ? { type: 'cardGrid', slugs, title: arg.trim() || undefined }
-      : { ok: false, error: '{{CARDGRID: ... }} にカードslugがありません。' }
+    if (slugs.length === 0) {
+      return { ok: false, error: '{{CARDGRID: ... }} にカードslugがありません。' }
+    }
+    if (slugs.length > 6) {
+      return { ok: false, error: '{{CARDGRID: ... }} に指定できるカードは最大6枚です。' }
+    }
+    if (new Set(slugs).size !== slugs.length) {
+      return { ok: false, error: '{{CARDGRID: ... }} に同じカードslugが重複しています。' }
+    }
+    return { type: 'cardGrid', slugs, title: arg.trim() || undefined }
   },
   NOTE: (arg, body) => {
     const text = [arg, ...body].join('\n').trim()
