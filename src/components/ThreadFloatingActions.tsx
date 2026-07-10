@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { type SVGProps } from 'react'
 import {
   moveToCommentForm,
+  moveToNewThreadForm,
   reloadCurrentPage,
   scrollToPageTop,
 } from './floatingActionHandlers'
@@ -58,7 +59,14 @@ function SettingsIcon(props: IconProps) {
 const BUTTON_CLASS =
   'flex h-10 w-10 shrink-0 items-center justify-center border border-gray-300 bg-white/50 text-gray-400 active:bg-gray-200/60'
 
-export function ThreadFloatingActions() {
+export function ThreadFloatingActions({
+  postAction = 'comment',
+}: {
+  postAction?: 'comment' | 'thread'
+}) {
+  const moveToPostForm = postAction === 'thread' ? moveToNewThreadForm : moveToCommentForm
+  const postActionLabel = postAction === 'thread' ? 'スレッドを立てる' : 'コメントを書く'
+
   return (
     <div
       className="md:hidden fixed flex items-center gap-1.5 opacity-100"
@@ -70,7 +78,7 @@ export function ThreadFloatingActions() {
       <button type="button" onClick={reloadCurrentPage} aria-label="更新" className={BUTTON_CLASS}>
         <RotateCwIcon />
       </button>
-      <button type="button" onClick={moveToCommentForm} aria-label="コメントを書く" className={BUTTON_CLASS}>
+      <button type="button" onClick={moveToPostForm} aria-label={postActionLabel} className={BUTTON_CLASS}>
         <SquarePenIcon />
       </button>
       <Link href="/mypage" aria-label="設定" className={BUTTON_CLASS}>
