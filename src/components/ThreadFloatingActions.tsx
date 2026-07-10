@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState, type SVGProps } from 'react'
+import { type SVGProps } from 'react'
 
 type IconProps = SVGProps<SVGSVGElement>
 
@@ -54,24 +54,6 @@ const BUTTON_CLASS =
   'flex h-10 w-10 shrink-0 items-center justify-center border border-gray-300 bg-white/50 text-gray-400 active:bg-gray-200/60'
 
 export function ThreadFloatingActions() {
-  const [nearReplyForm, setNearReplyForm] = useState(false)
-
-  useEffect(() => {
-    const target = document.getElementById('reply-submit-button')
-    if (!target) return
-
-    // 投稿するボタン自体が画面下部（フローティングバーの表示帯）に
-    // 近づいたタイミングでのみ隠す。フォーム全体ではなくボタンを監視することで、
-    // フォームより前のコンテンツ（おすすめ枠など）がまだ画面に残っている
-    // 段階で早期に消えてしまわないようにする。
-    const observer = new IntersectionObserver(
-      ([entry]) => setNearReplyForm(entry.isIntersecting),
-      { rootMargin: '0px 0px 130px 0px' }
-    )
-    observer.observe(target)
-    return () => observer.disconnect()
-  }, [])
-
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -86,9 +68,7 @@ export function ThreadFloatingActions() {
 
   return (
     <div
-      className={`md:hidden fixed flex items-center gap-1.5 transition-opacity ${
-        nearReplyForm ? 'pointer-events-none opacity-0' : 'opacity-100'
-      }`}
+      className="md:hidden fixed flex items-center gap-1.5 opacity-100"
       style={{ bottom: 'calc(72px + env(safe-area-inset-bottom))', right: 12, zIndex: 40 }}
     >
       <button type="button" onClick={scrollToTop} aria-label="一番上へ戻る" className={BUTTON_CLASS}>
