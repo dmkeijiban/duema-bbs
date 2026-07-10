@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { getThreadPollViewerState, voteThreadPoll } from '@/app/actions/thread-poll'
 import { capturePostHogEvent } from '@/lib/posthog-events'
 import { resolveImageUrl } from '@/lib/utils'
@@ -16,11 +16,12 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
   const [viewerState, setViewerState] = useState<ThreadPollViewerState | null>(null)
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
+  const voteInFlightRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
     getThreadPollViewerState(threadId).then(result => {
-      if (cancelled) return
+      if (cancelled || voteInFlightRef.current) return
       if (result.state) setViewerState(result.state)
     })
     return () => {
@@ -39,23 +40,62 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
 
   const handleVote = (optionId: number) => {
     if (isPending) return
+
+    const previousState = viewerState
+    const chosen = poll.options.find(option => option.id === optionId)
+    const previouslySelectedId = previousState?.selectedOptionId ?? null
+    const hadVoted = previousState?.hasVoted === true
+
     setError('')
-    startTransition(async () => {
-      const result = await voteThreadPoll(threadId, optionId)
-      if (result.error) {
-        setError(result.error)
-        return
+    voteInFlightRef.current = true
+
+    // 保存完了を待たず、選択結果とコメント導線を先に反映する
+    setViewerState(current => {
+      const currentHadVoted = current?.hasVoted === true
+      const currentSelectedId = current?.selectedOptionId ?? null
+      const options = (current?.options ?? poll.options.map(option => ({
+        ...option,
+        voteCount: 0,
+        isCorrect: false,
+      }))).map(option => {
+        let voteCount = option.voteCount
+        if (currentHadVoted && currentSelectedId !== optionId && option.id === currentSelectedId) {
+          voteCount = Math.max(0, voteCount - 1)
+        }
+        if ((!currentHadVoted || currentSelectedId !== optionId) && option.id === optionId) {
+          voteCount += 1
+        }
+        return { ...option, voteCount }
+      })
+
+      return {
+        hasVoted: true,
+        selectedOptionId: optionId,
+        totalVotes: (current?.totalVotes ?? 0) + (currentHadVoted ? 0 : 1),
+        options,
       }
-      if (result.state) {
-        setViewerState(result.state)
-        const chosen = poll.options.find(option => option.id === optionId)
-        if (chosen) onWriteReason(chosen.label, poll.kind)
-        capturePostHogEvent('thread_poll_vote', {
-          thread_id: threadId,
-          poll_kind: poll.kind,
-          option_id: optionId,
-          changed: viewerState?.hasVoted === true,
-        })
+    })
+    if (chosen) onWriteReason(chosen.label, poll.kind)
+
+    startTransition(async () => {
+      try {
+        const result = await voteThreadPoll(threadId, optionId)
+        if (result.error) {
+          setViewerState(previousState)
+          setError(result.error)
+          return
+        }
+        if (result.state) {
+          setViewerState(result.state)
+          capturePostHogEvent('thread_poll_vote', {
+            thread_id: threadId,
+            poll_kind: poll.kind,
+            option_id: optionId,
+            changed: hadVoted && previouslySelectedId !== optionId,
+          })
+        }
+      } finally {
+        voteInFlightRef.current = false
       }
     })
   }
@@ -141,9 +181,6 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
 
       {isPending && <p className="mt-2 text-xs text-gray-500">送信中…</p>}
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
-      {viewerState?.hasVoted && (
-        <p className="mt-2 text-center text-xs text-gray-500">別の選択肢を押すと投票を変更できます</p>
-      )}
     </div>
   )
 }
