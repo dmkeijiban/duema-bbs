@@ -63,7 +63,7 @@ function parseInteractiveThreadDraft(formData: FormData):
     normalizedLabels.add(normalizedLabel)
 
     const value = formData.get(`poll_option_image_${index}`)
-    const imageFile = rawKind === 'poll' && value instanceof File && value.size > 0 ? value : null
+    const imageFile = value instanceof File && value.size > 0 ? value : null
     if (imageFile) {
       const validationError = validateImageFile(imageFile)
       if (validationError) return { error: `選択肢${index + 1}：${validationError}` }
@@ -407,7 +407,6 @@ export async function createThread(formData: FormData) {
 
   const supabase = await createClient()
 
-  // 管理者専用カテゴリの保護（フロントを迂回したリクエストをブロック）
   if (categoryId) {
     const { data: cat } = await supabase
       .from('categories')
@@ -530,7 +529,6 @@ export async function createThread(formData: FormData) {
     error = insertResult.error
   }
 
-  // image_width/height カラムが未作成の場合はなしで再試行
   if (!interactiveDraft && error && (error.code === '42703' || error.message?.includes('image_width'))) {
     const { data: t2, error: e2 } = await supabase
       .from('threads')
@@ -550,7 +548,6 @@ export async function createThread(formData: FormData) {
     error = e2
   }
 
-  // session_id カラムが未作成の場合はなしで再試行
   if (!interactiveDraft && error && (error.code === '42703' || error.message?.includes('session_id'))) {
     const { data: t3, error: e3 } = await supabase
       .from('threads')
@@ -569,9 +566,6 @@ export async function createThread(formData: FormData) {
     error = e3
   }
 
-  // Retry without user_id only when the column truly does not exist (42703).
-  // Previously this also matched any error whose message contained "user_id",
-  // which could silently re-insert without user_id and produce user_id=null.
   if (!interactiveDraft && error && error.code === '42703') {
     const { data: t4, error: e4 } = await supabase
       .from('threads')
@@ -598,7 +592,6 @@ export async function createThread(formData: FormData) {
     return { error: 'スレッドの作成に失敗しました' }
   }
 
-  // Discord 通知（失敗してもスレッド作成はブロックしない）
   if (categoryId) {
     const { data: cat } = await supabase
       .from('categories')
@@ -752,7 +745,6 @@ export async function createPost(formData: FormData) {
   insertedPost = postData as Record<string, unknown> | null
   let error = initialInsertError
 
-  // ip_hash カラムが未作成の場合はなしで再試行
   if (error && isMissingColumn(error, 'ip_hash')) {
     const { data: retryPost, error: eIp } = await supabase.from('posts').insert({
       thread_id: threadId,
@@ -770,7 +762,6 @@ export async function createPost(formData: FormData) {
     error = eIp
   }
 
-  // image_width/height カラムが未作成の場合はなしで再試行
   if (error && (error.code === '42703' || error.message?.includes('image_width'))) {
     const { data: retryPost, error: e2 } = await supabase.from('posts').insert({
       thread_id: threadId,
@@ -801,7 +792,6 @@ export async function createPost(formData: FormData) {
     error = e2b
   }
 
-  // session_id カラムが未作成の場合はなしで再試行
   if (error && (error.code === '42703' || error.message?.includes('session_id'))) {
     const { data: retryPost, error: e3 } = await supabase.from('posts').insert({
       thread_id: threadId,
@@ -816,9 +806,6 @@ export async function createPost(formData: FormData) {
     error = e3
   }
 
-  // Retry without user_id only when the column truly does not exist (42703).
-  // Previously this also matched any error whose message contained "user_id",
-  // which could silently re-insert without user_id and produce user_id=null.
   if (error && error.code === '42703') {
     const { data: retryPost, error: e4 } = await supabase.from('posts').insert({
       thread_id: threadId,
