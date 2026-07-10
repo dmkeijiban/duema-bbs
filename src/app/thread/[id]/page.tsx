@@ -173,9 +173,7 @@ export async function renderThreadPage(threadId: number, page: number) {
   const posts = postsResult.data
   const typedThread = thread as unknown as Thread & { categories: Category | null }
   const displayCategory = getDisplayCategory(typedThread.categories)
-  const starterImageUrl = typedThread.image_url
-    ? await getCachedThreadStarterImageUrl(threadId, typedThread.image_url)
-    : threadPoll?.options[0]?.imageUrl ?? null
+  const starterImageUrl = await getCachedThreadStarterImageUrl(threadId, typedThread.image_url)
   const threadParticipantUserIds = [
     typedThread.user_id ?? '',
     ...(posts ?? []).map(post => (post as Post).user_id ?? ''),

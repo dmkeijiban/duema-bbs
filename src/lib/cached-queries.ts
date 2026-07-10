@@ -1036,7 +1036,7 @@ export function getCachedThreadList(
 ): Promise<CachedThreadListResult> {
   const pageSize = sort === 'popular' ? POPULAR_PAGE_SIZE : (pageSizeOverride ?? THREAD_PAGE_SIZE)
   const categoryKey = Array.isArray(categoryId) ? categoryId.slice().sort((a, b) => a - b).join('-') : String(categoryId)
-  const cacheKey = `tl-${sort}-ps${pageSize}-p${page}-c${categoryKey}-a${String(isArchived)}`
+  const cacheKey = `tl-v2-${sort}-ps${pageSize}-p${page}-c${categoryKey}-a${String(isArchived)}`
 
   return unstable_cache(
     async () => {
