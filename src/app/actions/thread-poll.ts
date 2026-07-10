@@ -142,7 +142,7 @@ export async function voteThreadPoll(threadId: number, optionId: number) {
     const [userId, ipHash] = await Promise.all([getPollUserId(), getPollIpHash()])
     const admin = createAdminClient()
 
-    const [postingBanned, ipBanned, existingVote, optionResult, threadResult] = await Promise.all([
+    const [postingBanned, ipBanned, existingVote, optionResult, threadResult, pollResult] = await Promise.all([
       checkPostingBan({ sessionId, userId }),
       checkModerationBan(admin, 'ip_hash', ipHash),
       findVote(threadId, sessionId, userId),
@@ -157,6 +157,11 @@ export async function voteThreadPoll(threadId: number, optionId: number) {
         .select('is_archived, archived_at')
         .eq('id', threadId)
         .maybeSingle(),
+      admin
+        .from('thread_polls')
+        .select('kind')
+        .eq('thread_id', threadId)
+        .maybeSingle(),
     ])
 
     if (postingBanned || ipBanned) return { error: 'この環境からの投票は制限されています' }
@@ -166,6 +171,10 @@ export async function voteThreadPoll(threadId: number, optionId: number) {
     }
 
     if (existingVote) {
+      if (pollResult.data?.kind === 'quiz' && existingVote.option_id !== optionId) {
+        return { error: 'クイズの回答は変更できません' }
+      }
+
       if (existingVote.option_id === optionId) {
         return { state: await buildViewerState(threadId, sessionId, userId) }
       }
