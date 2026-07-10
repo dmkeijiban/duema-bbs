@@ -63,7 +63,7 @@ function parseInteractiveThreadDraft(formData: FormData):
     normalizedLabels.add(normalizedLabel)
 
     const value = formData.get(`poll_option_image_${index}`)
-    const imageFile = rawKind === 'poll' && value instanceof File && value.size > 0 ? value : null
+    const imageFile = value instanceof File && value.size > 0 ? value : null
     if (imageFile) {
       const validationError = validateImageFile(imageFile)
       if (validationError) return { error: `選択肢${index + 1}：${validationError}` }
