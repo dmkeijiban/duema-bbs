@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { type SVGProps } from 'react'
+import { useEffect, useState, type SVGProps } from 'react'
 import {
   moveToCommentForm,
   moveToHomeNewThreadForm,
@@ -66,10 +66,28 @@ export function ThreadFloatingActions({
 }) {
   const moveToPostForm = postAction === 'thread' ? moveToHomeNewThreadForm : moveToCommentForm
   const postActionLabel = postAction === 'thread' ? 'スレッドを立てる' : 'コメントを書く'
+  const [footerVisible, setFooterVisible] = useState(false)
+
+  useEffect(() => {
+    if (window.matchMedia('(min-width: 768px)').matches) return
+
+    const footer = document.querySelector('footer')
+    if (!footer) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setFooterVisible(entry.isIntersecting),
+      { threshold: 0 }
+    )
+    observer.observe(footer)
+
+    return () => observer.disconnect()
+  }, [])
 
   return (
     <div
-      className="md:hidden fixed flex items-center gap-1.5 opacity-100"
+      className={`fixed flex items-center gap-1.5 transition-opacity md:hidden ${
+        footerVisible ? 'pointer-events-none opacity-0' : 'opacity-100'
+      }`}
       style={{ bottom: 'calc(72px + env(safe-area-inset-bottom))', right: 12, zIndex: 40 }}
     >
       <button type="button" onClick={scrollToPageTop} aria-label="一番上へ戻る" className={BUTTON_CLASS}>
