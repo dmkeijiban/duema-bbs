@@ -5,7 +5,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-const ONE_TIME_TOKEN = '3c9604f330c980ba5d9baef01ae2e1170beb652fe2767906'
+const ONE_TIME_TOKEN = '2874da02afaa9a5ce542d1b1be14337255c1990f7c62e37e'
 const MIGRATION_SOURCE_URL =
   'https://raw.githubusercontent.com/dmkeijiban/duema-bbs/ba14fc501a9c0bd48b35b911734b997397ccb1ef/supabase/migrations/20260710_thread_polls_and_quizzes.sql'
 
@@ -17,15 +17,38 @@ function getDatabaseUrlCandidates(databaseUrl: string) {
   const candidates = [databaseUrl]
   try {
     const parsed = new URL(databaseUrl)
-    const projectRef = parsed.hostname.match(/^db\.([^.]+)\.supabase\.co$/)?.[1]
-    if (!projectRef) return candidates
+    const databaseProjectRef = parsed.hostname.match(/^db\.([^.]+)\.supabase\.co$/)?.[1]
+    const apiProjectRef = (() => {
+      try {
+        return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').hostname.split('.')[0] || null
+      } catch {
+        return null
+      }
+    })()
+    const projectRefs = Array.from(new Set([databaseProjectRef, apiProjectRef].filter(Boolean))) as string[]
+    if (projectRefs.length === 0) return candidates
 
-    for (const region of ['ap-northeast-1', 'ap-southeast-1', 'us-east-1']) {
-      const pooler = new URL(databaseUrl)
-      pooler.hostname = `aws-0-${region}.pooler.supabase.com`
-      pooler.port = '5432'
-      pooler.username = `postgres.${projectRef}`
-      candidates.push(pooler.toString())
+    const regions = [
+      'ap-northeast-1',
+      'ap-southeast-1',
+      'ap-southeast-2',
+      'ap-northeast-2',
+      'us-east-1',
+      'us-west-1',
+      'eu-west-1',
+      'eu-central-1',
+    ]
+
+    for (const projectRef of projectRefs) {
+      for (const prefix of ['aws-0', 'aws-1', 'aws']) {
+        for (const region of regions) {
+          const pooler = new URL(databaseUrl)
+          pooler.hostname = `${prefix}-${region}.pooler.supabase.com`
+          pooler.port = '5432'
+          pooler.username = `postgres.${projectRef}`
+          candidates.push(pooler.toString())
+        }
+      }
     }
   } catch {
     return candidates
@@ -42,7 +65,7 @@ async function connectDatabase(databaseUrl: string): Promise<{ pool: Pool; clien
       connectionString: candidate,
       ssl: isLocal ? false : { rejectUnauthorized: false },
       max: 1,
-      connectionTimeoutMillis: 5000,
+      connectionTimeoutMillis: 2500,
     })
     try {
       const client = await pool.connect()
