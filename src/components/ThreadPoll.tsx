@@ -183,7 +183,7 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
                   画像なし
                 </span>
               )}
-              <div className="relative flex min-h-[3.5rem] flex-1 flex-col items-start gap-0.5 overflow-hidden px-3 py-1.5 md:min-h-10 md:flex-row md:items-center md:justify-between md:gap-2">
+              <div className="relative flex min-h-10 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5 overflow-hidden px-3 py-1.5">
                 {viewerState?.hasVoted && (
                   <span
                     className="absolute inset-y-0 left-0 bg-blue-100/70"
@@ -193,7 +193,7 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
                 )}
                 <span className="relative break-words font-medium text-gray-800">{option.label}</span>
                 {viewerState?.hasVoted && (
-                  <span className="relative block shrink-0 text-xs font-bold text-gray-600 md:inline">
+                  <span className="relative shrink-0 text-xs font-bold text-gray-600">
                     {percentage}%<span className="ml-1 font-normal text-gray-400">({resultOption?.voteCount ?? 0})</span>
                   </span>
                 )}
