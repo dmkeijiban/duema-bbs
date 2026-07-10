@@ -53,6 +53,20 @@ function referencedCardIdentifiers(blocks: ZukanArticleBlock[]): string[] {
   return Array.from(new Set(identifiers))
 }
 
+function validateCardGridBlocks(blocks: ZukanArticleBlock[]): string | null {
+  for (const block of blocks) {
+    if (block.type !== 'cardGrid') continue
+    const identifiers = [...(block.ids ?? []), ...(block.slugs ?? [])]
+    if (identifiers.length > 6) {
+      return 'カード一覧に指定できるカードは最大6枚です。'
+    }
+    if (new Set(identifiers).size !== identifiers.length) {
+      return 'カード一覧に同じカードslugが重複しています。'
+    }
+  }
+  return null
+}
+
 async function requireAdmin() {
   const cookieStore = await cookies()
   if (!verifyAdminCookie(cookieStore.get('admin_auth')?.value)) redirect('/admin')
@@ -167,6 +181,9 @@ export async function saveZukanArticle(_prevState: SaveZukanArticleState, formDa
     parsed = { blocks: [] }
   }
   if (parsed.blocks.length === 0) return formError(formData, 'missing_blocks')
+
+  const cardGridError = validateCardGridBlocks(parsed.blocks)
+  if (cardGridError) return formError(formData, cardGridError)
 
   const cardIdentifiers = referencedCardIdentifiers(parsed.blocks)
   if (cardIdentifiers.length > 0) {
