@@ -21,10 +21,19 @@ const PostHogEventBridgeInner = dynamic(
   { ssr: false }
 )
 
+const DesktopFloatingActionsInner = dynamic(
+  () => import('./DesktopFloatingActions').then(m => m.DesktopFloatingActions),
+  { ssr: false }
+)
+
 export function LazyFloatingBar({ snsUrls }: { snsUrls: SnsUrls }) {
   return <SnsFloatingBarInner snsUrls={snsUrls} />
 }
 
 export function LazyPostHogBridge() {
   return <PostHogEventBridgeInner />
+}
+
+export function LazyDesktopFloatingActions() {
+  return <DesktopFloatingActionsInner />
 }
