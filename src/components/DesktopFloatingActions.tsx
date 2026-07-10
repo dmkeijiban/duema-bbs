@@ -58,7 +58,7 @@ function SettingsIcon(props: IconProps) {
 }
 
 const BUTTON_CLASS =
-  'flex h-12 w-[88px] items-center justify-center gap-1.5 border border-gray-300 bg-white/90 px-2 text-xs text-gray-600 shadow-sm hover:bg-gray-100 active:bg-gray-200'
+  'flex h-10 w-10 items-center justify-center border border-gray-300 bg-white/70 text-gray-500 shadow-sm backdrop-blur-sm hover:bg-white/90 hover:text-gray-700 active:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500'
 
 function isTargetPage(pathname: string) {
   if (pathname === '/') return true
@@ -88,23 +88,19 @@ export function DesktopFloatingActions() {
   return (
     <nav
       aria-label="ページ操作"
-      className="fixed right-3 top-1/2 z-40 hidden -translate-y-1/2 flex-col gap-1.5 md:flex"
+      className="fixed bottom-3 right-3 z-40 hidden flex-col gap-1.5 md:flex"
     >
-      <button type="button" onClick={scrollToPageTop} className={BUTTON_CLASS}>
+      <button type="button" onClick={scrollToPageTop} aria-label="上に行く" title="上に行く" className={BUTTON_CLASS}>
         <TriangleIcon aria-hidden="true" />
-        <span>上に行く</span>
       </button>
-      <button type="button" onClick={reloadCurrentPage} className={BUTTON_CLASS}>
+      <button type="button" onClick={reloadCurrentPage} aria-label="更新" title="更新" className={BUTTON_CLASS}>
         <RotateCwIcon aria-hidden="true" />
-        <span>更新</span>
       </button>
-      <button type="button" onClick={moveToPostForm} className={BUTTON_CLASS}>
+      <button type="button" onClick={moveToPostForm} aria-label={postLabel} title={postLabel} className={BUTTON_CLASS}>
         <SquarePenIcon aria-hidden="true" />
-        <span>{postLabel}</span>
       </button>
-      <Link href="/mypage" className={BUTTON_CLASS}>
+      <Link href="/mypage" aria-label="設定" title="設定" className={BUTTON_CLASS}>
         <SettingsIcon aria-hidden="true" />
-        <span>設定</span>
       </Link>
     </nav>
   )
