@@ -4,8 +4,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { type SVGProps } from 'react'
 import {
-  moveToCommentForm,
-  moveToNewThreadForm,
+  moveToDesktopCommentForm,
+  moveToDesktopNewThreadForm,
   reloadCurrentPage,
   scrollToPageTop,
 } from './floatingActionHandlers'
@@ -82,7 +82,7 @@ export function DesktopFloatingActions() {
   if (!isTargetPage(pathname)) return null
 
   const isThreadPage = pathname.startsWith('/thread/') && pathname !== '/thread/new'
-  const moveToPostForm = isThreadPage ? moveToCommentForm : moveToNewThreadForm
+  const moveToPostForm = isThreadPage ? moveToDesktopCommentForm : moveToDesktopNewThreadForm
   const postLabel = isThreadPage ? 'コメント書く' : 'スレッド立てる'
 
   return (
