@@ -3,8 +3,10 @@ import { Suspense } from 'react'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
 import { ZukanTabs, type ZukanTab } from '@/components/ZukanTabs'
 import { HallOfFameBody } from '@/components/HallOfFameBody'
+import { ZukanPackListCard } from '@/components/ZukanPackListCard'
 import { fetchPublishedPacks, fetchCardsBySlugs, fetchCardReviewHighlights } from '@/lib/zukan'
 import type { ZukanPack, ZukanCard, ZukanCardReviewHighlight } from '@/lib/zukan'
+import { ZUKAN_ERAS } from '@/lib/zukan-eras'
 import { SITE_URL } from '@/lib/site-config'
 
 const ZUKAN_TOP_TITLE = 'デュエマ思い出図鑑 | デュエマ掲示板'
@@ -63,35 +65,6 @@ const CIV_TEXT: Record<string, string> = {
   闇: 'text-gray-400',
 }
 
-const LINKED_PACK_SLUGS = new Set(['dm-01', 'dm-02', 'dmr-01', 'dmrp-01', 'dm22-rp1'])
-
-const ERA_LINKS: Array<{
-  era: string
-  years: string
-  slug: string
-}> = [
-  {
-    era: '勝舞編',
-    years: '2002〜2011',
-    slug: 'dm-01',
-  },
-  {
-    era: '勝太編',
-    years: '2011〜2017',
-    slug: 'dmr-01',
-  },
-  {
-    era: 'ジョー編',
-    years: '2017〜2022',
-    slug: 'dmrp-01',
-  },
-  {
-    era: 'ウィン編',
-    years: '2022〜',
-    slug: 'dm22-rp1',
-  },
-]
-
 function CardThumb({
   name,
   civilization,
@@ -140,57 +113,6 @@ function formatDate(value: string) {
   }).format(new Date(value))
 }
 
-function PackListCard({ pack }: { pack: ZukanPack }) {
-  const href = LINKED_PACK_SLUGS.has(pack.slug) ? `/zukan/${pack.slug}` : '#'
-  const isLinked = LINKED_PACK_SLUGS.has(pack.slug)
-
-  const body = (
-    <div className="flex h-full overflow-hidden border border-gray-300 bg-white transition-all duration-100">
-      <div className="w-20 shrink-0 bg-orange-50 sm:w-24">
-        {pack.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={pack.image_url}
-            alt={`${pack.code} ${pack.name} パック画像`}
-            width={96}
-            height={96}
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-contain p-1.5"
-          />
-        ) : (
-          <div className="flex h-full min-h-[72px] items-center justify-center text-[10px] font-bold text-orange-300">
-            準備中
-          </div>
-        )}
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col px-3 py-2">
-        <div className="font-mono text-xs font-bold text-blue-700">{pack.code}</div>
-        <div className="mt-0.5 text-sm font-bold leading-snug text-gray-800">{pack.name}</div>
-        <dl className="mt-1.5 flex flex-wrap gap-x-4 text-xs text-gray-600">
-          {pack.released_year && (
-            <div><dt className="inline font-bold">発売：</dt><dd className="inline">{pack.released_year}</dd></div>
-          )}
-          {pack.card_count && (
-            <div><dt className="inline font-bold">収録：</dt><dd className="inline">全{pack.card_count}種</dd></div>
-          )}
-        </dl>
-      </div>
-    </div>
-  )
-
-  return isLinked ? (
-    <Link
-      href={href}
-      className="block h-full cursor-pointer hover:border-blue-400 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]"
-    >
-      {body}
-    </Link>
-  ) : (
-    <div className="h-full opacity-70">{body}</div>
-  )
-}
-
 function EraCard({
   era,
   years,
@@ -202,7 +124,7 @@ function EraCard({
 }) {
   return (
     <Link
-      href={`/zukan/${slug}`}
+      href={`/zukan/era/${slug}`}
       className="block h-full border border-gray-300 bg-white px-2 py-2.5 transition-all duration-100 hover:border-blue-400 hover:bg-blue-50/40 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 sm:px-4 sm:py-4 [-webkit-tap-highlight-color:transparent]"
     >
       <div className="text-center sm:text-left">
@@ -362,10 +284,10 @@ async function MemoriesView() {
           <h2 className="text-sm font-bold text-gray-800">時代から探す</h2>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-          {ERA_LINKS.map(item => (
+          {ZUKAN_ERAS.map(item => (
             <EraCard
               key={item.slug}
-              era={item.era}
+              era={item.name}
               years={item.years}
               slug={item.slug}
             />
@@ -380,7 +302,7 @@ async function MemoriesView() {
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           {packs.map(pack => (
-            <PackListCard key={pack.slug} pack={pack} />
+            <ZukanPackListCard key={pack.slug} pack={pack} />
           ))}
         </div>
       </section>
