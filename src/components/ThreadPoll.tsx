@@ -32,9 +32,14 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
   const resultOptions = viewerState?.options
   const selectedOption = poll.options.find(option => option.id === viewerState?.selectedOptionId)
   const correctOption = resultOptions?.find(option => option.isCorrect)
+  const desktopGridClass = poll.options.length === 4
+    ? 'md:grid-cols-4'
+    : poll.options.length === 3
+      ? 'md:grid-cols-3'
+      : 'md:grid-cols-2'
 
   const handleVote = (optionId: number) => {
-    if (isPending || viewerState?.hasVoted) return
+    if (isPending) return
     setError('')
     startTransition(async () => {
       const result = await voteThreadPoll(threadId, optionId)
@@ -44,10 +49,13 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
       }
       if (result.state) {
         setViewerState(result.state)
+        const chosen = poll.options.find(option => option.id === optionId)
+        if (chosen) onWriteReason(chosen.label, poll.kind)
         capturePostHogEvent('thread_poll_vote', {
           thread_id: threadId,
           poll_kind: poll.kind,
           option_id: optionId,
+          changed: viewerState?.hasVoted === true,
         })
       }
     })
@@ -59,9 +67,7 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
         <span className="inline-block bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
           {poll.kind === 'quiz' ? 'クイズ' : '投票'}
         </span>
-        {viewerState?.hasVoted && (
-          <span className="text-xs text-gray-500">{viewerState.totalVotes}票</span>
-        )}
+        <span className="text-xs text-gray-500">{viewerState?.totalVotes ?? 0}票</span>
       </div>
 
       {poll.kind === 'quiz' && viewerState?.hasVoted && correctOption && (
@@ -78,7 +84,7 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
         </div>
       )}
 
-      <div className={hasImages ? 'grid grid-cols-2 gap-2' : 'space-y-2'}>
+      <div className={hasImages ? `grid grid-cols-2 gap-2 ${desktopGridClass}` : 'space-y-2'}>
         {poll.options.map(option => {
           const resultOption = resultOptions?.find(item => item.id === option.id)
           const percentage = viewerState?.totalVotes
@@ -91,7 +97,7 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
             <button
               key={option.id}
               type="button"
-              disabled={isPending || viewerState?.hasVoted}
+              disabled={isPending}
               onClick={() => handleVote(option.id)}
               className={`relative min-h-11 overflow-hidden border bg-white text-left text-sm transition-colors ${
                 selected
@@ -99,7 +105,7 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
                   : correct && viewerState?.hasVoted
                     ? 'border-green-500'
                     : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
-              } disabled:cursor-default`}
+              } disabled:cursor-wait disabled:opacity-80`}
             >
               {option.imageUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -136,6 +142,9 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
 
       {isPending && <p className="mt-2 text-xs text-gray-500">送信中…</p>}
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {viewerState?.hasVoted && (
+        <p className="mt-2 text-center text-xs text-gray-500">別の選択肢を押すと投票を変更できます</p>
+      )}
 
       {viewerState?.hasVoted && selectedOption && (
         <button
