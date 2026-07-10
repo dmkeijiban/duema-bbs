@@ -8,6 +8,7 @@ import { getPostableConsolidatedCategories } from '@/lib/categories'
 import type { Category } from '@/types'
 import { createClient, getCurrentUser } from '@/lib/supabase'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
+import { POST_SUBMIT_BUTTON_CLASS, POST_SUBMIT_BUTTON_STYLE } from '@/components/postSubmitButtonStyle'
 
 type AuthState =
   | { status: 'loading' }
@@ -203,8 +204,8 @@ export function NewThreadFormClient({ categories }: Props) {
         <button
           type="submit"
           disabled={isPending}
-          className="w-full py-2 text-sm text-white disabled:opacity-60 disabled:cursor-not-allowed"
-          style={{ background: '#0d6efd' }}
+          className={POST_SUBMIT_BUTTON_CLASS}
+          style={POST_SUBMIT_BUTTON_STYLE}
         >
           {isPending ? 'スレッドを作成中...' : 'スレッドを立てる'}
         </button>

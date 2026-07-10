@@ -10,6 +10,7 @@ import { createClient, getCurrentUser } from '@/lib/supabase'
 import { ProfileAvatar } from './ProfileAvatar'
 import { getDisplayCategory } from '@/lib/categories'
 import { COMMENT_BODY_MAX_LENGTH } from '@/lib/spam'
+import { POST_SUBMIT_BUTTON_CLASS, POST_SUBMIT_BUTTON_STYLE } from '@/components/postSubmitButtonStyle'
 
 type AuthState =
   | { status: 'loading' }
@@ -383,8 +384,8 @@ export function NewPostForm({
           <button
             type="submit"
             disabled={isSubmitting || authState.status === 'loading' || authState.status === 'profile_missing'}
-            className="w-full py-2 text-sm text-white disabled:opacity-60"
-            style={{ background: '#0d6efd' }}
+            className={POST_SUBMIT_BUTTON_CLASS}
+            style={POST_SUBMIT_BUTTON_STYLE}
           >
             {isSubmitting ? '送信中...' : '投稿する'}
           </button>
