@@ -49,16 +49,6 @@ export function ThreadInteractiveFields({ enabled }: { enabled: boolean }) {
       {kind !== 'normal' && (
         <>
           <input type="hidden" name="poll_option_count" value={optionCount} />
-          {kind === 'quiz' && (
-            <tr className="border-b border-gray-200">
-              <td className="py-2 px-2 align-top text-xs font-medium text-gray-700 sm:px-3" style={{ background: '#f5f5f5', paddingTop: 10 }}>
-                問題画像
-              </td>
-              <td className="py-2 px-2 text-xs leading-relaxed text-gray-600 sm:px-3">
-                下の「画像」に添付した画像が、そのままクイズの問題画像になります。
-              </td>
-            </tr>
-          )}
 
           {Array.from({ length: optionCount }, (_, index) => (
             <Fragment key={index}>
@@ -89,17 +79,15 @@ export function ThreadInteractiveFields({ enabled }: { enabled: boolean }) {
                       className="w-full min-w-0 border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 focus:border-blue-400 focus:outline-none"
                     />
                   </div>
-                  {kind === 'poll' && (
-                    <div>
-                      <span className="mb-1 block text-[11px] text-gray-500">選択肢の画像（任意）</span>
-                      <input
-                        type="file"
-                        name={`poll_option_image_${index}`}
-                        accept="image/jpeg,image/png,image/gif,image/webp"
-                        className="block w-full max-w-full min-w-0 text-xs cursor-pointer file:mr-2 file:px-2 file:py-1 file:border file:border-gray-400 file:bg-gray-200 file:text-gray-700 file:text-xs file:cursor-pointer hover:file:bg-gray-300"
-                      />
-                    </div>
-                  )}
+                  <div>
+                    <span className="mb-1 block text-[11px] text-gray-500">選択肢の画像（任意）</span>
+                    <input
+                      type="file"
+                      name={`poll_option_image_${index}`}
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      className="block w-full max-w-full min-w-0 text-xs cursor-pointer file:mr-2 file:px-2 file:py-1 file:border file:border-gray-400 file:bg-gray-200 file:text-gray-700 file:text-xs file:cursor-pointer hover:file:bg-gray-300"
+                    />
+                  </div>
                 </td>
               </tr>
             </Fragment>
