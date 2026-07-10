@@ -210,19 +210,23 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
               >
                 {voteButtonLabel}
               </button>
-              {viewerState?.hasVoted && (
-                <button
-                  type="button"
-                  onClick={() => onWriteReason(option.label, poll.kind)}
-                  className="mx-2 -mt-0.5 mb-2 text-center text-[11px] font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
-                >
-                  この選択肢でコメントを書く
-                </button>
-              )}
             </div>
           )
         })}
       </div>
+
+      {viewerState?.hasVoted && (() => {
+        const selectedOption = poll.options.find(option => option.id === viewerState.selectedOptionId)
+        return selectedOption ? (
+          <button
+            type="button"
+            onClick={() => onWriteReason(selectedOption.label, poll.kind)}
+            className="mt-2 w-full border border-blue-500 bg-white px-3 py-2 text-center text-xs font-bold text-blue-700 hover:bg-blue-50"
+          >
+            この選択肢でコメントを書く
+          </button>
+        ) : null
+      })()}
 
       {isPending && <p className="mt-2 text-xs text-gray-500">送信中…</p>}
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
