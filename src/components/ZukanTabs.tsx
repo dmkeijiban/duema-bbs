@@ -12,7 +12,7 @@ const TABS: { key: ZukanTab; label: string; href: string }[] = [
 // タブ全体を1つの薄いグレー枠の白カードで囲み、選択中タブを白背景＋下線で明示する。
 export function ZukanTabs({ active }: { active: ZukanTab }) {
   return (
-    <div className="mb-4 flex overflow-hidden border border-gray-300 bg-white" role="tablist" aria-label="図鑑切り替え">
+    <div className="mb-2 flex overflow-hidden border border-gray-300 bg-white" role="tablist" aria-label="図鑑切り替え">
       {TABS.map((tab, i) => {
         const isActive = tab.key === active
         return (
