@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { type SVGProps } from 'react'
+import { useEffect, useState, type SVGProps } from 'react'
 import {
   moveToDesktopCommentForm,
   moveToDesktopNewThreadForm,
@@ -79,6 +79,30 @@ function isTargetPage(pathname: string) {
 
 export function DesktopFloatingActions() {
   const pathname = usePathname()
+  const [stopBottom, setStopBottom] = useState<number | null>(null)
+
+  useEffect(() => {
+    const updateStopPosition = () => {
+      const stopTarget = document.querySelector<HTMLElement>('[data-floating-actions-stop]')
+      if (!stopTarget) {
+        setStopBottom(null)
+        return
+      }
+
+      const rect = stopTarget.getBoundingClientRect()
+      const isVisible = rect.top < window.innerHeight && rect.bottom > 0
+      setStopBottom(isVisible ? Math.max(12, window.innerHeight - rect.bottom + 1) : null)
+    }
+
+    updateStopPosition()
+    window.addEventListener('scroll', updateStopPosition, { passive: true })
+    window.addEventListener('resize', updateStopPosition)
+    return () => {
+      window.removeEventListener('scroll', updateStopPosition)
+      window.removeEventListener('resize', updateStopPosition)
+    }
+  }, [pathname])
+
   if (!isTargetPage(pathname)) return null
 
   const isThreadPage = pathname.startsWith('/thread/') && pathname !== '/thread/new'
@@ -89,6 +113,7 @@ export function DesktopFloatingActions() {
     <nav
       aria-label="ページ操作"
       className="fixed bottom-[6.75rem] right-[max(0.75rem,calc((100vw-80rem)/2-2.875rem))] z-40 hidden flex-col gap-1.5 md:flex"
+      style={stopBottom === null ? undefined : { bottom: stopBottom }}
     >
       <button type="button" onClick={scrollToPageTop} aria-label="上に行く" title="上に行く" className={BUTTON_CLASS}>
         <TriangleIcon aria-hidden="true" />
