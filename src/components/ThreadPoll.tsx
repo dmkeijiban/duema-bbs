@@ -52,7 +52,6 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
     if (isPending) return
 
     const previousState = viewerState
-    const chosen = poll.options.find(option => option.id === optionId)
     const previouslySelectedId = previousState?.selectedOptionId ?? null
     const hadVoted = previousState?.hasVoted === true
 
@@ -85,8 +84,6 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
         options,
       }
     })
-    if (chosen) onWriteReason(chosen.label, poll.kind)
-
     startTransition(async () => {
       try {
         const result = await voteThreadPoll(threadId, optionId)
@@ -186,7 +183,7 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
                   画像なし
                 </span>
               )}
-              <div className="relative flex min-h-[4.75rem] flex-1 flex-col items-start gap-1 overflow-hidden px-3 py-2 md:min-h-10 md:flex-row md:items-center md:justify-between md:gap-2">
+              <div className="relative flex min-h-10 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5 overflow-hidden px-3 py-1.5">
                 {viewerState?.hasVoted && (
                   <span
                     className="absolute inset-y-0 left-0 bg-blue-100/70"
@@ -196,7 +193,7 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
                 )}
                 <span className="relative break-words font-medium text-gray-800">{option.label}</span>
                 {viewerState?.hasVoted && (
-                  <span className="relative block shrink-0 text-xs font-bold text-gray-600 md:inline">
+                  <span className="relative shrink-0 text-xs font-bold text-gray-600">
                     {percentage}%<span className="ml-1 font-normal text-gray-400">({resultOption?.voteCount ?? 0})</span>
                   </span>
                 )}
@@ -217,6 +214,19 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
           )
         })}
       </div>
+
+      {viewerState?.hasVoted && (() => {
+        const selectedOption = poll.options.find(option => option.id === viewerState.selectedOptionId)
+        return selectedOption ? (
+          <button
+            type="button"
+            onClick={() => onWriteReason(selectedOption.label, poll.kind)}
+            className="mt-2 w-full border border-blue-500 bg-white px-3 py-2 text-center text-xs font-bold text-blue-700 hover:bg-blue-50"
+          >
+            この選択肢でコメントを書く
+          </button>
+        ) : null
+      })()}
 
       {isPending && <p className="mt-2 text-xs text-gray-500">送信中…</p>}
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
