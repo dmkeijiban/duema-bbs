@@ -106,7 +106,7 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
                 <img
                   src={resolveImageUrl(option.imageUrl) ?? option.imageUrl}
                   alt={option.label}
-                  className="aspect-[4/3] w-full border-b border-gray-200 bg-gray-100 object-contain"
+                  className="block aspect-[4/3] w-full border-b border-gray-200 bg-gray-100 object-contain object-top"
                 />
               )}
               {hasImages && !option.imageUrl && (
