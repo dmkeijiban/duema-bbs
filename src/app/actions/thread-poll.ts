@@ -44,24 +44,29 @@ async function getPollIpHash() {
   return candidate ? hashModerationValue(candidate) : null
 }
 
+type ExistingVote = {
+  id: number
+  option_id: number
+}
+
 async function findVote(threadId: number, sessionId: string, userId: string | null) {
   const admin = createAdminClient()
   const bySession = await admin
     .from('thread_poll_votes')
-    .select('option_id')
+    .select('id, option_id')
     .eq('thread_id', threadId)
     .eq('session_id', sessionId)
     .maybeSingle()
-  if (bySession.data) return bySession.data as { option_id: number }
+  if (bySession.data) return bySession.data as ExistingVote
 
   if (!userId) return null
   const byUser = await admin
     .from('thread_poll_votes')
-    .select('option_id')
+    .select('id, option_id')
     .eq('thread_id', threadId)
     .eq('user_id', userId)
     .maybeSingle()
-  return byUser.data as { option_id: number } | null
+  return byUser.data as ExistingVote | null
 }
 
 async function buildViewerState(
@@ -69,27 +74,45 @@ async function buildViewerState(
   sessionId: string,
   userId: string | null,
 ): Promise<ThreadPollViewerState> {
-  const vote = await findVote(threadId, sessionId, userId)
-  if (!vote) {
-    return { hasVoted: false, selectedOptionId: null, totalVotes: 0, options: null }
-  }
-
   const admin = createAdminClient()
-  const { data: options, error } = await admin
-    .from('thread_poll_options')
-    .select('id, label, image_url, sort_order, vote_count, is_correct')
-    .eq('thread_id', threadId)
-    .order('sort_order', { ascending: true })
+  const [vote, optionsResult, votesResult] = await Promise.all([
+    findVote(threadId, sessionId, userId),
+    admin
+      .from('thread_poll_options')
+      .select('id, label, image_url, sort_order, vote_count, is_correct')
+      .eq('thread_id', threadId)
+      .order('sort_order', { ascending: true }),
+    admin
+      .from('thread_poll_votes')
+      .select('option_id')
+      .eq('thread_id', threadId),
+  ])
 
-  if (error || !options) {
-    return { hasVoted: true, selectedOptionId: vote.option_id, totalVotes: 0, options: null }
+  const options = optionsResult.data
+  if (optionsResult.error || !options) {
+    return {
+      hasVoted: Boolean(vote),
+      selectedOptionId: vote?.option_id ?? null,
+      totalVotes: votesResult.data?.length ?? 0,
+      options: null,
+    }
   }
 
-  const resultOptions = toResultOptions(options)
+  const voteCounts = new Map<number, number>()
+  for (const row of votesResult.data ?? []) {
+    voteCounts.set(row.option_id, (voteCounts.get(row.option_id) ?? 0) + 1)
+  }
+
+  const resultOptions = toResultOptions(options.map(option => ({
+    ...option,
+    vote_count: voteCounts.get(option.id) ?? 0,
+    is_correct: vote ? option.is_correct : false,
+  })))
+
   return {
-    hasVoted: true,
-    selectedOptionId: vote.option_id,
-    totalVotes: resultOptions.reduce((sum, option) => sum + option.voteCount, 0),
+    hasVoted: Boolean(vote),
+    selectedOptionId: vote?.option_id ?? null,
+    totalVotes: votesResult.data?.length ?? 0,
     options: resultOptions,
   }
 }
@@ -137,10 +160,28 @@ export async function voteThreadPoll(threadId: number, optionId: number) {
     ])
 
     if (postingBanned || ipBanned) return { error: 'この環境からの投票は制限されています' }
-    if (existingVote) return { state: await buildViewerState(threadId, sessionId, userId) }
     if (!optionResult.data) return { error: '選択肢が見つかりません' }
     if (!threadResult.data || threadResult.data.is_archived || threadResult.data.archived_at) {
       return { error: 'このスレッドの投票は終了しました' }
+    }
+
+    if (existingVote) {
+      if (existingVote.option_id === optionId) {
+        return { state: await buildViewerState(threadId, sessionId, userId) }
+      }
+
+      const { error } = await admin
+        .from('thread_poll_votes')
+        .update({ option_id: optionId })
+        .eq('id', existingVote.id)
+        .eq('thread_id', threadId)
+
+      if (error) {
+        console.error('poll vote update failed:', error)
+        return { error: '投票の変更に失敗しました' }
+      }
+
+      return { state: await buildViewerState(threadId, sessionId, userId) }
     }
 
     if (ipHash) {
