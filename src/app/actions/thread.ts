@@ -15,10 +15,68 @@ import { ADMIN_COOKIE, verifyAdminCookie, verifyAdminRateLimitBypassToken } from
 import { checkModerationBan, checkNgWords, checkPostingBan, hashModerationValue } from '@/lib/moderation'
 import { getThreadCommentClosedMessage } from '@/lib/thread-auto-close'
 import { checkValueRateLimitRules } from '@/lib/rate-limit'
+import { validateInteractiveThreadUploadSize } from '@/lib/thread-poll-form'
 
 function hasHoneypotValue(formData: FormData): boolean {
   const value = formData.get('website')
   return typeof value === 'string' && value.trim().length > 0
+}
+
+type InteractiveThreadOptionDraft = {
+  label: string
+  imageFile: File | null
+  isCorrect: boolean
+}
+
+type InteractiveThreadDraft = {
+  kind: 'poll' | 'quiz'
+  options: InteractiveThreadOptionDraft[]
+}
+
+function parseInteractiveThreadDraft(formData: FormData):
+  | { draft: InteractiveThreadDraft | null }
+  | { error: string } {
+  const rawKind = String(formData.get('thread_kind') ?? 'normal')
+  if (rawKind === 'normal') return { draft: null }
+  if (rawKind !== 'poll' && rawKind !== 'quiz') return { error: 'スレッド形式が無効です' }
+
+  const optionCount = Number(formData.get('poll_option_count'))
+  if (!Number.isInteger(optionCount) || optionCount < 2 || optionCount > 4) {
+    return { error: '選択肢は2〜4個にしてください' }
+  }
+
+  const correctIndex = rawKind === 'quiz'
+    ? Number(formData.get('quiz_correct_index'))
+    : -1
+  if (rawKind === 'quiz' && (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex >= optionCount)) {
+    return { error: 'クイズの正解を1つ選んでください' }
+  }
+
+  const options: InteractiveThreadOptionDraft[] = []
+  const normalizedLabels = new Set<string>()
+  for (let index = 0; index < optionCount; index += 1) {
+    const label = String(formData.get(`poll_option_label_${index}`) ?? '').trim()
+    if (!label || label.length > 60) return { error: `選択肢${index + 1}は60文字以内で入力してください` }
+
+    const normalizedLabel = label.normalize('NFKC').toLowerCase()
+    if (normalizedLabels.has(normalizedLabel)) return { error: '同じ選択肢は設定できません' }
+    normalizedLabels.add(normalizedLabel)
+
+    const value = formData.get(`poll_option_image_${index}`)
+    const imageFile = rawKind === 'poll' && value instanceof File && value.size > 0 ? value : null
+    if (imageFile) {
+      const validationError = validateImageFile(imageFile)
+      if (validationError) return { error: `選択肢${index + 1}：${validationError}` }
+    }
+
+    options.push({
+      label,
+      imageFile,
+      isCorrect: rawKind === 'quiz' && correctIndex === index,
+    })
+  }
+
+  return { draft: { kind: rawKind, options } }
 }
 async function getOrCreateSessionId(): Promise<string> {
   const cookieStore = await cookies()
@@ -327,12 +385,17 @@ async function checkPostRateLimits(
 
 export async function createThread(formData: FormData) {
   if (hasHoneypotValue(formData)) return { error: '投稿に失敗しました' }
+  const uploadSizeError = validateInteractiveThreadUploadSize(formData)
+  if (uploadSizeError) return { error: uploadSizeError }
 
   const title = (formData.get('title') as string)?.trim()
   const body = (formData.get('body') as string)?.trim()
   const authorName = (formData.get('author_name') as string)?.trim() || '名無しのデュエリスト'
   const categoryId = formData.get('category_id') as string
   const imageFile = formData.get('image') as File | null
+  const interactiveResult = parseInteractiveThreadDraft(formData)
+  if ('error' in interactiveResult) return { error: interactiveResult.error }
+  const interactiveDraft = interactiveResult.draft
   if (!title || title.length < 2) return { error: 'タイトルは2文字以上で入力してください' }
   if (title.length > 100) return { error: 'タイトルは100文字以内で入力してください' }
   if (!body || body.length < 5) return { error: '本文は5文字以上で入力してください' }
@@ -364,9 +427,23 @@ export async function createThread(formData: FormData) {
   if (await checkPostingBan({ sessionId, userId: authUserId })) {
     return { error: 'Posting is restricted.' }
   }
-  const ngWord = await checkNgWords(supabase, [title, body, authorName])
+  const ngWord = await checkNgWords(supabase, [
+    title,
+    body,
+    authorName,
+    ...(interactiveDraft?.options.map(option => option.label) ?? []),
+  ])
   if (ngWord) {
     return { error: `NG word detected: ${ngWord}` }
+  }
+
+  if (interactiveDraft) {
+    const admin = createAdminClient()
+    const { error: featureError } = await admin
+      .from('thread_polls')
+      .select('thread_id', { head: true })
+      .limit(1)
+    if (featureError) return { error: '投票・クイズ機能は現在準備中です' }
   }
 
   let imageUrl: string | null = null
@@ -386,6 +463,27 @@ export async function createThread(formData: FormData) {
     imageHeight = result.data.height || null
   }
 
+  const interactiveOptions = interactiveDraft
+    ? await Promise.all(interactiveDraft.options.map(async option => {
+        if (!option.imageFile) {
+          return { label: option.label, image_url: null, is_correct: option.isCorrect }
+        }
+        const result = await uploadImage(
+          option.imageFile,
+          supabase,
+          `thread-polls/${uuidv4()}`,
+          'thumbnail',
+        )
+        if (result.error || !result.data) throw new Error(result.error ?? '選択肢画像のアップロードに失敗しました')
+        return { label: option.label, image_url: result.data.url, is_correct: option.isCorrect }
+      }).map(task => task.catch(error => ({ uploadError: error instanceof Error ? error.message : '選択肢画像のアップロードに失敗しました' }))))
+    : null
+
+  const optionUploadError = interactiveOptions?.find(
+    (option): option is { uploadError: string } => 'uploadError' in option,
+  )
+  if (optionUploadError) return { error: optionUploadError.uploadError }
+
   const insertData = {
     title,
     body,
@@ -399,14 +497,41 @@ export async function createThread(formData: FormData) {
     user_id: userId,
   }
 
-  let { data: thread, error } = await supabase
-    .from('threads')
-    .insert(insertData)
-    .select('id')
-    .single()
+  let thread: { id: number } | null = null
+  let error: { code?: string; message?: string } | null = null
+
+  if (interactiveDraft && interactiveOptions) {
+    const admin = createAdminClient()
+    const rpcResult = await admin.rpc('create_interactive_thread', {
+      p_title: title,
+      p_body: body,
+      p_author_name: authorName,
+      p_category_id: categoryId ? parseInt(categoryId) : null,
+      p_image_url: imageUrl,
+      p_thumbnail_url: thumbnailUrl,
+      p_image_width: imageWidth,
+      p_image_height: imageHeight,
+      p_session_id: sessionId,
+      p_user_id: userId,
+      p_kind: interactiveDraft.kind,
+      p_options: interactiveOptions,
+    })
+    if (rpcResult.data !== null && rpcResult.data !== undefined) {
+      thread = { id: Number(rpcResult.data) }
+    }
+    error = rpcResult.error
+  } else {
+    const insertResult = await supabase
+      .from('threads')
+      .insert(insertData)
+      .select('id')
+      .single()
+    thread = insertResult.data
+    error = insertResult.error
+  }
 
   // image_width/height カラムが未作成の場合はなしで再試行
-  if (error && (error.code === '42703' || error.message?.includes('image_width'))) {
+  if (!interactiveDraft && error && (error.code === '42703' || error.message?.includes('image_width'))) {
     const { data: t2, error: e2 } = await supabase
       .from('threads')
       .insert({
@@ -426,7 +551,7 @@ export async function createThread(formData: FormData) {
   }
 
   // session_id カラムが未作成の場合はなしで再試行
-  if (error && (error.code === '42703' || error.message?.includes('session_id'))) {
+  if (!interactiveDraft && error && (error.code === '42703' || error.message?.includes('session_id'))) {
     const { data: t3, error: e3 } = await supabase
       .from('threads')
       .insert({
@@ -447,7 +572,7 @@ export async function createThread(formData: FormData) {
   // Retry without user_id only when the column truly does not exist (42703).
   // Previously this also matched any error whose message contained "user_id",
   // which could silently re-insert without user_id and produce user_id=null.
-  if (error && error.code === '42703') {
+  if (!interactiveDraft && error && error.code === '42703') {
     const { data: t4, error: e4 } = await supabase
       .from('threads')
       .insert({
@@ -467,6 +592,9 @@ export async function createThread(formData: FormData) {
 
   if (error || !thread) {
     console.error('Thread insert error:', error)
+    if (interactiveDraft && (error?.code === 'PGRST202' || error?.code === '42P01')) {
+      return { error: '投票・クイズ機能は現在準備中です' }
+    }
     return { error: 'スレッドの作成に失敗しました' }
   }
 

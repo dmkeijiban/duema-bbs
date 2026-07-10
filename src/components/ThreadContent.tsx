@@ -11,6 +11,8 @@ import { ImageViewer } from './ImageViewer'
 import { getThreadViewerState } from '@/lib/thread-viewer-client'
 import { HonorBadge } from './HonorBadge'
 import type { HonorTitle } from '@/lib/honor-title'
+import { ThreadPoll } from '@/components/ThreadPoll'
+import type { ThreadPoll as ThreadPollData, ThreadPollKind } from '@/lib/thread-poll'
 
 interface Props {
   posts: Post[]
@@ -28,6 +30,7 @@ interface Props {
   threadRules?: string
   showAfterCommentThreadPrompt?: boolean
   showCommentFormHint?: boolean
+  poll?: ThreadPollData | null
 }
 
 type DisplayPost = Post & { displayNumber: number }
@@ -106,6 +109,7 @@ export function ThreadContent({
   threadRules,
   showAfterCommentThreadPrompt = true,
   showCommentFormHint = true,
+  poll = null,
 }: Props) {
   const [bodyValue, setBodyValue] = useState('')
   const [sessionId, setSessionId] = useState('')
@@ -143,6 +147,20 @@ export function ThreadContent({
         }
       }, 400)
     }
+  }, [])
+
+  const handleWritePollReason = useCallback((label: string, kind: ThreadPollKind) => {
+    const prompt = kind === 'quiz'
+      ? `「${label}」と答えました。\n理由：`
+      : `「${label}」を選びました。\n理由：`
+    setBodyValue(current => current.trim() ? current : prompt)
+    const form = document.getElementById('reply-form-bottom')
+    form?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setTimeout(() => {
+      const textarea = document.getElementById('reply-textarea') as HTMLTextAreaElement | null
+      textarea?.focus()
+      if (textarea) textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+    }, 400)
   }, [])
 
   const displayPosts = useMemo<DisplayPost[]>(() => posts.map(post => ({
@@ -230,6 +248,9 @@ export function ThreadContent({
             <div className="px-3 pb-2">
               <ImageViewer src={resolveImageUrl(starterImageUrl)!} alt={thread.title} priority />
             </div>
+          )}
+          {poll && (
+            <ThreadPoll threadId={threadId} poll={poll} onWriteReason={handleWritePollReason} />
           )}
         </div>
 

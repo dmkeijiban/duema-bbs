@@ -30,6 +30,7 @@ import { AdBanner } from '@/components/AdBanner'
 import { getCategoryIdsForSlug } from '@/lib/categories'
 import { ADSENSE_REVIEW_MODE, isAdSenseRiskyThreadTitle, isPrNoticeForAdSenseReview } from '@/lib/adsense-review-mode'
 import { GreenCtaBanner } from '@/components/GreenCtaBanner'
+import { getThreadPollFeatureAvailable } from '@/lib/thread-poll'
 import {
   filterPublicVisibleUserContent,
   getCachedPublicHiddenUserIds,
@@ -358,11 +359,18 @@ async function BottomNavServer({ params }: { params: SearchParams }) {
 }
 
 async function InlineNewThreadServer() {
-  const [categories, postGuidanceSettings] = await Promise.all([
+  const [categories, postGuidanceSettings, interactiveThreadsEnabled] = await Promise.all([
     getCachedCategories(),
     getCachedPostGuidanceSettings(),
+    getThreadPollFeatureAvailable(),
   ])
-  return <InlineNewThread categories={categories} showFormHint={postGuidanceSettings.showThreadFormHint} />
+  return (
+    <InlineNewThread
+      categories={categories}
+      showFormHint={postGuidanceSettings.showThreadFormHint}
+      interactiveThreadsEnabled={interactiveThreadsEnabled}
+    />
+  )
 }
 
 export default async function Home({

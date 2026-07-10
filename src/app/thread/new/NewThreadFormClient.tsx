@@ -9,6 +9,8 @@ import type { Category } from '@/types'
 import { createClient, getCurrentUser } from '@/lib/supabase'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { POST_SUBMIT_BUTTON_CLASS, POST_SUBMIT_BUTTON_STYLE } from '@/components/postSubmitButtonStyle'
+import { ThreadInteractiveFields } from '@/components/ThreadInteractiveFields'
+import { validateInteractiveThreadUploadSize } from '@/lib/thread-poll-form'
 
 type AuthState =
   | { status: 'loading' }
@@ -18,9 +20,10 @@ type AuthState =
 
 interface Props {
   categories: Category[]
+  interactiveThreadsEnabled?: boolean
 }
 
-export function NewThreadFormClient({ categories }: Props) {
+export function NewThreadFormClient({ categories, interactiveThreadsEnabled = false }: Props) {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
@@ -55,6 +58,11 @@ export function NewThreadFormClient({ categories }: Props) {
     e.preventDefault()
     setError('')
     const formData = new FormData(e.currentTarget)
+    const uploadSizeError = validateInteractiveThreadUploadSize(formData)
+    if (uploadSizeError) {
+      setError(uploadSizeError)
+      return
+    }
     startTransition(async () => {
       try {
         const result = await createThread(formData)
@@ -110,6 +118,7 @@ export function NewThreadFormClient({ categories }: Props) {
               />
             </td>
           </tr>
+          <ThreadInteractiveFields enabled={interactiveThreadsEnabled} />
           {authState.status === 'loading' && (
             <tr className="border-b border-gray-200">
               <td className="py-2 px-2 align-middle text-xs font-medium text-gray-700 sm:px-3" style={{ background: '#f5f5f5' }}>

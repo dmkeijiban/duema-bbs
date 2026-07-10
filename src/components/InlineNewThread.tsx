@@ -9,6 +9,8 @@ import { createClient, getCurrentUser } from '@/lib/supabase'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { capturePostHogEvent } from '@/lib/posthog-events'
 import { POST_SUBMIT_BUTTON_CLASS, POST_SUBMIT_BUTTON_STYLE } from '@/components/postSubmitButtonStyle'
+import { ThreadInteractiveFields } from '@/components/ThreadInteractiveFields'
+import { validateInteractiveThreadUploadSize } from '@/lib/thread-poll-form'
 
 type AuthState =
   | { status: 'loading' }
@@ -21,11 +23,12 @@ interface Props {
   newThreadRules?: string
   isAdmin?: boolean
   showFormHint?: boolean
+  interactiveThreadsEnabled?: boolean
 }
 
 const THREAD_BODY_MAX_LENGTH = 1000
 
-export function InlineNewThread({ categories, showFormHint = true }: Props) {
+export function InlineNewThread({ categories, showFormHint = true, interactiveThreadsEnabled = false }: Props) {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const [authState, setAuthState] = useState<AuthState>({ status: 'loading' })
@@ -60,6 +63,11 @@ export function InlineNewThread({ categories, showFormHint = true }: Props) {
     e.preventDefault()
     setError('')
     const formData = new FormData(e.currentTarget)
+    const uploadSizeError = validateInteractiveThreadUploadSize(formData)
+    if (uploadSizeError) {
+      setError(uploadSizeError)
+      return
+    }
     const imageFile = formData.get('image')
     capturePostHogEvent('thread_create_submit_start', {
       category_id: formData.get('category_id'),
@@ -139,6 +147,8 @@ export function InlineNewThread({ categories, showFormHint = true }: Props) {
                 </select>
               </td>
             </tr>
+
+            <ThreadInteractiveFields enabled={interactiveThreadsEnabled} />
 
             {authState.status === 'loading' && (
               <tr className="border-b border-gray-200">

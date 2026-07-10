@@ -18,6 +18,7 @@ import { getDisplayCategory } from '@/lib/categories'
 import { isThinThreadForAdSenseReview, isPrNoticeForAdSenseReview } from '@/lib/adsense-review-mode'
 import { getThreadCommentClosedMessage } from '@/lib/thread-auto-close'
 import { getCachedPublicHiddenUserIds, isPublicVisibleUserContent } from '@/lib/public-visibility'
+import { getCachedThreadPoll } from '@/lib/thread-poll'
 
 const POSTS_PER_PAGE = THREAD_POSTS_PER_PAGE
 
@@ -154,10 +155,11 @@ export default async function ThreadPage({ params }: Props) {
 }
 
 export async function renderThreadPage(threadId: number, page: number) {
-  const [threadRules, threadNotices, postGuidanceSettings] = await Promise.all([
+  const [threadRules, threadNotices, postGuidanceSettings, threadPoll] = await Promise.all([
     getCachedSetting('thread_rules', THREAD_RULES_DEFAULT),
     getCachedThreadNotices(),
     getCachedPostGuidanceSettings(),
+    getCachedThreadPoll(threadId),
   ])
 
   // スレ・レスはキャッシュ済みクエリで取得（30秒TTL）
@@ -380,6 +382,7 @@ export async function renderThreadPage(threadId: number, page: number) {
         threadRules={threadRules}
         showAfterCommentThreadPrompt={postGuidanceSettings.showAfterCommentThreadPrompt}
         showCommentFormHint={postGuidanceSettings.showCommentFormHint}
+        poll={threadPoll}
         recommendSlot={
           <Suspense fallback={<RecommendSectionSkeleton />}>
             <RecommendSection

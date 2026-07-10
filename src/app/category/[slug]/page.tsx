@@ -38,6 +38,7 @@ import {
   applyLegacyActiveThreadFilter,
   isArchiveSchemaMissing,
 } from '@/lib/thread-archive'
+import { getThreadPollFeatureAvailable } from '@/lib/thread-poll'
 
 export const revalidate = 3600
 
@@ -250,7 +251,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const sort = sortParam ?? 'recent'
   const page = Math.max(1, parseInt(pageStr ?? '1') || 1)
 
-  const [categories, notices, newThreadRules, postGuidanceSettings] = await Promise.all([
+  const [categories, notices, newThreadRules, postGuidanceSettings, interactiveThreadsEnabled] = await Promise.all([
     getCachedCategories(),
     getCachedActiveNotices(),
     getCachedSetting('new_thread_rules', `1.似たスレッドがないか確認してください。
@@ -262,6 +263,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 7.スレッド作成は承認制とする場合があります。
 8.不適切と判断した場合は削除・ブロックする事があります。`),
     getCachedPostGuidanceSettings(),
+    getThreadPollFeatureAvailable(),
   ])
 
   const category = getDisplayCategoryBySlug(slug, categories)
@@ -336,7 +338,12 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
         {botNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
 
-        <InlineNewThread categories={categories} newThreadRules={newThreadRules} showFormHint={postGuidanceSettings.showThreadFormHint} />
+        <InlineNewThread
+          categories={categories}
+          newThreadRules={newThreadRules}
+          showFormHint={postGuidanceSettings.showThreadFormHint}
+          interactiveThreadsEnabled={interactiveThreadsEnabled}
+        />
 
         <div className="mb-6" />
       </div>
