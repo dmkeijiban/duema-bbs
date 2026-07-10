@@ -14,6 +14,7 @@ import {
 } from '@/lib/zukan-articles'
 import { parseZukanArticleBodyText } from '@/lib/zukan-article-markdown'
 import { buildDefaultArticleSlug, normalizeArticleSlug } from '@/lib/zukan-article-slug'
+import { fetchCardsByIdentifiers } from '@/lib/zukan'
 
 export type ZukanArticleFormValues = {
   id: string
@@ -36,6 +37,20 @@ export type SaveZukanArticleState = {
 
 function normalizeTargetId(value: FormDataEntryValue | null) {
   return String(value ?? '').trim().toLowerCase()
+}
+
+function referencedCardIdentifiers(blocks: ZukanArticleBlock[]): string[] {
+  const identifiers: string[] = []
+  for (const block of blocks) {
+    if (block.type === 'card') {
+      if (block.id) identifiers.push(block.id)
+      if (block.slug) identifiers.push(block.slug)
+    }
+    if (block.type === 'cardGrid') {
+      identifiers.push(...(block.ids ?? []), ...(block.slugs ?? []))
+    }
+  }
+  return Array.from(new Set(identifiers))
 }
 
 async function requireAdmin() {
@@ -152,6 +167,25 @@ export async function saveZukanArticle(_prevState: SaveZukanArticleState, formDa
     parsed = { blocks: [] }
   }
   if (parsed.blocks.length === 0) return formError(formData, 'missing_blocks')
+
+  const cardIdentifiers = referencedCardIdentifiers(parsed.blocks)
+  if (cardIdentifiers.length > 0) {
+    const referencedCards = await fetchCardsByIdentifiers(cardIdentifiers)
+    if (!referencedCards) {
+      return formError(formData, 'カード参照を確認できませんでした。時間を置いてもう一度保存してください。')
+    }
+
+    const foundIdentifiers = new Set(
+      referencedCards.flatMap(card => [card.id, card.slug]),
+    )
+    const missingIdentifiers = cardIdentifiers.filter(identifier => !foundIdentifiers.has(identifier))
+    if (missingIdentifiers.length > 0) {
+      return formError(
+        formData,
+        `存在しない、または非公開のカードslugがあります: ${missingIdentifiers.join(', ')}`,
+      )
+    }
+  }
 
   const title = titleInput || parsed.title
   const description = String(formData.get('description') ?? '').trim() || parsed.description || null
