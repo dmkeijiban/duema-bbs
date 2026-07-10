@@ -324,7 +324,7 @@ function SignupBanner() {
           href="/login?mode=signup"
           className="inline-flex items-center justify-center rounded bg-blue-600 px-3 py-2 text-sm font-bold text-white hover:bg-blue-700"
         >
-          無料で新規登録
+          アカウントを作る
         </Link>
         <Link
           href="/login"
