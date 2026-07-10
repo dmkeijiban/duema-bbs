@@ -88,7 +88,7 @@ export function DesktopFloatingActions() {
   return (
     <nav
       aria-label="ページ操作"
-      className="fixed bottom-3 right-3 z-40 hidden flex-col gap-1.5 md:flex"
+      className="fixed bottom-[6.75rem] right-[max(0.75rem,calc((100vw-80rem)/2-2.875rem))] z-40 hidden flex-col gap-1.5 md:flex"
     >
       <button type="button" onClick={scrollToPageTop} aria-label="上に行く" title="上に行く" className={BUTTON_CLASS}>
         <TriangleIcon aria-hidden="true" />
