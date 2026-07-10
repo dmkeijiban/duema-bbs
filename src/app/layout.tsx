@@ -192,6 +192,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
+
+        {/* 株式会社グッドライフ ワイプ広告タグ */}
+        <Script
+          id="goodlife-wipe-ad"
+          src="https://gen2.glssp.net/c/p/4778/10/glad.js"
+          strategy="afterInteractive"
+          charSet="utf-8"
+        />
       </head>
       <body className="min-h-screen antialiased" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
           <Header />
