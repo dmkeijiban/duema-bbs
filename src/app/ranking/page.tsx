@@ -524,8 +524,8 @@ export default async function RankingPage({ searchParams }: { searchParams?: Pro
 
   return (
     <div className="w-full px-0 py-0">
-      <ThreadListHeader title="人気ランキング" icon="📊" />
       <ThreadListTopContent />
+      <ThreadListHeader title="人気ランキング" icon="📊" />
 
       <div className="max-w-screen-xl mx-auto px-2">
         <SnsCtaCard />
@@ -572,6 +572,7 @@ export default async function RankingPage({ searchParams }: { searchParams?: Pro
         )}
 
         <BottomNav current="/ranking" />
+        <div className="mb-6" />
       </div>
     </div>
   )

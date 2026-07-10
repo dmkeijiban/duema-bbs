@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { createClient, getCurrentUser } from '@/lib/supabase'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { capturePostHogEvent } from '@/lib/posthog-events'
+import { POST_SUBMIT_BUTTON_CLASS, POST_SUBMIT_BUTTON_STYLE } from '@/components/postSubmitButtonStyle'
 
 type AuthState =
   | { status: 'loading' }
@@ -243,13 +244,13 @@ export function InlineNewThread({ categories, showFormHint = true }: Props) {
             {error}
           </div>
         )}
-        <div className="px-3 py-2.5">
+        <div className="p-0">
           <button
             type="submit"
             disabled={isPending || authState.status === 'loading' || authState.status === 'profile_missing'}
             id="respost"
-            className="w-full py-2 text-sm text-white disabled:opacity-60"
-            style={{ background: '#0d6efd' }}
+            className={POST_SUBMIT_BUTTON_CLASS}
+            style={POST_SUBMIT_BUTTON_STYLE}
           >
             {isPending ? '投稿中...' : '投稿する'}
           </button>
