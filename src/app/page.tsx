@@ -15,6 +15,7 @@ import { Thread, Category } from '@/types'
 import Link from 'next/link'
 import { NoticeBlock, Notice } from '@/components/NoticeBlock'
 import { SnsCtaCard } from '@/components/SnsCtaCard'
+import { ThreadFloatingActions } from '@/components/ThreadFloatingActions'
 import { FeaturedSummaries } from '@/components/FeaturedSummaries'
 import {
   getCachedCategories,
@@ -471,6 +472,8 @@ export default async function Home({
 
         <SnsCtaCard />
       </div>
+
+      <ThreadFloatingActions postAction="thread" />
     </div>
   )
 }

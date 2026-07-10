@@ -31,3 +31,8 @@ export function moveToNewThreadForm() {
   if (scrollToElementAndFocus('new-thread-title', 'new-thread-title')) return
   window.location.assign('/thread/new')
 }
+
+export function moveToHomeNewThreadForm() {
+  if (scrollToElementAndFocus('resform', 'new-thread-title')) return
+  window.location.assign('/thread/new')
+}
