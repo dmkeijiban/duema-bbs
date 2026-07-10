@@ -52,7 +52,6 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
     if (isPending) return
 
     const previousState = viewerState
-    const chosen = poll.options.find(option => option.id === optionId)
     const previouslySelectedId = previousState?.selectedOptionId ?? null
     const hadVoted = previousState?.hasVoted === true
 
@@ -85,8 +84,6 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
         options,
       }
     })
-    if (chosen) onWriteReason(chosen.label, poll.kind)
-
     startTransition(async () => {
       try {
         const result = await voteThreadPoll(threadId, optionId)
@@ -186,7 +183,7 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
                   画像なし
                 </span>
               )}
-              <div className="relative flex min-h-[4.75rem] flex-1 flex-col items-start gap-1 overflow-hidden px-3 py-2 md:min-h-10 md:flex-row md:items-center md:justify-between md:gap-2">
+              <div className="relative flex min-h-[3.5rem] flex-1 flex-col items-start gap-0.5 overflow-hidden px-3 py-1.5 md:min-h-10 md:flex-row md:items-center md:justify-between md:gap-2">
                 {viewerState?.hasVoted && (
                   <span
                     className="absolute inset-y-0 left-0 bg-blue-100/70"
@@ -213,6 +210,15 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
               >
                 {voteButtonLabel}
               </button>
+              {viewerState?.hasVoted && (
+                <button
+                  type="button"
+                  onClick={() => onWriteReason(option.label, poll.kind)}
+                  className="mx-2 -mt-0.5 mb-2 text-center text-[11px] font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                >
+                  この選択肢でコメントを書く
+                </button>
+              )}
             </div>
           )
         })}
