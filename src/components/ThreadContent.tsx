@@ -166,12 +166,12 @@ export function ThreadContent({
     })
 
     const form = document.getElementById('reply-form-bottom')
-    form?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    setTimeout(() => {
+    form?.scrollIntoView({ behavior: 'auto', block: 'start' })
+    requestAnimationFrame(() => {
       const textarea = document.getElementById('reply-textarea') as HTMLTextAreaElement | null
       textarea?.focus()
       if (textarea) textarea.setSelectionRange(textarea.value.length, textarea.value.length)
-    }, 400)
+    })
   }, [])
 
   const displayPosts = useMemo<DisplayPost[]>(() => posts.map(post => ({
