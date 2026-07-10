@@ -27,50 +27,54 @@ export function CategoryDropdown({ currentCategory, categories, className = '' }
   }, [open])
 
   return (
-    <li ref={ref} className={`relative shrink-0 col-span-2 sm:col-span-1 ${className}`}>
-      <button
-        onClick={() => setOpen(v => !v)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label="カテゴリを選択"
-        className={
-          currentCategory
-            ? 'flex min-h-9 w-full items-center justify-center rounded border border-blue-600 bg-blue-600 px-2.5 text-xs font-bold text-white shadow-sm md:px-3 md:text-sm'
-            : 'flex min-h-9 w-full items-center justify-center rounded border border-blue-100 bg-white px-2.5 text-xs font-medium text-blue-700 hover:bg-blue-50 md:px-3 md:text-sm'
-        }
-      >
-        <span className="opacity-80">📂</span>
-        <span className="ml-0.5">カテゴリ {open ? '▴' : '▾'}</span>
-      </button>
-      {open && (
-        <div
-          role="listbox"
-          aria-label="カテゴリ一覧"
-          className="absolute right-0 top-full z-50 mt-1 max-h-64 min-w-44 overflow-y-auto rounded border border-gray-300 bg-white text-sm shadow-lg"
+    <>
+      <li ref={ref} className={`relative shrink-0 col-span-2 sm:col-span-1 ${className}`}>
+        <button
+          onClick={() => setOpen(v => !v)}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label="カテゴリを選択"
+          className={
+            currentCategory
+              ? 'flex min-h-9 w-full items-center justify-center rounded border border-blue-600 bg-blue-600 px-2.5 text-xs font-bold text-white shadow-sm md:px-3 md:text-sm'
+              : 'flex min-h-9 w-full items-center justify-center rounded border border-blue-100 bg-white px-2.5 text-xs font-medium text-blue-700 hover:bg-blue-50 md:px-3 md:text-sm'
+          }
         >
-          <Link
-            href={currentCategory ? '/' : '/'}
-            role="option"
-            aria-selected={!currentCategory}
-            className="block px-4 py-2 hover:bg-gray-100 text-gray-700 border-b border-gray-100"
-            onClick={() => setOpen(false)}
+          <span className="opacity-80">📂</span>
+          <span className="ml-0.5">カテゴリ {open ? '▴' : '▾'}</span>
+        </button>
+      </li>
+      {open && (
+        <li className="order-6 col-span-2 w-full sm:order-6 sm:basis-full" role="presentation">
+          <div
+            role="listbox"
+            aria-label="カテゴリ一覧"
+            className="mt-1 max-h-64 w-full overflow-y-auto rounded border border-gray-300 bg-white text-sm shadow-lg"
           >
-            すべて
-          </Link>
-          {displayCategories.map(c => (
             <Link
-              key={c.slug}
-              href={`/category/${c.slug}`}
+              href={currentCategory ? '/' : '/'}
               role="option"
-              aria-selected={currentDisplaySlug === c.slug}
-              className="block px-4 py-2 hover:bg-gray-100 text-gray-700 border-b border-gray-100 last:border-b-0"
+              aria-selected={!currentCategory}
+              className="block px-4 py-2 hover:bg-gray-100 text-gray-700 border-b border-gray-100"
               onClick={() => setOpen(false)}
             >
-              {c.name}
+              すべて
             </Link>
-          ))}
-        </div>
+            {displayCategories.map(c => (
+              <Link
+                key={c.slug}
+                href={`/category/${c.slug}`}
+                role="option"
+                aria-selected={currentDisplaySlug === c.slug}
+                className="block px-4 py-2 hover:bg-gray-100 text-gray-700 border-b border-gray-100 last:border-b-0"
+                onClick={() => setOpen(false)}
+              >
+                {c.name}
+              </Link>
+            ))}
+          </div>
+        </li>
       )}
-    </li>
+    </>
   )
 }
