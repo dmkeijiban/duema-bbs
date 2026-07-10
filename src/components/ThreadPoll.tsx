@@ -30,7 +30,6 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
 
   const hasImages = poll.options.some(option => option.imageUrl)
   const resultOptions = viewerState?.options
-  const selectedOption = poll.options.find(option => option.id === viewerState?.selectedOptionId)
   const correctOption = resultOptions?.find(option => option.isCorrect)
   const desktopGridClass = poll.options.length === 4
     ? 'md:grid-cols-4'
@@ -63,11 +62,11 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
 
   return (
     <div className="mx-3 mb-3 border border-gray-300 bg-gray-50 p-3">
-      <div className="mb-2 flex items-center justify-between gap-2">
+      <div className="mb-2 flex items-center gap-2">
         <span className="inline-block bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
           {poll.kind === 'quiz' ? 'クイズ' : '投票'}
         </span>
-        <span className="text-xs text-gray-500">{viewerState?.totalVotes ?? 0}票</span>
+        <span className="text-xs font-medium text-gray-600">総投票数 {viewerState?.totalVotes ?? 0}票</span>
       </div>
 
       {poll.kind === 'quiz' && viewerState?.hasVoted && correctOption && (
@@ -144,16 +143,6 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
       {viewerState?.hasVoted && (
         <p className="mt-2 text-center text-xs text-gray-500">別の選択肢を押すと投票を変更できます</p>
-      )}
-
-      {viewerState?.hasVoted && selectedOption && (
-        <button
-          type="button"
-          onClick={() => onWriteReason(selectedOption.label, poll.kind)}
-          className="mt-3 min-h-10 w-full border border-blue-500 bg-white px-3 text-sm font-bold text-blue-700 hover:bg-blue-50"
-        >
-          {poll.kind === 'quiz' ? 'この答えを選んだ理由を書く' : '選んだ理由を書く'}
-        </button>
       )}
     </div>
   )
