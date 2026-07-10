@@ -332,11 +332,11 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
         <BottomNav current="/category" currentCategory={slug} categories={categories} />
 
+        <div className="mb-6" />
+
         {botNotices.map(n => <NoticeBlock key={n.id} notice={n} />)}
 
         <InlineNewThread categories={categories} newThreadRules={newThreadRules} />
-
-        <div className="mb-6" />
       </div>
     </div>
   )
