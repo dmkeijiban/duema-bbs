@@ -80,9 +80,13 @@ async function fetchCandidateImages() {
 }
 
 export default async function PrivateHallOfFamePredictionsPage() {
-  const cookieStore = await cookies()
-  const isAdmin = verifyAdminCookie(cookieStore.get(ADMIN_COOKIE)?.value)
-  if (!isAdmin) redirect('/admin')
+  const isPreview = process.env.VERCEL_ENV === 'preview'
+
+  if (!isPreview) {
+    const cookieStore = await cookies()
+    const isAdmin = verifyAdminCookie(cookieStore.get(ADMIN_COOKIE)?.value)
+    if (!isAdmin) redirect('/admin')
+  }
 
   const imageByName = await fetchCandidateImages()
   const candidates = CANDIDATE_NAMES.map(name => ({
@@ -99,7 +103,9 @@ export default async function PrivateHallOfFamePredictionsPage() {
             <h1 className="mt-3 text-2xl font-black text-gray-950">殿堂・プレ殿予想</h1>
             <p className="mt-1 text-sm text-gray-500">候補カードを検索し、プレミアム殿堂・殿堂入り・殿堂解除へ振り分ける試作ページ</p>
           </div>
-          <span className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-bold text-gray-600">管理者限定・非公開</span>
+          <span className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-bold text-gray-600">
+            {isPreview ? 'Preview限定・非公開' : '管理者限定・非公開'}
+          </span>
         </div>
 
         <HallOfFamePredictionBuilder candidates={candidates} />
