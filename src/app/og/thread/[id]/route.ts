@@ -48,7 +48,6 @@ async function getThreadImage(threadId: number): Promise<string | undefined> {
     .from('thread_poll_options')
     .select('image_url')
     .eq('thread_id', threadId)
-    .not('image_url', 'is', null)
     .order('sort_order', { ascending: true })
     .limit(1)
     .maybeSingle()
