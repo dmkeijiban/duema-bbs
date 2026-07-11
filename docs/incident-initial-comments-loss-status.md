@@ -320,6 +320,13 @@ Codexメモに記載の以下ファイルは、**`C:\projects\duema-bbs\`（Clau
 
 リバイバル作業ファイル3点（JSON/MD/CSV）は作業済みの一時ファイル。`.gitignore` に追加するか削除するかを決める必要がある。
 
+#### 8. コメントゼロスレ管理機能
+
+- `src/app/admin/revival/actions.ts`: スレの保護・保護解除・アーカイブ操作
+- `src/app/admin/revival/page.tsx`: コメントゼロスレ候補の確認・保護・アーカイブUI
+- `src/app/admin/page.tsx`: 管理メニューの「リバイバル」リンク
+- 外部コンテンツ取得、AIコメント生成、自動投稿、一括INSERTの仕組みは撤去済み
+
 #### 9. 未解決事項の継承確認
 
 | Codexが挙げた未解決事項 | Claude Code確認 |
