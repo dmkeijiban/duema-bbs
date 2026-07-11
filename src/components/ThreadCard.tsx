@@ -21,7 +21,7 @@ export function ThreadCard({ thread, rank, priority }: Props) {
       prefetch={false}
       className="thread-card bg-white hover:bg-gray-50 overflow-hidden border-b border-r border-gray-300 block"
     >
-      {/* ── モバイル: 横並び（あにまん式） ── */}
+      {/* ── モバイル: 横並び ── */}
       <div className="md:hidden flex" style={{ height: 52, overflow: 'hidden' }}>
         {/* 画像（コメント数オーバーレイ付き） */}
         <div className="relative shrink-0 overflow-hidden bg-gray-100" style={{ width: 52, height: 52 }}>

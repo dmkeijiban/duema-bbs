@@ -264,7 +264,7 @@ Codexメモの事実認識に誤りはない。ただし確認時刻の違いに
   - `batchArchiveStale`: コメントアウトで即 `redirect` — DB書き込みゼロ ✅
   - `batchArchiveAllDeleted`: 同上 ✅
 - **Cron** (`vercel.json`): `archive-empty-threads` へのCronエントリ **なし** ✅
-  - 現在稼働中のCron: `/api/summary/cron` / `/api/seed/thread` / `/api/youtube/check` / `/api/youtube/subscribe` / `/api/internal/sync-typefully` の5本のみ
+  - 当時稼働中だった通常運用Cronの状態を確認済み
 
 → **archive-empty-threads は API・管理画面・Cron のすべての経路で完全停止。**
 
@@ -320,20 +320,12 @@ Codexメモに記載の以下ファイルは、**`C:\projects\duema-bbs\`（Clau
 
 リバイバル作業ファイル3点（JSON/MD/CSV）は作業済みの一時ファイル。`.gitignore` に追加するか削除するかを決める必要がある。
 
-#### 8. 72hリバイバル実装状態 ✅
+#### 8. コメントゼロスレ管理機能
 
-このセッションで実装・push 済み（commit `a0978a3`）:
-
-| ファイル | 内容 |
-|---|---|
-| `docs/empty-thread-revival-rule.md` | 物理削除禁止ルール・72hフロー・バリデーション・運用手順 |
-| `scripts/generate-empty-thread-revival.mjs` | ゼロコメントスレ検出→animanch参照→AI5件生成→preview出力 |
-| `scripts/insert-approved-revival-comments.mjs` | 承認済みpreviewをINSERT（dry-run対応・3秒カウントダウン） |
-| `src/app/admin/revival/actions.ts` | protectThread / unprotectThread / archiveWithoutRevival |
-| `src/app/admin/revival/page.tsx` | 72hゼロコメントスレ一覧・保護/アーカイブ操作UI |
-| `src/app/admin/page.tsx` | 管理メニューに「♻️ リバイバル」リンク追加 |
-
-→ Codexメモが「設計してから」と挙げていた要件（dry-run/プレビュー/承認制）を満たして実装済み。
+- `src/app/admin/revival/actions.ts`: スレの保護・保護解除・アーカイブ操作
+- `src/app/admin/revival/page.tsx`: コメントゼロスレ候補の確認・保護・アーカイブUI
+- `src/app/admin/page.tsx`: 管理メニューの「リバイバル」リンク
+- 外部コンテンツ取得、AIコメント生成、自動投稿、一括INSERTの仕組みは撤去済み
 
 #### 9. 未解決事項の継承確認
 
@@ -342,7 +334,6 @@ Codexメモに記載の以下ファイルは、**`C:\projects\duema-bbs\`（Clau
 | 他ページのコメント0件スレ | `/admin/revival` で管理可能になった。未処理 |
 | thread 26/27/28 のズレ疑い | **手つかず。移動禁止継続。** |
 | 残り空スレの扱い | リバイバル候補として `/admin/revival` で管理 |
-| `ANTHROPIC_API_KEY` 未設定 | **未設定のまま**。手動で `.env.local` に追加が必要 |
 
 ---
 
@@ -350,6 +341,5 @@ Codexメモに記載の以下ファイルは、**`C:\projects\duema-bbs\`（Clau
 
 1. **Codex作成ファイルのコミット方針**: Codexワークスペースの recovery 関連ファイル（notes/、scripts/compare-restored-posts.mjs、supabase/recovery_extract_posts_readonly.sql、本ドキュメント）を共有gitにコミットするか
 2. **page8-revival 作業ファイルの処理**: `page8-revival-preview.*` / `page8-revival-targets.csv` を `.gitignore` 追加か削除か
-3. **`ANTHROPIC_API_KEY` 追加**: `.env.local` に手動追加（AI生成スクリプトを動かすため）
-4. **`/admin/revival` 本番確認**: デプロイ済みの管理画面で動作確認
-5. **thread 26/27/28**: タイトルとコメントのズレを今後どう扱うか方針確認
+3. **`/admin/revival` 本番確認**: デプロイ済みの管理画面で動作確認
+4. **thread 26/27/28**: タイトルとコメントのズレを今後どう扱うか方針確認

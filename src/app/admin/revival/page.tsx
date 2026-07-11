@@ -89,45 +89,13 @@ export default async function RevivalPage() {
         </div>
       </div>
 
-      {/* 自動生成一時停止バナー */}
+      {/* 運用方針 */}
       <div className="mb-4 border border-yellow-400 bg-yellow-50 p-3">
-        <h2 className="font-bold text-yellow-800 text-xs mb-1">⏸ 自動生成は現在一時停止中</h2>
+        <h2 className="font-bold text-yellow-800 text-xs mb-1">候補確認・保護操作</h2>
         <p className="text-[11px] text-yellow-700">
-          コメント自動生成・INSERT は停止しています。このページは<strong>候補確認・保護操作のみ</strong>に使用してください。
-        </p>
-        <ul className="text-[11px] text-yellow-700 mt-1.5 space-y-0.5 list-disc list-inside">
-          <li>generate-empty-thread-revival.mjs の実行禁止</li>
-          <li>insert-approved-revival-comments.mjs の実行禁止</li>
-          <li>再開はユーザーが明示的に指示するまで禁止</li>
-        </ul>
-        <p className="text-[11px] text-yellow-600 mt-1.5">
-          理由：候補の変動が大きい・破損スレ17件の扱い未確定・個別確認なしの自動生成は危険
+          このページは<strong>候補確認・保護・アーカイブ操作のみ</strong>に使用してください。コメントの自動生成や一括投入は行いません。
         </p>
       </div>
-
-      {/* スクリプト実行ガイド（参考：再開時に使用） */}
-      <details className="mb-4">
-        <summary className="text-[11px] text-gray-400 cursor-pointer hover:text-gray-600">
-          📋 リバイバルコメント生成手順（再開時の参考）
-        </summary>
-        <div className="mt-2 border border-gray-200 bg-gray-50 p-3">
-          <ol className="text-[11px] text-gray-600 space-y-0.5 list-decimal list-inside">
-            <li>候補スレを確認し、「保護」または「アーカイブ」で対象を絞り込む</li>
-            <li>
-              ターミナルで生成スクリプトを実行:
-              <code className="ml-1 bg-gray-100 px-1 py-0.5 font-mono">node scripts/generate-empty-thread-revival.mjs</code>
-            </li>
-            <li>
-              <code className="bg-gray-100 px-1 py-0.5 font-mono">revival-preview-YYYY-MM-DD/preview.md</code> を確認・承認
-            </li>
-            <li>
-              承認後に INSERT:
-              <code className="ml-1 bg-gray-100 px-1 py-0.5 font-mono">node scripts/insert-approved-revival-comments.mjs --file revival-preview-YYYY-MM-DD/comments.json</code>
-            </li>
-            <li>キャッシュ期限（60〜300秒）後に本番サイトで表示を確認（2回アクセス）</li>
-          </ol>
-        </div>
-      </details>
 
       {/* ① リバイバル候補一覧 */}
       <section className="mb-6">

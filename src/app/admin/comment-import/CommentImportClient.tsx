@@ -21,12 +21,10 @@ function makePreview(comments: string[], prefix: string): PreviewComment[] {
 export function CommentImportClient() {
   const [threadId, setThreadId] = useState('')
   const [youtubeUrl, setYoutubeUrl] = useState('')
-  const [animanchUrl, setAnimanchUrl] = useState('')
   const [preview, setPreview] = useState<PreviewComment[]>([])
   const [message, setMessage] = useState('')
   const [isPending, startTransition] = useTransition()
   const [isFetchingYoutube, setIsFetchingYoutube] = useState(false)
-  const [isFetchingAnimanch, setIsFetchingAnimanch] = useState(false)
 
   const selectedComments = useMemo(
     () => preview.filter(comment => comment.selected && comment.body.trim()),
@@ -49,25 +47,6 @@ export function CommentImportClient() {
       setMessage('YouTubeコメント取得中にエラーが出ました。')
     } finally {
       setIsFetchingYoutube(false)
-    }
-  }
-
-  const loadAnimanchComments = async () => {
-    setMessage('')
-    setIsFetchingAnimanch(true)
-    try {
-      const res = await fetch(`/api/admin/comment-import/animanch?url=${encodeURIComponent(animanchUrl)}`)
-      const data = await res.json()
-      if (!res.ok) {
-        setMessage(data?.error ?? 'あにまんコメント取得に失敗しました。')
-        return
-      }
-      setPreview(makePreview(data.comments ?? [], 'animanch'))
-      setMessage(`${(data.comments ?? []).length}件を読み込みました。`)
-    } catch {
-      setMessage('あにまんコメント取得中にエラーが出ました。')
-    } finally {
-      setIsFetchingAnimanch(false)
     }
   }
 
@@ -124,27 +103,6 @@ export function CommentImportClient() {
             style={{ background: '#dc3545' }}
           >
             {isFetchingYoutube ? '取得中...' : '30件取得'}
-          </button>
-        </div>
-      </section>
-
-      <section className="border border-gray-300 bg-white p-3">
-        <h2 className="font-bold text-gray-800 mb-2">あにまんコメント取得</h2>
-        <div className="flex gap-2 flex-wrap">
-          <input
-            value={animanchUrl}
-            onChange={event => setAnimanchUrl(event.target.value)}
-            placeholder="https://bbs.animanch.com/board/〇〇/"
-            className="flex-1 min-w-72 border border-gray-300 px-2 py-1.5 text-sm"
-          />
-          <button
-            type="button"
-            onClick={loadAnimanchComments}
-            disabled={isFetchingAnimanch || !animanchUrl.trim()}
-            className="px-3 py-1.5 text-sm text-white disabled:opacity-50"
-            style={{ background: '#0d6efd' }}
-          >
-            {isFetchingAnimanch ? '取得中...' : '30件取得'}
           </button>
         </div>
       </section>

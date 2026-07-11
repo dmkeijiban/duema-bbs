@@ -69,14 +69,6 @@
 3. **監査ログ出力**: 変更前後の本文を `console.warn` で記録（Vercel Functions ログに残る）
 4. **単一IDガード**: `.eq('id', postId)` で1件のみを対象
 
-### スクリプトからの呼び出し禁止
-
-`generate-empty-thread-revival.mjs` および `insert-approved-revival-comments.mjs` は：
-- 既存コメントが存在するスレへの INSERT を行わない（`checkExistingPosts` でガード）
-- `posts.update({ body })` を一切呼び出さない
-
----
-
 ## 違反パターンと対処
 
 | 違反パターン | 対処 |
@@ -90,7 +82,5 @@
 
 ## 関連ドキュメント
 
-- `docs/empty-thread-revival-rule.md` — リバイバル運用フロー（新規INSERTのみ）
 - `docs/incident-initial-comments-loss-status.md` — 2026-05-02 事故の詳細
-- `scripts/insert-approved-revival-comments.mjs` — 承認済みコメントのINSERTスクリプト
 - `src/app/admin/actions.ts` — `adminUpdatePost()` の実装（監査ログ付き）
