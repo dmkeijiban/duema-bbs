@@ -9,6 +9,7 @@ import ShareButtons from './ShareButtons'
 import { SITE_URL } from '@/lib/site-config'
 import { ZukanCardMemories, ZukanCardMemoriesSkeleton } from './ZukanCardMemories'
 import { getMultiFaceSupplement, getProxiedZukanCardImageUrl, type ZukanCardFace } from '@/lib/zukan-card-faces'
+import { getTwinPactSpellFace, splitTwinPactAbilityText } from '@/lib/zukan-twin-pact'
 
 const getCardBySlugCached = cache(fetchCardBySlug)
 
@@ -157,6 +158,8 @@ export default async function ZukanCardPage({
   const packHref = pack ? `/zukan/${pack.slug}` : '/zukan'
   const packLabel = pack ? `${pack.code} ${pack.name}` : '図鑑トップ'
   const multiFace = getMultiFaceSupplement(slug)
+  const { creatureAbilityText } = splitTwinPactAbilityText(card.ability_text)
+  const twinPactSpellFace = getTwinPactSpellFace(slug, card.ability_text)
   const frontImageUrl = multiFace?.frontImageUrl ?? card.official_image_url
   const frontFace: DisplayFace | null = frontImageUrl ? {
     name: card.name, cardType: card.card_type ?? '', civilization: card.civilization ?? '', cost: card.cost,
@@ -231,9 +234,9 @@ export default async function ZukanCardPage({
             {card.rarity && <div><dt className="font-bold text-gray-500">レアリティ</dt><dd>{card.rarity}</dd></div>}
             {card.illustrator && <div><dt className="font-bold text-gray-500">イラスト</dt><dd>{card.illustrator}</dd></div>}
           </dl>
-          {card.ability_text && (
-            <p className="mt-3 text-xs leading-relaxed text-gray-700 border-l-2 border-gray-200 pl-2">
-              {card.ability_text.replace(/^\s*\|\s*/, '')}
+          {creatureAbilityText && (
+            <p className="mt-3 whitespace-pre-line text-xs leading-relaxed text-gray-700 border-l-2 border-gray-200 pl-2">
+              {creatureAbilityText.replace(/^\s*\|\s*/, '')}
             </p>
           )}
           {card.flavor_text && (
@@ -254,6 +257,20 @@ export default async function ZukanCardPage({
             </div>
           )}
             </div>
+          </div>
+        )}
+        {twinPactSpellFace && (
+          <div className="mt-4 border-t border-gray-200 pt-3">
+            <p className="text-xs font-bold text-gray-500">呪文面</p>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <h2 className="text-base font-bold text-gray-800">{twinPactSpellFace.name}</h2>
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 font-mono text-xs font-bold text-gray-700">
+                コスト {twinPactSpellFace.cost}
+              </span>
+            </div>
+            <p className="mt-2 whitespace-pre-line border-l-2 border-gray-200 pl-2 text-xs leading-relaxed text-gray-700">
+              {twinPactSpellFace.abilityText}
+            </p>
           </div>
         )}
       </header>
