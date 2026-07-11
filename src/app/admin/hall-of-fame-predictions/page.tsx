@@ -81,12 +81,9 @@ async function fetchCandidateImages() {
 
 export default async function PrivateHallOfFamePredictionsPage() {
   const isPreview = process.env.VERCEL_ENV === 'preview'
-
-  if (!isPreview) {
-    const cookieStore = await cookies()
-    const isAdmin = verifyAdminCookie(cookieStore.get(ADMIN_COOKIE)?.value)
-    if (!isAdmin) redirect('/admin')
-  }
+  const cookieStore = await cookies()
+  const isAdmin = verifyAdminCookie(cookieStore.get(ADMIN_COOKIE)?.value)
+  if (!isAdmin) redirect('/admin')
 
   const imageByName = await fetchCandidateImages()
   const candidates = CANDIDATE_NAMES.map(name => ({
