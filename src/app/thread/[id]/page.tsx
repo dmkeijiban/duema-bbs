@@ -112,10 +112,10 @@ export async function generateMetadata({ params }: Props) {
   const metadataDescription = buildThreadDescription(typedThread)
   const threadPoll = thread.image_url ? null : await getCachedThreadPoll(parseInt(id))
   const hasStarterImage = Boolean(thread.image_url || threadPoll?.options[0]?.imageUrl)
-  // Use a stable, query-free image URL for X cards. Twitterbot can be picky
-  // with long query-string image URLs, even when the endpoint returns 200.
+  // Keep the image URL stable while versioning deliberate OG behavior changes.
+  // This avoids reusing a previously cached 404/default card on X.
   const ogImageUrl = hasStarterImage
-    ? `${baseUrl}/og/thread/${id}.jpg`
+    ? `${baseUrl}/og/thread/${id}.jpg?v=2`
     : `${baseUrl}/default-thumbnail.jpg`
 
   const meta = {
