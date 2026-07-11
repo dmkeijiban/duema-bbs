@@ -118,6 +118,20 @@ export function ThreadContent({
   const [adminRateLimitToken, setAdminRateLimitToken] = useState<string | null>(null)
   const [optimisticPosts, setOptimisticPosts] = useState<OptimisticPost[]>([])
   const [justPostedId, setJustPostedId] = useState<number | null>(null)
+  const [optimisticScrollTarget, setOptimisticScrollTarget] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (optimisticScrollTarget === null) return
+
+    const frame = requestAnimationFrame(() => {
+      document
+        .getElementById(`post-${optimisticScrollTarget}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setOptimisticScrollTarget(null)
+    })
+
+    return () => cancelAnimationFrame(frame)
+  }, [optimisticScrollTarget])
 
   useEffect(() => {
     let cancelled = false
@@ -212,6 +226,7 @@ export function ThreadContent({
       optimisticStatus: 'sending',
     }
     setOptimisticPosts(current => [...current, optimisticPost])
+    setOptimisticScrollTarget(optimisticPost.post_number + 1)
     return optimisticId
   }, [displayPosts, optimisticPosts, sessionId, threadId])
 
