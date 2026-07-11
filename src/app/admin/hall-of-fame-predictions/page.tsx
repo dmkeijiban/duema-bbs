@@ -6,6 +6,7 @@ import { ADMIN_COOKIE, verifyAdminCookie } from '@/lib/admin-auth'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { HallOfFamePredictionBuilder, type PredictionCandidate } from './HallOfFamePredictionBuilder'
 
+// Keep this prototype private until the shared card foundation is fully verified.
 export const metadata: Metadata = { title: '殿堂・プレ殿予想（非公開） | デュエマ掲示板', robots: { index: false, follow: false } }
 const PAGE_SIZE = 60
 
