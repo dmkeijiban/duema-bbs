@@ -4,10 +4,16 @@ import { useEffect, useMemo, useState } from 'react'
 
 type PredictionType = 'premium' | 'hall' | 'release'
 
-type Candidate = {
+export type PredictionCandidate = {
+  id: string
   name: string
   imageUrl: string | null
+  civilization: string[]
+  cost: number | null
+  cardType: string | null
+  regulation: string
 }
+type Candidate = PredictionCandidate
 
 type Picks = Record<PredictionType, string[]>
 
@@ -56,8 +62,12 @@ function CardImage({ candidate }: { candidate: Candidate }) {
   )
 }
 
-export function HallOfFamePredictionBuilder({ candidates }: { candidates: Candidate[] }) {
+export function HallOfFamePredictionBuilder({ candidates, totalCandidates }: { candidates: Candidate[]; totalCandidates: number }) {
   const [query, setQuery] = useState('')
+  const [civilization, setCivilization] = useState('')
+  const [cardType, setCardType] = useState('')
+  const [cost, setCost] = useState('')
+  const [regulation, setRegulation] = useState('')
   const [picks, setPicks] = useState<Picks>(EMPTY_PICKS)
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [showPreview, setShowPreview] = useState(false)
@@ -65,7 +75,7 @@ export function HallOfFamePredictionBuilder({ candidates }: { candidates: Candid
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY)
-      if (saved) setPicks(JSON.parse(saved) as Picks)
+      if (saved) queueMicrotask(() => setPicks(JSON.parse(saved) as Picks))
     } catch {
       // 壊れた端末保存値は無視する。
     }
@@ -87,9 +97,8 @@ export function HallOfFamePredictionBuilder({ candidates }: { candidates: Candid
   const selectedNames = useMemo(() => new Set(Object.values(picks).flat()), [picks])
   const visibleCandidates = useMemo(() => {
     const normalized = query.trim().toLowerCase()
-    if (!normalized) return candidates
-    return candidates.filter(candidate => candidate.name.toLowerCase().includes(normalized))
-  }, [candidates, query])
+    return candidates.filter(candidate => (!normalized || candidate.name.toLowerCase().includes(normalized)) && (!civilization || candidate.civilization.includes(civilization)) && (!cardType || candidate.cardType === cardType) && (!cost || candidate.cost === Number(cost)) && (!regulation || candidate.regulation === regulation))
+  }, [candidates, query, civilization, cardType, cost, regulation])
 
   const candidateByName = useMemo(
     () => new Map(candidates.map(candidate => [candidate.name, candidate])),
@@ -165,7 +174,7 @@ export function HallOfFamePredictionBuilder({ candidates }: { candidates: Candid
                 ) : (
                   <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
                     {picks[type].map(name => {
-                      const candidate = candidateByName.get(name) ?? { name, imageUrl: null }
+                      const candidate = candidateByName.get(name) ?? { id: `missing:${name}`, name, imageUrl: null, civilization: [], cost: null, cardType: null, regulation: 'unknown' }
                       return (
                         <div key={name} className="group relative overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
                           <button
@@ -205,6 +214,13 @@ export function HallOfFamePredictionBuilder({ candidates }: { candidates: Candid
               )}
             </div>
             <p className="mt-2 text-right text-[11px] text-gray-500">{visibleCandidates.length} / {candidates.length}件表示</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <select aria-label="文明" value={civilization} onChange={e => setCivilization(e.target.value)} className="rounded border px-2 py-2 text-xs"><option value="">文明: すべて</option>{[...new Set(candidates.flatMap(c => c.civilization))].map(v => <option key={v}>{v}</option>)}</select>
+              <select aria-label="カードタイプ" value={cardType} onChange={e => setCardType(e.target.value)} className="rounded border px-2 py-2 text-xs"><option value="">種類: すべて</option>{[...new Set(candidates.map(c => c.cardType).filter(Boolean))].map(v => <option key={v!}>{v}</option>)}</select>
+              <select aria-label="コスト" value={cost} onChange={e => setCost(e.target.value)} className="rounded border px-2 py-2 text-xs"><option value="">コスト: すべて</option>{[...new Set(candidates.map(c => c.cost).filter(v => v !== null))].sort((a,b) => a!-b!).map(v => <option key={v!}>{v}</option>)}</select>
+              <select aria-label="regulation" value={regulation} onChange={e => setRegulation(e.target.value)} className="rounded border px-2 py-2 text-xs"><option value="">regulation: すべて</option>{[...new Set(candidates.map(c => c.regulation))].map(v => <option key={v}>{v}</option>)}</select>
+            </div>
+            {totalCandidates > candidates.length && <p className="mt-2 text-[10px] text-gray-500">全{totalCandidates}件中、このページの{candidates.length}件を絞り込みます。</p>}
           </div>
 
           <div className="max-h-[68vh] overflow-y-auto p-3">
@@ -250,7 +266,7 @@ export function HallOfFamePredictionBuilder({ candidates }: { candidates: Candid
                 ) : (
                   <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
                     {picks[type].map(name => {
-                      const candidate = candidateByName.get(name) ?? { name, imageUrl: null }
+                      const candidate = candidateByName.get(name) ?? { id: `missing:${name}`, name, imageUrl: null, civilization: [], cost: null, cardType: null, regulation: 'unknown' }
                       return (
                         <div key={name}>
                           <div className="aspect-[63/88] overflow-hidden rounded border border-gray-200"><CardImage candidate={candidate} /></div>
