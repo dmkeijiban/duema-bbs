@@ -77,7 +77,7 @@ const DETAIL_LABELS = [
 ]
 
 const CARD_SECTIONS = new Set(['base', 'secret', 'treasure'])
-const TWIN_PACT_SPELL_PATTERN = /【呪文面】.+?（コスト\s*\d+）\r?\n\S/s
+const TWIN_PACT_SPELL_PATTERN = /【呪文面】[\s\S]+?（コスト\s*\d+）\r?\n\S/
 const LEGACY_TWIN_PACT_PACKS = new Set(['dm22-rp1'])
 
 function cardLabel(card: ZukanPackImportCard | null | undefined, index: number) {
