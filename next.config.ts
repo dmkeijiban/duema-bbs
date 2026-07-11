@@ -9,10 +9,6 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '*.supabase.co',
       },
-      {
-        protocol: 'https',
-        hostname: 'bbs.animanch.com',
-      },
     ],
     // 掲示板サムネは52-80px、バナーは~300px幅程度なので
     // 不要な大サイズ生成を抑えてキャッシュ効率を上げる
