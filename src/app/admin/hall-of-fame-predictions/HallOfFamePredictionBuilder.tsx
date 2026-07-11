@@ -11,10 +11,25 @@ type Candidate = {
 
 type Picks = Record<PredictionType, string[]>
 
-const TYPE_META: Record<PredictionType, { label: string; badge: string; border: string }> = {
-  premium: { label: 'プレミアム殿堂', badge: 'bg-red-50 text-red-700 border-red-300', border: 'border-red-200' },
-  hall: { label: '殿堂入り', badge: 'bg-amber-50 text-amber-700 border-amber-300', border: 'border-amber-200' },
-  release: { label: '殿堂解除', badge: 'bg-emerald-50 text-emerald-700 border-emerald-300', border: 'border-emerald-200' },
+const TYPE_META: Record<PredictionType, { label: string; badge: string; button: string; drop: string }> = {
+  premium: {
+    label: 'プレミアム殿堂',
+    badge: 'border-red-300 bg-red-50 text-red-700',
+    button: 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100',
+    drop: 'border-red-200 bg-red-50/30',
+  },
+  hall: {
+    label: '殿堂入り',
+    badge: 'border-amber-300 bg-amber-50 text-amber-700',
+    button: 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100',
+    drop: 'border-amber-200 bg-amber-50/30',
+  },
+  release: {
+    label: '殿堂解除',
+    badge: 'border-emerald-300 bg-emerald-50 text-emerald-700',
+    button: 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+    drop: 'border-emerald-200 bg-emerald-50/30',
+  },
 }
 
 const EMPTY_PICKS: Picks = { premium: [], hall: [], release: [] }
@@ -44,7 +59,7 @@ function CardImage({ candidate }: { candidate: Candidate }) {
 export function HallOfFamePredictionBuilder({ candidates }: { candidates: Candidate[] }) {
   const [query, setQuery] = useState('')
   const [picks, setPicks] = useState<Picks>(EMPTY_PICKS)
-  const [activeType, setActiveType] = useState<PredictionType>('hall')
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [showPreview, setShowPreview] = useState(false)
 
   useEffect(() => {
@@ -60,6 +75,15 @@ export function HallOfFamePredictionBuilder({ candidates }: { candidates: Candid
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(picks))
   }, [picks])
 
+  useEffect(() => {
+    if (!selectedCandidate) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectedCandidate(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [selectedCandidate])
+
   const selectedNames = useMemo(() => new Set(Object.values(picks).flat()), [picks])
   const visibleCandidates = useMemo(() => {
     const normalized = query.trim().toLowerCase()
@@ -72,20 +96,23 @@ export function HallOfFamePredictionBuilder({ candidates }: { candidates: Candid
     [candidates],
   )
 
-  function addCard(name: string) {
+  function placeCard(type: PredictionType, name: string) {
     setPicks(current => {
       const next: Picks = {
         premium: current.premium.filter(card => card !== name),
         hall: current.hall.filter(card => card !== name),
         release: current.release.filter(card => card !== name),
       }
-      next[activeType] = [...next[activeType], name]
+      next[type] = [...next[type], name]
       return next
     })
+    setSelectedCandidate(null)
+    setShowPreview(false)
   }
 
   function removeCard(type: PredictionType, name: string) {
     setPicks(current => ({ ...current, [type]: current[type].filter(card => card !== name) }))
+    setShowPreview(false)
   }
 
   function reset() {
@@ -95,114 +122,118 @@ export function HallOfFamePredictionBuilder({ candidates }: { candidates: Candid
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <section className="rounded border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
         <p className="font-bold">非公開の試作ページです</p>
         <p className="mt-1 text-xs leading-relaxed text-blue-800">
-          候補カードを1つのプールから検索し、選択中の区分へ追加します。選択内容はこの端末だけに保存され、まだDB送信や公開はされません。
+          右側の候補からカードを選び、追加先を決めて予想を作ります。内容はこの端末だけに保存され、まだ公開されません。
         </p>
       </section>
 
-      <section className="rounded border border-gray-300 bg-white p-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div className="flex-1">
-            <label htmlFor="candidate-search" className="text-xs font-bold text-gray-700">候補カードを検索</label>
-            <input
-              id="candidate-search"
-              value={query}
-              onChange={event => setQuery(event.target.value)}
-              placeholder="カード名を入力"
-              className="mt-1 h-11 w-full rounded border border-gray-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            />
-          </div>
-          <div>
-            <p className="mb-1 text-xs font-bold text-gray-700">追加先</p>
-            <div className="flex flex-wrap gap-2">
-              {(Object.keys(TYPE_META) as PredictionType[]).map(type => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setActiveType(type)}
-                  className={`rounded border px-3 py-2 text-xs font-bold ${activeType === type ? TYPE_META[type].badge : 'border-gray-300 bg-white text-gray-600'}`}
-                >
-                  {TYPE_META[type].label}
-                </button>
-              ))}
-            </div>
-          </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-black text-gray-950 sm:text-2xl">殿堂・プレ殿予想を作る</h1>
+          <p className="mt-1 text-xs text-gray-500">カードを選ぶと追加先を指定できます</p>
         </div>
-
-        <p className="mt-3 text-xs text-gray-500">{visibleCandidates.length}件表示 / 候補全{candidates.length}件</p>
-        <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
-          {visibleCandidates.map(candidate => {
-            const selected = selectedNames.has(candidate.name)
-            return (
-              <button
-                key={candidate.name}
-                type="button"
-                onClick={() => addCard(candidate.name)}
-                className={`overflow-hidden rounded border bg-white text-left transition ${selected ? 'border-blue-500 ring-2 ring-blue-100' : 'border-gray-200 hover:border-blue-400'}`}
-              >
-                <div className="aspect-[63/88] bg-gray-100"><CardImage candidate={candidate} /></div>
-                <div className="min-h-12 px-1.5 py-1.5 text-[10px] font-bold leading-tight text-gray-800">
-                  {candidate.name}
-                </div>
-              </button>
-            )
-          })}
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={reset} className="rounded border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50">
+            クリア
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowPreview(true)}
+            disabled={selectedNames.size === 0}
+            className="rounded bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+          >
+            完成イメージを見る
+          </button>
         </div>
-      </section>
+      </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {(Object.keys(TYPE_META) as PredictionType[]).map(type => (
-          <section key={type} className={`rounded border bg-white ${TYPE_META[type].border}`}>
-            <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
-              <span className={`rounded border px-2 py-1 text-xs font-bold ${TYPE_META[type].badge}`}>{TYPE_META[type].label}</span>
-              <span className="text-xs font-bold tabular-nums text-gray-500">{picks[type].length}枚</span>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <main className="space-y-4">
+          {(Object.keys(TYPE_META) as PredictionType[]).map(type => (
+            <section key={type}>
+              <div className="mb-2 flex items-center gap-2">
+                <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${TYPE_META[type].badge}`}>{TYPE_META[type].label}</span>
+                <span className="text-xs font-bold tabular-nums text-gray-500">{picks[type].length}枚</span>
+              </div>
+
+              <div className={`min-h-32 rounded-xl border border-dashed p-3 ${TYPE_META[type].drop}`}>
+                {picks[type].length === 0 ? (
+                  <div className="flex min-h-24 items-center justify-center text-xs font-bold text-gray-400">候補からカードを追加してください</div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
+                    {picks[type].map(name => {
+                      const candidate = candidateByName.get(name) ?? { name, imageUrl: null }
+                      return (
+                        <div key={name} className="group relative overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+                          <button
+                            type="button"
+                            onClick={() => removeCard(type, name)}
+                            aria-label={`${name}を外す`}
+                            className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-sm font-bold text-white opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
+                          >
+                            ×
+                          </button>
+                          <div className="aspect-[63/88]"><CardImage candidate={candidate} /></div>
+                          <p className="min-h-9 px-1 py-1 text-[9px] font-bold leading-tight text-gray-700">{name}</p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </section>
+          ))}
+        </main>
+
+        <aside className="overflow-hidden rounded-xl border border-gray-300 bg-white xl:sticky xl:top-4 xl:self-start">
+          <div className="border-b border-gray-200 p-3">
+            <label htmlFor="candidate-search" className="sr-only">候補カードを検索</label>
+            <div className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+              <span aria-hidden="true" className="text-gray-400">⌕</span>
+              <input
+                id="candidate-search"
+                value={query}
+                onChange={event => setQuery(event.target.value)}
+                placeholder="カード名を検索"
+                className="h-11 min-w-0 flex-1 bg-transparent text-sm outline-none"
+              />
+              {query && (
+                <button type="button" onClick={() => setQuery('')} className="text-xs font-bold text-gray-400 hover:text-gray-700">消去</button>
+              )}
             </div>
-            {picks[type].length === 0 ? (
-              <p className="px-3 py-8 text-center text-xs text-gray-400">まだ選択されていません</p>
+            <p className="mt-2 text-right text-[11px] text-gray-500">{visibleCandidates.length} / {candidates.length}件表示</p>
+          </div>
+
+          <div className="max-h-[68vh] overflow-y-auto p-3">
+            {visibleCandidates.length === 0 ? (
+              <p className="py-12 text-center text-xs text-gray-400">該当する候補がありません</p>
             ) : (
-              <div className="grid grid-cols-3 gap-2 p-3">
-                {picks[type].map(name => {
-                  const candidate = candidateByName.get(name) ?? { name, imageUrl: null }
+              <div className="grid grid-cols-3 gap-2">
+                {visibleCandidates.map(candidate => {
+                  const selected = selectedNames.has(candidate.name)
                   return (
-                    <div key={name} className="relative overflow-hidden rounded border border-gray-200 bg-white">
-                      <button
-                        type="button"
-                        onClick={() => removeCard(type, name)}
-                        aria-label={`${name}を外す`}
-                        className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-sm font-bold text-white"
-                      >
-                        ×
-                      </button>
-                      <div className="aspect-[63/88]"><CardImage candidate={candidate} /></div>
-                      <p className="min-h-10 px-1 py-1 text-[9px] font-bold leading-tight text-gray-700">{name}</p>
-                    </div>
+                    <button
+                      key={candidate.name}
+                      type="button"
+                      onClick={() => setSelectedCandidate(candidate)}
+                      className={`overflow-hidden rounded-lg border bg-white text-left transition hover:-translate-y-0.5 hover:shadow-md ${selected ? 'border-blue-500 ring-2 ring-blue-100' : 'border-gray-200'}`}
+                    >
+                      <div className="aspect-[63/88] bg-gray-100"><CardImage candidate={candidate} /></div>
+                      <div className="min-h-10 px-1 py-1 text-[9px] font-bold leading-tight text-gray-800">{candidate.name}</div>
+                    </button>
                   )
                 })}
               </div>
             )}
-          </section>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap justify-end gap-2">
-        <button type="button" onClick={reset} className="rounded border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50">
-          リセット
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowPreview(true)}
-          disabled={selectedNames.size === 0}
-          className="rounded bg-blue-600 px-5 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-        >
-          予想を完成させる
-        </button>
+          </div>
+        </aside>
       </div>
 
       {showPreview && (
-        <section className="rounded border-2 border-gray-800 bg-white p-5 shadow-sm">
+        <section className="rounded-xl border-2 border-gray-900 bg-white p-5 shadow-sm">
           <div className="border-b-2 border-gray-900 pb-3">
             <p className="text-xs font-bold tracking-widest text-gray-500">デュエマ掲示板</p>
             <h2 className="mt-1 text-2xl font-black text-gray-950">殿堂・プレ殿予想</h2>
@@ -211,7 +242,7 @@ export function HallOfFamePredictionBuilder({ candidates }: { candidates: Candid
             {(Object.keys(TYPE_META) as PredictionType[]).map(type => (
               <div key={type}>
                 <div className="mb-2 flex items-center gap-2">
-                  <span className={`rounded border px-2 py-1 text-xs font-bold ${TYPE_META[type].badge}`}>{TYPE_META[type].label}</span>
+                  <span className={`rounded-full border px-2 py-1 text-xs font-bold ${TYPE_META[type].badge}`}>{TYPE_META[type].label}</span>
                   <span className="text-xs font-bold text-gray-500">{picks[type].length}枚</span>
                 </div>
                 {picks[type].length === 0 ? (
@@ -233,6 +264,41 @@ export function HallOfFamePredictionBuilder({ candidates }: { candidates: Candid
             ))}
           </div>
         </section>
+      )}
+
+      {selectedCandidate && (
+        <div
+          role="presentation"
+          onMouseDown={event => {
+            if (event.target === event.currentTarget) setSelectedCandidate(null)
+          }}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 p-4"
+        >
+          <section role="dialog" aria-modal="true" aria-labelledby="prediction-card-dialog-title" className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <h2 id="prediction-card-dialog-title" className="text-sm font-black leading-snug text-gray-900">{selectedCandidate.name}</h2>
+              <button type="button" onClick={() => setSelectedCandidate(null)} aria-label="閉じる" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xl text-gray-500 hover:bg-gray-100">×</button>
+            </div>
+
+            <div className="mx-auto mt-4 aspect-[63/88] w-36 overflow-hidden rounded-lg border border-gray-200 bg-gray-100 shadow-sm">
+              <CardImage candidate={selectedCandidate} />
+            </div>
+
+            <p className="mt-4 text-center text-xs font-bold text-gray-500">このカードをどこに入れますか？</p>
+            <div className="mt-3 space-y-2">
+              {(Object.keys(TYPE_META) as PredictionType[]).map(type => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => placeCard(type, selectedCandidate.name)}
+                  className={`w-full rounded-xl border px-4 py-3 text-sm font-black transition ${TYPE_META[type].button}`}
+                >
+                  {TYPE_META[type].label}
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
       )}
     </div>
   )
