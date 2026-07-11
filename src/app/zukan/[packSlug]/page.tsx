@@ -104,7 +104,7 @@ function Pager({
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 border border-gray-200 bg-gray-50 px-3 py-2">
       {page > 1 ? (
-        <Link href={`/zukan/${packSlug}?page=${page - 1}`} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50">
+        <Link href={`/zukan/${packSlug}?page=${page - 1}`} scroll={false} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50">
           ← 前の60件
         </Link>
       ) : (
@@ -112,7 +112,7 @@ function Pager({
       )}
       <span className="font-mono text-xs text-gray-500">{page} / {totalPages}</span>
       {page < totalPages ? (
-        <Link href={`/zukan/${packSlug}?page=${page + 1}`} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50">
+        <Link href={`/zukan/${packSlug}?page=${page + 1}`} scroll={false} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50">
           次の60件 →
         </Link>
       ) : (
