@@ -191,12 +191,14 @@ export function ThreadPoll({ threadId, poll, onWriteReason }: Props) {
                     aria-hidden="true"
                   />
                 )}
-                <span className="relative break-words font-medium text-gray-800">{option.label}</span>
-                {viewerState?.hasVoted && (
-                  <span className="relative shrink-0 text-xs font-bold text-gray-600">
-                    {percentage}%<span className="ml-1 font-normal text-gray-400">({resultOption?.voteCount ?? 0})</span>
-                  </span>
-                )}
+                <span className="relative break-words font-medium text-gray-800">
+                  {option.label}
+                  {viewerState?.hasVoted && (
+                    <span className="ml-2 inline whitespace-nowrap text-xs font-bold text-gray-600">
+                      {percentage}%<span className="ml-1 font-normal text-gray-400">({resultOption?.voteCount ?? 0})</span>
+                    </span>
+                  )}
+                </span>
               </div>
               <button
                 type="button"
