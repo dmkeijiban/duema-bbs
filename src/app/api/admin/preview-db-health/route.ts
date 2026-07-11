@@ -26,10 +26,13 @@ export async function GET() {
   let databaseReadable = false
   let databaseName: string | null = null
   let databaseRole: string | null = null
+  let serviceRoleError: string | null = null
+  let databaseError: string | null = null
   try {
-    const { error } = await createAdminClient().from('zukan_cards').select('id').limit(1)
+    const { error } = await createAdminClient().auth.admin.listUsers({ page: 1, perPage: 1 })
     serviceRoleReadable = !error
-  } catch {}
+    serviceRoleError = error?.message ?? null
+  } catch (error) { serviceRoleError = error instanceof Error ? error.message : 'unknown' }
   if (process.env.SUPABASE_DB_URL) {
     const client = new Client({ connectionString: process.env.SUPABASE_DB_URL, ssl: { rejectUnauthorized: false } })
     try {
@@ -38,8 +41,11 @@ export async function GET() {
       databaseReadable = true
       databaseName = result.rows[0]?.current_database ?? null
       databaseRole = result.rows[0]?.current_user ?? null
-    } catch {} finally { await client.end().catch(() => undefined) }
+    } catch (error) {
+      const value = error as { code?: string }
+      databaseError = value.code ?? (error instanceof Error ? error.name : 'unknown')
+    } finally { await client.end().catch(() => undefined) }
   }
 
-  return NextResponse.json({ ok: serviceRoleReadable && databaseReadable, ref, serviceRoleExists, databaseUrlExists, serviceRoleReadable, databaseReadable, databaseName, databaseRole })
+  return NextResponse.json({ ok: serviceRoleReadable && databaseReadable, ref, serviceRoleExists, databaseUrlExists, serviceRoleReadable, serviceRoleError, databaseReadable, databaseError, databaseName, databaseRole })
 }
