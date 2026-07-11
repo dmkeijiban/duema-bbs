@@ -21,8 +21,16 @@ export async function createConsentedBulkThread(formData: FormData): Promise<Bul
   await requireAdmin()
   const title = String(formData.get('title') ?? '').trim()
   const body = String(formData.get('body') ?? '').trim()
-  let comments: CommentInput[]
-  try { comments = JSON.parse(String(formData.get('comments') ?? '[]')) as CommentInput[] } catch { return { ok: false, message: 'コメント形式が不正です。' } }
+  let parsedComments: unknown
+  try { parsedComments = JSON.parse(String(formData.get('comments') ?? '[]')) } catch { return { ok: false, message: 'コメント形式が不正です。' } }
+  if (!Array.isArray(parsedComments)) return { ok: false, message: 'コメント形式が不正です。' }
+  let comments = parsedComments.filter((item): item is CommentInput => {
+    if (!item || typeof item !== 'object') return false
+    const value = item as Partial<CommentInput>
+    return typeof value.body === 'string' && typeof value.internalMemo === 'string'
+      && typeof value.permissionConfirmedOn === 'string'
+      && (value.textState === 'original' || value.textState === 'lightly_edited')
+  })
   comments = comments.filter(item => item.body?.trim()).slice(0, BULK_THREAD_COMMENT_LIMIT)
   if (!title) return { ok: false, message: 'タイトルは必須です。' }
   if (title.length > BULK_THREAD_TITLE_MAX || body.length > BULK_THREAD_BODY_MAX) return { ok: false, message: 'タイトルまたは本文が文字数上限を超えています。' }
@@ -47,7 +55,12 @@ export async function createConsentedBulkThread(formData: FormData): Promise<Bul
     p_comments: comments.map(item => ({ body: item.body.trim(), internal_memo: item.internalMemo.trim(), permission_confirmed_on: item.permissionConfirmedOn, text_state: item.textState })),
     p_registered_by: 'admin-cookie',
   })
-  if (error || !data) return { ok: false, message: `登録に失敗しました: ${error?.message ?? 'unknown error'}` }
+  if (error || !data) {
+    const storagePaths = [uploaded?.url, uploaded?.thumbnailUrl]
+      .flatMap(url => url?.match(/\/storage\/v1\/object\/public\/bbs-images\/(.+)$/)?.[1] ?? [])
+    if (storagePaths.length) await supabase.storage.from('bbs-images').remove(storagePaths)
+    return { ok: false, message: `登録に失敗しました: ${error?.message ?? 'unknown error'}` }
+  }
   const threadId = Number(data)
   revalidateTag('threads', { expire: 0 }); revalidateTag(`thread-${threadId}`, { expire: 0 })
   revalidatePath('/'); revalidatePath('/category', 'layout'); revalidatePath('/ranking'); revalidatePath(`/thread/${threadId}`); revalidatePath('/admin')

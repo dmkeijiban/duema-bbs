@@ -12,6 +12,7 @@ create table if not exists public.admin_consented_post_metadata (
 
 alter table public.admin_consented_post_metadata enable row level security;
 revoke all on table public.admin_consented_post_metadata from anon, authenticated;
+revoke all on sequence public.admin_consented_post_metadata_id_seq from anon, authenticated;
 
 create or replace function public.admin_create_consented_thread(
   p_title text, p_body text, p_author_name text, p_image_url text,
@@ -27,6 +28,8 @@ declare
   v_number integer := 2;
   v_now timestamptz := clock_timestamp();
 begin
+  if p_author_name is distinct from '名無しのデュエリスト' then raise exception 'invalid author'; end if;
+  if p_registered_by is distinct from 'admin-cookie' then raise exception 'invalid administrator'; end if;
   if length(trim(p_title)) = 0 or length(p_title) > 100 then raise exception 'invalid title'; end if;
   if length(coalesce(p_body, '')) > 5000 then raise exception 'invalid body'; end if;
   if jsonb_typeof(p_comments) <> 'array' or jsonb_array_length(p_comments) > 50 then raise exception 'invalid comments'; end if;
