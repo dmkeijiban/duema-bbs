@@ -688,6 +688,7 @@ export default async function AdminPage({
           <div className={ADMIN_MENU_ROW_CLASS}>
             <p className={ADMIN_MENU_LABEL_CLASS}>生成・取り込み</p>
             <div className={ADMIN_MENU_GROUP_CLASS}>
+              <Link href="/admin/thread-bulk-create" className={ADMIN_MENU_BTN_NEUTRAL}>📝 スレ・コメント一括作成</Link>
               <Link href="/admin/summary" className={ADMIN_MENU_BTN_NEUTRAL}>📊 まとめ生成</Link>
               <Link href="/admin/daily-zukan" className={ADMIN_MENU_BTN_NEUTRAL}>🃏 図鑑カードスレ自動生成</Link>
               <Link href="/admin/article-drafts" className={ADMIN_MENU_BTN_NEUTRAL}>記事下書き取り込み</Link>
