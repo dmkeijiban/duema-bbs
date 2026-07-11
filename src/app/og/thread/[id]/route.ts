@@ -44,6 +44,16 @@ async function getThreadImage(threadId: number): Promise<string | undefined> {
   if (!thread || thread.is_archived) return undefined
   if (thread?.image_url) return thread.image_url
 
+  const { data: pollOption } = await supabase
+    .from('thread_poll_options')
+    .select('image_url')
+    .eq('thread_id', threadId)
+    .order('sort_order', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (pollOption?.image_url) return pollOption.image_url
+
   const { data: postImg } = await supabase
     .from('posts')
     .select('image_url')
