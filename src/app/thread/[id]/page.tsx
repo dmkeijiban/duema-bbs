@@ -115,7 +115,7 @@ export async function generateMetadata({ params }: Props) {
   // Use a stable, query-free image URL for X cards. Twitterbot can be picky
   // with long query-string image URLs, even when the endpoint returns 200.
   const ogImageUrl = hasStarterImage
-    ? `${baseUrl}/og/thread/${id}.jpg`
+    ? `${baseUrl}/og/thread/${id}.jpg?v=2`
     : `${baseUrl}/default-thumbnail.jpg`
 
   const meta = {
