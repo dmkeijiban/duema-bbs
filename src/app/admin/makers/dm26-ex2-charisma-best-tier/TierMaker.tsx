@@ -12,8 +12,8 @@ const SHOW_CARD_DETAIL_FILTERS = false
 
 const EXPORT_FORMAT = 'auto'
 const EXPORT_FILENAME = 'dm26-ex2-tier-auto.png'
-const EXPORT_CARDS_PER_LINE = 8
-const EXPORT_CARD_WIDTH = 110
+const EXPORT_CARDS_PER_LINE = 6
+const EXPORT_CARD_WIDTH = 140
 const EXPORT_CARD_HEIGHT = EXPORT_CARD_WIDTH * 88 / 63
 
 export type TierAggregate = {
