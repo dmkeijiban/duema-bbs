@@ -12,6 +12,7 @@ import {
 } from '@/lib/maker'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
+import fallbackCardsJson from '../../../../../scripts/fixtures/dm26-ex2-standard-89.import-candidates.json'
 import TierMaker from './TierMaker'
 
 export const metadata: Metadata = {
@@ -41,6 +42,26 @@ type SubmissionItem = {
   position: number
 }
 
+type FallbackCard = {
+  card_number: string
+  card_name: string
+  image_url: string | null
+  civilization: string[] | null
+  cost: number | null
+  card_type: string | null
+}
+
+function getFallbackCards(): MakerCard[] {
+  return (fallbackCardsJson as FallbackCard[]).map(card => ({
+    id: `dm26-ex2-${card.card_number.replace('/', '-')}`,
+    name: card.card_name,
+    imageUrl: card.image_url,
+    civilization: card.civilization ?? [],
+    cost: card.cost,
+    cardType: card.card_type,
+  }))
+}
+
 export default async function Page() {
   if (!verifyAdminCookie((await cookies()).get(ADMIN_COOKIE)?.value)) redirect('/admin')
 
@@ -60,6 +81,7 @@ export default async function Page() {
   }
   let draft: MakerDraft = emptyMakerDraft(projectConfig.groups)
   let unavailableMessage = ''
+  let usingFallbackCards = false
 
   try {
     const admin = createAdminClient()
@@ -95,6 +117,8 @@ export default async function Page() {
       cardType: link.cards.card_type,
     }))
 
+    if (cards.length === 0) throw new Error('企画カードがまだ登録されていません')
+
     if (user) {
       const { data: submission, error: submissionError } = await admin
         .from('maker_submissions')
@@ -126,29 +150,42 @@ export default async function Page() {
     }
   } catch (error) {
     unavailableMessage = error instanceof Error ? error.message : 'Tier表を読み込めませんでした'
-    console.error('DM26-EX2 Tier表の読み込みに失敗しました', {
+    usingFallbackCards = true
+    cards = getFallbackCards()
+    projectConfig = {
+      groups: TIER_GROUPS,
+      unrated: true,
+      allowDuplicates: false,
+      ordered: true,
+      overwrite: true,
+      maxChoices: null,
+    }
+    draft = emptyMakerDraft(projectConfig.groups)
+    console.warn('DM26-EX2 Tier表は確認用データで表示します', {
       message: unavailableMessage,
     })
   }
 
+  const canSave = Boolean(user) && !usingFallbackCards && process.env.VERCEL_ENV === 'preview'
+
   return (
     <main className="min-h-screen bg-slate-50 px-3 py-6">
       <div className="mx-auto max-w-7xl">
-        <p className="text-xs font-bold text-blue-700">管理者限定 · Preview</p>
+        <p className="text-xs font-bold text-blue-700">管理者限定 · 非公開</p>
         <h1 className="mt-2 text-2xl font-black">DM26-EX2 悪感謝祭 カリスマBEST Tier表</h1>
         <p className="mt-1 text-sm text-gray-500">
-          新弾カードを{projectConfig.groups.map(group => group.label).join('〜')}に分類します。保存は1人1回答を上書きします。
+          新弾カードを{projectConfig.groups.map(group => group.label).join('〜')}に分類します。
         </p>
 
-        {!user && (
+        {(!user || usingFallbackCards || process.env.VERCEL_ENV !== 'preview') && (
           <p className="mt-4 rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">
-            現在は確認用モードです。Tier表の操作と下書き保存はできますが、DBへの上書き保存だけ利用できません。
+            現在は確認用モードです。89枚の表示・検索・Tier操作・端末内の下書き保存を確認できます。DBへの上書き保存は無効です。
           </p>
         )}
 
-        {unavailableMessage && (
-          <p className="mt-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm">
-            {unavailableMessage}
+        {usingFallbackCards && unavailableMessage && (
+          <p className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm">
+            本番DBにはまだメーカー用データを入れていないため、公式89枚の確認用データを表示しています。
           </p>
         )}
 
@@ -157,7 +194,7 @@ export default async function Page() {
           groups={projectConfig.groups}
           initialDraft={draft}
           unrated={projectConfig.unrated}
-          canSave={Boolean(user)}
+          canSave={canSave}
         />
       </div>
     </main>
