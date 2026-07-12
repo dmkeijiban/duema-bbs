@@ -21,21 +21,29 @@ type TierMakerProps = {
   canSave: boolean
 }
 
-function CardImage({ card }: { card: MakerCard }) {
+function CardImage({
+  card,
+  contain = false,
+  showFallbackName = false,
+}: {
+  card: MakerCard
+  contain?: boolean
+  showFallbackName?: boolean
+}) {
   if (card.imageUrl) {
     return (
       <img
         src={card.imageUrl}
-        alt=""
+        alt={card.name}
         loading="lazy"
-        className="h-full w-full object-cover"
+        className={`h-full w-full ${contain ? 'object-contain' : 'object-cover'}`}
       />
     )
   }
 
   return (
     <div className="flex h-full items-center justify-center bg-slate-200 p-1 text-center text-[9px] font-bold text-slate-500">
-      {card.name}
+      {showFallbackName ? card.name : '画像なし'}
     </div>
   )
 }
@@ -185,13 +193,13 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
                   <div key={cardId} className="group relative">
                     <button
                       type="button"
+                      aria-label={card.name}
                       onClick={() => setSelected(card)}
                       className="w-full overflow-hidden rounded border bg-white text-left"
                     >
                       <div className="aspect-[63/88]">
                         <CardImage card={card} />
                       </div>
-                      <p className="min-h-8 p-1 text-[9px] font-bold leading-tight">{card.name}</p>
                     </button>
                     <div className="mt-1 flex justify-center gap-1">
                       <button
@@ -298,13 +306,13 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
             <button
               type="button"
               key={card.id}
+              aria-label={card.name}
               onClick={() => setSelected(card)}
               className="overflow-hidden rounded border text-left"
             >
               <div className="aspect-[63/88]">
                 <CardImage card={card} />
               </div>
-              <p className="min-h-8 p-1 text-[9px] font-bold">{card.name}</p>
             </button>
           ))}
         </div>
@@ -321,10 +329,19 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
           }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
         >
-          <div role="dialog" aria-modal="true" className="w-full max-w-sm rounded-2xl bg-white p-5">
-            <h3 className="font-black">{selected.name}</h3>
-            <p className="mt-3 text-xs font-bold text-gray-500">移動先を選択</p>
-            <div className="mt-2 grid grid-cols-2 gap-2">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tier-card-dialog-title"
+            className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-5"
+          >
+            <h3 id="tier-card-dialog-title" className="text-center font-black">
+              {selected.name}
+            </h3>
+            <div className="mx-auto mt-3 aspect-[63/88] h-[45vh] max-h-[420px] max-w-full overflow-hidden rounded-lg bg-slate-100">
+              <CardImage card={selected} contain showFallbackName />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
               {groups.map(group => (
                 <button
                   type="button"
