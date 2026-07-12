@@ -76,6 +76,7 @@ export default function PublicTierMaker(props: Props) {
         hasSavedSubmission={props.hasSavedSubmission}
         aggregates={props.aggregates}
         imageProxyPath="/api/makers/dm26-ex2-card-image"
+        eventSlug="dm26-ex2-charisma-best-tier"
       />
 
       {zoomedImage && (

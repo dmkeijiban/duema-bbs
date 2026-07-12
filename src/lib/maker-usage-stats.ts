@@ -1,0 +1,103 @@
+import { getJstTodayCutoffUtcIso } from '@/lib/campaign-ranking'
+import { createAdminClient } from '@/lib/supabase-admin'
+import type { MakerEventType } from '@/lib/maker-events-shared'
+
+export type MakerEventCounter = {
+  total: number
+  today: number
+  uniqueActors: number
+}
+
+export type MakerUsageStats = {
+  // 既存DB（maker_submissions）から算出
+  registrantCount: number
+  submissionCount: number
+  todayNewRegistrantCount: number
+  todaySubmissionActivityCount: number
+  lastSubmissionAt: string | null
+  // maker_events（計測開始後のみ）から算出
+  events: Record<MakerEventType, MakerEventCounter>
+}
+
+type SubmissionRow = { created_at: string; updated_at: string }
+type EventStatsRow = { event_type: string; total_count: number; today_count: number; unique_actors: number }
+
+function emptyCounter(): MakerEventCounter {
+  return { total: 0, today: 0, uniqueActors: 0 }
+}
+
+/**
+ * 企画（project_id）単位の利用状況を集計する。特定企画に依存しない共通実装。
+ * 呼び出し側は管理者チェック済みであること（service roleでRLSをバイパスするため）。
+ */
+export async function fetchMakerUsageStats(projectId: string): Promise<MakerUsageStats> {
+  const admin = createAdminClient()
+  const todayStartIso = getJstTodayCutoffUtcIso()
+
+  const [submissionsResult, eventStatsResult] = await Promise.all([
+    admin.from('maker_submissions').select('created_at,updated_at').eq('project_id', projectId).eq('is_valid', true),
+    admin.rpc('maker_event_stats', { p_project_id: projectId, p_today_start: todayStartIso }),
+  ])
+
+  if (submissionsResult.error) throw new Error(`回答データを取得できませんでした: ${submissionsResult.error.message}`)
+  if (eventStatsResult.error) throw new Error(`イベント集計を取得できませんでした: ${eventStatsResult.error.message}`)
+
+  const submissions = (submissionsResult.data ?? []) as SubmissionRow[]
+  const todayStartMs = new Date(todayStartIso).getTime()
+  let todayNewRegistrantCount = 0
+  let todaySubmissionActivityCount = 0
+  let lastSubmissionAt: string | null = null
+  for (const row of submissions) {
+    if (new Date(row.created_at).getTime() >= todayStartMs) todayNewRegistrantCount += 1
+    if (new Date(row.updated_at).getTime() >= todayStartMs) todaySubmissionActivityCount += 1
+    if (!lastSubmissionAt || row.updated_at > lastSubmissionAt) lastSubmissionAt = row.updated_at
+  }
+
+  const events: Record<MakerEventType, MakerEventCounter> = {
+    tier_created: emptyCounter(),
+    image_saved: emptyCounter(),
+    x_shared: emptyCounter(),
+    aggregate_viewed: emptyCounter(),
+  }
+  for (const row of (eventStatsResult.data ?? []) as EventStatsRow[]) {
+    if (row.event_type in events) {
+      events[row.event_type as MakerEventType] = {
+        total: Number(row.total_count) || 0,
+        today: Number(row.today_count) || 0,
+        uniqueActors: Number(row.unique_actors) || 0,
+      }
+    }
+  }
+
+  return {
+    // 1ユーザー1回答（unique(project_id,user_id)）のため登録者数＝有効回答数
+    registrantCount: submissions.length,
+    submissionCount: submissions.length,
+    todayNewRegistrantCount,
+    todaySubmissionActivityCount,
+    lastSubmissionAt,
+    events,
+  }
+}
+
+export function formatJstDateTime(iso: string | null): string {
+  if (!iso) return '—'
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return '—'
+  const parts = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date)
+  const get = (type: string) => parts.find(part => part.type === type)?.value ?? ''
+  return `${get('year')}/${get('month')}/${get('day')} ${get('hour')}:${get('minute')}`
+}
+
+export function formatRate(numerator: number, denominator: number): string {
+  if (!denominator) return '—'
+  return `${(numerator / denominator * 100).toFixed(1)}%`
+}

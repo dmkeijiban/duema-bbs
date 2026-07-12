@@ -5,9 +5,11 @@ import { ADMIN_COOKIE, verifyAdminCookie } from '@/lib/admin-auth'
 import { emptyMakerDraft, parseMakerProjectConfig, TIER_GROUPS, type MakerCard, type MakerDraft, type MakerProjectConfig } from '@/lib/maker'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
+import { fetchMakerUsageStats, type MakerUsageStats } from '@/lib/maker-usage-stats'
 import fallbackCardsJson from '../../../../../scripts/fixtures/dm26-ex2-standard-89.import-candidates.json'
 import TierMaker, { type TierAggregate } from './TierMaker'
 import ProjectVisibilityControl from './ProjectVisibilityControl'
+import UsageStatsSection from './UsageStatsSection'
 
 export const metadata: Metadata = { title: 'DM26-EX2 Tier表（管理）', robots: { index: false, follow: false } }
 
@@ -34,12 +36,14 @@ export default async function Page() {
   let usingFallbackCards = false
   let projectIsPublic: boolean | null = null
   let projectIsReady = false
+  let projectId: string | null = null
 
   try {
     const admin = createAdminClient()
     const { data: projectData, error: projectError } = await admin.from('maker_projects').select('id,config,is_public,status').eq('slug', 'dm26-ex2-charisma-best-tier').single()
     if (projectError || !projectData) throw new Error('Tier表企画がまだ準備されていません')
     const project = projectData as ProjectRow
+    projectId = project.id
     projectIsPublic = project.is_public && project.status === 'published'
     projectConfig = parseMakerProjectConfig(project.config)
     draft = emptyMakerDraft(projectConfig.groups)
@@ -79,12 +83,27 @@ export default async function Page() {
     console.warn('DM26-EX2 Tier表は確認用データで表示します', { message: unavailableMessage })
   }
 
+  // 統計取得の失敗は利用状況セクション内のエラー表示だけに留め、公開設定やTier操作には影響させない。
+  let usageStats: MakerUsageStats | null = null
+  let usageStatsError: string | null = null
+  if (projectId) {
+    try {
+      usageStats = await fetchMakerUsageStats(projectId)
+    } catch (error) {
+      usageStatsError = error instanceof Error ? error.message : '利用状況を取得できませんでした'
+      console.warn('fetchMakerUsageStats failed', { projectId, message: usageStatsError })
+    }
+  } else {
+    usageStatsError = '企画データが未登録です'
+  }
+
   const canSave = Boolean(user) && !usingFallbackCards && process.env.VERCEL_ENV === 'preview'
   return <main className="min-h-screen bg-slate-50 px-3 py-6"><div className="mx-auto max-w-7xl">
     <p className="text-xs font-bold text-blue-700">管理者限定 · 公開設定</p>
     <h1 className="mt-2 text-2xl font-black">DM26-EX2 悪感謝祭 カリスマBEST Tier表</h1>
     <p className="mt-1 text-sm text-gray-500">好きな評価グループに分けてオリジナルのTier表を作れます。</p>
     <ProjectVisibilityControl isPublic={projectIsPublic === true} isReady={projectIsReady} />
+    <UsageStatsSection stats={usageStats} errorMessage={usageStatsError} />
     {(!user || usingFallbackCards || process.env.VERCEL_ENV !== 'preview') && <p className="mt-4 rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">現在は確認用モードです。89枚の表示・検索・Tier操作・端末内の下書き保存を確認できます。DBへの上書き保存は無効です。</p>}
     {usingFallbackCards && unavailableMessage && <p className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm">本番DBにはまだメーカー用データを入れていないため、公式89枚の確認用データを表示しています。</p>}
     <TierMaker cards={cards} groups={projectConfig.groups} initialDraft={draft} unrated={projectConfig.unrated} canSave={canSave} aggregates={aggregates} />
