@@ -1,0 +1,202 @@
+import type { Metadata } from 'next'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { ADMIN_COOKIE, verifyAdminCookie } from '@/lib/admin-auth'
+import {
+  emptyMakerDraft,
+  parseMakerProjectConfig,
+  TIER_GROUPS,
+  type MakerCard,
+  type MakerDraft,
+  type MakerProjectConfig,
+} from '@/lib/maker'
+import { createAdminClient } from '@/lib/supabase-admin'
+import { createClient } from '@/lib/supabase-server'
+import fallbackCardsJson from '../../../../../scripts/fixtures/dm26-ex2-standard-89.import-candidates.json'
+import TierMaker from './TierMaker'
+
+export const metadata: Metadata = {
+  title: 'DM26-EX2 Tier表（非公開）',
+  robots: { index: false, follow: false },
+}
+
+type ProjectRow = {
+  id: string
+  config: unknown
+}
+
+type LinkRow = {
+  cards: {
+    id: string
+    name: string
+    image_url: string | null
+    civilization: string[] | null
+    cost: number | null
+    card_type: string | null
+  }
+}
+
+type SubmissionItem = {
+  card_id: string
+  group_key: string
+  position: number
+}
+
+type FallbackCard = {
+  card_number: string
+  card_name: string
+  image_url: string | null
+  civilization: string[] | null
+  cost: number | null
+  card_type: string | null
+}
+
+function getFallbackCards(): MakerCard[] {
+  return (fallbackCardsJson as FallbackCard[]).map(card => ({
+    id: `dm26-ex2-${card.card_number.replace('/', '-')}`,
+    name: card.card_name,
+    imageUrl: card.image_url,
+    civilization: card.civilization ?? [],
+    cost: card.cost,
+    cardType: card.card_type,
+  }))
+}
+
+export default async function Page() {
+  if (!verifyAdminCookie((await cookies()).get(ADMIN_COOKIE)?.value)) redirect('/admin')
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  let cards: MakerCard[] = []
+  let projectConfig: MakerProjectConfig = {
+    groups: TIER_GROUPS,
+    unrated: true,
+    allowDuplicates: false,
+    ordered: true,
+    overwrite: true,
+    maxChoices: null,
+  }
+  let draft: MakerDraft = emptyMakerDraft(projectConfig.groups)
+  let unavailableMessage = ''
+  let usingFallbackCards = false
+
+  try {
+    const admin = createAdminClient()
+    const { data: projectData, error: projectError } = await admin
+      .from('maker_projects')
+      .select('id,config')
+      .eq('slug', 'dm26-ex2-charisma-best-tier')
+      .single()
+
+    if (projectError || !projectData) {
+      throw new Error('Tier表企画がまだ準備されていません')
+    }
+
+    const project = projectData as ProjectRow
+    projectConfig = parseMakerProjectConfig(project.config)
+    draft = emptyMakerDraft(projectConfig.groups)
+
+    const { data: links, error: linksError } = await admin
+      .from('maker_project_cards')
+      .select('sort_order,cards!inner(id,name,image_url,civilization,cost,card_type,is_active)')
+      .eq('project_id', project.id)
+      .eq('cards.is_active', true)
+      .order('sort_order')
+
+    if (linksError) throw new Error('企画カードを取得できませんでした')
+
+    cards = ((links ?? []) as unknown as LinkRow[]).map(link => ({
+      id: link.cards.id,
+      name: link.cards.name,
+      imageUrl: link.cards.image_url,
+      civilization: link.cards.civilization ?? [],
+      cost: link.cards.cost,
+      cardType: link.cards.card_type,
+    }))
+
+    if (cards.length === 0) throw new Error('企画カードがまだ登録されていません')
+
+    if (user) {
+      const { data: submission, error: submissionError } = await admin
+        .from('maker_submissions')
+        .select('id')
+        .eq('project_id', project.id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (submissionError) throw new Error('保存済みTier表を確認できませんでした')
+
+      if (submission) {
+        const { data: items, error: itemsError } = await admin
+          .from('maker_submission_items')
+          .select('card_id,group_key,position')
+          .eq('submission_id', submission.id)
+          .order('position')
+
+        if (itemsError) throw new Error('保存済みTier表を読み込めませんでした')
+
+        const validCardIds = new Set(cards.map(card => card.id))
+        const seen = new Set<string>()
+
+        for (const item of (items ?? []) as SubmissionItem[]) {
+          if (!draft[item.group_key] || !validCardIds.has(item.card_id) || seen.has(item.card_id)) continue
+          seen.add(item.card_id)
+          draft[item.group_key].push(item.card_id)
+        }
+      }
+    }
+  } catch (error) {
+    unavailableMessage = error instanceof Error ? error.message : 'Tier表を読み込めませんでした'
+    usingFallbackCards = true
+    cards = getFallbackCards()
+    projectConfig = {
+      groups: TIER_GROUPS,
+      unrated: true,
+      allowDuplicates: false,
+      ordered: true,
+      overwrite: true,
+      maxChoices: null,
+    }
+    draft = emptyMakerDraft(projectConfig.groups)
+    console.warn('DM26-EX2 Tier表は確認用データで表示します', {
+      message: unavailableMessage,
+    })
+  }
+
+  const canSave = Boolean(user) && !usingFallbackCards && process.env.VERCEL_ENV === 'preview'
+
+  return (
+    <main className="min-h-screen bg-slate-50 px-3 py-6">
+      <div className="mx-auto max-w-7xl">
+        <p className="text-xs font-bold text-blue-700">管理者限定 · 非公開</p>
+        <h1 className="mt-2 text-2xl font-black">DM26-EX2 悪感謝祭 カリスマBEST Tier表</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          新弾カードを{projectConfig.groups.map(group => group.label).join('〜')}に分類します。
+        </p>
+
+        {(!user || usingFallbackCards || process.env.VERCEL_ENV !== 'preview') && (
+          <p className="mt-4 rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">
+            現在は確認用モードです。89枚の表示・検索・Tier操作・端末内の下書き保存を確認できます。DBへの上書き保存は無効です。
+          </p>
+        )}
+
+        {usingFallbackCards && unavailableMessage && (
+          <p className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm">
+            本番DBにはまだメーカー用データを入れていないため、公式89枚の確認用データを表示しています。
+          </p>
+        )}
+
+        <TierMaker
+          cards={cards}
+          groups={projectConfig.groups}
+          initialDraft={draft}
+          unrated={projectConfig.unrated}
+          canSave={canSave}
+        />
+      </div>
+    </main>
+  )
+}

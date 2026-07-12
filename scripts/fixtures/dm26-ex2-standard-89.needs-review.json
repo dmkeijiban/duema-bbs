@@ -1,0 +1,704 @@
+[
+  {
+    "card_number": "1/89",
+    "card_name": "飛翔龍 5000VT",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "2/89",
+    "card_name": "終来王鬼 ジャオウガ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "3/89",
+    "card_name": "ボルシャック・アークゼオスNEX",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "4/89",
+    "card_name": "水雲 フカフチノカミ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "5/89",
+    "card_name": "風神 ミッツノクエビコ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "6/89",
+    "card_name": "邪眼破壊神R・R・R",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "7/89",
+    "card_name": "冥界神に刻まれし魔弾の名",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "8/89",
+    "card_name": "夢の轟速 ザ・ランド",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "9/89",
+    "card_name": "魔誕の悪魔デスモナーク",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "10/89",
+    "card_name": "邪眼破壊神デスアポロヌス・ドラゲリオン",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "11/89",
+    "card_name": "「涅槃」の鬼 ゲドウ大権現",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "12/89",
+    "card_name": "禁鬼機関 ジャオウガ-8",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "13/89",
+    "card_name": "ボルシャック・ゴルギーニ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "14/89",
+    "card_name": "ボルシャック・カクメイジン",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "15/89",
+    "card_name": "S級原始 レッドマッド",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "16/89",
+    "card_name": "鬼黒皇 ヴィオラスト・ジャオウガ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "17/89",
+    "card_name": "パルフェ・ルピア／「あとは任せたのんだぞ！」",
+    "unresolved_fields": [
+      "civilization"
+    ]
+  },
+  {
+    "card_number": "18/89",
+    "card_name": "邪眼左神エンドレス",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "19/89",
+    "card_name": "ワダエビノミコト",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "20/89",
+    "card_name": "轟速 ザ・ドッグ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "21/89",
+    "card_name": "怒像アゲ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "22/89",
+    "card_name": "邪眼龍神メタル・アポロヌス",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "23/89",
+    "card_name": "ボルテール・ミラー・ドラゴン／ミラー・チャージャー",
+    "unresolved_fields": [
+      "civilization"
+    ]
+  },
+  {
+    "card_number": "24/89",
+    "card_name": "ボルシャック・ゴルファンタジスタ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "25/89",
+    "card_name": "氷柱と炎狐の決断",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "26/89",
+    "card_name": "「鬼情」の極 ジャオウグリラ／「自由で欲望のままに生きるのだ！」",
+    "unresolved_fields": [
+      "civilization"
+    ]
+  },
+  {
+    "card_number": "27/89",
+    "card_name": "暗黒破壊神デス・フェニックス",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "28/89",
+    "card_name": "轟速 ザ・ロウィン",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "29/89",
+    "card_name": "ワダユメミノミコト",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "30/89",
+    "card_name": "宿命の決闘",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "31/89",
+    "card_name": "覚悟の決闘",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "32/89",
+    "card_name": "野望の決闘",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "33/89",
+    "card_name": "覇道の決闘",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "34/89",
+    "card_name": "一王二命三眼槍の封",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "35/89",
+    "card_name": "孤高の決闘",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "36/89",
+    "card_name": "ポッピ・冠・ラッキー",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "37/89",
+    "card_name": "ドラゴンズ・サイン",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "38/89",
+    "card_name": "シンクロ・ルピア／「D4に敗北は許されない！」",
+    "unresolved_fields": [
+      "civilization"
+    ]
+  },
+  {
+    "card_number": "39/89",
+    "card_name": "同期の妖精／ド浮きの動悸",
+    "unresolved_fields": [
+      "civilization"
+    ]
+  },
+  {
+    "card_number": "40/89",
+    "card_name": "ワダカニノミコト",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "41/89",
+    "card_name": "極限龍神ヘヴィ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "42/89",
+    "card_name": "カンゴク入道の巻",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "43/89",
+    "card_name": "プライマル・サーガ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "44/89",
+    "card_name": "轟速 ザ・リフル",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "45/89",
+    "card_name": "「オレたちのZEROの世界を造るまで」",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "46/89",
+    "card_name": "断罪のロスト・ソーン",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "47/89",
+    "card_name": "希望の太陽 マイハマタワー",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "48/89",
+    "card_name": "一王伍双三眼槍",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "49/89",
+    "card_name": "邪眼神オール",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "50/89",
+    "card_name": "ドンドン火噴くナウ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "51/89",
+    "card_name": "鬼核アトム・ジャオウガ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "52/89",
+    "card_name": "カイザー・ルピア",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "53/89",
+    "card_name": "邪眼右神デリート",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "54/89",
+    "card_name": "ワダシストノミコト",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "55/89",
+    "card_name": "異端流し オニカマス",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "56/89",
+    "card_name": "飛ベル津バサ「曲通風」",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "57/89",
+    "card_name": "プロジェクト・ゴッド",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "58/89",
+    "card_name": "邪眼龍神ヘヴィ・アポロヌス",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "59/89",
+    "card_name": "レーホウの街・デカッチ／「暴竜爵様のお出ましだッチ！」",
+    "unresolved_fields": [
+      "civilization"
+    ]
+  },
+  {
+    "card_number": "60/89",
+    "card_name": "轟速 ザ・ダラー／「イグニッション!!ソニックドローォォ!!」",
+    "unresolved_fields": [
+      "civilization"
+    ]
+  },
+  {
+    "card_number": "61/89",
+    "card_name": "悪霊鬼王ジャオディオス",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "62/89",
+    "card_name": "極限龍神メタル",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "63/89",
+    "card_name": "シブキ将鬼の巻",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "64/89",
+    "card_name": "Dの侵略 クリム・ゾーン",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "65/89",
+    "card_name": "バクロ法師の封",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "66/89",
+    "card_name": "エボリューション・エッグ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "67/89",
+    "card_name": "ボルシャック・マントラ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "68/89",
+    "card_name": "ワダウサノミコト",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "69/89",
+    "card_name": "超轟速 レッドランチャー",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "70/89",
+    "card_name": "ロジック・サークル",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "71/89",
+    "card_name": "氷牙レオポル・ディーネ公／エマージェンシー・タイフーン",
+    "unresolved_fields": [
+      "civilization"
+    ]
+  },
+  {
+    "card_number": "72/89",
+    "card_name": "水面護り ハコフ／蓄積された魔力の縛り",
+    "unresolved_fields": [
+      "civilization"
+    ]
+  },
+  {
+    "card_number": "73/89",
+    "card_name": "ワダフミノミコト",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "74/89",
+    "card_name": "ワダチエノミコト",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "75/89",
+    "card_name": "ワダゲコノミコト",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "76/89",
+    "card_name": "「魔光蟲ヴィルジニア卿」",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "77/89",
+    "card_name": "邪眼右神C・ロマノフ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "78/89",
+    "card_name": "冠火の守護者ジャオウガ・メルキス",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "79/89",
+    "card_name": "オソック童子＜ターボ.鬼＞",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "80/89",
+    "card_name": "鶏と蛙 クローラ＆ルピア",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "81/89",
+    "card_name": "邪眼左神M・ロマノフ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "82/89",
+    "card_name": "轟速 ザ・シオ／「キサマのデュエマは周回遅れだ！」",
+    "unresolved_fields": [
+      "civilization"
+    ]
+  },
+  {
+    "card_number": "83/89",
+    "card_name": "鬼覇 ザーデッドジャオウガ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "84/89",
+    "card_name": "樹界の守護車 アイオン・ユピテル",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "85/89",
+    "card_name": "ジャスミンの地版",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "86/89",
+    "card_name": "ヘルコプ太の心絵",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "87/89",
+    "card_name": "マントラ・ルピア",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "88/89",
+    "card_name": "チャラ・ルピア",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  },
+  {
+    "card_number": "89/89",
+    "card_name": "轟速 ザ・トリノグ",
+    "unresolved_fields": [
+      "civilization",
+      "card_type"
+    ]
+  }
+]
