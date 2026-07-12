@@ -137,34 +137,81 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
   async function createTierPng(): Promise<Blob> {
     const canvas = document.createElement('canvas')
-    canvas.width = 1200; canvas.height = 1200
+    canvas.width = 1200
     const context = canvas.getContext('2d')
     if (!context) throw new Error('Canvas is unavailable')
-    context.fillStyle = '#f8fafc'; context.fillRect(0, 0, canvas.width, canvas.height)
-    context.fillStyle = '#0f172a'; context.font = 'bold 38px sans-serif'; context.fillText(EXPORT_TITLE, 40, 58)
-    context.font = '20px sans-serif'; context.fillStyle = '#475569'; context.fillText('デュエマ掲示板  www.duema-bbs.com', 40, 92)
-    const top = 120; const rowHeight = Math.floor((canvas.height - top - 35) / groups.length); const labelWidth = 105; const gap = 6
+
+    const left = 30
+    const totalWidth = 1140
+    const labelWidth = 105
+    const horizontalPadding = 12
+    const gap = 6
+    const top = 120
+    const bottomPadding = 28
+    const palette: Record<string, { background: string; border: string; label: string }> = {
+      s: { background: '#fff1f2', border: '#fca5a5', label: '#be123c' },
+      a: { background: '#fff7ed', border: '#fdba74', label: '#c2410c' },
+      b: { background: '#fffbeb', border: '#fcd34d', label: '#a16207' },
+      c: { background: '#ecfdf5', border: '#6ee7b7', label: '#047857' },
+      d: { background: '#eff6ff', border: '#93c5fd', label: '#1d4ed8' },
+    }
+
+    const rowLayouts = groups.map(group => {
+      const ids = draft[group.key] ?? []
+      const availableWidth = totalWidth - labelWidth - horizontalPadding * 2
+      const cardWidth = ids.length
+        ? Math.max(24, Math.min(92, Math.floor((availableWidth - gap * Math.max(0, ids.length - 1)) / ids.length)))
+        : 0
+      const cardHeight = cardWidth * 88 / 63
+      const rowHeight = ids.length ? Math.ceil(cardHeight + 20) : 76
+      return { group, ids, cardWidth, cardHeight, rowHeight }
+    })
+
+    canvas.height = top + rowLayouts.reduce((sum, row) => sum + row.rowHeight + 5, 0) + bottomPadding
+    context.fillStyle = '#f8fafc'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    context.fillStyle = '#0f172a'
+    context.font = 'bold 38px sans-serif'
+    context.fillText(EXPORT_TITLE, 40, 58)
+    context.font = '20px sans-serif'
+    context.fillStyle = '#475569'
+    context.fillText('デュエマ掲示板  www.duema-bbs.com', 40, 92)
+
     const imageCache = new Map<string, HTMLImageElement>()
-    for (let rowIndex = 0; rowIndex < groups.length; rowIndex += 1) {
-      const group = groups[rowIndex]; const y = top + rowIndex * rowHeight
-      context.fillStyle = rowIndex % 2 ? '#ffffff' : '#f1f5f9'; context.fillRect(30, y, 1140, rowHeight - 5)
-      context.strokeStyle = '#cbd5e1'; context.strokeRect(30, y, 1140, rowHeight - 5)
-      context.fillStyle = '#111827'; context.font = 'bold 42px sans-serif'; context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText(group.label, 30 + labelWidth / 2, y + (rowHeight - 5) / 2)
-      const ids = draft[group.key] ?? []; const availableWidth = 1140 - labelWidth - 24
-      const cardWidth = ids.length ? Math.max(24, Math.min(92, Math.floor((availableWidth - gap * Math.max(0, ids.length - 1)) / ids.length))) : 0
-      const cardHeight = cardWidth * 88 / 63; let x = 30 + labelWidth + 12
-      for (const cardId of ids) {
-        const card = cardsById.get(cardId); if (!card) continue
+    let y = top
+    for (const row of rowLayouts) {
+      const colors = palette[row.group.key.toLowerCase()] ?? { background: '#f8fafc', border: '#cbd5e1', label: '#111827' }
+      context.fillStyle = colors.background
+      context.fillRect(left, y, totalWidth, row.rowHeight)
+      context.strokeStyle = colors.border
+      context.lineWidth = 1.5
+      context.strokeRect(left, y, totalWidth, row.rowHeight)
+      context.fillStyle = colors.label
+      context.font = 'bold 42px sans-serif'
+      context.textAlign = 'center'
+      context.textBaseline = 'middle'
+      context.fillText(row.group.label, left + labelWidth / 2, y + row.rowHeight / 2)
+
+      let x = left + labelWidth + horizontalPadding
+      const cardY = y + Math.max(8, (row.rowHeight - row.cardHeight) / 2)
+      for (const cardId of row.ids) {
+        const card = cardsById.get(cardId)
+        if (!card) continue
         if (card.imageUrl) {
           try {
             let image = imageCache.get(card.imageUrl)
             if (!image) { image = await loadExportImage(card.imageUrl); imageCache.set(card.imageUrl, image) }
-            context.drawImage(image, x, y + Math.max(5, (rowHeight - cardHeight) / 2), cardWidth, cardHeight)
-          } catch { context.fillStyle = '#e2e8f0'; context.fillRect(x, y + 10, cardWidth, Math.min(cardHeight, rowHeight - 25)) }
+            context.drawImage(image, x, cardY, row.cardWidth, row.cardHeight)
+          } catch {
+            context.fillStyle = '#e2e8f0'
+            context.fillRect(x, cardY, row.cardWidth, row.cardHeight)
+          }
         }
-        x += cardWidth + gap
+        x += row.cardWidth + gap
       }
+      y += row.rowHeight + 5
     }
+
     return await new Promise<Blob>((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('PNG generation failed')), 'image/png'))
   }
 
