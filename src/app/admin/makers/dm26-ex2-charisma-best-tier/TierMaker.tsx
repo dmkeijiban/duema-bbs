@@ -7,6 +7,14 @@ import { emptyMakerDraft, type MakerCard, type MakerDraft, type MakerGroup } fro
 import { saveTierSubmission } from './actions'
 
 const STORAGE_KEY = 'maker-draft:dm26-ex2-charisma-best-tier:v1'
+const EXPORT_TITLE = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表'
+
+export type TierAggregate = {
+  cardId: string
+  counts: Record<string, number>
+  ratingCount: number
+  averageTier: number | null
+}
 
 type TierMakerProps = {
   cards: MakerCard[]
@@ -14,13 +22,25 @@ type TierMakerProps = {
   initialDraft: MakerDraft
   unrated: boolean
   canSave: boolean
+  aggregates: TierAggregate[]
 }
 
-function CardImage({ card }: { card: MakerCard }) {
+function CardImage({ card, contain = false }: { card: MakerCard; contain?: boolean }) {
   if (card.imageUrl) {
-    return <img src={card.imageUrl} alt={card.name} loading="lazy" className="h-full w-full object-cover" />
+    return (
+      <img
+        src={card.imageUrl}
+        alt={card.name}
+        loading="lazy"
+        className={`h-full w-full ${contain ? 'object-contain' : 'object-cover'}`}
+      />
+    )
   }
-  return <div className="flex h-full items-center justify-center bg-slate-200 p-1 text-center text-[9px] font-bold text-slate-500">{card.name}</div>
+  return (
+    <div className="flex h-full items-center justify-center bg-slate-200 p-1 text-center text-[9px] font-bold text-slate-500">
+      {card.name}
+    </div>
+  )
 }
 
 function restoreDraft(value: unknown, groups: MakerGroup[], validCardIds: Set<string>): MakerDraft | null {
@@ -40,7 +60,24 @@ function restoreDraft(value: unknown, groups: MakerGroup[], validCardIds: Set<st
   return restored
 }
 
-export default function TierMaker({ cards, groups, initialDraft, unrated, canSave }: TierMakerProps) {
+async function loadExportImage(url: string): Promise<HTMLImageElement> {
+  const image = new Image()
+  image.decoding = 'async'
+  image.src = `/api/admin/makers/dm26-ex2-card-image?url=${encodeURIComponent(url)}`
+  await image.decode()
+  return image
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates }: TierMakerProps) {
   const [draft, setDraft] = useState(initialDraft)
   const [selected, setSelected] = useState<MakerCard | null>(null)
   const [query, setQuery] = useState('')
@@ -48,11 +85,18 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   const [cost, setCost] = useState('')
   const [cardType, setCardType] = useState('')
   const [message, setMessage] = useState('')
+  const [showCommunity, setShowCommunity] = useState(false)
+  const [imageBusy, setImageBusy] = useState(false)
   const [pending, startTransition] = useTransition()
 
   const cardsById = useMemo(() => new Map(cards.map(card => [card.id, card])), [cards])
   const validCardIds = useMemo(() => new Set(cards.map(card => card.id)), [cards])
   const usedCardIds = useMemo(() => new Set(Object.values(draft).flat()), [draft])
+  const aggregateByCard = useMemo(() => new Map(aggregates.map(row => [row.cardId, row])), [aggregates])
+  const communityCards = useMemo(
+    () => cards.filter(card => aggregateByCard.has(card.id)).sort((a, b) => (aggregateByCard.get(b.id)?.averageTier ?? 0) - (aggregateByCard.get(a.id)?.averageTier ?? 0)),
+    [cards, aggregateByCard],
+  )
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY)
@@ -135,6 +179,110 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     })
   }
 
+  async function createTierPng(): Promise<Blob> {
+    const canvas = document.createElement('canvas')
+    canvas.width = 1200
+    canvas.height = 1200
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('Canvas is unavailable')
+
+    context.fillStyle = '#f8fafc'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    context.fillStyle = '#0f172a'
+    context.font = 'bold 38px sans-serif'
+    context.fillText(EXPORT_TITLE, 40, 58)
+    context.font = '20px sans-serif'
+    context.fillStyle = '#475569'
+    context.fillText('デュエマ掲示板  www.duema-bbs.com', 40, 92)
+
+    const top = 120
+    const rowHeight = Math.floor((canvas.height - top - 35) / groups.length)
+    const labelWidth = 105
+    const gap = 6
+    const imageCache = new Map<string, HTMLImageElement>()
+
+    for (let rowIndex = 0; rowIndex < groups.length; rowIndex += 1) {
+      const group = groups[rowIndex]
+      const y = top + rowIndex * rowHeight
+      context.fillStyle = rowIndex % 2 ? '#ffffff' : '#f1f5f9'
+      context.fillRect(30, y, 1140, rowHeight - 5)
+      context.strokeStyle = '#cbd5e1'
+      context.strokeRect(30, y, 1140, rowHeight - 5)
+      context.fillStyle = '#111827'
+      context.font = 'bold 42px sans-serif'
+      context.textAlign = 'center'
+      context.textBaseline = 'middle'
+      context.fillText(group.label, 30 + labelWidth / 2, y + (rowHeight - 5) / 2)
+
+      const ids = draft[group.key] ?? []
+      const availableWidth = 1140 - labelWidth - 24
+      const cardWidth = ids.length ? Math.max(24, Math.min(92, Math.floor((availableWidth - gap * Math.max(0, ids.length - 1)) / ids.length))) : 0
+      const cardHeight = cardWidth * 88 / 63
+      let x = 30 + labelWidth + 12
+
+      for (const cardId of ids) {
+        const card = cardsById.get(cardId)
+        if (!card) continue
+        if (card.imageUrl) {
+          try {
+            let image = imageCache.get(card.imageUrl)
+            if (!image) {
+              image = await loadExportImage(card.imageUrl)
+              imageCache.set(card.imageUrl, image)
+            }
+            context.drawImage(image, x, y + Math.max(5, (rowHeight - cardHeight) / 2), cardWidth, cardHeight)
+          } catch {
+            context.fillStyle = '#e2e8f0'
+            context.fillRect(x, y + 10, cardWidth, Math.min(cardHeight, rowHeight - 25))
+          }
+        }
+        x += cardWidth + gap
+      }
+    }
+
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('PNG generation failed')), 'image/png')
+    })
+  }
+
+  async function saveImage() {
+    setImageBusy(true)
+    setMessage('')
+    try {
+      const blob = await createTierPng()
+      downloadBlob(blob, 'dm26-ex2-tier.png')
+      setMessage('Tier表画像を保存しました。')
+    } catch (error) {
+      console.error('Tier表画像の生成に失敗しました', error)
+      setMessage('画像を生成できませんでした。時間をおいて再度お試しください。')
+    } finally {
+      setImageBusy(false)
+    }
+  }
+
+  async function shareToX() {
+    setImageBusy(true)
+    setMessage('')
+    try {
+      const blob = await createTierPng()
+      const file = new File([blob], 'dm26-ex2-tier.png', { type: 'image/png' })
+      const text = 'DM26-EX2 悪感謝祭 カリスマBESTのTier表を作りました！\n#デュエマ'
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], text, url: location.href })
+      } else {
+        downloadBlob(blob, file.name)
+        open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(location.href)}`, '_blank', 'noopener,noreferrer')
+        setMessage('画像を保存しました。開いたXの投稿画面に画像を添付してください。')
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      console.error('X共有に失敗しました', error)
+      setMessage('共有を開始できませんでした。')
+    } finally {
+      setImageBusy(false)
+    }
+  }
+
   return (
     <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
       <section className="space-y-3">
@@ -166,29 +314,59 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
           <button type="button" disabled={pending || !canSave} onClick={save} className="rounded bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">
             {pending ? '保存中...' : canSave ? '上書き保存' : '確認用（保存不可）'}
           </button>
+          <button type="button" disabled={imageBusy} onClick={saveImage} className="rounded border border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-700 disabled:opacity-50">📷 画像保存</button>
+          <button type="button" disabled={imageBusy} onClick={shareToX} className="rounded bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50">𝕏 Xで共有</button>
+          <button type="button" onClick={() => setShowCommunity(value => !value)} className="rounded border bg-white px-4 py-2 text-sm font-bold">📊 みんなのTierを見る</button>
           {message && <span className="self-center text-sm">{message}</span>}
         </div>
 
-        <div className="rounded-xl border-2 border-slate-900 bg-white p-4">
-          <p className="text-xs font-bold">デュエマ掲示板</p>
-          <h2 className="text-xl font-black">DM26-EX2 Tier表</h2>
-          <p className="mt-1 text-xs text-gray-500">完成画像用プレビュー（1200×1200 / 1080×1350対応予定）</p>
-        </div>
+        {showCommunity && (
+          <section className="rounded-xl border bg-white p-4">
+            <h2 className="text-lg font-black">みんなのTier</h2>
+            <p className="mt-1 text-xs text-gray-500">カードごとの回答割合です。</p>
+            {communityCards.length === 0 ? (
+              <p className="mt-4 rounded bg-slate-50 p-4 text-sm text-gray-500">まだ集計できる回答がありません。</p>
+            ) : (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {communityCards.map(card => {
+                  const aggregate = aggregateByCard.get(card.id)
+                  if (!aggregate) return null
+                  return (
+                    <article key={card.id} className="flex gap-3 rounded border p-3">
+                      <div className="h-28 w-20 shrink-0 overflow-hidden rounded border bg-slate-100"><CardImage card={card} contain /></div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="line-clamp-2 text-sm font-bold">{card.name}</h3>
+                        <p className="mt-1 text-xs text-gray-500">回答 {aggregate.ratingCount}人 / 平均 {aggregate.averageTier?.toFixed(2) ?? '-'}</p>
+                        <div className="mt-2 space-y-1">
+                          {groups.map(group => {
+                            const count = aggregate.counts[group.key] ?? 0
+                            const percent = aggregate.ratingCount ? Math.round(count / aggregate.ratingCount * 100) : 0
+                            return (
+                              <div key={group.key} className="grid grid-cols-[24px_1fr_38px] items-center gap-1 text-[11px]">
+                                <b>{group.label}</b>
+                                <div className="h-2 overflow-hidden rounded bg-slate-100"><div className="h-full bg-slate-700" style={{ width: `${percent}%` }} /></div>
+                                <span className="text-right tabular-nums">{percent}%</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        )}
       </section>
 
       <aside className="h-fit rounded-xl border bg-white p-3 lg:sticky lg:top-3">
         <h2 className="font-black">{unrated ? `未評価 ${visibleCards.length}枚` : `候補 ${visibleCards.length}枚`}</h2>
         <input value={query} onChange={event => setQuery(event.target.value)} placeholder="カード名検索" className="mt-2 w-full rounded border p-2 text-sm" />
         <div className="mt-2 grid grid-cols-3 gap-1">
-          <select aria-label="文明" value={civilization} onChange={event => setCivilization(event.target.value)} className="rounded border p-1 text-xs">
-            <option value="">文明</option>{civilizationOptions.map(value => <option key={value}>{value}</option>)}
-          </select>
-          <select aria-label="コスト" value={cost} onChange={event => setCost(event.target.value)} className="rounded border p-1 text-xs">
-            <option value="">コスト</option>{costOptions.map(value => <option key={value}>{value}</option>)}
-          </select>
-          <select aria-label="種類" value={cardType} onChange={event => setCardType(event.target.value)} className="rounded border p-1 text-xs">
-            <option value="">種類</option>{cardTypeOptions.map(value => <option key={value}>{value}</option>)}
-          </select>
+          <select aria-label="文明" value={civilization} onChange={event => setCivilization(event.target.value)} className="rounded border p-1 text-xs"><option value="">文明</option>{civilizationOptions.map(value => <option key={value}>{value}</option>)}</select>
+          <select aria-label="コスト" value={cost} onChange={event => setCost(event.target.value)} className="rounded border p-1 text-xs"><option value="">コスト</option>{costOptions.map(value => <option key={value}>{value}</option>)}</select>
+          <select aria-label="種類" value={cardType} onChange={event => setCardType(event.target.value)} className="rounded border p-1 text-xs"><option value="">種類</option>{cardTypeOptions.map(value => <option key={value}>{value}</option>)}</select>
         </div>
         <div className="mt-3 grid max-h-[70vh] grid-cols-3 gap-2 overflow-auto">
           {visibleCards.map(card => (
@@ -202,15 +380,11 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
       {selected && (
         <div onMouseDown={event => { if (event.target === event.currentTarget) setSelected(null) }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div role="dialog" aria-modal="true" className="w-full max-w-sm rounded-2xl bg-white p-5">
+          <div role="dialog" aria-modal="true" className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-5">
             <h3 className="font-black">{selected.name}</h3>
-            <div className="mx-auto mt-3 aspect-[63/88] w-40 overflow-hidden rounded border bg-white sm:w-48">
-              <CardImage card={selected} />
-            </div>
+            <div className="mx-auto mt-3 aspect-[63/88] max-h-[45vh] w-40 overflow-hidden rounded border bg-white sm:w-48"><CardImage card={selected} contain /></div>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              {groups.map(group => (
-                <button type="button" key={group.key} onClick={() => moveCard(selected.id, group.key)} className={`rounded border p-3 font-black ${group.color}`}>{group.label}</button>
-              ))}
+              {groups.map(group => <button type="button" key={group.key} onClick={() => moveCard(selected.id, group.key)} className={`rounded border p-3 font-black ${group.color}`}>{group.label}</button>)}
               {unrated && <button type="button" onClick={() => moveCard(selected.id, null)} className="rounded border p-3 font-bold">未評価へ戻す</button>}
             </div>
             <button type="button" onClick={() => setSelected(null)} className="mt-3 w-full text-sm">閉じる</button>
