@@ -10,6 +10,14 @@ const STORAGE_KEY = 'maker-draft:dm26-ex2-charisma-best-tier:v1'
 const EXPORT_TITLE = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表'
 const SHOW_CARD_DETAIL_FILTERS = false
 
+type ExportFormat = 'current' | 'portrait' | 'auto'
+
+const EXPORT_FORMATS: Record<ExportFormat, { label: string; filename: string }> = {
+  current: { label: '現行版', filename: 'dm26-ex2-tier.png' },
+  portrait: { label: '4:5版', filename: 'dm26-ex2-tier-4x5.png' },
+  auto: { label: '高さ自動可変版', filename: 'dm26-ex2-tier-auto.png' },
+}
+
 export type TierAggregate = {
   cardId: string
   counts: Record<string, number>
@@ -105,11 +113,12 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   const [localDraftConflict, setLocalDraftConflict] = useState<MakerDraft | null>(null)
   const [isSavingImage, setIsSavingImage] = useState(false)
   const [isSharingToX, setIsSharingToX] = useState(false)
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('auto')
   const [pending, startTransition] = useTransition()
   const skipFirstDraftPersist = useRef(true)
   const exportImageCache = useRef(new Map<string, Promise<HTMLImageElement>>())
-  const pngCache = useRef<{ key: string; blob: Blob } | null>(null)
-  const pngGeneration = useRef<{ key: string; promise: Promise<Blob> } | null>(null)
+  const pngCache = useRef(new Map<string, Blob>())
+  const pngGeneration = useRef(new Map<string, Promise<Blob>>())
 
   const cardsById = useMemo(() => new Map(cards.map(card => [card.id, card])), [cards])
   const validCardIds = useMemo(() => new Set(cards.map(card => card.id)), [cards])
@@ -154,8 +163,8 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   }, [draft])
 
   useEffect(() => {
-    if (pngCache.current?.key !== draftKey) pngCache.current = null
-    if (pngGeneration.current?.key !== draftKey) pngGeneration.current = null
+    pngCache.current.clear()
+    pngGeneration.current.clear()
   }, [draftKey])
 
   useEffect(() => {
@@ -238,17 +247,18 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     location.assign(`/login?next=${encodeURIComponent(next)}`)
   }
 
-  async function createTierPng(): Promise<Blob> {
+  async function createTierPng(format: ExportFormat): Promise<Blob> {
     const canvas = document.createElement('canvas')
-    canvas.width = 1200
+    canvas.width = format === 'current' ? 1200 : 1080
     const context = canvas.getContext('2d')
     if (!context) throw new Error('Canvas is unavailable')
 
     const left = 30
-    const totalWidth = 1140
-    const labelWidth = 105
+    const totalWidth = canvas.width - left * 2
+    const labelWidth = format === 'current' ? 105 : 96
     const horizontalPadding = 12
-    const gap = 6
+    const gap = format === 'auto' ? 10 : 6
+    const rowGap = 10
     const top = 120
     const bottomPadding = 28
     const palette: Record<string, { background: string; border: string; label: string; labelBackground: string }> = {
@@ -262,15 +272,22 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     const rowLayouts = groups.map(group => {
       const ids = draft[group.key] ?? []
       const availableWidth = totalWidth - labelWidth - horizontalPadding * 2
+      const cardsPerLine = format === 'auto' ? 8 : Math.max(1, ids.length)
       const cardWidth = ids.length
-        ? Math.max(24, Math.min(92, Math.floor((availableWidth - gap * Math.max(0, ids.length - 1)) / ids.length)))
+        ? format === 'auto'
+          ? Math.floor((availableWidth - gap * (cardsPerLine - 1)) / cardsPerLine)
+          : Math.max(24, Math.min(92, Math.floor((availableWidth - gap * Math.max(0, ids.length - 1)) / ids.length)))
         : 0
       const cardHeight = cardWidth * 88 / 63
-      const rowHeight = ids.length ? Math.ceil(cardHeight + 20) : 76
-      return { group, ids, cardWidth, cardHeight, rowHeight }
+      const lineCount = ids.length ? Math.ceil(ids.length / cardsPerLine) : 0
+      const rowHeight = ids.length
+        ? Math.ceil(lineCount * cardHeight + Math.max(0, lineCount - 1) * rowGap + 20)
+        : 76
+      return { group, ids, cardWidth, cardHeight, cardsPerLine, rowHeight }
     })
 
-    canvas.height = top + rowLayouts.reduce((sum, row) => sum + row.rowHeight + 5, 0) + bottomPadding
+    const contentHeight = top + rowLayouts.reduce((sum, row) => sum + row.rowHeight + 5, 0) + bottomPadding
+    canvas.height = format === 'portrait' ? 1350 : contentHeight
     context.fillStyle = '#f8fafc'
     context.fillRect(0, 0, canvas.width, canvas.height)
     context.fillStyle = '#0f172a'
@@ -298,12 +315,16 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
       context.textBaseline = 'middle'
       context.fillText(row.group.label, left + labelWidth / 2, y + row.rowHeight / 2)
 
-      let x = left + labelWidth + horizontalPadding
-      const cardY = y + Math.max(8, (row.rowHeight - row.cardHeight) / 2)
-
-      for (const cardId of row.ids) {
+      for (const [index, cardId] of row.ids.entries()) {
         const card = cardsById.get(cardId)
         if (!card) continue
+
+        const column = index % row.cardsPerLine
+        const line = Math.floor(index / row.cardsPerLine)
+        const x = left + labelWidth + horizontalPadding + column * (row.cardWidth + gap)
+        const cardY = format === 'auto'
+          ? y + 10 + line * (row.cardHeight + rowGap)
+          : y + Math.max(8, (row.rowHeight - row.cardHeight) / 2)
 
         if (card.imageUrl) {
           try {
@@ -322,8 +343,6 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
             context.fillRect(x, cardY, row.cardWidth, row.cardHeight)
           }
         }
-
-        x += row.cardWidth + gap
       }
 
       y += row.rowHeight + 5
@@ -334,18 +353,21 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     })
   }
 
-  function getTierPng(): Promise<Blob> {
-    const key = draftKey
-    if (pngCache.current?.key === key) return Promise.resolve(pngCache.current.blob)
-    if (pngGeneration.current?.key === key) return pngGeneration.current.promise
+  function getTierPng(format: ExportFormat): Promise<Blob> {
+    const key = `${format}:${draftKey}`
+    const cached = pngCache.current.get(key)
+    if (cached) return Promise.resolve(cached)
+    const generating = pngGeneration.current.get(key)
+    if (generating) return generating
 
-    const promise = createTierPng().then(blob => {
-      if (latestDraftKey.current === key) pngCache.current = { key, blob }
+    const expectedDraftKey = draftKey
+    const promise = createTierPng(format).then(blob => {
+      if (latestDraftKey.current === expectedDraftKey) pngCache.current.set(key, blob)
       return blob
     }).finally(() => {
-      if (pngGeneration.current?.key === key) pngGeneration.current = null
+      pngGeneration.current.delete(key)
     })
-    pngGeneration.current = { key, promise }
+    pngGeneration.current.set(key, promise)
     return promise
   }
 
@@ -354,8 +376,8 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     setIsSavingImage(true)
     setMessage('')
     try {
-      const blob = await getTierPng()
-      const filename = 'dm26-ex2-tier.png'
+      const blob = await getTierPng(exportFormat)
+      const filename = EXPORT_FORMATS[exportFormat].filename
       const file = new File([blob], filename, { type: 'image/png' })
 
       if (isMobileDevice() && navigator.share && navigator.canShare?.({ files: [file] })) {
@@ -393,9 +415,9 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     setMessage('')
 
     try {
-      const blob = await getTierPng()
+      const blob = await getTierPng(exportFormat)
       const text = 'DM26-EX2 悪感謝祭 カリスマBESTのTier表を作りました！\n#デュエマ'
-      downloadBlob(blob, 'dm26-ex2-tier.png')
+      downloadBlob(blob, EXPORT_FORMATS[exportFormat].filename)
       popup.location.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(location.href)}`
       setMessage('画像を保存しました。開いたXの投稿画面に画像を添付してください。')
     } catch (error) {
@@ -463,6 +485,19 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
           >
             {pending ? '保存中...' : saveButtonLabel ?? '登録'}
           </button>
+          <label className="flex items-center gap-2 rounded border bg-white px-3 py-2 text-sm font-bold">
+            書き出し
+            <select
+              value={exportFormat}
+              onChange={event => setExportFormat(event.target.value as ExportFormat)}
+              className="bg-transparent font-normal"
+              aria-label="画像の書き出し形式"
+            >
+              {Object.entries(EXPORT_FORMATS).map(([value, option]) => (
+                <option key={value} value={value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
           <button type="button" disabled={isSavingImage} onClick={saveImage} className="min-w-[112px] rounded border border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-700 disabled:opacity-50">{isSavingImage ? '画像生成中...' : '画像保存'}</button>
           <button type="button" disabled={isSharingToX} onClick={shareToX} className="min-w-[112px] rounded bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isSharingToX ? '共有準備中...' : 'Xで共有'}</button>
           <button type="button" onClick={() => setShowCommunity(value => !value)} className="rounded border bg-white px-4 py-2 text-sm font-bold">📊 みんなのTierを見る</button>
