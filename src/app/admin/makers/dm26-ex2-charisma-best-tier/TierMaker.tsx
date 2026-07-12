@@ -18,6 +18,7 @@ type TierMakerProps = {
   groups: MakerGroup[]
   initialDraft: MakerDraft
   unrated: boolean
+  canSave: boolean
 }
 
 function CardImage({ card }: { card: MakerCard }) {
@@ -60,7 +61,7 @@ function restoreDraft(value: unknown, groups: MakerGroup[], validCardIds: Set<st
   return restored
 }
 
-export default function TierMaker({ cards, groups, initialDraft, unrated }: TierMakerProps) {
+export default function TierMaker({ cards, groups, initialDraft, unrated, canSave }: TierMakerProps) {
   const [draft, setDraft] = useState(initialDraft)
   const [selected, setSelected] = useState<MakerCard | null>(null)
   const [query, setQuery] = useState('')
@@ -149,6 +150,11 @@ export default function TierMaker({ cards, groups, initialDraft, unrated }: Tier
   }
 
   function save() {
+    if (!canSave) {
+      setMessage('確認用モードではDB保存できません。操作内容はこの端末の下書きに保存されます。')
+      return
+    }
+
     setMessage('')
     startTransition(async () => {
       try {
@@ -224,11 +230,11 @@ export default function TierMaker({ cards, groups, initialDraft, unrated }: Tier
           </button>
           <button
             type="button"
-            disabled={pending}
+            disabled={pending || !canSave}
             onClick={save}
-            className="rounded bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+            className="rounded bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {pending ? '保存中...' : '上書き保存'}
+            {pending ? '保存中...' : canSave ? '上書き保存' : '確認用（保存不可）'}
           </button>
           {message && <span className="self-center text-sm">{message}</span>}
         </div>
