@@ -98,13 +98,20 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   const [showCommunity, setShowCommunity] = useState(false)
   const [showLoginRequired, setShowLoginRequired] = useState(false)
   const [localDraftConflict, setLocalDraftConflict] = useState<MakerDraft | null>(null)
-  const [imageBusy, setImageBusy] = useState(false)
+  const [isSavingImage, setIsSavingImage] = useState(false)
+  const [isSharingToX, setIsSharingToX] = useState(false)
   const [pending, startTransition] = useTransition()
   const skipFirstDraftPersist = useRef(true)
+  const exportImageCache = useRef(new Map<string, Promise<HTMLImageElement>>())
+  const pngCache = useRef<{ key: string; blob: Blob } | null>(null)
+  const pngGeneration = useRef<{ key: string; promise: Promise<Blob> } | null>(null)
 
   const cardsById = useMemo(() => new Map(cards.map(card => [card.id, card])), [cards])
   const validCardIds = useMemo(() => new Set(cards.map(card => card.id)), [cards])
   const usedCardIds = useMemo(() => new Set(Object.values(draft).flat()), [draft])
+  const draftKey = useMemo(() => JSON.stringify(draft), [draft])
+  const latestDraftKey = useRef(draftKey)
+  latestDraftKey.current = draftKey
   const aggregateByCard = useMemo(() => new Map(aggregates.map(row => [row.cardId, row])), [aggregates])
   const communityCards = useMemo(
     () => cards
@@ -140,6 +147,11 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
       console.warn('Tier表の下書きを保存できませんでした', error)
     }
   }, [draft])
+
+  useEffect(() => {
+    if (pngCache.current?.key !== draftKey) pngCache.current = null
+    if (pngGeneration.current?.key !== draftKey) pngGeneration.current = null
+  }, [draftKey])
 
   useEffect(() => {
     if (!selected && !showLoginRequired) return
@@ -263,7 +275,6 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     context.fillStyle = '#475569'
     context.fillText('デュエマ掲示板  www.duema-bbs.com', 40, 92)
 
-    const imageCache = new Map<string, HTMLImageElement>()
     let y = top
 
     for (const row of rowLayouts) {
@@ -292,11 +303,15 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
         if (card.imageUrl) {
           try {
-            let image = imageCache.get(card.imageUrl)
-            if (!image) {
-              image = await loadExportImage(card.imageUrl, imageProxyPath)
-              imageCache.set(card.imageUrl, image)
+            let imagePromise = exportImageCache.current.get(card.imageUrl)
+            if (!imagePromise) {
+              imagePromise = loadExportImage(card.imageUrl, imageProxyPath)
+              exportImageCache.current.set(card.imageUrl, imagePromise)
             }
+            const image = await imagePromise.catch(error => {
+              exportImageCache.current.delete(card.imageUrl as string)
+              throw error
+            })
             context.drawImage(image, x, cardY, row.cardWidth, row.cardHeight)
           } catch {
             context.fillStyle = '#e2e8f0'
@@ -315,47 +330,60 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     })
   }
 
+  function getTierPng(): Promise<Blob> {
+    const key = draftKey
+    if (pngCache.current?.key === key) return Promise.resolve(pngCache.current.blob)
+    if (pngGeneration.current?.key === key) return pngGeneration.current.promise
+
+    const promise = createTierPng().then(blob => {
+      if (latestDraftKey.current === key) pngCache.current = { key, blob }
+      return blob
+    }).finally(() => {
+      if (pngGeneration.current?.key === key) pngGeneration.current = null
+    })
+    pngGeneration.current = { key, promise }
+    return promise
+  }
+
   async function saveImage() {
-    setImageBusy(true)
+    if (isSavingImage) return
+    setIsSavingImage(true)
     setMessage('')
     try {
-      const blob = await createTierPng()
+      const blob = await getTierPng()
       downloadBlob(blob, 'dm26-ex2-tier.png')
       setMessage('Tier表画像を保存しました。')
     } catch (error) {
       console.error('Tier表画像の生成に失敗しました', error)
       setMessage('画像を生成できませんでした。時間をおいて再度お試しください。')
     } finally {
-      setImageBusy(false)
+      setIsSavingImage(false)
     }
   }
 
   async function shareToX() {
-    setImageBusy(true)
+    if (isSharingToX) return
+    const popup = window.open('about:blank', '_blank')
+    if (!popup) {
+      setMessage('Xの投稿画面を開けませんでした。ブラウザのポップアップ設定を確認してください。')
+      return
+    }
+    popup.opener = null
+    setIsSharingToX(true)
     setMessage('')
 
     try {
-      const blob = await createTierPng()
-      const file = new File([blob], 'dm26-ex2-tier.png', { type: 'image/png' })
+      const blob = await getTierPng()
       const text = 'DM26-EX2 悪感謝祭 カリスマBESTのTier表を作りました！\n#デュエマ'
-
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], text, url: location.href })
-      } else {
-        downloadBlob(blob, file.name)
-        open(
-          `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(location.href)}`,
-          '_blank',
-          'noopener,noreferrer',
-        )
-        setMessage('画像を保存しました。開いたXの投稿画面に画像を添付してください。')
-      }
+      downloadBlob(blob, 'dm26-ex2-tier.png')
+      popup.location.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(location.href)}`
+      setMessage('画像を保存しました。開いたXの投稿画面に画像を添付してください。')
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return
       console.error('X共有に失敗しました', error)
-      setMessage('共有を開始できませんでした。')
+      popup.close()
+      setMessage('画像を生成できませんでした。時間をおいて再度お試しください。')
     } finally {
-      setImageBusy(false)
+      setIsSharingToX(false)
     }
   }
 
@@ -415,8 +443,8 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
           >
             {pending ? '保存中...' : saveButtonLabel ?? '登録'}
           </button>
-          <button type="button" disabled={imageBusy} onClick={saveImage} className="rounded border border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-700 disabled:opacity-50">画像保存</button>
-          <button type="button" disabled={imageBusy} onClick={shareToX} className="rounded bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Xで共有</button>
+          <button type="button" disabled={isSavingImage} onClick={saveImage} className="min-w-[112px] rounded border border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-700 disabled:opacity-50">{isSavingImage ? '画像生成中...' : '画像保存'}</button>
+          <button type="button" disabled={isSharingToX} onClick={shareToX} className="min-w-[112px] rounded bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isSharingToX ? '共有準備中...' : 'Xで共有'}</button>
           <button type="button" onClick={() => setShowCommunity(value => !value)} className="rounded border bg-white px-4 py-2 text-sm font-bold">📊 みんなのTierを見る</button>
           {message && <span className="self-center text-sm">{message}</span>}
         </div>
