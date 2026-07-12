@@ -93,11 +93,6 @@ function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-function isMobileDevice() {
-  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-}
-
 export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, saveButtonLabel, hasSavedSubmission = false }: TierMakerProps) {
   const [draft, setDraft] = useState(initialDraft)
   const [selected, setSelected] = useState<MakerCard | null>(null)
@@ -280,6 +275,25 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
     const contentHeight = top + rowLayouts.reduce((sum, row) => sum + row.rowHeight + 5, 0) + bottomPadding
     canvas.height = contentHeight
+
+    const imageUrls = [...new Set(
+      rowLayouts.flatMap(row => row.ids.map(cardId => cardsById.get(cardId)?.imageUrl).filter((url): url is string => Boolean(url))),
+    )]
+    const loadedImages = new Map<string, HTMLImageElement>()
+    await Promise.all(imageUrls.map(async url => {
+      try {
+        let imagePromise = exportImageCache.current.get(url)
+        if (!imagePromise) {
+          imagePromise = loadExportImage(url, imageProxyPath)
+          exportImageCache.current.set(url, imagePromise)
+        }
+        const image = await imagePromise
+        loadedImages.set(url, image)
+      } catch {
+        exportImageCache.current.delete(url)
+      }
+    }))
+
     context.fillStyle = '#f8fafc'
     context.fillRect(0, 0, canvas.width, canvas.height)
     context.fillStyle = '#0f172a'
@@ -316,22 +330,12 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
         const x = left + labelWidth + horizontalPadding + column * (row.cardWidth + gap)
         const cardY = y + 10 + line * (row.cardHeight + rowGap)
 
-        if (card.imageUrl) {
-          try {
-            let imagePromise = exportImageCache.current.get(card.imageUrl)
-            if (!imagePromise) {
-              imagePromise = loadExportImage(card.imageUrl, imageProxyPath)
-              exportImageCache.current.set(card.imageUrl, imagePromise)
-            }
-            const image = await imagePromise.catch(error => {
-              exportImageCache.current.delete(card.imageUrl as string)
-              throw error
-            })
-            context.drawImage(image, x, cardY, row.cardWidth, row.cardHeight)
-          } catch {
-            context.fillStyle = '#e2e8f0'
-            context.fillRect(x, cardY, row.cardWidth, row.cardHeight)
-          }
+        const image = card.imageUrl ? loadedImages.get(card.imageUrl) : null
+        if (image) {
+          context.drawImage(image, x, cardY, row.cardWidth, row.cardHeight)
+        } else {
+          context.fillStyle = '#e2e8f0'
+          context.fillRect(x, cardY, row.cardWidth, row.cardHeight)
         }
       }
 
@@ -367,22 +371,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     setMessage('')
     try {
       const blob = await getTierPng()
-      const filename = EXPORT_FILENAME
-      const file = new File([blob], filename, { type: 'image/png' })
-
-      if (isMobileDevice() && navigator.share && navigator.canShare?.({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file] })
-        } catch (error) {
-          if (error instanceof DOMException && error.name === 'AbortError') {
-            setMessage('')
-            return
-          }
-          throw error
-        }
-      } else {
-        downloadBlob(blob, filename)
-      }
+      downloadBlob(blob, EXPORT_FILENAME)
     } catch (error) {
       console.error('Tier表画像の生成に失敗しました', error)
       setMessage('画像を生成できませんでした。時間をおいて再度お試しください。')
