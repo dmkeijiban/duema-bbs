@@ -12,7 +12,7 @@ import {
 } from '@/lib/maker'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
-import fallbackCardsJson from '../../../../../scripts/fixtures/dm26-ex2-standard-89.import-candidates.json'
+import fallbackCardsJson from '../../../../../../scripts/fixtures/dm26-ex2-standard-89.import-candidates.json'
 import TierMaker from './TierMaker'
 
 export const metadata: Metadata = {
