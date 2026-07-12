@@ -377,10 +377,6 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     try {
       const blob = await getTierPng()
       downloadBlob(blob, EXPORT_FILENAME)
-      if (mobile) {
-        const message = `${text}\n${location.href}`
-        location.href = `twitter://post?message=${encodeURIComponent(message)}`
-      }
     } catch (error) {
       console.error('Tier表画像の生成に失敗しました', error)
       setMessage('画像を生成できませんでした。時間をおいて再度お試しください。')
@@ -405,6 +401,10 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     try {
       const blob = await getTierPng()
       downloadBlob(blob, EXPORT_FILENAME)
+      if (mobile) {
+        const message = `${text}\n${location.href}`
+        location.href = `twitter://post?message=${encodeURIComponent(message)}`
+      }
     } catch (error) {
       console.error('X共有に失敗しました', error)
       setMessage('画像を生成できませんでした。時間をおいて再度お試しください。')
