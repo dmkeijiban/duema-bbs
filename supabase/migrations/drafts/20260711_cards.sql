@@ -21,6 +21,9 @@ alter table public.cards enable row level security;
 -- anon/authenticated には公開しない。service role のみバイパスする。
 
 -- 図鑑からの紐付けは全カード化と切り離し、任意で段階的に行える。
-alter table public.zukan_cards
-  add column if not exists card_id uuid references public.cards(id) on delete set null;
-create index if not exists zukan_cards_card_id_idx on public.zukan_cards(card_id);
+do $$ begin
+  if to_regclass('public.zukan_cards') is not null then
+    alter table public.zukan_cards add column if not exists card_id uuid references public.cards(id) on delete set null;
+    create index if not exists zukan_cards_card_id_idx on public.zukan_cards(card_id);
+  end if;
+end $$;
