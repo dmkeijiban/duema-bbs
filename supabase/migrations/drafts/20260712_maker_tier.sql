@@ -17,7 +17,8 @@ create table if not exists public.maker_submissions (
 create table if not exists public.maker_submission_items (
   submission_id uuid not null references public.maker_submissions(id) on delete cascade,
   card_id uuid not null references public.cards(id) on delete cascade, group_key text not null,
-  position integer not null default 0, primary key(submission_id,card_id)
+  position integer not null default 0, primary key(submission_id,card_id),
+  unique(submission_id, group_key, position)
 );
 alter table public.maker_projects enable row level security;
 alter table public.maker_project_cards enable row level security;
@@ -26,7 +27,7 @@ alter table public.maker_submission_items enable row level security;
 -- 初期は公開policyを作らず、管理者Server Actionのservice roleだけで操作する。
 insert into public.maker_projects(slug,title,type,status,is_public,config)
 values ('dm26-ex2-charisma-best-tier','DM26-EX2 悪感謝祭 カリスマBEST Tier表','tier','draft',false,
-  '{"groups":[{"key":"s","label":"S"},{"key":"a","label":"A"},{"key":"b","label":"B"},{"key":"c","label":"C"},{"key":"d","label":"D"}],"unrated":true}'::jsonb)
+  '{"groups":[{"key":"s","label":"S"},{"key":"a","label":"A"},{"key":"b","label":"B"},{"key":"c","label":"C"},{"key":"d","label":"D"}],"unrated":true,"allowDuplicates":false,"ordered":true,"overwrite":true,"maxChoices":null}'::jsonb)
 on conflict(slug) do nothing;
 
 create or replace view public.maker_tier_aggregates as
@@ -46,18 +47,93 @@ revoke all on public.maker_tier_aggregates from anon, authenticated;
 create or replace function public.save_maker_submission(
   p_project_id uuid, p_user_id uuid, p_items jsonb
 ) returns uuid language plpgsql security definer set search_path=public as $$
-declare v_submission_id uuid;
+declare
+  v_submission_id uuid;
+  v_config jsonb;
+  v_allowed_groups text[];
+  v_allow_duplicates boolean;
+  v_max_choices integer;
+  v_item_count integer;
 begin
+  select config into v_config
+  from maker_projects
+  where id = p_project_id
+  for update;
+
+  if v_config is null then
+    raise exception 'MAKER_PROJECT_NOT_FOUND';
+  end if;
+
+  select coalesce(array_agg(value->>'key'), array[]::text[])
+  into v_allowed_groups
+  from jsonb_array_elements(coalesce(v_config->'groups', '[]'::jsonb));
+
+  if cardinality(v_allowed_groups) = 0 then
+    raise exception 'MAKER_CONFIG_GROUPS_INVALID';
+  end if;
+
+  v_allow_duplicates := coalesce((v_config->>'allowDuplicates')::boolean, false);
+  v_max_choices := nullif(v_config->>'maxChoices', '')::integer;
+  v_item_count := jsonb_array_length(coalesce(p_items, '[]'::jsonb));
+
+  if exists (
+    select 1
+    from jsonb_to_recordset(coalesce(p_items,'[]'::jsonb)) as x(card_id uuid,group_key text,position integer)
+    where x.group_key is null or not (x.group_key = any(v_allowed_groups))
+  ) then
+    raise exception 'MAKER_INVALID_GROUP_KEY';
+  end if;
+
+  if exists (
+    select 1
+    from jsonb_to_recordset(coalesce(p_items,'[]'::jsonb)) as x(card_id uuid,group_key text,position integer)
+    left join maker_project_cards pc on pc.project_id=p_project_id and pc.card_id=x.card_id
+    where x.card_id is null or pc.card_id is null
+  ) then
+    raise exception 'MAKER_CARD_OUTSIDE_POOL';
+  end if;
+
+  if exists (
+    select 1
+    from jsonb_to_recordset(coalesce(p_items,'[]'::jsonb)) as x(card_id uuid,group_key text,position integer)
+    where x.position is null or x.position < 0
+  ) then
+    raise exception 'MAKER_INVALID_POSITION';
+  end if;
+
+  if exists (
+    select 1
+    from jsonb_to_recordset(coalesce(p_items,'[]'::jsonb)) as x(card_id uuid,group_key text,position integer)
+    group by x.group_key, x.position
+    having count(*) > 1
+  ) then
+    raise exception 'MAKER_DUPLICATE_POSITION';
+  end if;
+
+  if not v_allow_duplicates and exists (
+    select 1
+    from jsonb_to_recordset(coalesce(p_items,'[]'::jsonb)) as x(card_id uuid,group_key text,position integer)
+    group by x.card_id
+    having count(*) > 1
+  ) then
+    raise exception 'MAKER_DUPLICATE_CARD';
+  end if;
+
+  if v_max_choices is not null and v_item_count > v_max_choices then
+    raise exception 'MAKER_CHOICE_LIMIT_EXCEEDED';
+  end if;
+
   insert into maker_submissions(project_id,user_id,is_valid,updated_at)
   values(p_project_id,p_user_id,true,now())
   on conflict(project_id,user_id) do update set is_valid=true,updated_at=now()
   returning id into v_submission_id;
+
   delete from maker_submission_items where submission_id=v_submission_id;
+
   insert into maker_submission_items(submission_id,card_id,group_key,position)
   select v_submission_id,x.card_id,x.group_key,x.position
-  from jsonb_to_recordset(coalesce(p_items,'[]'::jsonb)) as x(card_id uuid,group_key text,position integer)
-  join maker_project_cards pc on pc.project_id=p_project_id and pc.card_id=x.card_id
-  where x.group_key in ('s','a','b','c','d');
+  from jsonb_to_recordset(coalesce(p_items,'[]'::jsonb)) as x(card_id uuid,group_key text,position integer);
+
   return v_submission_id;
 end $$;
 revoke all on function public.save_maker_submission(uuid,uuid,jsonb) from public,anon,authenticated;
