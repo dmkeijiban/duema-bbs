@@ -33,6 +33,7 @@ export default async function Page() {
   let unavailableMessage = ''
   let usingFallbackCards = false
   let projectIsPublic: boolean | null = null
+  let projectIsReady = false
 
   try {
     const admin = createAdminClient()
@@ -46,7 +47,8 @@ export default async function Page() {
     const { data: links, error: linksError } = await admin.from('maker_project_cards').select('sort_order,cards!inner(id,name,image_url,civilization,cost,card_type,is_active)').eq('project_id', project.id).eq('cards.is_active', true).order('sort_order')
     if (linksError) throw new Error('企画カードを取得できませんでした')
     cards = ((links ?? []) as unknown as LinkRow[]).map(link => ({ id: link.cards.id, name: link.cards.name, imageUrl: link.cards.image_url, civilization: link.cards.civilization ?? [], cost: link.cards.cost, cardType: link.cards.card_type }))
-    if (cards.length === 0) throw new Error('企画カードがまだ登録されていません')
+    projectIsReady = cards.length === 89
+    if (!projectIsReady) throw new Error(`企画カードが不足しています（${cards.length}/89枚）`)
 
     const { data: aggregateRows, error: aggregateError } = await admin.from('maker_tier_aggregates').select('card_id,s_count,a_count,b_count,c_count,d_count,rating_count,average_tier').eq('project_id', project.id)
     if (!aggregateError) {
@@ -82,7 +84,7 @@ export default async function Page() {
     <p className="text-xs font-bold text-blue-700">管理者限定 · 公開設定</p>
     <h1 className="mt-2 text-2xl font-black">DM26-EX2 悪感謝祭 カリスマBEST Tier表</h1>
     <p className="mt-1 text-sm text-gray-500">好きな評価グループに分けてオリジナルのTier表を作れます。</p>
-    {projectIsPublic !== null && <ProjectVisibilityControl isPublic={projectIsPublic} />}
+    <ProjectVisibilityControl isPublic={projectIsPublic === true} isReady={projectIsReady} />
     {(!user || usingFallbackCards || process.env.VERCEL_ENV !== 'preview') && <p className="mt-4 rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">現在は確認用モードです。89枚の表示・検索・Tier操作・端末内の下書き保存を確認できます。DBへの上書き保存は無効です。</p>}
     {usingFallbackCards && unavailableMessage && <p className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm">本番DBにはまだメーカー用データを入れていないため、公式89枚の確認用データを表示しています。</p>}
     <TierMaker cards={cards} groups={projectConfig.groups} initialDraft={draft} unrated={projectConfig.unrated} canSave={canSave} aggregates={aggregates} />
