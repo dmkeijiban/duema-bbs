@@ -538,7 +538,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
           <button
             type="button"
             onClick={() => { if (confirm('全てリセットしますか？')) setDraft(emptyMakerDraft(groups)) }}
-            className="rounded border bg-white px-3 py-2 text-sm font-bold"
+            className="flex-1 whitespace-nowrap rounded border bg-white px-3 py-2 text-sm font-bold sm:flex-none"
           >
             リセット
           </button>
@@ -546,13 +546,13 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
             type="button"
             disabled={pending}
             onClick={save}
-            className="rounded bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex-1 whitespace-nowrap rounded bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
           >
             {pending ? '保存中...' : saveButtonLabel ?? '登録'}
           </button>
-          <button type="button" disabled={isSavingImage} onClick={saveImage} className="rounded border border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-700 disabled:opacity-50">{isSavingImage ? '画像生成中...' : '画像保存'}</button>
-          <button type="button" disabled={isSharingToX} onClick={shareToX} className="rounded bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isSharingToX ? '共有準備中...' : 'Xで共有'}</button>
-          <button type="button" onClick={() => setShowCommunity(value => !value)} className="rounded border bg-white px-4 py-2 text-sm font-bold">📊 みんなのTierを見る</button>
+          <button type="button" disabled={isSavingImage} onClick={saveImage} className="flex-1 whitespace-nowrap rounded border border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-700 disabled:opacity-50 sm:flex-none">{isSavingImage ? '画像生成中...' : '画像保存'}</button>
+          <button type="button" disabled={isSharingToX} onClick={shareToX} className="flex-1 whitespace-nowrap rounded bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50 sm:flex-none">{isSharingToX ? '共有準備中...' : 'Xで共有'}</button>
+          <button type="button" onClick={() => setShowCommunity(value => !value)} className="flex-1 whitespace-nowrap rounded border bg-white px-4 py-2 text-sm font-bold sm:flex-none">📊 みんなのTierを見る</button>
           {message && <span className="self-center text-sm">{message}</span>}
         </div>
 
