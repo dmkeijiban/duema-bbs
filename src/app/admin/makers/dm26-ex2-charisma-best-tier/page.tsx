@@ -49,8 +49,6 @@ export default async function Page() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) redirect('/login?next=/admin/makers/dm26-ex2-charisma-best-tier')
-
   let cards: MakerCard[] = []
   let projectConfig: MakerProjectConfig = {
     groups: TIER_GROUPS,
@@ -97,31 +95,33 @@ export default async function Page() {
       cardType: link.cards.card_type,
     }))
 
-    const { data: submission, error: submissionError } = await admin
-      .from('maker_submissions')
-      .select('id')
-      .eq('project_id', project.id)
-      .eq('user_id', user.id)
-      .maybeSingle()
+    if (user) {
+      const { data: submission, error: submissionError } = await admin
+        .from('maker_submissions')
+        .select('id')
+        .eq('project_id', project.id)
+        .eq('user_id', user.id)
+        .maybeSingle()
 
-    if (submissionError) throw new Error('保存済みTier表を確認できませんでした')
+      if (submissionError) throw new Error('保存済みTier表を確認できませんでした')
 
-    if (submission) {
-      const { data: items, error: itemsError } = await admin
-        .from('maker_submission_items')
-        .select('card_id,group_key,position')
-        .eq('submission_id', submission.id)
-        .order('position')
+      if (submission) {
+        const { data: items, error: itemsError } = await admin
+          .from('maker_submission_items')
+          .select('card_id,group_key,position')
+          .eq('submission_id', submission.id)
+          .order('position')
 
-      if (itemsError) throw new Error('保存済みTier表を読み込めませんでした')
+        if (itemsError) throw new Error('保存済みTier表を読み込めませんでした')
 
-      const validCardIds = new Set(cards.map(card => card.id))
-      const seen = new Set<string>()
+        const validCardIds = new Set(cards.map(card => card.id))
+        const seen = new Set<string>()
 
-      for (const item of (items ?? []) as SubmissionItem[]) {
-        if (!draft[item.group_key] || !validCardIds.has(item.card_id) || seen.has(item.card_id)) continue
-        seen.add(item.card_id)
-        draft[item.group_key].push(item.card_id)
+        for (const item of (items ?? []) as SubmissionItem[]) {
+          if (!draft[item.group_key] || !validCardIds.has(item.card_id) || seen.has(item.card_id)) continue
+          seen.add(item.card_id)
+          draft[item.group_key].push(item.card_id)
+        }
       }
     }
   } catch (error) {
@@ -140,6 +140,12 @@ export default async function Page() {
           新弾カードを{projectConfig.groups.map(group => group.label).join('〜')}に分類します。保存は1人1回答を上書きします。
         </p>
 
+        {!user && (
+          <p className="mt-4 rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">
+            現在は確認用モードです。Tier表の操作と下書き保存はできますが、DBへの上書き保存だけ利用できません。
+          </p>
+        )}
+
         {unavailableMessage && (
           <p className="mt-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm">
             {unavailableMessage}
@@ -151,6 +157,7 @@ export default async function Page() {
           groups={projectConfig.groups}
           initialDraft={draft}
           unrated={projectConfig.unrated}
+          canSave={Boolean(user)}
         />
       </div>
     </main>
