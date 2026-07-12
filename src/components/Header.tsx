@@ -62,6 +62,7 @@ function buildHeaderNavItems(navPages: NavPage[]): HeaderNavItem[] {
   return [
     newProduct ? toItem(newProduct) : null,
     { key: 'ranking', label: 'ランキング', href: '/ranking' },
+    { key: 'tier-maker', label: 'Tier表メーカー', href: '/makers/dm26-ex2-charisma-best-tier' },
     { key: 'zukan', label: '思い出図鑑', href: '/zukan' },
     { key: 'zukan-articles', label: '記事一覧', href: '/zukan/articles' },
     youtube ? toItem(youtube) : null,
