@@ -79,9 +79,37 @@ function restoreDraft(value: unknown, groups: MakerGroup[], validCardIds: Set<st
 async function loadExportImage(url: string, imageProxyPath: string): Promise<HTMLImageElement> {
   const image = new Image()
   image.decoding = 'async'
+  const loaded = new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve()
+    image.onerror = () => reject(new Error('カード画像の読み込みに失敗しました'))
+  })
   image.src = `${imageProxyPath}?url=${encodeURIComponent(url)}`
-  await image.decode()
+  try {
+    // iOS Safari では decode() が画像取得成功時でも reject することがある
+    await image.decode()
+  } catch {
+    await loaded
+  }
   return image
+}
+
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [header, body] = dataUrl.split(',')
+  const mime = header?.match(/data:([^;]+)/)?.[1] ?? 'image/png'
+  const binary = atob(body ?? '')
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+  return new Blob([bytes], { type: mime })
+}
+
+async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  try {
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'))
+    if (blob) return blob
+  } catch {
+    // toBlob 自体が例外を投げる環境があるため toDataURL にフォールバック
+  }
+  return dataUrlToBlob(canvas.toDataURL('image/png'))
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -89,12 +117,21 @@ function downloadBlob(blob: Blob, filename: string) {
   const link = document.createElement('a')
   link.href = url
   link.download = filename
+  link.rel = 'noopener'
+  document.body.appendChild(link)
   link.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  link.remove()
+  // 即時 revoke すると Safari がダウンロード前に URL を失うことがある
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 function isMobileDevice() {
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
+function isIOSDevice() {
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent)
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
@@ -111,6 +148,9 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   const [localDraftConflict, setLocalDraftConflict] = useState<MakerDraft | null>(null)
   const [isSavingImage, setIsSavingImage] = useState(false)
   const [isSharingToX, setIsSharingToX] = useState(false)
+  const [exportPreviewUrl, setExportPreviewUrl] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [pending, startTransition] = useTransition()
   const skipFirstDraftPersist = useRef(true)
   const exportImageCache = useRef(new Map<string, Promise<HTMLImageElement>>())
@@ -165,17 +205,25 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   }, [draftKey])
 
   useEffect(() => {
-    if (!selected && !showLoginRequired) return
+    if (!selected && !showLoginRequired && !exportPreviewUrl) return
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       setSelected(null)
       setShowLoginRequired(false)
+      setExportPreviewUrl(current => {
+        if (current) URL.revokeObjectURL(current)
+        return null
+      })
     }
 
     addEventListener('keydown', onKeyDown)
     return () => removeEventListener('keydown', onKeyDown)
-  }, [selected, showLoginRequired])
+  }, [selected, showLoginRequired, exportPreviewUrl])
+
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+  }, [])
 
   const visibleCards = cards.filter(card => {
     if (usedCardIds.has(card.id)) return false
@@ -347,9 +395,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
       y += row.rowHeight + 5
     }
 
-    return await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('PNG generation failed')), 'image/png')
-    })
+    return await canvasToPngBlob(canvas)
   }
 
   function getTierPng(): Promise<Blob> {
@@ -370,16 +416,48 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     return promise
   }
 
+  function showErrorToast(text: string) {
+    setToast(text)
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToast(null), 6000)
+  }
+
+  function openExportPreview(blob: Blob) {
+    const url = URL.createObjectURL(blob)
+    setExportPreviewUrl(current => {
+      if (current) URL.revokeObjectURL(current)
+      return url
+    })
+  }
+
+  function closeExportPreview() {
+    setExportPreviewUrl(current => {
+      if (current) URL.revokeObjectURL(current)
+      return null
+    })
+  }
+
+  function deliverTierImage(blob: Blob) {
+    // iOS Safari はプログラム的な a[download] クリックを無視することがあるため、
+    // プレビューを表示して「長押し保存 / 新規タブ表示 / ダウンロード」から選べるようにする
+    if (isIOSDevice() || typeof document.createElement('a').download !== 'string') {
+      openExportPreview(blob)
+      return
+    }
+    downloadBlob(blob, EXPORT_FILENAME)
+  }
+
   async function saveImage() {
     if (isSavingImage) return
     setIsSavingImage(true)
     setMessage('')
     try {
       const blob = await getTierPng()
-      downloadBlob(blob, EXPORT_FILENAME)
+      deliverTierImage(blob)
     } catch (error) {
       console.error('Tier表画像の生成に失敗しました', error)
-      setMessage('画像を生成できませんでした。時間をおいて再度お試しください。')
+      const cause = error instanceof Error ? error.message : String(error)
+      showErrorToast(`画像を生成できませんでした（${cause}）`)
     } finally {
       setIsSavingImage(false)
     }
@@ -400,14 +478,15 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
     try {
       const blob = await getTierPng()
-      downloadBlob(blob, EXPORT_FILENAME)
+      deliverTierImage(blob)
       if (mobile) {
         const message = `${text}\n${location.href}`
         location.href = `twitter://post?message=${encodeURIComponent(message)}`
       }
     } catch (error) {
       console.error('X共有に失敗しました', error)
-      setMessage('画像を生成できませんでした。時間をおいて再度お試しください。')
+      const cause = error instanceof Error ? error.message : String(error)
+      showErrorToast(`画像を生成できませんでした（${cause}）`)
     } finally {
       setIsSharingToX(false)
     }
@@ -562,6 +641,30 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
               <button type="button" onClick={() => setShowLoginRequired(false)} className="w-full rounded-xl border px-4 py-3 font-bold">キャンセル</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {exportPreviewUrl && (
+        <div onMouseDown={event => { if (event.target === event.currentTarget) closeExportPreview() }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="export-preview-title" className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <h2 id="export-preview-title" className="text-lg font-black">Tier表画像ができました</h2>
+              <button type="button" aria-label="閉じる" onClick={closeExportPreview} className="shrink-0 px-1 text-3xl leading-none text-gray-500">×</button>
+            </div>
+            <p className="mt-2 text-sm leading-6 text-gray-600">画像を長押しして「写真に保存」を選ぶか、下のボタンから保存してください。</p>
+            <img src={exportPreviewUrl} alt={EXPORT_TITLE} className="mt-3 w-full rounded border" />
+            <div className="mt-4 space-y-2">
+              <a href={exportPreviewUrl} download={EXPORT_FILENAME} className="block w-full rounded-xl bg-blue-700 px-4 py-3 text-center font-bold text-white">画像をダウンロード</a>
+              <a href={exportPreviewUrl} target="_blank" rel="noopener noreferrer" className="block w-full rounded-xl border px-4 py-3 text-center font-bold">新しいタブで開く</a>
+              <button type="button" onClick={closeExportPreview} className="w-full rounded-xl border px-4 py-3 font-bold">閉じる</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div role="status" className="fixed bottom-4 left-1/2 z-[70] w-max max-w-[92vw] -translate-x-1/2 rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white shadow-lg">
+          {toast}
         </div>
       )}
 
