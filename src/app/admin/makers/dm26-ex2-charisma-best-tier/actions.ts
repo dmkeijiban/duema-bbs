@@ -15,9 +15,7 @@ export async function saveTierSubmission(payload: Record<string,string[]>) {
   if (items.some(i=>seen.has(i.card_id)||!seen.add(i.card_id))) return {ok:false,message:'同じカードは複数配置できません'}
   const admin=createAdminClient(); const {data:project}=await admin.from('maker_projects').select('id').eq('slug','dm26-ex2-charisma-best-tier').single()
   if(!project) return {ok:false,message:'企画が未準備です'}
-  const {data:submission,error}=await admin.from('maker_submissions').upsert({project_id:project.id,user_id:user.id,is_valid:true,updated_at:new Date().toISOString()},{onConflict:'project_id,user_id'}).select('id').single()
-  if(error||!submission) return {ok:false,message:error?.message??'保存失敗'}
-  await admin.from('maker_submission_items').delete().eq('submission_id',submission.id)
-  if(items.length){const result=await admin.from('maker_submission_items').insert(items.map(i=>({...i,submission_id:submission.id})));if(result.error)return {ok:false,message:result.error.message}}
+  const {error}=await admin.rpc('save_maker_submission',{p_project_id:project.id,p_user_id:user.id,p_items:items})
+  if(error) return {ok:false,message:error.message}
   return {ok:true,message:'Tier表を上書き保存しました'}
 }

@@ -41,3 +41,24 @@ select p.id project_id, c.id card_id, c.name,
 from public.maker_projects p join public.maker_submissions s on s.project_id=p.id and s.is_valid
 join public.maker_submission_items i on i.submission_id=s.id join public.cards c on c.id=i.card_id
 group by p.id,c.id,c.name;
+revoke all on public.maker_tier_aggregates from anon, authenticated;
+
+create or replace function public.save_maker_submission(
+  p_project_id uuid, p_user_id uuid, p_items jsonb
+) returns uuid language plpgsql security definer set search_path=public as $$
+declare v_submission_id uuid;
+begin
+  insert into maker_submissions(project_id,user_id,is_valid,updated_at)
+  values(p_project_id,p_user_id,true,now())
+  on conflict(project_id,user_id) do update set is_valid=true,updated_at=now()
+  returning id into v_submission_id;
+  delete from maker_submission_items where submission_id=v_submission_id;
+  insert into maker_submission_items(submission_id,card_id,group_key,position)
+  select v_submission_id,x.card_id,x.group_key,x.position
+  from jsonb_to_recordset(coalesce(p_items,'[]'::jsonb)) as x(card_id uuid,group_key text,position integer)
+  join maker_project_cards pc on pc.project_id=p_project_id and pc.card_id=x.card_id
+  where x.group_key in ('s','a','b','c','d');
+  return v_submission_id;
+end $$;
+revoke all on function public.save_maker_submission(uuid,uuid,jsonb) from public,anon,authenticated;
+grant execute on function public.save_maker_submission(uuid,uuid,jsonb) to service_role;
