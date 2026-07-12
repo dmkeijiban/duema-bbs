@@ -13,18 +13,14 @@ import {
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 import fallbackCardsJson from '../../../../../scripts/fixtures/dm26-ex2-standard-89.import-candidates.json'
-import TierMaker from './TierMaker'
+import TierMaker, { type TierAggregate } from './TierMaker'
 
 export const metadata: Metadata = {
   title: 'DM26-EX2 Tier表（非公開）',
   robots: { index: false, follow: false },
 }
 
-type ProjectRow = {
-  id: string
-  config: unknown
-}
-
+type ProjectRow = { id: string; config: unknown }
 type LinkRow = {
   cards: {
     id: string
@@ -35,13 +31,17 @@ type LinkRow = {
     card_type: string | null
   }
 }
-
-type SubmissionItem = {
+type SubmissionItem = { card_id: string; group_key: string; position: number }
+type AggregateRow = {
   card_id: string
-  group_key: string
-  position: number
+  s_count: number
+  a_count: number
+  b_count: number
+  c_count: number
+  d_count: number
+  rating_count: number
+  average_tier: number | string | null
 }
-
 type FallbackCard = {
   card_number: string
   card_name: string
@@ -66,11 +66,10 @@ export default async function Page() {
   if (!verifyAdminCookie((await cookies()).get(ADMIN_COOKIE)?.value)) redirect('/admin')
 
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
 
   let cards: MakerCard[] = []
+  let aggregates: TierAggregate[] = []
   let projectConfig: MakerProjectConfig = {
     groups: TIER_GROUPS,
     unrated: true,
@@ -91,9 +90,7 @@ export default async function Page() {
       .eq('slug', 'dm26-ex2-charisma-best-tier')
       .single()
 
-    if (projectError || !projectData) {
-      throw new Error('Tier表企画がまだ準備されていません')
-    }
+    if (projectError || !projectData) throw new Error('Tier表企画がまだ準備されていません')
 
     const project = projectData as ProjectRow
     projectConfig = parseMakerProjectConfig(project.config)
@@ -119,6 +116,26 @@ export default async function Page() {
 
     if (cards.length === 0) throw new Error('企画カードがまだ登録されていません')
 
+    const { data: aggregateRows, error: aggregateError } = await admin
+      .from('maker_tier_aggregates')
+      .select('card_id,s_count,a_count,b_count,c_count,d_count,rating_count,average_tier')
+      .eq('project_id', project.id)
+
+    if (!aggregateError) {
+      aggregates = ((aggregateRows ?? []) as AggregateRow[]).map(row => ({
+        cardId: row.card_id,
+        counts: {
+          s: row.s_count ?? 0,
+          a: row.a_count ?? 0,
+          b: row.b_count ?? 0,
+          c: row.c_count ?? 0,
+          d: row.d_count ?? 0,
+        },
+        ratingCount: row.rating_count ?? 0,
+        averageTier: row.average_tier === null ? null : Number(row.average_tier),
+      }))
+    }
+
     if (user) {
       const { data: submission, error: submissionError } = await admin
         .from('maker_submissions')
@@ -140,7 +157,6 @@ export default async function Page() {
 
         const validCardIds = new Set(cards.map(card => card.id))
         const seen = new Set<string>()
-
         for (const item of (items ?? []) as SubmissionItem[]) {
           if (!draft[item.group_key] || !validCardIds.has(item.card_id) || seen.has(item.card_id)) continue
           seen.add(item.card_id)
@@ -161,9 +177,7 @@ export default async function Page() {
       maxChoices: null,
     }
     draft = emptyMakerDraft(projectConfig.groups)
-    console.warn('DM26-EX2 Tier表は確認用データで表示します', {
-      message: unavailableMessage,
-    })
+    console.warn('DM26-EX2 Tier表は確認用データで表示します', { message: unavailableMessage })
   }
 
   const canSave = Boolean(user) && !usingFallbackCards && process.env.VERCEL_ENV === 'preview'
@@ -173,9 +187,7 @@ export default async function Page() {
       <div className="mx-auto max-w-7xl">
         <p className="text-xs font-bold text-blue-700">管理者限定 · 非公開</p>
         <h1 className="mt-2 text-2xl font-black">DM26-EX2 悪感謝祭 カリスマBEST Tier表</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          新弾カードを{projectConfig.groups.map(group => group.label).join('〜')}に分類します。
-        </p>
+        <p className="mt-1 text-sm text-gray-500">好きな評価グループに分けてオリジナルのTier表を作れます。</p>
 
         {(!user || usingFallbackCards || process.env.VERCEL_ENV !== 'preview') && (
           <p className="mt-4 rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">
@@ -195,6 +207,7 @@ export default async function Page() {
           initialDraft={draft}
           unrated={projectConfig.unrated}
           canSave={canSave}
+          aggregates={aggregates}
         />
       </div>
     </main>
