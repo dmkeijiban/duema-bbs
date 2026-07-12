@@ -93,6 +93,11 @@ function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+function isMobileDevice() {
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
 export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, saveButtonLabel, hasSavedSubmission = false }: TierMakerProps) {
   const [draft, setDraft] = useState(initialDraft)
   const [selected, setSelected] = useState<MakerCard | null>(null)
@@ -384,8 +389,9 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     if (isSharingToX) return
     const text = 'DM26-EX2 悪感謝祭 カリスマBESTのTier表を作りました！\n#デュエマ'
     const tweetUrl = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(location.href)}`
-    const popup = window.open(tweetUrl, '_blank', 'noopener,noreferrer')
-    if (!popup) {
+    const mobile = isMobileDevice()
+    const popup = mobile ? null : window.open(tweetUrl, '_blank', 'noopener,noreferrer')
+    if (!mobile && !popup) {
       setMessage('Xの投稿画面を開けませんでした。ブラウザのポップアップ設定を確認してください。')
       return
     }
@@ -395,6 +401,10 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     try {
       const blob = await getTierPng()
       downloadBlob(blob, EXPORT_FILENAME)
+      if (mobile) {
+        const message = `${text}\n${location.href}`
+        location.href = `twitter://post?message=${encodeURIComponent(message)}`
+      }
     } catch (error) {
       console.error('X共有に失敗しました', error)
       setMessage('画像を生成できませんでした。時間をおいて再度お試しください。')
