@@ -87,6 +87,11 @@ function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+function isMobileDevice() {
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
 export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, saveButtonLabel, hasSavedSubmission = false }: TierMakerProps) {
   const [draft, setDraft] = useState(initialDraft)
   const [selected, setSelected] = useState<MakerCard | null>(null)
@@ -350,8 +355,24 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     setMessage('')
     try {
       const blob = await getTierPng()
-      downloadBlob(blob, 'dm26-ex2-tier.png')
-      setMessage('Tier表画像を保存しました。')
+      const filename = 'dm26-ex2-tier.png'
+      const file = new File([blob], filename, { type: 'image/png' })
+
+      if (isMobileDevice() && navigator.share && navigator.canShare?.({ files: [file] })) {
+        setMessage('共有メニューから「画像を保存」を選んでください。')
+        try {
+          await navigator.share({ files: [file] })
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            setMessage('')
+            return
+          }
+          throw error
+        }
+      } else {
+        downloadBlob(blob, filename)
+        setMessage('PNG画像のダウンロードを開始しました。')
+      }
     } catch (error) {
       console.error('Tier表画像の生成に失敗しました', error)
       setMessage('画像を生成できませんでした。時間をおいて再度お試しください。')
