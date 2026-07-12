@@ -4,6 +4,8 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { emptyMakerDraft, type MakerCard, type MakerDraft, type MakerGroup } from '@/lib/maker'
+import { recordMakerEvent } from '@/lib/maker-events'
+import { getMakerAnonymousId, type MakerEventType } from '@/lib/maker-events-shared'
 import { saveTierSubmission } from './actions'
 
 const STORAGE_KEY = 'maker-draft:dm26-ex2-charisma-best-tier:v1'
@@ -34,6 +36,8 @@ type TierMakerProps = {
   saveAction?: (payload: Record<string, string[]>) => Promise<{ ok: boolean; message: string }>
   saveButtonLabel?: string
   hasSavedSubmission?: boolean
+  // 指定した企画slugへ利用イベントを記録する（公開ページのみ指定。未指定なら計測しない）
+  eventSlug?: string
 }
 
 function CardImage({ card, contain = false }: { card: MakerCard; contain?: boolean }) {
@@ -135,7 +139,7 @@ function isIOSDevice() {
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
-export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, saveButtonLabel, hasSavedSubmission = false }: TierMakerProps) {
+export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, saveButtonLabel, hasSavedSubmission = false, eventSlug }: TierMakerProps) {
   const [draft, setDraft] = useState(initialDraft)
   const [selected, setSelected] = useState<MakerCard | null>(null)
   const [query, setQuery] = useState('')
@@ -154,6 +158,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [pending, startTransition] = useTransition()
   const skipFirstDraftPersist = useRef(true)
+  const hasTrackedTierCreated = useRef(false)
   const exportImageCache = useRef(new Map<string, Promise<HTMLImageElement>>())
   const pngCache = useRef(new Map<string, Blob>())
   const pngGeneration = useRef(new Map<string, Promise<Blob>>())
@@ -240,6 +245,17 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   const costOptions = [...new Set(cards.map(card => card.cost).filter((value): value is number => value !== null))].sort((a, b) => a - b)
   const cardTypeOptions = [...new Set(cards.map(card => card.cardType).filter((value): value is string => Boolean(value)))]
 
+  // 利用状況の統計イベント。失敗してもUIには影響させない（fire-and-forget）。
+  function trackEvent(eventType: MakerEventType) {
+    if (!eventSlug) return
+    try {
+      const anonymousId = getMakerAnonymousId()
+      void recordMakerEvent({ slug: eventSlug, eventType, anonymousId }).catch(() => {})
+    } catch {
+      // 計測失敗は無視する
+    }
+  }
+
   function moveCard(cardId: string, groupKey: string | null) {
     setDraft(current => {
       const next = Object.fromEntries(
@@ -249,6 +265,12 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
       return next
     })
     setSelected(null)
+
+    // 最初にカードをTierへ配置した時点で「Tier作成」1回として記録（ページ表示ごとに1回、短時間の重複はサーバー側で除外）
+    if (groupKey && !hasTrackedTierCreated.current) {
+      hasTrackedTierCreated.current = true
+      trackEvent('tier_created')
+    }
   }
 
   function reorderCard(groupKey: string, cardId: string, delta: number) {
@@ -455,6 +477,8 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     setMessage('')
     try {
       const blob = await getTierPng()
+      // 画像生成が成功して保存処理へ進んだ時だけ記録（生成失敗時は記録しない）
+      trackEvent('image_saved')
       deliverTierImage(blob)
     } catch (error) {
       console.error('Tier表画像の生成に失敗しました', error)
@@ -477,6 +501,8 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     }
     setIsSharingToX(true)
     setMessage('')
+    // X共有処理を開始した時点で記録する
+    trackEvent('x_shared')
 
     try {
       const blob = await getTierPng()
@@ -552,7 +578,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
           </button>
           <button type="button" disabled={isSavingImage} onClick={saveImage} className="flex-1 whitespace-nowrap rounded border border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-700 disabled:opacity-50 sm:flex-none">{isSavingImage ? '画像生成中...' : '画像保存'}</button>
           <button type="button" disabled={isSharingToX} onClick={shareToX} className="flex-1 whitespace-nowrap rounded bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50 sm:flex-none">{isSharingToX ? '共有準備中...' : 'Xで共有'}</button>
-          <button type="button" onClick={() => setShowCommunity(value => !value)} className="flex-1 whitespace-nowrap rounded border bg-white px-4 py-2 text-sm font-bold sm:flex-none">📊 みんなのTierを見る</button>
+          <button type="button" onClick={() => { if (!showCommunity) trackEvent('aggregate_viewed'); setShowCommunity(value => !value) }} className="flex-1 whitespace-nowrap rounded border bg-white px-4 py-2 text-sm font-bold sm:flex-none">📊 みんなのTierを見る</button>
           {message && <span className="self-center text-sm">{message}</span>}
         </div>
 
