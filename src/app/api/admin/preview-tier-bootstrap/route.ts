@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { Client } from 'pg'
+import { createAdminClient } from '@/lib/supabase-admin'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -57,12 +58,60 @@ export async function GET() {
     const output = await withClient(async client => {
       const state = await client.query(`select
         to_regclass('public.cards') is not null cards_exists,
-        to_regclass('public.maker_projects') is not null maker_projects_exists`)
+        to_regclass('public.maker_projects') is not null maker_projects_exists,
+        (select count(*)::int from public.cards) card_count,
+        (select count(*)::int from public.maker_project_cards) project_card_count,
+        (select count(*)::int from pg_policies where schemaname='public' and tablename in ('cards','maker_projects','maker_project_cards','maker_submissions','maker_submission_items')) policy_count,
+        (select relrowsecurity from pg_class where oid='public.cards'::regclass) cards_rls,
+        (select proacl::text from pg_proc where oid='public.save_maker_submission(uuid,uuid,jsonb)'::regprocedure) function_acl,
+        (select count(*)::int from auth.users) auth_user_count`)
       return { ref: PREVIEW_REF, serviceRoleExists: true, databaseUrlExists: true, ...state.rows[0] }
     })
     return NextResponse.json({ ok: true, ...output })
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : 'UNKNOWN' }, { status: 503 })
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    targetGuard()
+    const body = await request.json() as { email: string; password: string }
+    if (!body.email.endsWith('@preview.invalid') || body.password.length < 16) throw new Error('TEST_USER_INPUT_INVALID')
+    const admin = createAdminClient()
+    const existing = await admin.auth.admin.listUsers({ page: 1, perPage: 100 })
+    if (existing.error) throw existing.error
+    let user = existing.data.users.find(value => value.email === body.email)
+    if (!user) {
+      const created = await admin.auth.admin.createUser({ email: body.email, password: body.password, email_confirm: true })
+      if (created.error) throw created.error
+      user = created.data.user
+    }
+    if (!user) throw new Error('TEST_USER_NOT_CREATED')
+
+    const output = await withClient(async client => {
+      const project = await client.query<{ id: string }>(`select id from public.maker_projects where slug='dm26-ex2-charisma-best-tier'`)
+      const cards = await client.query<{ id: string; sort_order: number }>(`select card_id id,sort_order from public.maker_project_cards where project_id=$1 order by sort_order limit 4`, [project.rows[0].id])
+      const firstItems = [
+        { card_id: cards.rows[0].id, group_key: 's', position: 0 },
+        { card_id: cards.rows[1].id, group_key: 'a', position: 0 },
+        { card_id: cards.rows[2].id, group_key: 'b', position: 0 },
+      ]
+      const secondItems = [
+        { card_id: cards.rows[0].id, group_key: 'd', position: 0 },
+        { card_id: cards.rows[3].id, group_key: 's', position: 0 },
+      ]
+      const first = await client.query<{ save_maker_submission: string }>('select public.save_maker_submission($1,$2,$3::jsonb)', [project.rows[0].id, user.id, JSON.stringify(firstItems)])
+      const second = await client.query<{ save_maker_submission: string }>('select public.save_maker_submission($1,$2,$3::jsonb)', [project.rows[0].id, user.id, JSON.stringify(secondItems)])
+      const checks = await client.query(`select
+        (select count(*)::int from public.maker_submissions where project_id=$1 and user_id=$2) submission_count,
+        (select count(*)::int from public.maker_submission_items where submission_id=$3) item_count,
+        (select jsonb_agg(jsonb_build_object('name',name,'s_count',s_count,'a_count',a_count,'b_count',b_count,'c_count',c_count,'d_count',d_count,'rating_count',rating_count,'average_tier',average_tier) order by name) from public.maker_tier_aggregates where project_id=$1) aggregates`, [project.rows[0].id, user.id, second.rows[0].save_maker_submission])
+      return { userId: user.id, firstSubmissionId: first.rows[0].save_maker_submission, secondSubmissionId: second.rows[0].save_maker_submission, ...checks.rows[0] }
+    })
+    return NextResponse.json({ ok: true, ref: PREVIEW_REF, ...output })
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : 'UNKNOWN' }, { status: 400 })
   }
 }
 
