@@ -62,8 +62,11 @@ export async function GET() {
         (select count(*)::int from public.cards) card_count,
         (select count(*)::int from public.maker_project_cards) project_card_count,
         (select count(*)::int from pg_policies where schemaname='public' and tablename in ('cards','maker_projects','maker_project_cards','maker_submissions','maker_submission_items')) policy_count,
-        (select relrowsecurity from pg_class where oid='public.cards'::regclass) cards_rls,
+        (select bool_and(relrowsecurity) from pg_class where oid in ('public.cards'::regclass,'public.maker_projects'::regclass,'public.maker_project_cards'::regclass,'public.maker_submissions'::regclass,'public.maker_submission_items'::regclass)) all_tables_rls,
+        (select count(*)::int from pg_constraint where conrelid='public.cards'::regclass and contype='u') cards_unique_constraints,
+        (select count(*)::int from pg_constraint where conrelid='public.maker_submissions'::regclass and contype='u') submission_unique_constraints,
         (select proacl::text from pg_proc where oid='public.save_maker_submission(uuid,uuid,jsonb)'::regprocedure) function_acl,
+        to_regclass('public.maker_tier_aggregates') is not null aggregate_view_exists,
         (select count(*)::int from auth.users) auth_user_count`)
       return { ref: PREVIEW_REF, serviceRoleExists: true, databaseUrlExists: true, ...state.rows[0] }
     })
