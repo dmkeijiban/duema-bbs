@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { emptyMakerDraft, type MakerCard, type MakerDraft, type MakerGroup } from '@/lib/maker'
 import { saveTierSubmission } from './actions'
 
@@ -23,6 +23,10 @@ type TierMakerProps = {
   unrated: boolean
   canSave: boolean
   aggregates: TierAggregate[]
+  imageProxyPath?: string
+  saveAction?: (payload: Record<string, string[]>) => Promise<{ ok: boolean; message: string }>
+  saveButtonLabel?: string
+  hasSavedSubmission?: boolean
 }
 
 function CardImage({ card, contain = false }: { card: MakerCard; contain?: boolean }) {
@@ -65,10 +69,10 @@ function restoreDraft(value: unknown, groups: MakerGroup[], validCardIds: Set<st
   return restored
 }
 
-async function loadExportImage(url: string): Promise<HTMLImageElement> {
+async function loadExportImage(url: string, imageProxyPath: string): Promise<HTMLImageElement> {
   const image = new Image()
   image.decoding = 'async'
-  image.src = `/api/admin/makers/dm26-ex2-card-image?url=${encodeURIComponent(url)}`
+  image.src = `${imageProxyPath}?url=${encodeURIComponent(url)}`
   await image.decode()
   return image
 }
@@ -82,7 +86,7 @@ function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates }: TierMakerProps) {
+export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, saveButtonLabel, hasSavedSubmission = false }: TierMakerProps) {
   const [draft, setDraft] = useState(initialDraft)
   const [selected, setSelected] = useState<MakerCard | null>(null)
   const [query, setQuery] = useState('')
@@ -92,8 +96,10 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   const [message, setMessage] = useState('')
   const [showCommunity, setShowCommunity] = useState(false)
   const [showLoginRequired, setShowLoginRequired] = useState(false)
+  const [localDraftConflict, setLocalDraftConflict] = useState<MakerDraft | null>(null)
   const [imageBusy, setImageBusy] = useState(false)
   const [pending, startTransition] = useTransition()
+  const skipFirstDraftPersist = useRef(true)
 
   const cardsById = useMemo(() => new Map(cards.map(card => [card.id, card])), [cards])
   const validCardIds = useMemo(() => new Set(cards.map(card => card.id)), [cards])
@@ -112,14 +118,21 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
     try {
       const restored = restoreDraft(JSON.parse(stored), groups, validCardIds)
-      if (restored) queueMicrotask(() => setDraft(restored))
+      if (restored) {
+        if (hasSavedSubmission) setLocalDraftConflict(restored)
+        else queueMicrotask(() => setDraft(restored))
+      }
     } catch (error) {
       console.warn('Tier表の下書きを復元できませんでした', error)
       localStorage.removeItem(STORAGE_KEY)
     }
-  }, [groups, validCardIds])
+  }, [groups, hasSavedSubmission, validCardIds])
 
   useEffect(() => {
+    if (skipFirstDraftPersist.current) {
+      skipFirstDraftPersist.current = false
+      return
+    }
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(draft))
     } catch (error) {
@@ -181,6 +194,11 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
   function save() {
     if (!canSave) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(draft))
+      } catch (error) {
+        console.warn('Tier表の下書きを保存できませんでした', error)
+      }
       setShowLoginRequired(true)
       return
     }
@@ -188,7 +206,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     setMessage('')
     startTransition(async () => {
       try {
-        const result = await saveTierSubmission(draft)
+        const result = await saveAction(draft)
         setMessage(result.message)
       } catch (error) {
         console.error('Tier表の保存に失敗しました', error)
@@ -275,7 +293,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
           try {
             let image = imageCache.get(card.imageUrl)
             if (!image) {
-              image = await loadExportImage(card.imageUrl)
+              image = await loadExportImage(card.imageUrl, imageProxyPath)
               imageCache.set(card.imageUrl, image)
             }
             context.drawImage(image, x, cardY, row.cardWidth, row.cardHeight)
@@ -394,7 +412,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
             onClick={save}
             className="rounded bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {pending ? '保存中...' : canSave ? '上書き保存' : '回答を登録'}
+            {pending ? '保存中...' : saveButtonLabel ?? (canSave ? '上書き保存' : 'ログインして回答を登録')}
           </button>
           <button type="button" disabled={imageBusy} onClick={saveImage} className="rounded border border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-700 disabled:opacity-50">📷 画像保存</button>
           <button type="button" disabled={imageBusy} onClick={shareToX} className="rounded bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Xで共有</button>
@@ -488,6 +506,19 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
             <div className="mt-6 space-y-2">
               <button type="button" onClick={goToLogin} className="w-full rounded-xl bg-blue-700 px-4 py-3 font-bold text-white">ログインする</button>
               <button type="button" onClick={() => setShowLoginRequired(false)} className="w-full rounded-xl border px-4 py-3 font-bold">キャンセル</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {localDraftConflict && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="draft-conflict-title" className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl sm:p-6">
+            <h2 id="draft-conflict-title" className="text-xl font-black">下書きを復元しますか？</h2>
+            <p className="mt-3 text-sm leading-6 text-gray-600">この端末の下書きと、登録済みの回答があります。どちらを編集するか選んでください。選択するまで登録済み回答は上書きされません。</p>
+            <div className="mt-6 space-y-2">
+              <button type="button" onClick={() => { setDraft(localDraftConflict); setLocalDraftConflict(null) }} className="w-full rounded-xl bg-blue-700 px-4 py-3 font-bold text-white">端末の下書きを復元</button>
+              <button type="button" onClick={() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(initialDraft)); setLocalDraftConflict(null) }} className="w-full rounded-xl border px-4 py-3 font-bold">登録済み回答を使う</button>
             </div>
           </div>
         </div>
