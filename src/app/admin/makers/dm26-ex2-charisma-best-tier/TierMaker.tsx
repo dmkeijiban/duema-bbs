@@ -246,12 +246,12 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     const gap = 6
     const top = 120
     const bottomPadding = 28
-    const palette: Record<string, { background: string; border: string; label: string }> = {
-      s: { background: '#fff1f2', border: '#fca5a5', label: '#be123c' },
-      a: { background: '#fff7ed', border: '#fdba74', label: '#c2410c' },
-      b: { background: '#fffbeb', border: '#fcd34d', label: '#a16207' },
-      c: { background: '#ecfdf5', border: '#6ee7b7', label: '#047857' },
-      d: { background: '#eff6ff', border: '#93c5fd', label: '#1d4ed8' },
+    const palette: Record<string, { background: string; border: string; label: string; labelBackground: string }> = {
+      s: { background: '#fff1f2', border: '#fca5a5', label: '#be123c', labelBackground: '#fca5a5' },
+      a: { background: '#fff7ed', border: '#fdba74', label: '#c2410c', labelBackground: '#fdba74' },
+      b: { background: '#fffbeb', border: '#fcd34d', label: '#a16207', labelBackground: '#fcd34d' },
+      c: { background: '#ecfdf5', border: '#6ee7b7', label: '#047857', labelBackground: '#6ee7b7' },
+      d: { background: '#eff6ff', border: '#93c5fd', label: '#1d4ed8', labelBackground: '#93c5fd' },
     }
 
     const rowLayouts = groups.map(group => {
@@ -271,10 +271,6 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     context.fillStyle = '#0f172a'
     context.font = 'bold 38px sans-serif'
     context.fillText(EXPORT_TITLE, 40, 58)
-    context.font = '20px sans-serif'
-    context.fillStyle = '#475569'
-    context.fillText('デュエマ掲示板  www.duema-bbs.com', 40, 92)
-
     let y = top
 
     for (const row of rowLayouts) {
@@ -282,9 +278,12 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
         background: '#f8fafc',
         border: '#cbd5e1',
         label: '#111827',
+        labelBackground: '#cbd5e1',
       }
       context.fillStyle = colors.background
       context.fillRect(left, y, totalWidth, row.rowHeight)
+      context.fillStyle = colors.labelBackground
+      context.fillRect(left, y, labelWidth, row.rowHeight)
       context.strokeStyle = colors.border
       context.lineWidth = 1.5
       context.strokeRect(left, y, totalWidth, row.rowHeight)
