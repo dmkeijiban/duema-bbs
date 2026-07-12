@@ -8,6 +8,7 @@ import { saveTierSubmission } from './actions'
 
 const STORAGE_KEY = 'maker-draft:dm26-ex2-charisma-best-tier:v1'
 const EXPORT_TITLE = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表'
+const SHOW_CARD_DETAIL_FILTERS = false
 
 export type TierAggregate = {
   cardId: string
@@ -412,9 +413,9 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
             onClick={save}
             className="rounded bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {pending ? '保存中...' : saveButtonLabel ?? (canSave ? '上書き保存' : 'ログインして回答を登録')}
+            {pending ? '保存中...' : saveButtonLabel ?? '登録'}
           </button>
-          <button type="button" disabled={imageBusy} onClick={saveImage} className="rounded border border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-700 disabled:opacity-50">📷 画像保存</button>
+          <button type="button" disabled={imageBusy} onClick={saveImage} className="rounded border border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-700 disabled:opacity-50">画像保存</button>
           <button type="button" disabled={imageBusy} onClick={shareToX} className="rounded bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Xで共有</button>
           <button type="button" onClick={() => setShowCommunity(value => !value)} className="rounded border bg-white px-4 py-2 text-sm font-bold">📊 みんなのTierを見る</button>
           {message && <span className="self-center text-sm">{message}</span>}
@@ -462,13 +463,12 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
       </section>
 
       <aside className="h-fit rounded-xl border bg-white p-3 lg:sticky lg:top-3">
-        <h2 className="font-black">{unrated ? `未評価 ${visibleCards.length}枚` : `候補 ${visibleCards.length}枚`}</h2>
-        <input value={query} onChange={event => setQuery(event.target.value)} placeholder="カード名検索" className="mt-2 w-full rounded border p-2 text-sm" />
-        <div className="mt-2 grid grid-cols-3 gap-1">
+        <input value={query} onChange={event => setQuery(event.target.value)} placeholder="カード名検索" className="w-full rounded border p-2 text-sm" />
+        {SHOW_CARD_DETAIL_FILTERS && <div className="mt-2 grid grid-cols-3 gap-1">
           <select aria-label="文明" value={civilization} onChange={event => setCivilization(event.target.value)} className="rounded border p-1 text-xs"><option value="">文明</option>{civilizationOptions.map(value => <option key={value}>{value}</option>)}</select>
           <select aria-label="コスト" value={cost} onChange={event => setCost(event.target.value)} className="rounded border p-1 text-xs"><option value="">コスト</option>{costOptions.map(value => <option key={value}>{value}</option>)}</select>
           <select aria-label="種類" value={cardType} onChange={event => setCardType(event.target.value)} className="rounded border p-1 text-xs"><option value="">種類</option>{cardTypeOptions.map(value => <option key={value}>{value}</option>)}</select>
-        </div>
+        </div>}
         <div className="mt-3 grid max-h-[70vh] grid-cols-3 gap-2 overflow-auto">
           {visibleCards.map(card => (
             <button type="button" key={card.id} onClick={() => setSelected(card)} aria-label={card.name} className="overflow-hidden rounded border">
