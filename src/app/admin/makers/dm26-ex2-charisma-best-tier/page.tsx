@@ -173,9 +173,7 @@ export default async function Page() {
       <div className="mx-auto max-w-7xl">
         <p className="text-xs font-bold text-blue-700">管理者限定 · 非公開</p>
         <h1 className="mt-2 text-2xl font-black">DM26-EX2 悪感謝祭 カリスマBEST Tier表</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          新弾カードを{projectConfig.groups.map(group => group.label).join('〜')}に分類します。
-        </p>
+        <p className="mt-1 text-sm text-gray-500">好きな評価グループに分けてオリジナルのTier表を作れます。</p>
 
         {(!user || usingFallbackCards || process.env.VERCEL_ENV !== 'preview') && (
           <p className="mt-4 rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">
