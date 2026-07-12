@@ -149,6 +149,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   const [isSavingImage, setIsSavingImage] = useState(false)
   const [isSharingToX, setIsSharingToX] = useState(false)
   const [exportPreviewUrl, setExportPreviewUrl] = useState<string | null>(null)
+  const [zoomedCard, setZoomedCard] = useState<MakerCard | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [pending, startTransition] = useTransition()
@@ -205,12 +206,13 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   }, [draftKey])
 
   useEffect(() => {
-    if (!selected && !showLoginRequired && !exportPreviewUrl) return
+    if (!selected && !showLoginRequired && !exportPreviewUrl && !zoomedCard) return
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       setSelected(null)
       setShowLoginRequired(false)
+      setZoomedCard(null)
       setExportPreviewUrl(current => {
         if (current) URL.revokeObjectURL(current)
         return null
@@ -219,7 +221,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
     addEventListener('keydown', onKeyDown)
     return () => removeEventListener('keydown', onKeyDown)
-  }, [selected, showLoginRequired, exportPreviewUrl])
+  }, [selected, showLoginRequired, exportPreviewUrl, zoomedCard])
 
   useEffect(() => () => {
     if (toastTimer.current) clearTimeout(toastTimer.current)
@@ -548,8 +550,8 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
           >
             {pending ? '保存中...' : saveButtonLabel ?? '登録'}
           </button>
-          <button type="button" disabled={isSavingImage} onClick={saveImage} className="min-w-[112px] rounded border border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-700 disabled:opacity-50">{isSavingImage ? '画像生成中...' : '画像保存'}</button>
-          <button type="button" disabled={isSharingToX} onClick={shareToX} className="min-w-[112px] rounded bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isSharingToX ? '共有準備中...' : 'Xで共有'}</button>
+          <button type="button" disabled={isSavingImage} onClick={saveImage} className="rounded border border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-700 disabled:opacity-50">{isSavingImage ? '画像生成中...' : '画像保存'}</button>
+          <button type="button" disabled={isSharingToX} onClick={shareToX} className="rounded bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isSharingToX ? '共有準備中...' : 'Xで共有'}</button>
           <button type="button" onClick={() => setShowCommunity(value => !value)} className="rounded border bg-white px-4 py-2 text-sm font-bold">📊 みんなのTierを見る</button>
           {message && <span className="self-center text-sm">{message}</span>}
         </div>
@@ -568,7 +570,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
                   return (
                     <article key={card.id} className="flex gap-3 rounded border p-3">
-                      <div className="h-28 w-20 shrink-0 overflow-hidden rounded border bg-slate-100"><CardImage card={card} contain /></div>
+                      <button type="button" onClick={() => setZoomedCard(card)} aria-label={`${card.name}を拡大表示`} className="h-28 w-20 shrink-0 overflow-hidden rounded border bg-slate-100"><CardImage card={card} contain /></button>
                       <div className="min-w-0 flex-1">
                         <h3 className="line-clamp-2 text-sm font-bold">{card.name}</h3>
                         <p className="mt-1 text-xs text-gray-500">回答 {aggregate.ratingCount}人 / 平均 {aggregate.averageTier?.toFixed(2) ?? '-'}</p>
@@ -659,6 +661,20 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
               <button type="button" onClick={closeExportPreview} className="w-full rounded-xl border px-4 py-3 font-bold">閉じる</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {zoomedCard && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
+          onMouseDown={event => { if (event.target === event.currentTarget) setZoomedCard(null) }}
+        >
+          <button type="button" aria-label="拡大画像を閉じる" onClick={() => setZoomedCard(null)} className="absolute right-4 top-4 z-10 rounded-full bg-white/90 px-3 py-1 text-3xl leading-none text-black">×</button>
+          {zoomedCard.imageUrl ? (
+            <img src={zoomedCard.imageUrl} alt={zoomedCard.name} className="max-h-[92vh] max-w-[94vw] object-contain" />
+          ) : (
+            <p className="rounded bg-white px-4 py-3 text-sm font-bold">{zoomedCard.name}</p>
+          )}
         </div>
       )}
 
