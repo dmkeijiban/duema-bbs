@@ -10,13 +10,11 @@ const STORAGE_KEY = 'maker-draft:dm26-ex2-charisma-best-tier:v1'
 const EXPORT_TITLE = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表'
 const SHOW_CARD_DETAIL_FILTERS = false
 
-type ExportFormat = 'current' | 'portrait' | 'auto'
-
-const EXPORT_FORMATS: Record<ExportFormat, { label: string; filename: string }> = {
-  current: { label: '現行版', filename: 'dm26-ex2-tier.png' },
-  portrait: { label: '4:5版', filename: 'dm26-ex2-tier-4x5.png' },
-  auto: { label: '高さ自動可変版', filename: 'dm26-ex2-tier-auto.png' },
-}
+const EXPORT_FORMAT = 'auto'
+const EXPORT_FILENAME = 'dm26-ex2-tier-auto.png'
+const EXPORT_CARDS_PER_LINE = 8
+const EXPORT_CARD_WIDTH = 110
+const EXPORT_CARD_HEIGHT = EXPORT_CARD_WIDTH * 88 / 63
 
 export type TierAggregate = {
   cardId: string
@@ -113,7 +111,6 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   const [localDraftConflict, setLocalDraftConflict] = useState<MakerDraft | null>(null)
   const [isSavingImage, setIsSavingImage] = useState(false)
   const [isSharingToX, setIsSharingToX] = useState(false)
-  const [exportFormat, setExportFormat] = useState<ExportFormat>('auto')
   const [pending, startTransition] = useTransition()
   const skipFirstDraftPersist = useRef(true)
   const exportImageCache = useRef(new Map<string, Promise<HTMLImageElement>>())
@@ -247,17 +244,17 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     location.assign(`/login?next=${encodeURIComponent(next)}`)
   }
 
-  async function createTierPng(format: ExportFormat): Promise<Blob> {
+  async function createTierPng(): Promise<Blob> {
     const canvas = document.createElement('canvas')
-    canvas.width = format === 'current' ? 1200 : 1080
+    canvas.width = 1080
     const context = canvas.getContext('2d')
     if (!context) throw new Error('Canvas is unavailable')
 
     const left = 30
     const totalWidth = canvas.width - left * 2
-    const labelWidth = format === 'current' ? 105 : 96
+    const labelWidth = 96
     const horizontalPadding = 12
-    const gap = format === 'auto' ? 10 : 6
+    const gap = 10
     const rowGap = 10
     const top = 120
     const bottomPadding = 28
@@ -271,14 +268,9 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
     const rowLayouts = groups.map(group => {
       const ids = draft[group.key] ?? []
-      const availableWidth = totalWidth - labelWidth - horizontalPadding * 2
-      const cardsPerLine = format === 'auto' ? 8 : Math.max(1, ids.length)
-      const cardWidth = ids.length
-        ? format === 'auto'
-          ? Math.floor((availableWidth - gap * (cardsPerLine - 1)) / cardsPerLine)
-          : Math.max(24, Math.min(92, Math.floor((availableWidth - gap * Math.max(0, ids.length - 1)) / ids.length)))
-        : 0
-      const cardHeight = cardWidth * 88 / 63
+      const cardsPerLine = EXPORT_CARDS_PER_LINE
+      const cardWidth = ids.length ? EXPORT_CARD_WIDTH : 0
+      const cardHeight = ids.length ? EXPORT_CARD_HEIGHT : 0
       const lineCount = ids.length ? Math.ceil(ids.length / cardsPerLine) : 0
       const rowHeight = ids.length
         ? Math.ceil(lineCount * cardHeight + Math.max(0, lineCount - 1) * rowGap + 20)
@@ -287,7 +279,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     })
 
     const contentHeight = top + rowLayouts.reduce((sum, row) => sum + row.rowHeight + 5, 0) + bottomPadding
-    canvas.height = format === 'portrait' ? 1350 : contentHeight
+    canvas.height = contentHeight
     context.fillStyle = '#f8fafc'
     context.fillRect(0, 0, canvas.width, canvas.height)
     context.fillStyle = '#0f172a'
@@ -322,9 +314,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
         const column = index % row.cardsPerLine
         const line = Math.floor(index / row.cardsPerLine)
         const x = left + labelWidth + horizontalPadding + column * (row.cardWidth + gap)
-        const cardY = format === 'auto'
-          ? y + 10 + line * (row.cardHeight + rowGap)
-          : y + Math.max(8, (row.rowHeight - row.cardHeight) / 2)
+        const cardY = y + 10 + line * (row.cardHeight + rowGap)
 
         if (card.imageUrl) {
           try {
@@ -353,15 +343,15 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     })
   }
 
-  function getTierPng(format: ExportFormat): Promise<Blob> {
-    const key = `${format}:${draftKey}`
+  function getTierPng(): Promise<Blob> {
+    const key = `${EXPORT_FORMAT}:${draftKey}`
     const cached = pngCache.current.get(key)
     if (cached) return Promise.resolve(cached)
     const generating = pngGeneration.current.get(key)
     if (generating) return generating
 
     const expectedDraftKey = draftKey
-    const promise = createTierPng(format).then(blob => {
+    const promise = createTierPng().then(blob => {
       if (latestDraftKey.current === expectedDraftKey) pngCache.current.set(key, blob)
       return blob
     }).finally(() => {
@@ -376,12 +366,11 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     setIsSavingImage(true)
     setMessage('')
     try {
-      const blob = await getTierPng(exportFormat)
-      const filename = EXPORT_FORMATS[exportFormat].filename
+      const blob = await getTierPng()
+      const filename = EXPORT_FILENAME
       const file = new File([blob], filename, { type: 'image/png' })
 
       if (isMobileDevice() && navigator.share && navigator.canShare?.({ files: [file] })) {
-        setMessage('共有メニューから「画像を保存」を選んでください。')
         try {
           await navigator.share({ files: [file] })
         } catch (error) {
@@ -393,7 +382,6 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
         }
       } else {
         downloadBlob(blob, filename)
-        setMessage('PNG画像のダウンロードを開始しました。')
       }
     } catch (error) {
       console.error('Tier表画像の生成に失敗しました', error)
@@ -405,24 +393,21 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
   async function shareToX() {
     if (isSharingToX) return
-    const popup = window.open('about:blank', '_blank')
+    const text = 'DM26-EX2 悪感謝祭 カリスマBESTのTier表を作りました！\n#デュエマ'
+    const tweetUrl = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(location.href)}`
+    const popup = window.open(tweetUrl, '_blank', 'noopener,noreferrer')
     if (!popup) {
       setMessage('Xの投稿画面を開けませんでした。ブラウザのポップアップ設定を確認してください。')
       return
     }
-    popup.opener = null
     setIsSharingToX(true)
     setMessage('')
 
     try {
-      const blob = await getTierPng(exportFormat)
-      const text = 'DM26-EX2 悪感謝祭 カリスマBESTのTier表を作りました！\n#デュエマ'
-      downloadBlob(blob, EXPORT_FORMATS[exportFormat].filename)
-      popup.location.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(location.href)}`
-      setMessage('画像を保存しました。開いたXの投稿画面に画像を添付してください。')
+      const blob = await getTierPng()
+      downloadBlob(blob, EXPORT_FILENAME)
     } catch (error) {
       console.error('X共有に失敗しました', error)
-      popup.close()
       setMessage('画像を生成できませんでした。時間をおいて再度お試しください。')
     } finally {
       setIsSharingToX(false)
@@ -485,19 +470,6 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
           >
             {pending ? '保存中...' : saveButtonLabel ?? '登録'}
           </button>
-          <label className="flex items-center gap-2 rounded border bg-white px-3 py-2 text-sm font-bold">
-            書き出し
-            <select
-              value={exportFormat}
-              onChange={event => setExportFormat(event.target.value as ExportFormat)}
-              className="bg-transparent font-normal"
-              aria-label="画像の書き出し形式"
-            >
-              {Object.entries(EXPORT_FORMATS).map(([value, option]) => (
-                <option key={value} value={value}>{option.label}</option>
-              ))}
-            </select>
-          </label>
           <button type="button" disabled={isSavingImage} onClick={saveImage} className="min-w-[112px] rounded border border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-700 disabled:opacity-50">{isSavingImage ? '画像生成中...' : '画像保存'}</button>
           <button type="button" disabled={isSharingToX} onClick={shareToX} className="min-w-[112px] rounded bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isSharingToX ? '共有準備中...' : 'Xで共有'}</button>
           <button type="button" onClick={() => setShowCommunity(value => !value)} className="rounded border bg-white px-4 py-2 text-sm font-bold">📊 みんなのTierを見る</button>
