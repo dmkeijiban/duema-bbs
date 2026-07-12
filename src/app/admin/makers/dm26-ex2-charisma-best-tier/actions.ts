@@ -1,11 +1,45 @@
 'use server'
 
 import { cookies } from 'next/headers'
+import { revalidatePath } from 'next/cache'
 import { ADMIN_COOKIE, verifyAdminCookie } from '@/lib/admin-auth'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { parseMakerProjectConfig } from '@/lib/maker'
 import { assertPreviewDatabaseTarget } from '@/lib/preview-safety'
+
+const PROJECT_SLUG = 'dm26-ex2-charisma-best-tier'
+
+export async function setTierProjectVisibility(isPublic: boolean) {
+  if (typeof isPublic !== 'boolean') return { ok: false, message: '公開状態が不正です' }
+  if (!verifyAdminCookie((await cookies()).get(ADMIN_COOKIE)?.value)) {
+    return { ok: false, message: '管理者認証が必要です' }
+  }
+
+  try {
+    const admin = createAdminClient()
+    const { data, error } = await admin
+      .from('maker_projects')
+      .update({
+        is_public: isPublic,
+        status: isPublic ? 'published' : 'draft',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('slug', PROJECT_SLUG)
+      .select('id')
+      .single()
+
+    if (error || !data) return { ok: false, message: '公開状態を更新できませんでした' }
+    revalidatePath('/admin/makers/dm26-ex2-charisma-best-tier')
+    revalidatePath('/admin/tier-maker')
+    revalidatePath('/makers/dm26-ex2-charisma-best-tier')
+    return { ok: true, message: isPublic ? 'Tier表メーカーを公開しました' : 'Tier表メーカーを非公開にしました' }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '公開状態を更新できませんでした'
+    console.error('setTierProjectVisibility failed', { message })
+    return { ok: false, message }
+  }
+}
 
 export async function saveTierSubmission(payload: Record<string, string[]>) {
   try {
@@ -23,7 +57,7 @@ export async function saveTierSubmission(payload: Record<string, string[]>) {
     const { data: project, error: projectError } = await admin
       .from('maker_projects')
       .select('id,config')
-      .eq('slug', 'dm26-ex2-charisma-best-tier')
+      .eq('slug', PROJECT_SLUG)
       .single()
 
     if (projectError || !project) return { ok: false, message: '企画が未準備です' }
