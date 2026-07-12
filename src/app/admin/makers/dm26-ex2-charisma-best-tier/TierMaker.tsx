@@ -7,6 +7,7 @@ import { emptyMakerDraft, type MakerCard, type MakerDraft, type MakerGroup } fro
 import { saveTierSubmission } from './actions'
 
 const STORAGE_KEY = 'maker-draft:dm26-ex2-charisma-best-tier:v1'
+const DRAFT_CHOICE_KEY = 'maker-draft-choice:dm26-ex2-charisma-best-tier:v1'
 const EXPORT_TITLE = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表'
 const SHOW_CARD_DETAIL_FILTERS = false
 
@@ -138,7 +139,8 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     try {
       const restored = restoreDraft(JSON.parse(stored), groups, validCardIds)
       if (restored) {
-        if (hasSavedSubmission) setLocalDraftConflict(restored)
+        const hasResolvedConflict = localStorage.getItem(DRAFT_CHOICE_KEY) === 'resolved'
+        if (hasSavedSubmission && !hasResolvedConflict) setLocalDraftConflict(restored)
         else queueMicrotask(() => setDraft(restored))
       }
     } catch (error) {
@@ -571,8 +573,8 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
             <h2 id="draft-conflict-title" className="text-xl font-black">下書きを復元しますか？</h2>
             <p className="mt-3 text-sm leading-6 text-gray-600">この端末の下書きと、登録済みの回答があります。どちらを編集するか選んでください。選択するまで登録済み回答は上書きされません。</p>
             <div className="mt-6 space-y-2">
-              <button type="button" onClick={() => { setDraft(localDraftConflict); setLocalDraftConflict(null) }} className="w-full rounded-xl bg-blue-700 px-4 py-3 font-bold text-white">端末の下書きを復元</button>
-              <button type="button" onClick={() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(initialDraft)); setLocalDraftConflict(null) }} className="w-full rounded-xl border px-4 py-3 font-bold">登録済み回答を使う</button>
+              <button type="button" onClick={() => { localStorage.setItem(DRAFT_CHOICE_KEY, 'resolved'); setDraft(localDraftConflict); setLocalDraftConflict(null) }} className="w-full rounded-xl bg-blue-700 px-4 py-3 font-bold text-white">端末の下書きを復元</button>
+              <button type="button" onClick={() => { localStorage.setItem(DRAFT_CHOICE_KEY, 'resolved'); localStorage.setItem(STORAGE_KEY, JSON.stringify(initialDraft)); setLocalDraftConflict(null) }} className="w-full rounded-xl border px-4 py-3 font-bold">登録済み回答を使う</button>
             </div>
           </div>
         </div>
