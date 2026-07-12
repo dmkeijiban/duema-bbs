@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { emptyMakerDraft, parseMakerProjectConfig, type MakerCard, type MakerDraft } from '@/lib/maker'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
-import TierMaker, { type TierAggregate } from '@/app/admin/makers/dm26-ex2-charisma-best-tier/TierMaker'
+import type { TierAggregate } from '@/app/admin/makers/dm26-ex2-charisma-best-tier/TierMaker'
+import PublicTierMaker from './PublicTierMaker'
 import { savePublicTierSubmission } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -78,19 +78,17 @@ export default async function PublicTierMakerPage() {
       <div className="mx-auto max-w-7xl">
         <p className="text-xs font-bold text-emerald-700">新弾カードTier表メーカー</p>
         <h1 className="mt-2 text-2xl font-black">DM26-EX2 悪感謝祭 カリスマBEST Tier表</h1>
-        <p className="mt-1 text-sm text-gray-500">カードをS〜Dに分けて、あなただけのTier表を作成・画像保存できます。</p>
-        {!user && <p className="mt-3 rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">回答の登録にはログインが必要です。作成内容は下書きとして保存され、ログイン後に復元されます。<Link href="/login?next=%2Fmakers%2Fdm26-ex2-charisma-best-tier" className="ml-1 font-bold underline">ログイン／アカウント作成</Link></p>}
-        <TierMaker
+        <p className="mt-1 text-sm text-gray-500">好きな評価グループに分けてオリジナルのTier表を作れます。</p>
+        <PublicTierMaker
           cards={cards}
           groups={config.groups}
           initialDraft={draft}
           unrated={config.unrated}
           canSave={Boolean(user)}
           saveAction={savePublicTierSubmission}
-          saveButtonLabel={user ? (hasSavedSubmission ? '回答を更新' : '回答を登録') : 'ログインして回答を登録'}
+          saveButtonLabel={user ? (hasSavedSubmission ? '更新' : '登録') : '登録'}
           hasSavedSubmission={hasSavedSubmission}
           aggregates={aggregates}
-          imageProxyPath="/api/makers/dm26-ex2-card-image"
         />
       </div>
     </main>
