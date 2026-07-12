@@ -429,7 +429,7 @@ export async function runDailyZukanThread(): Promise<DailyZukanResult> {
       body,
       category_id: categoryId,
       author_name: '名無しのデュエリスト',
-      auto_lock_exempt: true,
+      auto_lock_exempt: false,
       image_url: imageUrl,
     })
     .select('id')
