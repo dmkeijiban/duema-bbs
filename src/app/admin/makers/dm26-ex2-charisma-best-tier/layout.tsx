@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
+import TierImageZoom from './TierImageZoom'
 
 export default function TierMakerLayout({ children }: { children: ReactNode }) {
   return (
     <div id="dm26-ex2-tier-maker-page">
       {children}
+      <TierImageZoom />
       <style>{`
         #dm26-ex2-tier-maker-page main > div > div.mt-5 > section > div.flex.flex-wrap.gap-2 > button:nth-of-type(3) {
           font-size: 0;
@@ -17,6 +19,10 @@ export default function TierMakerLayout({ children }: { children: ReactNode }) {
         #dm26-ex2-tier-maker-page main > div > div.mt-5 > aside > h2:first-child,
         #dm26-ex2-tier-maker-page main > div > div.mt-5 > aside > input + div {
           display: none;
+        }
+
+        #dm26-ex2-tier-maker-page [aria-labelledby="tier-card-title"] img {
+          cursor: zoom-in;
         }
       `}</style>
     </div>
