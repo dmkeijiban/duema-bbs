@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "array",
+  "minItems": 149,
+  "maxItems": 149,
+  "items": {
+    "type": "object",
+    "required": ["source_image_url", "card_number", "card_name", "civilization", "cost", "card_type", "rarity", "is_twinpact", "illustration_variant", "finish_variant", "review_status", "review_note", "field_sources", "source_conflict", "source_conflict_note"],
+    "properties": {
+      "source_image_url": { "type": "string", "format": "uri" },
+      "card_number": { "type": ["string", "null"] },
+      "card_name": { "type": ["string", "null"] },
+      "civilization": { "type": ["array", "null"], "items": { "type": "string" } },
+      "cost": { "type": ["integer", "null"], "minimum": 0 },
+      "card_type": { "type": ["string", "null"] },
+      "rarity": { "type": ["string", "null"] },
+      "is_twinpact": { "type": "boolean" },
+      "illustration_variant": { "type": ["string", "null"] },
+      "finish_variant": { "type": ["string", "null"] },
+      "review_status": { "enum": ["confirmed", "needs_review", "variant_only"] },
+      "review_note": { "type": ["string", "null"] },
+      "field_sources": {
+        "type": "object",
+        "additionalProperties": { "enum": ["official", "dmwiki", "unresolved"] }
+      },
+      "source_conflict": { "type": "boolean" },
+      "source_conflict_note": { "type": ["string", "null"] }
+    },
+    "additionalProperties": false
+  }
+}
