@@ -1,4 +1,3 @@
--- Review only: productionへはこのPRから適用しない。
 alter table public.maker_submissions
   add column if not exists title text,
   add column if not exists comment text,
