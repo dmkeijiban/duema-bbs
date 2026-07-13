@@ -2,7 +2,7 @@ import { createSign } from 'crypto'
 import { unstable_cache } from 'next/cache'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export const ADMIN_DASHBOARD_CACHE_SECONDS = 21600
+export const ADMIN_DASHBOARD_CACHE_SECONDS = 300
 
 export type DashboardThread = {
   id: number

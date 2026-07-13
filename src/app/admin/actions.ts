@@ -226,6 +226,12 @@ async function upsertLegacySessionBan(
   return { error: result.error }
 }
 
+export async function refreshAdminDashboardAction() {
+  await checkAdmin()
+  revalidateTag('admin-ga4-dashboard', { expire: 0 })
+  revalidatePath('/admin')
+}
+
 export async function adminLogin(formData: FormData) {
   const pw = formData.get('password') as string
   if (isAdminPassword(pw)) {

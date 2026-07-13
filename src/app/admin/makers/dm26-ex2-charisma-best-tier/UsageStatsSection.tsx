@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useCallback, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatJstDateTime, formatRate, type MakerUsageStats } from '@/lib/maker-usage-stats'
 
@@ -19,16 +19,24 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
 
 export default function UsageStatsSection({ stats, errorMessage }: Props) {
   const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const refresh = useCallback(() => startTransition(() => router.refresh()), [router])
+
   useEffect(() => {
-    const timer = window.setInterval(() => router.refresh(), 60_000)
+    const timer = window.setInterval(refresh, 300_000)
     return () => window.clearInterval(timer)
-  }, [router])
+  }, [refresh])
 
   if (!stats) return <section className="mt-4 rounded-xl border bg-slate-100/60 p-4"><h2 className="font-black">利用状況</h2><p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">統計を取得できませんでした。{errorMessage ? `（${errorMessage}）` : ''}公開設定やTier操作には影響ありません。</p></section>
   const e = stats.events
   return <section className="mt-4 rounded-xl border bg-slate-100/60 p-4">
-    <h2 className="text-base font-black">利用状況</h2>
-    <p className="mt-1 text-xs text-gray-500">イベントは各migration適用後の公開ページ操作のみ。計測開始前のアクセスは含みません。JST基準。</p>
+    <div className="flex items-center justify-between gap-3">
+      <h2 className="text-base font-black">利用状況</h2>
+      <button type="button" onClick={refresh} disabled={isPending} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:cursor-wait disabled:opacity-60">
+        {isPending ? '更新中…' : '手動更新'}
+      </button>
+    </div>
+    <p className="mt-1 text-xs text-gray-500">5分ごとに自動更新。イベントは各migration適用後の公開ページ操作のみ。計測開始前のアクセスは含みません。JST基準。</p>
     {stats.acquisitionStatsAvailable && <Group title="アクセス状況">
       <Card label="総アクセス数（PV）" value={`${e.page_viewed.total}PV`} /><Card label="今日のアクセス数（PV・JST）" value={`${e.page_viewed.today}PV`} />
       <Card label="ユニーク利用者数" value={`${e.page_viewed.uniqueActors}人`} note="ログイン時はuser ID、未ログイン時は匿名visitor ID。同一人物を完全には特定できません" />
