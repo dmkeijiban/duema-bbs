@@ -178,9 +178,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   latestDraftKey.current = draftKey
   const aggregateByCard = useMemo(() => new Map(aggregates.map(row => [row.cardId, row])), [aggregates])
   const communityCards = useMemo(
-    () => cards
-      .filter(card => aggregateByCard.has(card.id))
-      .sort((a, b) => (aggregateByCard.get(b.id)?.averageTier ?? 0) - (aggregateByCard.get(a.id)?.averageTier ?? 0)),
+    () => cards.filter(card => aggregateByCard.has(card.id)),
     [cards, aggregateByCard],
   )
 
