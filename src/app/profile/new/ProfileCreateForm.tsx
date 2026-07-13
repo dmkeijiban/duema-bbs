@@ -69,7 +69,7 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number) 
   })
 }
 
-export function ProfileCreateForm() {
+export function ProfileCreateForm({ nextPath = '' }: { nextPath?: string }) {
   const router = useRouter()
   const [error, setError] = useState('')
   const [slug, setSlug] = useState('')
@@ -180,6 +180,7 @@ export function ProfileCreateForm() {
     }
 
     startTransition(async () => {
+      submitData.set('next', nextPath)
       const result = await createProfile(submitData)
       if (result?.error) setError(result.error)
       if (result?.redirectTo) router.push(result.redirectTo)

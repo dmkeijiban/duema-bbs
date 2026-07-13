@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { getSessionProfileStatus } from '@/app/auth/actions'
+import { safeNextPath } from '@/lib/safe-next-path'
 
 type LoginClientProps = {
   nextPath?: string
@@ -13,12 +14,6 @@ type LoginClientProps = {
 type Mode = 'login' | 'signup'
 type SubmittingMethod = 'email' | 'google' | null
 
-function safeNextPath(value?: string) {
-  if (!value) return ''
-  if (!value.startsWith('/') || value.startsWith('//')) return ''
-  return value
-}
-
 // ログイン後の遷移先を決める。
 // - プロフィール未作成 → 新規作成
 // - 退会済み → アカウント再開フロー
@@ -27,7 +22,7 @@ function resolvePostLoginPath(
   profile: { id: string; withdrawn_at: string | null } | null,
   safeNext: string,
 ) {
-  if (!profile) return '/profile/new'
+  if (!profile) return safeNext ? `/profile/new?next=${encodeURIComponent(safeNext)}` : '/profile/new'
   if (profile.withdrawn_at) return '/account/reactivate'
   return safeNext || '/'
 }
@@ -64,7 +59,7 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
   const emailSubmitting = submittingMethod === 'email'
   const googleSubmitting = submittingMethod === 'google'
 
-  const safeNext = safeNextPath(nextPath)
+  const safeNext = safeNextPath(nextPath, '')
 
   const handleGoogleLogin = async () => {
     setError('')
@@ -150,9 +145,13 @@ export function LoginClient({ nextPath, initialMode = 'login' }: LoginClientProp
         let dest: string
         try {
           const profile = await getSessionProfileStatus()
-          dest = profile !== null ? resolvePostLoginPath(profile, safeNext) : '/mypage'
+          dest = profile !== null
+            ? resolvePostLoginPath(profile, safeNext)
+            : safeNext
+              ? `/profile/new?next=${encodeURIComponent(safeNext)}`
+              : '/profile/new'
         } catch {
-          dest = '/mypage'
+          dest = safeNext ? `/profile/new?next=${encodeURIComponent(safeNext)}` : '/profile/new'
         }
         window.location.assign(dest)
         return

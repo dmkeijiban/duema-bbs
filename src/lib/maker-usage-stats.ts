@@ -6,6 +6,7 @@ export type MakerEventCounter = {
   total: number
   today: number
   uniqueActors: number
+  todayUniqueActors: number
 }
 
 export type MakerUsageStats = {
@@ -20,10 +21,10 @@ export type MakerUsageStats = {
 }
 
 type SubmissionRow = { created_at: string; updated_at: string }
-type EventStatsRow = { event_type: string; total_count: number; today_count: number; unique_actors: number }
+type EventStatsRow = { event_type: string; total_count: number; today_count: number; unique_actors: number; today_unique_actors: number }
 
 function emptyCounter(): MakerEventCounter {
-  return { total: 0, today: 0, uniqueActors: 0 }
+  return { total: 0, today: 0, uniqueActors: 0, todayUniqueActors: 0 }
 }
 
 /**
@@ -58,6 +59,10 @@ export async function fetchMakerUsageStats(projectId: string): Promise<MakerUsag
     image_saved: emptyCounter(),
     x_shared: emptyCounter(),
     aggregate_viewed: emptyCounter(),
+    page_viewed: emptyCounter(),
+    auth_cta_clicked: emptyCounter(),
+    signup_completed: emptyCounter(),
+    submission_after_signup: emptyCounter(),
   }
   for (const row of (eventStatsResult.data ?? []) as EventStatsRow[]) {
     if (row.event_type in events) {
@@ -65,6 +70,7 @@ export async function fetchMakerUsageStats(projectId: string): Promise<MakerUsag
         total: Number(row.total_count) || 0,
         today: Number(row.today_count) || 0,
         uniqueActors: Number(row.unique_actors) || 0,
+        todayUniqueActors: Number(row.today_unique_actors) || 0,
       }
     }
   }

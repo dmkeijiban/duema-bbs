@@ -1,15 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { safeNextPath } from '@/lib/safe-next-path'
 
 function redirectTo(request: Request, path: string) {
   return NextResponse.redirect(new URL(path, request.url))
-}
-
-function safeNextPath(value: string | null) {
-  if (!value) return '/'
-  if (!value.startsWith('/') || value.startsWith('//')) return '/'
-  return value
 }
 
 export async function GET(request: Request) {
@@ -52,7 +47,7 @@ export async function GET(request: Request) {
   }
 
   if (!profile) {
-    return redirectTo(request, '/profile/new')
+    return redirectTo(request, `/profile/new?next=${encodeURIComponent(next)}`)
   }
 
   // 退会済みアカウントでログインした場合は再開フローへ案内する。

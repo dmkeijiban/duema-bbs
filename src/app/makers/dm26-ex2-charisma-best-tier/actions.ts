@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 import { parseMakerProjectConfig } from '@/lib/maker'
+import { recordMakerEvent } from '@/lib/maker-events'
 
 const PROJECT_SLUG = 'dm26-ex2-charisma-best-tier'
 
@@ -45,6 +46,8 @@ export async function savePublicTierSubmission(payload: Record<string, string[]>
 
     const { error } = await admin.rpc('save_maker_submission', { p_project_id: project.id, p_user_id: user.id, p_items: items })
     if (error) return { ok: false, message: `保存に失敗しました: ${error.message}` }
+    const { data: signup } = await admin.from('maker_events').select('id').eq('project_id', project.id).eq('event_type', 'signup_completed').eq('user_id', user.id).maybeSingle()
+    if (signup) await recordMakerEvent({ slug: PROJECT_SLUG, eventType: 'submission_after_signup' })
     return { ok: true, message: 'Tier表を上書き保存しました' }
   } catch (error) {
     const message = error instanceof Error ? error.message : '保存に失敗しました'

@@ -2,8 +2,10 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { ProfileCreateForm } from './ProfileCreateForm'
+import { safeNextPath } from '@/lib/safe-next-path'
 
-export default async function NewProfilePage() {
+export default async function NewProfilePage({ searchParams }: { searchParams?: Promise<{ next?: string }> }) {
+  const nextPath = safeNextPath((await searchParams)?.next, '')
   const supabase = await createClient()
   const { data } = await supabase.auth.getUser()
   const user = data.user
@@ -20,7 +22,7 @@ export default async function NewProfilePage() {
     .maybeSingle()
 
   if (profile) {
-    redirect('/')
+    redirect(nextPath || '/')
   }
 
   return (
@@ -38,7 +40,7 @@ export default async function NewProfilePage() {
 
         <div className="grid gap-6 p-4 md:grid-cols-[1fr_260px]">
           <section>
-            <ProfileCreateForm />
+            <ProfileCreateForm nextPath={nextPath} />
           </section>
 
           <aside className="rounded border border-yellow-200 bg-yellow-50 p-3 text-xs leading-relaxed text-yellow-900">

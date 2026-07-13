@@ -3,6 +3,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { safeNextPath } from '@/lib/safe-next-path'
+import { completeMakerSignup } from '@/lib/maker-signup-source'
 
 const X_HOSTS = ['x.com', 'twitter.com']
 const YOUTUBE_HOSTS = ['youtube.com', 'www.youtube.com', 'youtu.be']
@@ -101,6 +103,7 @@ function normalizeUrl(
 }
 
 export async function createProfile(formData: FormData): Promise<CreateProfileResult> {
+  const nextPath = safeNextPath(String(formData.get('next') ?? ''), '')
   const displayName = String(formData.get('display_name') ?? '').trim()
   const profileSlug = String(formData.get('profile_slug') ?? '').trim().toLowerCase()
   const bio = String(formData.get('bio') ?? '').trim()
@@ -207,5 +210,6 @@ export async function createProfile(formData: FormData): Promise<CreateProfileRe
     return { error: 'プロフィールの作成に失敗しました。入力内容を確認してください。' }
   }
 
-  return { redirectTo: `/u/${profileSlug}` }
+  await completeMakerSignup(user.id)
+  return { redirectTo: nextPath || `/u/${profileSlug}` }
 }

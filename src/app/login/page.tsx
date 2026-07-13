@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { logout } from '@/app/auth/actions'
 import { LoginClient } from './LoginClient'
+import { safeNextPath } from '@/lib/safe-next-path'
 
 type LoginPageProps = {
   searchParams?: Promise<{
@@ -12,12 +13,6 @@ type LoginPageProps = {
     message?: string
     mode?: string
   }>
-}
-
-function safeNextPath(value?: string) {
-  if (!value) return undefined
-  if (!value.startsWith('/') || value.startsWith('//')) return undefined
-  return value
 }
 
 async function getLoginState() {
@@ -76,7 +71,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const { user, hasProfile, isWithdrawn } = await getLoginState()
   const message = errorMessage(params?.error)
   const successMsg = successMessage(params?.message)
-  const nextPath = safeNextPath(params?.next)
+  const nextPath = safeNextPath(params?.next, '') || undefined
   const initialMode = params?.mode === 'signup' ? 'signup' : 'login'
 
   return (
@@ -120,7 +115,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
                 {!hasProfile && (
                   <Link
-                    href="/profile/new"
+                    href={nextPath ? `/profile/new?next=${encodeURIComponent(nextPath)}` : '/profile/new'}
                     className="block rounded bg-blue-600 px-4 py-2.5 text-center text-sm font-bold text-white hover:bg-blue-700"
                   >
                     プロフィールを作る
