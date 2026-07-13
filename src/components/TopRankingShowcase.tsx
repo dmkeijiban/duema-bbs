@@ -287,25 +287,16 @@ function TierMakerShowcase() {
             </Link>
           </div>
         </div>
-        <Link href={makerPath} prefetch={false} aria-label="Tier表を作る" className="group relative block overflow-hidden bg-stone-950">
+        <Link href={makerPath} prefetch={false} aria-label="Tier表を作る" className="relative block overflow-hidden bg-stone-900">
           <Image
-            src="/images/makers/dm26-ex2-charisma-best-main-wide.jpg"
-            alt=""
-            fill
-            priority
-            sizes="44vw"
-            className="scale-110 object-cover object-center opacity-45 blur-md"
-            aria-hidden="true"
-          />
-          <Image
-            src="/images/makers/dm26-ex2-charisma-best-main-wide.jpg"
+            src="/images/makers/dm26-ex2-charisma-best-main.webp"
             alt="DM26-EX2 悪感謝祭 カリスマBEST"
             fill
             priority
             sizes="44vw"
-            className="object-contain object-center transition-transform duration-300 group-hover:scale-[1.01]"
+            className="object-cover object-center transition-transform duration-300 hover:scale-[1.02]"
           />
-          <span className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-slate-950/80 to-transparent" aria-hidden="true" />
+          <span className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-slate-950 to-transparent" aria-hidden="true" />
         </Link>
       </div>
     </div>
