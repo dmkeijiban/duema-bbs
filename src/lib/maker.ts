@@ -8,6 +8,7 @@ export type MakerCard = {
   civilization: string[]
   cost: number | null
   cardType: string | null
+  badge?: { label: string; value: string; className: string }
 }
 
 export type MakerGroup = {
