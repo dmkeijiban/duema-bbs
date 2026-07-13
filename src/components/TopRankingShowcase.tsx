@@ -259,7 +259,7 @@ function TierMakerShowcase() {
         </div>
         <div className="relative w-24 shrink-0 overflow-hidden border-l border-gray-200 bg-stone-900 sm:w-52 md:w-64">
           <Image
-            src="/images/makers/dm26-ex2-charisma-best-pack.jpeg"
+            src="/images/makers/dm26-ex2-charisma-best-pack-v2.jpeg"
             alt="DM26-EX2 カリスマBEST"
             fill
             priority
