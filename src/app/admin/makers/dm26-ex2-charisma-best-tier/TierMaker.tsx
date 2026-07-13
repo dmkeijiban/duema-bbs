@@ -374,6 +374,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
       b: { background: '#fffbeb', border: '#fcd34d', label: '#a16207', labelBackground: '#fcd34d' },
       c: { background: '#ecfdf5', border: '#6ee7b7', label: '#047857', labelBackground: '#6ee7b7' },
       d: { background: '#eff6ff', border: '#93c5fd', label: '#1d4ed8', labelBackground: '#93c5fd' },
+      release: { background: '#fff7ed', border: '#fdba74', label: '#9a3412', labelBackground: '#fbbf24' },
     }
 
     const rowLayouts = groups.map(group => {
@@ -437,11 +438,18 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
       context.strokeStyle = colors.border
       context.lineWidth = 1.5
       context.strokeRect(left, y, totalWidth, row.rowHeight)
+      const labelLines = (groupLabelText?.[row.group.key] ?? row.group.label).split('\n')
+      const labelFontSize = labelLines.length > 1 ? 22 : 42
+      const labelLineHeight = labelFontSize * 1.2
+      const labelCenterY = y + row.rowHeight / 2
+      const labelStartY = labelCenterY - ((labelLines.length - 1) * labelLineHeight) / 2
       context.fillStyle = colors.label
-      context.font = 'bold 42px sans-serif'
+      context.font = `bold ${labelFontSize}px sans-serif`
       context.textAlign = 'center'
       context.textBaseline = 'middle'
-      context.fillText(row.group.label, left + labelWidth / 2, y + row.rowHeight / 2)
+      for (const [lineIndex, line] of labelLines.entries()) {
+        context.fillText(line, left + labelWidth / 2, labelStartY + lineIndex * labelLineHeight)
+      }
 
       for (const [index, cardId] of row.ids.entries()) {
         const card = cardsById.get(cardId)
