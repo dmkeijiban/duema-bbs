@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase-server'
 import type { TierAggregate } from '@/app/admin/makers/dm26-ex2-charisma-best-tier/TierMaker'
 import PublicTierMaker from './PublicTierMaker'
 import { savePublicTierSubmission } from './actions'
+import officialCardsJson from '../../../../scripts/fixtures/dm26-ex2-standard-89.import-candidates.json'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,6 +45,8 @@ type ProjectRow = { id: string; config: unknown }
 type LinkRow = { cards: { id: string; name: string; image_url: string | null; civilization: string[] | null; cost: number | null; card_type: string | null } }
 type AggregateRow = { card_id: string; s_count: number; a_count: number; b_count: number; c_count: number; d_count: number; rating_count: number; average_tier: number | string | null }
 type SubmissionItem = { card_id: string; group_key: string; position: number }
+type OfficialCard = { card_number: string; card_name: string }
+const metadataByName = new Map((officialCardsJson as OfficialCard[]).map(card => [card.card_name, card]))
 
 export default async function PublicTierMakerPage() {
   const admin = createAdminClient()
@@ -67,14 +70,20 @@ export default async function PublicTierMakerPage() {
   ])
   if (linksError || !links?.length) notFound()
 
-  const cards: MakerCard[] = (links as unknown as LinkRow[]).map(link => ({
-    id: link.cards.id,
-    name: link.cards.name,
-    imageUrl: link.cards.image_url,
-    civilization: link.cards.civilization ?? [],
-    cost: link.cards.cost,
-    cardType: link.cards.card_type,
-  }))
+  const cards: MakerCard[] = (links as unknown as LinkRow[]).map(link => {
+    const metadata = metadataByName.get(link.cards.name)
+    return {
+      id: link.cards.id,
+      name: link.cards.name,
+      cardNumber: metadata?.card_number,
+      rarity: metadata?.card_number.startsWith('SPR') ? 'SPR' : null,
+      searchText: `${link.cards.name} ${metadata?.card_number ?? ''}`,
+      imageUrl: link.cards.image_url,
+      civilization: link.cards.civilization ?? [],
+      cost: link.cards.cost,
+      cardType: link.cards.card_type,
+    }
+  })
   const aggregates: TierAggregate[] = ((aggregateRows ?? []) as AggregateRow[]).map(row => ({
     cardId: row.card_id,
     counts: { s: row.s_count ?? 0, a: row.a_count ?? 0, b: row.b_count ?? 0, c: row.c_count ?? 0, d: row.d_count ?? 0 },

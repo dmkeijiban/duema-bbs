@@ -18,9 +18,12 @@ type LinkRow = { cards: { id: string; name: string; image_url: string | null; ci
 type SubmissionItem = { card_id: string; group_key: string; position: number }
 type AggregateRow = { card_id: string; s_count: number; a_count: number; b_count: number; c_count: number; d_count: number; rating_count: number; average_tier: number | string | null }
 type FallbackCard = { card_number: string; card_name: string; image_url: string | null; civilization: string[] | null; cost: number | null; card_type: string | null }
+const fallbackCards = fallbackCardsJson as FallbackCard[]
+const expectedCardCount = fallbackCards.length
+const metadataByName = new Map(fallbackCards.map(card => [card.card_name, card]))
 
 function getFallbackCards(): MakerCard[] {
-  return (fallbackCardsJson as FallbackCard[]).map(card => ({ id: `dm26-ex2-${card.card_number.replace('/', '-')}`, name: card.card_name, imageUrl: card.image_url, civilization: card.civilization ?? [], cost: card.cost, cardType: card.card_type }))
+  return fallbackCards.map(card => ({ id: `dm26-ex2-${card.card_number.replace('/', '-')}`, name: card.card_name, cardNumber: card.card_number, rarity: card.card_number.startsWith('SPR') ? 'SPR' : null, searchText: `${card.card_name} ${card.card_number}`, imageUrl: card.image_url, civilization: card.civilization ?? [], cost: card.cost, cardType: card.card_type }))
 }
 
 export default async function Page() {
@@ -50,9 +53,9 @@ export default async function Page() {
 
     const { data: links, error: linksError } = await admin.from('maker_project_cards').select('sort_order,cards!inner(id,name,image_url,civilization,cost,card_type,is_active)').eq('project_id', project.id).eq('cards.is_active', true).order('sort_order')
     if (linksError) throw new Error('企画カードを取得できませんでした')
-    cards = ((links ?? []) as unknown as LinkRow[]).map(link => ({ id: link.cards.id, name: link.cards.name, imageUrl: link.cards.image_url, civilization: link.cards.civilization ?? [], cost: link.cards.cost, cardType: link.cards.card_type }))
-    projectIsReady = cards.length === 89
-    if (!projectIsReady) throw new Error(`企画カードが不足しています（${cards.length}/89枚）`)
+    cards = ((links ?? []) as unknown as LinkRow[]).map(link => { const metadata = metadataByName.get(link.cards.name); return { id: link.cards.id, name: link.cards.name, cardNumber: metadata?.card_number, rarity: metadata?.card_number.startsWith('SPR') ? 'SPR' : null, searchText: `${link.cards.name} ${metadata?.card_number ?? ''}`, imageUrl: link.cards.image_url, civilization: link.cards.civilization ?? [], cost: link.cards.cost, cardType: link.cards.card_type } })
+    projectIsReady = cards.length === expectedCardCount
+    if (!projectIsReady) throw new Error(`企画カードが不足しています（${cards.length}/${expectedCardCount}枚）`)
 
     const { data: aggregateRows, error: aggregateError } = await admin.from('maker_tier_aggregates').select('card_id,s_count,a_count,b_count,c_count,d_count,rating_count,average_tier').eq('project_id', project.id)
     if (!aggregateError) {
@@ -104,8 +107,8 @@ export default async function Page() {
     <p className="mt-1 text-sm text-gray-500">好きな評価グループに分けてオリジナルのTier表を作れます。</p>
     <ProjectVisibilityControl isPublic={projectIsPublic === true} isReady={projectIsReady} />
     <UsageStatsSection stats={usageStats} errorMessage={usageStatsError} />
-    {(!user || usingFallbackCards || process.env.VERCEL_ENV !== 'preview') && <p className="mt-4 rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">現在は確認用モードです。89枚の表示・検索・Tier操作・端末内の下書き保存を確認できます。DBへの上書き保存は無効です。</p>}
-    {usingFallbackCards && unavailableMessage && <p className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm">本番DBにはまだメーカー用データを入れていないため、公式89枚の確認用データを表示しています。</p>}
+    {(!user || usingFallbackCards || process.env.VERCEL_ENV !== 'preview') && <p className="mt-4 rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">現在は確認用モードです。{cards.length}枚の表示・検索・Tier操作・端末内の下書き保存を確認できます。DBへの上書き保存は無効です。</p>}
+    {usingFallbackCards && unavailableMessage && <p className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm">本番DBにはまだメーカー用データを入れていないため、公式{cards.length}枚の確認用データを表示しています。</p>}
     <TierMaker cards={cards} groups={projectConfig.groups} initialDraft={draft} unrated={projectConfig.unrated} canSave={canSave} aggregates={aggregates} />
   </div></main>
 }

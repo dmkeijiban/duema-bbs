@@ -1,6 +1,9 @@
 export type MakerCard = {
   id: string
   name: string
+  cardNumber?: string
+  rarity?: string | null
+  searchText?: string
   imageUrl: string | null
   civilization: string[]
   cost: number | null
