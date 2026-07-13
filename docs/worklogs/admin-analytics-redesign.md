@@ -74,14 +74,14 @@
 - 対象ESLint: 成功。
 - `npm.cmd run build`: コンパイル・型検査成功後、既存環境変数不足（`supabaseUrl is required`、`/summary/[slug]` page data収集）で停止。
 - Vercel Preview build: 成功（Next.js compile、TypeScript、320 static pages、動的analytics route生成）。
-- Preview URL: `https://duema-n9ad6q988-mkeijibans-projects.vercel.app`。
+- 最終Preview URL: `https://duema-m3cplqjxd-mkeijibans-projects.vercel.app`。
+- Draft PR: `https://github.com/dmkeijiban/duema-bbs/pull/551`。
 - ブラウザ: Vercel Deployment Protectionでログイン要求。Chrome連携も利用不可だったため、管理画面本体・PC/390pxスクリーンショット・実データ整合は未検証。
 - migrationはファイル作成のみ。本番/Preview DBへ未適用。
 
 ## 次に行う具体的な作業
 
-- 最終Previewを再deployする。
-- 変更ファイルだけ明示的にstageし、commit/push/Draft PRを作成する。
+- 最終Preview再deploy、commit、push、Draft PR作成まで完了。
 - Deployment Protectionと管理認証を通せる環境でPC/390px・実データ・期間切替・更新動作を追加確認する。
 
 ## 注意点
