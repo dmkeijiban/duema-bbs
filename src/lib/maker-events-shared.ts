@@ -1,7 +1,7 @@
 // メーカー企画のイベント計測でクライアント・サーバー双方から使う定数とヘルパー。
 // 特定企画に依存しない共通設計（slugを渡して使い回す）。
 
-export const MAKER_EVENT_TYPES = ['tier_created', 'image_saved', 'x_shared', 'aggregate_viewed', 'page_viewed', 'auth_cta_clicked', 'signup_completed', 'submission_after_signup'] as const
+export const MAKER_EVENT_TYPES = ['tier_created', 'image_saved', 'x_shared', 'aggregate_viewed', 'page_viewed', 'auth_cta_clicked', 'signup_completed', 'submission_after_signup', 'submissions_view', 'submission_detail_view', 'submission_create'] as const
 export type MakerEventType = (typeof MAKER_EVENT_TYPES)[number]
 
 // 連打・二重送信の除外窓（秒）。日をまたいだ再利用は除外しない。
@@ -14,6 +14,9 @@ export const MAKER_EVENT_DEDUP_SECONDS: Record<MakerEventType, number> = {
   auth_cta_clicked: 60,
   signup_completed: 315360000,
   submission_after_signup: 315360000,
+  submissions_view: 30,
+  submission_detail_view: 30,
+  submission_create: 10,
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

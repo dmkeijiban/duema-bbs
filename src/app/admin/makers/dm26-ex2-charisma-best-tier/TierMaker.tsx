@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
-import { emptyMakerDraft, type MakerCard, type MakerDraft, type MakerGroup } from '@/lib/maker'
+import { emptyMakerDraft, type MakerCard, type MakerDraft, type MakerGroup, type MakerSubmissionMeta } from '@/lib/maker'
 import { recordMakerEvent } from '@/lib/maker-events'
 import { getMakerAnonymousId, type MakerEventType } from '@/lib/maker-events-shared'
 import { saveTierSubmission } from './actions'
@@ -34,7 +34,8 @@ type TierMakerProps = {
   canSave: boolean
   aggregates: TierAggregate[]
   imageProxyPath?: string
-  saveAction?: (payload: Record<string, string[]>) => Promise<{ ok: boolean; message: string }>
+  saveAction?: (payload: Record<string, string[]>, meta?: MakerSubmissionMeta) => Promise<{ ok: boolean; message: string }>
+  submissionFields?: { defaultTitle: string }
   saveButtonLabel?: string
   hasSavedSubmission?: boolean
   // 指定した企画slugへ利用イベントを記録する（公開ページのみ指定。未指定なら計測しない）
@@ -159,7 +160,7 @@ function isIOSDevice() {
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
-export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表', groupRowClassName, groupGridClassName = 'grid-cols-[52px_1fr]', groupLabelClassName, groupLabelText, cardBadgePositionClassName = 'left-1 top-1', cardBadgeTextClassName = 'text-white', selectionImageZoom = false }: TierMakerProps) {
+export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, submissionFields, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表', groupRowClassName, groupGridClassName = 'grid-cols-[52px_1fr]', groupLabelClassName, groupLabelText, cardBadgePositionClassName = 'left-1 top-1', cardBadgeTextClassName = 'text-white', selectionImageZoom = false }: TierMakerProps) {
   const STORAGE_KEY = `maker-draft:${storageSlug}:v1`
   const DRAFT_CHOICE_KEY = `maker-draft-choice:${storageSlug}:v1`
   const [draft, setDraft] = useState(initialDraft)
@@ -170,6 +171,8 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   const [cardType, setCardType] = useState('')
   const [poolFilter, setPoolFilter] = useState('')
   const [message, setMessage] = useState('')
+  const [submissionTitle, setSubmissionTitle] = useState(submissionFields?.defaultTitle ?? '')
+  const [submissionComment, setSubmissionComment] = useState('')
   const [showCommunity, setShowCommunity] = useState(false)
   const [showLoginRequired, setShowLoginRequired] = useState(false)
   const [localDraftConflict, setLocalDraftConflict] = useState<MakerDraft | null>(null)
@@ -327,6 +330,10 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   }
 
   function save() {
+    if (submissionFields && !submissionTitle.trim()) {
+      setMessage('タイトルを入力してください')
+      return
+    }
     if (!canSave) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(draft))
@@ -340,7 +347,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     setMessage('')
     startTransition(async () => {
       try {
-        const result = await saveAction(draft)
+        const result = await saveAction(draft, submissionFields ? { title: submissionTitle, comment: submissionComment } : undefined)
         setMessage(result.message)
       } catch (error) {
         console.error('Tier表の保存に失敗しました', error)
@@ -615,6 +622,19 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
             </div>
           )
         })}
+
+        {submissionFields && (
+          <div className="rounded-xl border bg-white p-4">
+            <h2 className="font-black">作品を登録</h2>
+            <label className="mt-3 block text-sm font-bold">タイトル <span className="text-red-600">必須</span>
+              <input value={submissionTitle} onChange={event => setSubmissionTitle(event.target.value)} required maxLength={40} className="mt-1 w-full rounded-lg border px-3 py-2 text-base font-normal" />
+            </label>
+            <label className="mt-3 block text-sm font-bold">一言コメント <span className="font-normal text-gray-500">任意</span>
+              <textarea value={submissionComment} onChange={event => setSubmissionComment(event.target.value)} maxLength={200} rows={3} className="mt-1 w-full resize-y rounded-lg border px-3 py-2 text-base font-normal" placeholder="こだわったポイントなど" />
+            </label>
+            <p className="mt-2 text-xs text-gray-500">登録するたびに新しい作品として残ります。</p>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2">
           <button

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import TierMaker, { type TierAggregate } from '@/app/admin/makers/dm26-ex2-charisma-best-tier/TierMaker'
-import type { MakerCard, MakerDraft, MakerGroup } from '@/lib/maker'
+import type { MakerCard, MakerDraft, MakerGroup, MakerSubmissionMeta } from '@/lib/maker'
 import { getMakerAnonymousId } from '@/lib/maker-events-shared'
 import { recordMakerPageView } from '@/lib/maker-events'
 import { beginMakerSignup } from '@/lib/maker-signup-source'
@@ -13,7 +13,7 @@ type Props = {
   initialDraft: MakerDraft
   unrated: boolean
   canSave: boolean
-  saveAction: (payload: Record<string, string[]>) => Promise<{ ok: boolean; message: string }>
+  saveAction: (payload: Record<string, string[]>, meta?: MakerSubmissionMeta) => Promise<{ ok: boolean; message: string }>
   saveButtonLabel: string
   hasSavedSubmission: boolean
   aggregates: TierAggregate[]
@@ -82,6 +82,7 @@ export default function PublicTierMaker(props: Props) {
         unrated={props.unrated}
         canSave={props.canSave}
         saveAction={props.saveAction}
+        submissionFields={{ defaultTitle: 'カリスマBEST Tier表' }}
         saveButtonLabel={props.saveButtonLabel}
         hasSavedSubmission={props.hasSavedSubmission}
         aggregates={props.aggregates}
