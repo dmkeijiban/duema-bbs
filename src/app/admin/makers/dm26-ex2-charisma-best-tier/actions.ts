@@ -14,6 +14,7 @@ import officialCardsJson from '../../../../../scripts/fixtures/dm26-ex2-standard
 const PROJECT_SLUG = 'dm26-ex2-charisma-best-tier'
 const PROJECT_CONFIG = { groups: TIER_GROUPS, unrated: true, allowDuplicates: false, ordered: true, overwrite: true, maxChoices: null }
 type OfficialCard = { card_number: string; card_name: string; image_url: string | null; civilization: string[] | null; cost: number | null; card_type: string | null }
+const EXPECTED_CARD_COUNT = (officialCardsJson as OfficialCard[]).length
 
 function revalidateTierPages() {
   revalidatePath('/admin/makers/dm26-ex2-charisma-best-tier')
@@ -27,7 +28,7 @@ export async function initializeTierProjectAndPublish() {
   try {
     const officialCards = officialCardsJson as OfficialCard[]
     const candidates = officialCards.map((card, index) => ({
-      sortOrder: index + 1,
+      sortOrder: card.card_number.startsWith('SPR') ? index - 4 : Number(card.card_number.split('/')[0]),
       name: card.card_name,
       normalizedName: normalizeCardName(card.card_name),
       imageUrl: card.image_url,
@@ -36,8 +37,8 @@ export async function initializeTierProjectAndPublish() {
       cardType: card.card_type,
     }))
     const normalizedNames = candidates.map(card => card.normalizedName)
-    if (candidates.length !== 89 || new Set(normalizedNames).size !== 89 || normalizedNames.some(name => !name)) {
-      return { ok: false, message: '公式89枚データの件数または重複チェックに失敗しました' }
+    if (candidates.length !== EXPECTED_CARD_COUNT || new Set(normalizedNames).size !== EXPECTED_CARD_COUNT || normalizedNames.some(name => !name)) {
+      return { ok: false, message: `公式${EXPECTED_CARD_COUNT}枚データの件数または重複チェックに失敗しました` }
     }
 
     const admin = createAdminClient()
@@ -49,7 +50,7 @@ export async function initializeTierProjectAndPublish() {
 
     const { data: existingProject, error: projectLookupError } = await admin.from('maker_projects').select('id').eq('slug', PROJECT_SLUG).maybeSingle()
     if (projectLookupError) return { ok: false, message: `企画確認に失敗しました: ${projectLookupError.message}` }
-    console.info('DM26-EX2 Tier project bootstrap plan', { slug: PROJECT_SLUG, officialCardCount: 89, existingCardCount: existingNames.size, cardsToInsert: missingCards.length, projectToInsert: existingProject ? 0 : 1 })
+    console.info('DM26-EX2 Tier project bootstrap plan', { slug: PROJECT_SLUG, officialCardCount: EXPECTED_CARD_COUNT, existingCardCount: existingNames.size, cardsToInsert: missingCards.length, projectToInsert: existingProject ? 0 : 1 })
 
     if (missingCards.length > 0) {
       const { error } = await admin.from('cards').insert(missingCards.map(card => ({
@@ -80,7 +81,7 @@ export async function initializeTierProjectAndPublish() {
     }
 
     const { data: allCards, error: allCardsError } = await admin.from('cards').select('id,normalized_name').in('normalized_name', normalizedNames)
-    if (allCardsError || allCards?.length !== 89) return { ok: false, message: '公式89枚のカードIDを確定できませんでした' }
+    if (allCardsError || allCards?.length !== EXPECTED_CARD_COUNT) return { ok: false, message: `公式${EXPECTED_CARD_COUNT}枚のカードIDを確定できませんでした` }
     const cardIdByName = new Map(allCards.map(card => [card.normalized_name as string, card.id as string]))
     const { data: existingLinks, error: linksError } = await admin.from('maker_project_cards').select('card_id').eq('project_id', projectId)
     if (linksError) return { ok: false, message: `企画カード確認に失敗しました: ${linksError.message}` }
@@ -97,8 +98,8 @@ export async function initializeTierProjectAndPublish() {
 
     const { data: verifiedLinks, error: verifyError } = await admin.from('maker_project_cards').select('card_id').eq('project_id', projectId)
     const expectedIds = new Set(cardIdByName.values())
-    if (verifyError || verifiedLinks?.length !== 89 || verifiedLinks.some(link => !expectedIds.has(link.card_id as string))) {
-      return { ok: false, message: '企画カードが公式89枚と一致しないため公開を中止しました' }
+    if (verifyError || verifiedLinks?.length !== EXPECTED_CARD_COUNT || verifiedLinks.some(link => !expectedIds.has(link.card_id as string))) {
+      return { ok: false, message: `企画カードが公式${EXPECTED_CARD_COUNT}枚と一致しないため公開を中止しました` }
     }
 
     const { error: publishError } = await admin.from('maker_projects').update({ status: 'published', is_public: true, updated_at: new Date().toISOString() }).eq('id', projectId).eq('slug', PROJECT_SLUG)
@@ -124,8 +125,8 @@ export async function setTierProjectVisibility(isPublic: boolean) {
       const { data: project, error: projectError } = await admin.from('maker_projects').select('id').eq('slug', PROJECT_SLUG).single()
       if (projectError || !project) return { ok: false, message: '企画データが未登録です' }
       const { data: links, error: linksError } = await admin.from('maker_project_cards').select('card_id,cards!inner(is_active)').eq('project_id', project.id)
-      const ready = !linksError && links?.length === 89 && links.every(link => (link.cards as unknown as { is_active: boolean }).is_active === true)
-      if (!ready) return { ok: false, message: '公式89枚の企画カードが揃っていないため公開できません' }
+      const ready = !linksError && links?.length === EXPECTED_CARD_COUNT && links.every(link => (link.cards as unknown as { is_active: boolean }).is_active === true)
+      if (!ready) return { ok: false, message: `公式${EXPECTED_CARD_COUNT}枚の企画カードが揃っていないため公開できません` }
     }
     const { data, error } = await admin
       .from('maker_projects')

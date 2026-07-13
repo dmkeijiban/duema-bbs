@@ -10,7 +10,8 @@
     "content:article": "node scripts/content/generate-history-article.mjs",
     "content:import-draft": "node scripts/content/import-article-draft.mjs",
     "zukan:seed": "node scripts/zukan/generate-seed.mjs",
-    "zukan:validate": "node scripts/zukan/validate-pack.mjs"
+    "zukan:validate": "node scripts/zukan/validate-pack.mjs",
+    "maker:validate:dm26-ex2": "node scripts/fixtures/validate-dm26-ex2-tier-pool.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.52.0",

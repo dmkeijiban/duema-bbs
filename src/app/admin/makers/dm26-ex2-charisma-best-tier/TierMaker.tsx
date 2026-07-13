@@ -19,6 +19,10 @@ const EXPORT_CARDS_PER_LINE = 6
 const EXPORT_CARD_WIDTH = 140
 const EXPORT_CARD_HEIGHT = EXPORT_CARD_WIDTH * 88 / 63
 
+function normalizeSearchText(value: string) {
+  return value.normalize('NFKC').toLowerCase().replace(/[・･\s　\-‐‑‒–—―ー]/g, '')
+}
+
 export type TierAggregate = {
   cardId: string
   counts: Record<string, number>
@@ -234,9 +238,11 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     if (toastTimer.current) clearTimeout(toastTimer.current)
   }, [])
 
+  const normalizedQuery = normalizeSearchText(query)
   const visibleCards = cards.filter(card => {
     if (usedCardIds.has(card.id)) return false
-    if (query && !card.name.toLowerCase().includes(query.toLowerCase())) return false
+    const searchText = card.searchText ?? `${card.name} ${card.cardNumber ?? ''}`
+    if (normalizedQuery && !normalizeSearchText(searchText).includes(normalizedQuery)) return false
     if (civilization && !card.civilization.includes(civilization)) return false
     if (cost && card.cost !== Number(cost)) return false
     if (cardType && card.cardType !== cardType) return false
