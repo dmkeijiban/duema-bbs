@@ -304,3 +304,88 @@ schema外のdata差分:
 5. **新規SQL適用が必要なmigration**: PR #551のanalytics RPC+2 index。SPR 5枚は別のdata migrationとして必要。カテゴリ正規化・daily-zukan更新はPR #551から分離して再判断する。
 6. **PR #551を単独適用してよいか**: 現時点では不可。SQL単体は比較的再実行安全だが、履歴をさらに乖離させる。
 7. **最も安全な次の1手**: Docker/pg_dump環境を用意し、本番schema-only dumpとremote migration fetchを取得したうえで、空DB検証可能なbaseline候補を作る。まだrepairも適用もしない。
+
+## 15. baseline候補作成結果
+
+作成ファイル:
+
+- `supabase/baselines/20260713193000_production_schema_baseline.sql`
+- `supabase/baselines/README.md`
+
+`supabase/baselines/` は通常のCLI migration対象外である。既存 `supabase/migrations` は上書き・削除・移動していない。
+
+### schema-only dump取得
+
+- 公式 `supabase db dump --linked --schema public` はDocker Desktopがなく実行不能。
+- ローカル`pg_dump`、利用可能なWSL distroも存在しない。
+- 代替として `supabase db query --linked` で本番`pg_catalog`を読み、DDLをschema-only baseline候補へ再構成した。
+- 生成結果: 904ステートメント、115,498文字（commit時は改行差でbyte数が変動しうる）。
+- 範囲: extensions 3、sequence 12、table 42、constraint 142、非constraint index 70、function 15、view 2、RLS 42、policy 50、trigger 8、relation/function ACL。
+- table data、`INSERT`/`UPDATE`/`DELETE`/`COPY`/`TRUNCATE`は含まない。function本体内のDMLは本番function定義そのものなので含む。
+
+### migration fetch
+
+既存migrationを保護するため `.codex-tmp-supabase-baseline/` を独立workdirとして初期化し、8件を取得した。
+
+| fetched file | SHA-256 |
+|---|---|
+| `20260521122214_add_x_post_source_columns.sql` | `77ea820d5199ef1ca02ae07f887c395de53d88ff59351bcd99ecda6023f1bca0` |
+| `20260524105613_add_is_protected_to_threads.sql` | `91ec6d69b0bedea64560c74b1d83abff506acb6a64d08955d81258c52fdfc73d` |
+| `20260610111649_zukan_packs_cards.sql` | `585b6d0eb46cc7df2e17bab315c7726fc70e85eeede372b4e640117b024e45a2` |
+| `20260611233908_zukan_reviews.sql` | `0a995d1f4b55fca6291fe181c4b48a9597c6afffd5234bda2f57b29f16e56316` |
+| `20260611235153_fix_rating_constraint.sql` | `709e2c9d5ef9ac113059942ed6426069c8ebcfd76c8c612e021ce49c8c4028c3` |
+| `20260612025342_zukan_admin_features.sql` | `ee0de724ba246e66e86b1ee48823c1a0e211831e5458a6910317deb3109ee70c` |
+| `20260712140652_20260711_cards.sql` | `437ad388def003d9ef835937b561fbf63a8f4bcae07cca1a89c8d710fb9d2ad3` |
+| `20260712140743_20260712_maker_tier.sql` | `def6ebe3bef0dd576889ee46b3389a73f8b1f417fe93c3ca2686b3959228ddfc` |
+
+### baselineと本番schemaの対応
+
+| 対象 | baseline | 本番 | 備考 |
+|---|---:|---:|---|
+| public table | 42 | 42 | catalogから直接生成 |
+| public sequence（非identity） | 12 | 12 | identity内部sequenceはtable定義へ統合 |
+| constraint | 142 | 142 | PK/FK/unique/checkを含む |
+| 非constraint index | 70 | 70 | partial条件は`pg_get_indexdef`を使用 |
+| function | 15 | 15 | 引数・戻り値・SECURITY DEFINER・search_pathを定義に保持 |
+| view | 2 | 2 | `pg_get_viewdef`を使用 |
+| RLS有効table | 42 | 42 | 全対象table |
+| policy | 50 | 50 | role/command/using/with checkを保持 |
+| trigger | 8 | 8 | 内部triggerを除外 |
+
+### baselineから明示的に除外
+
+- 全table dataとseed。
+- `20260713_add_dm26_ex2_spr_cards.sql` のSPRカード5件・企画紐付け5件。
+- category normalization、daily-zukan auto-lock更新、図鑑seedなどのdata migration。
+- `admin_maker_project_stats(timestamptz)`。
+- `maker_events_created_project_type_idx`。
+- `maker_submissions_updated_project_valid_idx`。
+- migration履歴tableのINSERT/UPDATE。
+
+### 静的検証
+
+- トップレベルdata DML: 0。
+- 危険なトップレベルDROP: 0。
+- table/sequence/index/viewの重複CREATE key: 0。
+- PR #551未適用RPC/index、SPR固定UUIDの混入: 0。
+- identity sequenceはtableの`GENERATED ... AS IDENTITY`へ任せ、別CREATE SEQUENCEとの重複を除外した。
+- 未完了: Docker/Postgresを使った空DB適用、依存順・構文実行、公式pg_dumpとのdiff。
+
+### baseline後の履歴修復コマンド案（未実行）
+
+前提として、remote8件とbaselineだけを含むclean migration directory、空DB再現成功、明示承認が必要。
+
+```powershell
+npx.cmd supabase migration repair --linked --status applied 20260713193000
+npx.cmd supabase migration list
+npx.cmd supabase db push --dry-run --linked
+```
+
+rollback:
+
+```powershell
+npx.cmd supabase migration repair --linked --status reverted 20260713193000
+npx.cmd supabase migration list
+```
+
+現時点ではbaseline候補を本番適用してはいけない。空DB検証と公式schema dump比較が未完了である。
