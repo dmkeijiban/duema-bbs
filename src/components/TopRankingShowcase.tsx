@@ -234,53 +234,70 @@ function TierMakerShowcase() {
 
   return (
     <div className="mb-2 overflow-hidden border border-gray-300 bg-white">
-      <div className="flex h-[112px] min-w-0 items-stretch sm:h-24">
-        <div className="flex min-w-0 flex-1 flex-col justify-center px-3 py-2 sm:px-4 md:grid md:grid-cols-[minmax(300px,1fr)_auto] md:items-center md:gap-4 md:px-5">
-          <div className="min-w-0">
-            <h2 className="flex w-full items-center gap-1.5 whitespace-nowrap text-[16px] font-black leading-tight tracking-[-0.055em] text-slate-900 sm:text-lg sm:tracking-tight md:text-xl">
-              <span className="w-fit shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black leading-none tracking-normal text-amber-900 md:text-xs">
-                NEW
-              </span>
-              <span>カリスマBEST Tier表メーカー</span>
-            </h2>
-            <p className="mt-0.5 line-clamp-1 text-[11px] leading-tight text-slate-600 sm:text-xs md:hidden">
-              新弾カードを並べて、自分だけのTier表を作ろう！
-            </p>
-            <p className="mt-1 hidden text-sm leading-tight text-slate-500 md:block">
-              画像保存・X共有・みんなの集計にも対応
-            </p>
-          </div>
-          <div className="mt-1.5 grid grid-cols-2 gap-1.5 sm:flex md:mt-0 md:shrink-0 md:gap-2">
-            <Link href={makerPath} prefetch={false} className="rounded bg-blue-800 px-2 py-1.5 text-center text-[11px] font-bold leading-none text-white hover:bg-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 sm:px-3 sm:text-xs">
+      <div className="flex h-[112px] min-w-0 items-stretch md:hidden">
+        <div className="flex min-w-0 flex-1 flex-col justify-center px-3 py-2">
+          <span className="mb-0.5 w-fit rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black leading-none text-amber-900">
+            NEW
+          </span>
+          <h2 className="w-full whitespace-nowrap text-[16px] font-black leading-tight tracking-[-0.055em] text-slate-900">
+            カリスマBEST Tier表メーカー
+          </h2>
+          <p className="mt-0.5 line-clamp-1 text-[11px] leading-tight text-slate-600">
+            新弾カードを並べて、自分だけのTier表を作ろう！
+          </p>
+          <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+            <Link href={makerPath} prefetch={false} className="rounded bg-blue-800 px-2 py-1.5 text-center text-[11px] font-bold leading-none text-white">
               Tier表を作る
             </Link>
-            <Link href={`${makerPath}#community-tier`} prefetch={false} className="rounded border border-blue-700 bg-white px-2 py-1.5 text-center text-[11px] font-bold leading-none text-blue-800 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 sm:px-3 sm:text-xs">
+            <Link href={`${makerPath}#community-tier`} prefetch={false} className="rounded border border-blue-700 bg-white px-2 py-1.5 text-center text-[11px] font-bold leading-none text-blue-800">
               みんなのTierを見る
             </Link>
           </div>
         </div>
-        <div className="flex w-24 shrink-0 sm:w-52 md:w-[520px] md:gap-2">
-          <Link href={makerPath} prefetch={false} aria-label="Tier表を作る" className="relative hidden w-64 overflow-hidden border-l border-gray-200 bg-gray-100 md:block">
-            <Image
-              src="/images/makers/dm26-ex2-charisma-best-tier-sample.jpg"
-              alt="カリスマBEST Tier表の作成例"
-              fill
-              priority
-              sizes="256px"
-              className="object-cover object-left-top"
-            />
-          </Link>
-          <Link href={makerPath} prefetch={false} aria-label="Tier表を作る" className="relative block w-full overflow-hidden border-l border-gray-200 bg-stone-900 md:w-64">
-            <Image
-              src="/images/makers/dm26-ex2-charisma-best-main.webp"
-              alt="DM26-EX2 悪感謝祭 カリスマBEST"
-              fill
-              priority
-              sizes="(max-width: 639px) 96px, (max-width: 767px) 208px, 256px"
-              className="object-cover object-center"
-            />
-          </Link>
+        <Link href={makerPath} prefetch={false} aria-label="Tier表を作る" className="relative w-24 shrink-0 overflow-hidden border-l border-gray-200 bg-stone-900 sm:w-52">
+          <Image
+            src="/images/makers/dm26-ex2-charisma-best-main.webp"
+            alt="DM26-EX2 悪感謝祭 カリスマBEST"
+            fill
+            priority
+            sizes="(max-width: 639px) 96px, 208px"
+            className="object-cover object-center"
+          />
+        </Link>
+      </div>
+
+      <div className="relative hidden h-[144px] overflow-hidden bg-slate-950 md:grid md:grid-cols-[56%_44%]">
+        <div className="relative z-10 flex min-w-0 flex-col justify-center bg-gradient-to-r from-slate-950 via-slate-950 to-slate-900 px-7 text-white">
+          <div className="flex items-center gap-2">
+            <span className="rounded bg-amber-300 px-2 py-1 text-[11px] font-black leading-none text-amber-950">NEW</span>
+            <span className="text-xs font-bold tracking-wide text-amber-300">DM26-EX2 悪感謝祭</span>
+          </div>
+          <h2 className="mt-2 text-[25px] font-black leading-none tracking-tight">
+            カリスマBEST Tier表メーカー
+          </h2>
+          <p className="mt-2 text-sm text-slate-300">
+            新弾カードを自由に並べて、画像保存・X共有。みんなの評価もまとめて確認できます。
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Link href={makerPath} prefetch={false} className="rounded-md bg-blue-600 px-6 py-2 text-sm font-black leading-none text-white transition-colors hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+              Tier表を作る
+            </Link>
+            <Link href={`${makerPath}#community-tier`} prefetch={false} className="rounded-md border border-white/70 bg-white/10 px-5 py-2 text-sm font-bold leading-none text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+              みんなのTierを見る
+            </Link>
+          </div>
         </div>
+        <Link href={makerPath} prefetch={false} aria-label="Tier表を作る" className="relative block overflow-hidden bg-stone-900">
+          <Image
+            src="/images/makers/dm26-ex2-charisma-best-main.webp"
+            alt="DM26-EX2 悪感謝祭 カリスマBEST"
+            fill
+            priority
+            sizes="44vw"
+            className="object-cover object-center transition-transform duration-300 hover:scale-[1.02]"
+          />
+          <span className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-slate-950 to-transparent" aria-hidden="true" />
+        </Link>
       </div>
     </div>
   )
