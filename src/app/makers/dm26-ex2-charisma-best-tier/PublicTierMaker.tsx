@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import TierMaker, { type TierAggregate } from '@/app/admin/makers/dm26-ex2-charisma-best-tier/TierMaker'
 import type { MakerCard, MakerDraft, MakerGroup } from '@/lib/maker'
 import { getMakerAnonymousId } from '@/lib/maker-events-shared'
-import { recordMakerEvent } from '@/lib/maker-events'
+import { recordMakerPageView } from '@/lib/maker-events'
 import { beginMakerSignup } from '@/lib/maker-signup-source'
 
 type Props = {
@@ -23,13 +23,13 @@ type ZoomedImage = { src: string; alt: string }
 
 export default function PublicTierMaker(props: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
+  const pageViewIdRef = useRef<string | null>(null)
   const [zoomedImage, setZoomedImage] = useState<ZoomedImage | null>(null)
 
   useEffect(() => {
-    const ua = navigator.userAgent.toLowerCase()
-    if (!/(bot|crawler|spider|preview|facebookexternalhit|twitterbot|slurp|bingbot|googlebot)/.test(ua)) {
-      void recordMakerEvent({ slug: 'dm26-ex2-charisma-best-tier', eventType: 'page_viewed', anonymousId: getMakerAnonymousId() }).catch(() => {})
-    }
+    // Strict Modeでeffectが再実行されても同じviewIdを送り、DB側の一意制約で1PVにする。
+    pageViewIdRef.current ??= crypto.randomUUID()
+    void recordMakerPageView({ slug: 'dm26-ex2-charisma-best-tier', viewId: pageViewIdRef.current, anonymousId: getMakerAnonymousId() }).catch(() => {})
   }, [])
 
   useEffect(() => {
