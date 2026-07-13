@@ -51,6 +51,12 @@ type TierMakerProps = {
   aggregateMode?: 'tier' | 'selection'
   exportBrand?: string
   responseLabel?: string
+  groupRowClassName?: string
+  groupGridClassName?: string
+  groupLabelClassName?: string
+  groupLabelText?: Record<string, string>
+  cardBadgePositionClassName?: string
+  cardBadgeTextClassName?: string
 }
 
 function CardImage({ card, contain = false }: { card: MakerCard; contain?: boolean }) {
@@ -152,7 +158,7 @@ function isIOSDevice() {
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
-export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表' }: TierMakerProps) {
+export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表', groupRowClassName, groupGridClassName = 'grid-cols-[52px_1fr]', groupLabelClassName, groupLabelText, cardBadgePositionClassName = 'left-1 top-1', cardBadgeTextClassName = 'text-white' }: TierMakerProps) {
   const STORAGE_KEY = `maker-draft:${storageSlug}:v1`
   const DRAFT_CHOICE_KEY = `maker-draft-choice:${storageSlug}:v1`
   const [draft, setDraft] = useState(initialDraft)
@@ -571,9 +577,9 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
           return (
             <div
               key={group.key}
-              className={`grid grid-cols-[52px_1fr] rounded-xl border transition-[min-height] ${isEmpty ? 'min-h-[72px]' : 'min-h-28'} ${group.color}`}
+              className={`grid rounded-xl border transition-[min-height] ${groupGridClassName} ${isEmpty ? 'min-h-[72px]' : 'min-h-28'} ${groupRowClassName ?? group.color}`}
             >
-              <div className="flex items-center justify-center text-2xl font-black">{group.label}</div>
+              <div className={`flex items-center justify-center text-2xl font-black ${groupLabelClassName ?? ''}`}><span className="whitespace-pre-line">{groupLabelText?.[group.key] ?? group.label}</span></div>
               <div className={`grid grid-cols-4 gap-2 bg-white/80 sm:grid-cols-7 ${isEmpty ? 'p-1.5' : 'p-2'}`}>
                 {ids.map(cardId => {
                   const card = cardsById.get(cardId)
@@ -587,7 +593,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
                         aria-label={card.name}
                         className="w-full overflow-hidden rounded border bg-white"
                       >
-                        <div className="relative aspect-[63/88]"><CardImage card={card} />{card.badge && <span className={`absolute left-1 top-1 rounded px-1 py-0.5 text-[9px] font-black text-white shadow ${card.badge.className}`}>{card.badge.label}</span>}</div>
+                        <div className="relative aspect-[63/88]"><CardImage card={card} />{card.badge && <span className={`absolute rounded px-1 py-0.5 text-[9px] font-black shadow ${cardBadgePositionClassName} ${cardBadgeTextClassName} ${card.badge.className}`}>{card.badge.label}</span>}</div>
                       </button>
                       <div className="mt-1 flex justify-center gap-1">
                         <button type="button" aria-label="左へ" onClick={() => reorderCard(group.key, cardId, -1)} className="rounded border px-2">←</button>
@@ -675,7 +681,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
         <div className="mt-3 grid max-h-[70vh] grid-cols-3 gap-2 overflow-auto">
           {visibleCards.map(card => (
             <button type="button" key={card.id} onClick={() => setSelected(card)} aria-label={card.name} className="overflow-hidden rounded border">
-              <div className="relative aspect-[63/88]"><CardImage card={card} />{card.badge && <span className={`absolute left-1 top-1 rounded px-1 py-0.5 text-[9px] font-black text-white shadow ${card.badge.className}`}>{card.badge.label}</span>}</div>
+              <div className="relative aspect-[63/88]"><CardImage card={card} />{card.badge && <span className={`absolute rounded px-1 py-0.5 text-[9px] font-black shadow ${cardBadgePositionClassName} ${cardBadgeTextClassName} ${card.badge.className}`}>{card.badge.label}</span>}</div>
             </button>
           ))}
         </div>
