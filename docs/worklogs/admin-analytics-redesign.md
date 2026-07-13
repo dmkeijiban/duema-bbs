@@ -107,3 +107,13 @@
 - mainの既存作業ツリーは未コミット変更あり。専用worktree以外を編集しない。
 - 本番migration適用、本番DB write、Production deploy、mainへのマージは行わない。
 - 公開企画ページのUIは必要以上に変更しない。
+
+## 2026-07-13 本番反映前の最終検証
+
+- 本番project ref `nodgfukqvuwvgfnlzvnh` のschemaが検証済みbaselineと意味的差分0であることを再確認し、`20260713193000` を `applied` としてmigration履歴修復。既存8件とbaselineの履歴は整合し、過去migrationの大量再適用なし。
+- 分析migrationを `20260713235000_admin_maker_analytics.sql` に統一。dry-runは同migration 1件のみ。DROP/DELETE/UPDATE/既存データ変更なしを確認して本番適用。
+- 本番で `admin_maker_project_stats(timestamptz)` と追加index 2件を確認。today/7d/30d/all、カリスマBEST、殿堂解除選手権、0件指標を実データと照合し、負数/null/NaNなし。
+- Preview管理画面はPC 1440px相当・390pxで横スクロールなし。全期間、手動更新、更新中guard、0件表示、公開企画ページと管理トップを確認。console error・hydration errorなし（既存AdSense warningのみ）。
+- 企画一覧は実測1 RPC。詳細はproject + 一覧RPC + 回答view + cardsの4クエリ以内。高コストfallbackなし。
+- Next Linkの自動prefetchによる一覧からの詳細クエリを検出し、分析画面内リンクへ `prefetch={false}` を設定。修正後は一覧表示で詳細view/cardsの呼び出し増加なし。
+- TypeScript、ESLint（error 0、既存warningのみ）、`git diff --check` 成功。Vercel cloud Preview build/checkは成功。
