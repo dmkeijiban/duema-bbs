@@ -8,7 +8,9 @@ export const metadata = { title: '殿堂解除選手権 | デュエマ掲示板'
 
 export default async function Page() {
   const admin = process.env.SUPABASE_SERVICE_ROLE_KEY ? createAdminClient() : null
-  const current = getCurrentHallCards()
+  const current = [...getCurrentHallCards()].sort(
+    (a, b) => Number(a.status !== 'hall') - Number(b.status !== 'hall'),
+  )
   const sourceKeys = current.map(getHallCardOfficialId).filter((value): value is string => Boolean(value))
   const [{ data: project }, { data: dbCards }] = admin ? await Promise.all([
     admin.from('maker_projects').select('id,status,is_public').eq('slug', 'hall-of-fame-release').maybeSingle(),
