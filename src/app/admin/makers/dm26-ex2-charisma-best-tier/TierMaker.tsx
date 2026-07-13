@@ -48,6 +48,7 @@ type TierMakerProps = {
   communityTitle?: string
   communityButtonLabel?: string
   poolFilters?: { value: string; label: string }[]
+  poolSortOrder?: string[]
   aggregateMode?: 'tier' | 'selection'
   exportBrand?: string
   responseLabel?: string
@@ -159,7 +160,7 @@ function isIOSDevice() {
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
-export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表', groupRowClassName, groupGridClassName = 'grid-cols-[52px_1fr]', groupLabelClassName, groupLabelText, cardBadgePositionClassName = 'left-1 top-1', cardBadgeTextClassName = 'text-white', selectionImageZoom = false }: TierMakerProps) {
+export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], poolSortOrder = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表', groupRowClassName, groupGridClassName = 'grid-cols-[52px_1fr]', groupLabelClassName, groupLabelText, cardBadgePositionClassName = 'left-1 top-1', cardBadgeTextClassName = 'text-white', selectionImageZoom = false }: TierMakerProps) {
   const STORAGE_KEY = `maker-draft:${storageSlug}:v1`
   const DRAFT_CHOICE_KEY = `maker-draft-choice:${storageSlug}:v1`
   const [draft, setDraft] = useState(initialDraft)
@@ -256,6 +257,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   }, [])
 
   const normalizedQuery = normalizeSearchText(query)
+  const poolSortRanks = new Map(poolSortOrder.map((value, index) => [value, index]))
   const visibleCards = cards.filter(card => {
     if (usedCardIds.has(card.id)) return false
     const searchText = card.searchText ?? `${card.name} ${card.cardNumber ?? ''}`
@@ -265,7 +267,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     if (cardType && card.cardType !== cardType) return false
     if (poolFilter && card.badge?.value !== poolFilter) return false
     return true
-  })
+  }).sort((a, b) => (poolSortRanks.get(a.badge?.value ?? '') ?? poolSortOrder.length) - (poolSortRanks.get(b.badge?.value ?? '') ?? poolSortOrder.length))
 
   const civilizationOptions = [...new Set(cards.flatMap(card => card.civilization))]
   const costOptions = [...new Set(cards.map(card => card.cost).filter((value): value is number => value !== null))].sort((a, b) => a - b)
