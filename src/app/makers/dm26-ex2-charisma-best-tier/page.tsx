@@ -9,10 +9,35 @@ import { savePublicTierSubmission } from './actions'
 
 export const dynamic = 'force-dynamic'
 
+const PAGE_URL = 'https://www.duema-bbs.com/makers/dm26-ex2-charisma-best-tier'
+const OG_IMAGE_URL = 'https://www.duema-bbs.com/og/makers/dm26-ex2-charisma-best-tier-v2.png'
+
 export const metadata: Metadata = {
-  title: 'DM26-EX2 悪感謝祭 カリスマBEST Tier表メーカー',
-  description: 'DM26-EX2「悪感謝祭 カリスマBEST」のカードをS〜Dに分けてTier表を作れます。',
-  alternates: { canonical: '/makers/dm26-ex2-charisma-best-tier' },
+  title: 'カリスマBEST Tier表メーカー｜デュエマ掲示板',
+  description: 'DM26-EX2「悪感謝祭 カリスマBEST」のカードを自由に並べて、自分だけのTier表を作成できます。画像保存・X共有・みんなのTier集計にも対応。',
+  alternates: { canonical: PAGE_URL },
+  openGraph: {
+    type: 'website',
+    url: PAGE_URL,
+    siteName: 'デュエマ掲示板',
+    locale: 'ja_JP',
+    title: 'カリスマBEST Tier表メーカー',
+    description: 'DM26-EX2「悪感謝祭 カリスマBEST」のカードを並べて、自分だけのTier表を作ろう。画像保存・X共有・みんなのTier集計にも対応。',
+    images: [{
+      url: OG_IMAGE_URL,
+      width: 1200,
+      height: 630,
+      alt: 'DM26-EX2 悪感謝祭 カリスマBEST Tier表メーカー',
+      type: 'image/png',
+    }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'カリスマBEST Tier表メーカー',
+    description: '新弾カードを自由に並べて、自分だけのTier表を作成できます。画像保存・X共有にも対応。',
+    images: [{ url: OG_IMAGE_URL, alt: 'DM26-EX2 悪感謝祭 カリスマBEST Tier表メーカー' }],
+  },
+  robots: { index: true, follow: true },
 }
 
 type ProjectRow = { id: string; config: unknown }
