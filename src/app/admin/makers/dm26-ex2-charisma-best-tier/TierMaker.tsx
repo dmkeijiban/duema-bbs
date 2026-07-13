@@ -57,6 +57,7 @@ type TierMakerProps = {
   groupLabelText?: Record<string, string>
   cardBadgePositionClassName?: string
   cardBadgeTextClassName?: string
+  selectionImageZoom?: boolean
 }
 
 function CardImage({ card, contain = false }: { card: MakerCard; contain?: boolean }) {
@@ -158,7 +159,7 @@ function isIOSDevice() {
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
-export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表', groupRowClassName, groupGridClassName = 'grid-cols-[52px_1fr]', groupLabelClassName, groupLabelText, cardBadgePositionClassName = 'left-1 top-1', cardBadgeTextClassName = 'text-white' }: TierMakerProps) {
+export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表', groupRowClassName, groupGridClassName = 'grid-cols-[52px_1fr]', groupLabelClassName, groupLabelText, cardBadgePositionClassName = 'left-1 top-1', cardBadgeTextClassName = 'text-white', selectionImageZoom = false }: TierMakerProps) {
   const STORAGE_KEY = `maker-draft:${storageSlug}:v1`
   const DRAFT_CHOICE_KEY = `maker-draft-choice:${storageSlug}:v1`
   const [draft, setDraft] = useState(initialDraft)
@@ -692,7 +693,11 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
         <div onMouseDown={event => { if (event.target === event.currentTarget) setSelected(null) }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div role="dialog" aria-modal="true" aria-labelledby="tier-card-title" className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-5">
             <h3 id="tier-card-title" className="font-black">{selected.name}</h3>
-            <div className="mx-auto mt-3 aspect-[63/88] max-h-[45vh] w-40 overflow-hidden rounded border bg-white sm:w-48"><CardImage card={selected} contain /></div>
+            {selectionImageZoom ? (
+              <button type="button" onClick={() => setZoomedCard(selected)} aria-label={`${selected.name}を拡大表示`} className="mx-auto mt-3 block aspect-[63/88] max-h-[45vh] w-40 cursor-zoom-in overflow-hidden rounded border bg-white sm:w-48"><CardImage card={selected} contain /></button>
+            ) : (
+              <div className="mx-auto mt-3 aspect-[63/88] max-h-[45vh] w-40 overflow-hidden rounded border bg-white sm:w-48"><CardImage card={selected} contain /></div>
+            )}
             <div className="mt-4 grid grid-cols-2 gap-2">
               {groups.map(group => <button type="button" key={group.key} onClick={() => moveCard(selected.id, group.key)} className={`rounded border p-3 font-black ${group.color}`}>{group.label}</button>)}
               {unrated && <button type="button" onClick={() => moveCard(selected.id, null)} className="rounded border p-3 font-bold">未評価へ戻す</button>}
