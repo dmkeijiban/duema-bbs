@@ -260,16 +260,6 @@ function TierMakerShowcase() {
           </div>
         </div>
         <div className="flex w-24 shrink-0 sm:w-52 md:w-[512px]">
-          <Link href={makerPath} prefetch={false} aria-label="Tier表を作る" className="relative block w-full overflow-hidden border-l border-gray-200 bg-stone-900 md:w-64">
-            <Image
-              src="/images/makers/dm26-ex2-charisma-best-main.webp"
-              alt="DM26-EX2 悪感謝祭 カリスマBEST"
-              fill
-              priority
-              sizes="(max-width: 639px) 96px, (max-width: 767px) 208px, 256px"
-              className="object-cover object-center"
-            />
-          </Link>
           <Link href={makerPath} prefetch={false} aria-label="Tier表を作る" className="relative hidden w-64 overflow-hidden border-l border-gray-200 bg-gray-100 md:block">
             <Image
               src="/images/makers/dm26-ex2-charisma-best-tier-sample.jpg"
@@ -278,6 +268,16 @@ function TierMakerShowcase() {
               priority
               sizes="256px"
               className="object-cover object-left-top"
+            />
+          </Link>
+          <Link href={makerPath} prefetch={false} aria-label="Tier表を作る" className="relative block w-full overflow-hidden border-l border-gray-200 bg-stone-900 md:w-64">
+            <Image
+              src="/images/makers/dm26-ex2-charisma-best-main.webp"
+              alt="DM26-EX2 悪感謝祭 カリスマBEST"
+              fill
+              priority
+              sizes="(max-width: 639px) 96px, (max-width: 767px) 208px, 256px"
+              className="object-cover object-center"
             />
           </Link>
         </div>
