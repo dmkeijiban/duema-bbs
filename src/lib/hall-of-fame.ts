@@ -49,6 +49,30 @@ export type HallEntry = {
 
 export const OFFICIAL_REGULATION_URL = 'https://dm.takaratomy.co.jp/rule/regulation/'
 
+export type CurrentHallCard = HallCard & { status: 'hall' | 'premium' }
+
+export function getHallCardOfficialId(card: HallCard): string | null {
+  const url = card.officialUrl ?? card.imageUrl
+  if (!url) return null
+  return url.match(/[?&]id=([^&]+)/)?.[1] ?? url.match(/\/([^/]+)\.jpg$/)?.[1] ?? null
+}
+
+/** 履歴の末尾を現在状態として、現在も単体規制中のカードだけを返す。 */
+export function getCurrentHallCards(): CurrentHallCard[] {
+  const byName = new Map<string, CurrentHallCard>()
+  for (const entry of HALL_OF_FAME_ENTRIES) {
+    for (const card of entry.cards) {
+      const current = card.history.at(-1)
+      if (current !== '殿堂入り' && current !== 'プレミアム殿堂') {
+        byName.delete(card.name)
+        continue
+      }
+      byName.set(card.name, { ...card, status: current === '殿堂入り' ? 'hall' : 'premium' })
+    }
+  }
+  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name, 'ja'))
+}
+
 export const HALL_OF_FAME_ENTRIES: HallEntry[] = [
   {
     slug: '2004-03-15',
@@ -2594,6 +2618,8 @@ export const HALL_OF_FAME_ENTRIES: HallEntry[] = [
         initial: '無制限 → 殿堂入り',
         description: '',
         history: ['無制限', '殿堂入り'],
+        imageUrl: officialImage('dmex04-052'),
+        officialUrl: officialPage('dmex04-052'),
       },
       {
         name: '《天命龍装 ホーリーエンド／ナウ・オア・ネバー》',

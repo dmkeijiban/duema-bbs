@@ -14,6 +14,9 @@ export function HallOfFameBody() {
           環境を変えたカード、制限・禁止の歴史、今なお語られる伝説の一枚を振り返る図鑑です。
         </p>
       </header>
+      <Link href="/makers/hall-of-fame-release" className="mb-4 flex items-center justify-between border border-orange-300 bg-orange-50 px-3 py-2 text-sm font-bold text-orange-800 hover:bg-orange-100">
+        <span>参加企画：殿堂解除を予想する</span><span>→</span>
+      </Link>
 
       {/* 施行年一覧 */}
       <section className="mb-5">

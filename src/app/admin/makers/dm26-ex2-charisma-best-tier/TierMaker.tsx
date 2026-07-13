@@ -8,13 +8,9 @@ import { recordMakerEvent } from '@/lib/maker-events'
 import { getMakerAnonymousId, type MakerEventType } from '@/lib/maker-events-shared'
 import { saveTierSubmission } from './actions'
 
-const STORAGE_KEY = 'maker-draft:dm26-ex2-charisma-best-tier:v1'
-const DRAFT_CHOICE_KEY = 'maker-draft-choice:dm26-ex2-charisma-best-tier:v1'
-const EXPORT_TITLE = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表'
 const SHOW_CARD_DETAIL_FILTERS = false
 
 const EXPORT_FORMAT = 'auto'
-const EXPORT_FILENAME = 'dm26-ex2-tier-auto.png'
 const EXPORT_CARDS_PER_LINE = 6
 const EXPORT_CARD_WIDTH = 140
 const EXPORT_CARD_HEIGHT = EXPORT_CARD_WIDTH * 88 / 63
@@ -44,6 +40,17 @@ type TierMakerProps = {
   // 指定した企画slugへ利用イベントを記録する（公開ページのみ指定。未指定なら計測しない）
   eventSlug?: string
   beforeLogin?: () => Promise<void>
+  storageSlug?: string
+  exportTitle?: string
+  exportFilename?: string
+  shareText?: string
+  shareUrl?: string
+  communityTitle?: string
+  communityButtonLabel?: string
+  poolFilters?: { value: string; label: string }[]
+  aggregateMode?: 'tier' | 'selection'
+  exportBrand?: string
+  responseLabel?: string
 }
 
 function CardImage({ card, contain = false }: { card: MakerCard; contain?: boolean }) {
@@ -145,13 +152,16 @@ function isIOSDevice() {
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
-export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin }: TierMakerProps) {
+export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表' }: TierMakerProps) {
+  const STORAGE_KEY = `maker-draft:${storageSlug}:v1`
+  const DRAFT_CHOICE_KEY = `maker-draft-choice:${storageSlug}:v1`
   const [draft, setDraft] = useState(initialDraft)
   const [selected, setSelected] = useState<MakerCard | null>(null)
   const [query, setQuery] = useState('')
   const [civilization, setCivilization] = useState('')
   const [cost, setCost] = useState('')
   const [cardType, setCardType] = useState('')
+  const [poolFilter, setPoolFilter] = useState('')
   const [message, setMessage] = useState('')
   const [showCommunity, setShowCommunity] = useState(false)
   const [showLoginRequired, setShowLoginRequired] = useState(false)
@@ -197,7 +207,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
       console.warn('Tier表の下書きを復元できませんでした', error)
       localStorage.removeItem(STORAGE_KEY)
     }
-  }, [groups, hasSavedSubmission, validCardIds])
+  }, [DRAFT_CHOICE_KEY, STORAGE_KEY, groups, hasSavedSubmission, validCardIds])
 
   useEffect(() => {
     if (skipFirstDraftPersist.current) {
@@ -209,7 +219,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     } catch (error) {
       console.warn('Tier表の下書きを保存できませんでした', error)
     }
-  }, [draft])
+  }, [STORAGE_KEY, draft])
 
   useEffect(() => {
     pngCache.current.clear()
@@ -246,6 +256,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     if (civilization && !card.civilization.includes(civilization)) return false
     if (cost && card.cost !== Number(cost)) return false
     if (cardType && card.cardType !== cardType) return false
+    if (poolFilter && card.badge?.value !== poolFilter) return false
     return true
   })
 
@@ -396,7 +407,14 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     context.fillRect(0, 0, canvas.width, canvas.height)
     context.fillStyle = '#0f172a'
     context.font = 'bold 38px sans-serif'
-    context.fillText(EXPORT_TITLE, 40, 58)
+    context.fillText(exportTitle, 40, 58)
+    if (exportBrand) {
+      context.font = 'bold 22px sans-serif'
+      context.fillStyle = '#475569'
+      context.textAlign = 'right'
+      context.fillText(exportBrand, canvas.width - 40, 88)
+      context.textAlign = 'left'
+    }
     let y = top
 
     for (const row of rowLayouts) {
@@ -489,7 +507,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
       openExportPreview(blob)
       return
     }
-    downloadBlob(blob, EXPORT_FILENAME)
+    downloadBlob(blob, exportFilename)
   }
 
   async function saveImage() {
@@ -512,10 +530,10 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
   async function shareToX() {
     if (isSharingToX) return
-    const text = '悪感謝祭カリスマBEST Tier表メーカー'
+    const text = shareText
     // X側に残っている古いOGPキャッシュを避け、専用サムネイルを再取得させる。
-    const shareUrl = `${location.origin}/makers/dm26-ex2-charisma-best-tier?share=tier-v3`
-    const tweetUrl = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`
+    const resolvedShareUrl = shareUrl ? new URL(shareUrl, location.origin).toString() : `${location.origin}/makers/dm26-ex2-charisma-best-tier?share=tier-v3`
+    const tweetUrl = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(resolvedShareUrl)}`
     const mobile = isMobileDevice()
     const popup = mobile ? null : window.open(tweetUrl, '_blank', 'noopener,noreferrer')
     if (!mobile && !popup) {
@@ -531,7 +549,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
       const blob = await getTierPng()
       deliverTierImage(blob)
       if (mobile) {
-        const message = `${text}\n${shareUrl}`
+        const message = `${text}\n${resolvedShareUrl}`
         location.href = `twitter://post?message=${encodeURIComponent(message)}`
       }
     } catch (error) {
@@ -569,7 +587,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
                         aria-label={card.name}
                         className="w-full overflow-hidden rounded border bg-white"
                       >
-                        <div className="aspect-[63/88]"><CardImage card={card} /></div>
+                        <div className="relative aspect-[63/88]"><CardImage card={card} />{card.badge && <span className={`absolute left-1 top-1 rounded px-1 py-0.5 text-[9px] font-black text-white shadow ${card.badge.className}`}>{card.badge.label}</span>}</div>
                       </button>
                       <div className="mt-1 flex justify-center gap-1">
                         <button type="button" aria-label="左へ" onClick={() => reorderCard(group.key, cardId, -1)} className="rounded border px-2">←</button>
@@ -601,13 +619,13 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
           </button>
           <button type="button" disabled={isSavingImage} onClick={saveImage} className="flex-1 whitespace-nowrap rounded border border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-700 disabled:opacity-50 sm:flex-none">{isSavingImage ? '画像生成中...' : '画像保存'}</button>
           <button type="button" disabled={isSharingToX} onClick={shareToX} className="flex-1 whitespace-nowrap rounded bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50 sm:flex-none">{isSharingToX ? '共有準備中...' : 'Xで共有'}</button>
-          <button type="button" onClick={() => { if (!showCommunity) trackEvent('aggregate_viewed'); setShowCommunity(value => !value) }} className="flex-1 whitespace-nowrap rounded border bg-white px-4 py-2 text-sm font-bold sm:flex-none">📊 みんなのTierを見る</button>
+          <button type="button" onClick={() => { if (!showCommunity) trackEvent('aggregate_viewed'); setShowCommunity(value => !value) }} className="flex-1 whitespace-nowrap rounded border bg-white px-4 py-2 text-sm font-bold sm:flex-none">{communityButtonLabel}</button>
           {message && <span className="self-center text-sm">{message}</span>}
         </div>
 
         {showCommunity && (
           <section id="community-tier" className="scroll-mt-4 rounded-xl border bg-white p-4">
-            <h2 className="text-lg font-black">みんなのTier</h2>
+            <h2 className="text-lg font-black">{communityTitle}</h2>
             <p className="mt-1 text-xs text-gray-500">カードごとの回答割合です。</p>
             {communityCards.length === 0 ? (
               <p className="mt-4 rounded bg-slate-50 p-4 text-sm text-gray-500">まだ集計できる回答がありません。</p>
@@ -622,7 +640,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
                       <button type="button" onClick={() => setZoomedCard(card)} aria-label={`${card.name}を拡大表示`} className="h-28 w-20 shrink-0 overflow-hidden rounded border bg-slate-100"><CardImage card={card} contain /></button>
                       <div className="min-w-0 flex-1">
                         <h3 className="line-clamp-2 text-sm font-bold">{card.name}</h3>
-                        <p className="mt-1 text-xs text-gray-500">回答 {aggregate.ratingCount}人 / 平均 {aggregate.averageTier?.toFixed(2) ?? '-'}</p>
+                        <p className="mt-1 text-xs text-gray-500">{aggregateMode === 'selection' ? `選択 ${aggregate.counts.release ?? 0}人 / ${aggregate.averageTier?.toFixed(1) ?? '0.0'}%` : `回答 ${aggregate.ratingCount}人 / 平均 ${aggregate.averageTier?.toFixed(2) ?? '-'}`}</p>
                         <div className="mt-2 space-y-1">
                           {groups.map(group => {
                             const count = aggregate.counts[group.key] ?? 0
@@ -648,6 +666,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
       <aside className="h-fit rounded-xl border bg-white p-3 lg:sticky lg:top-3">
         <input value={query} onChange={event => setQuery(event.target.value)} placeholder="カード名検索" className="w-full rounded border p-2 text-sm" />
+        {poolFilters.length > 0 && <div className="mt-2 flex gap-1">{[{ value: '', label: 'すべて' }, ...poolFilters].map(filter => <button type="button" key={filter.value} onClick={() => setPoolFilter(filter.value)} className={`flex-1 rounded border px-2 py-1.5 text-xs font-bold ${poolFilter === filter.value ? 'border-blue-600 bg-blue-50 text-blue-700' : 'bg-white'}`}>{filter.label}</button>)}</div>}
         {SHOW_CARD_DETAIL_FILTERS && <div className="mt-2 grid grid-cols-3 gap-1">
           <select aria-label="文明" value={civilization} onChange={event => setCivilization(event.target.value)} className="rounded border p-1 text-xs"><option value="">文明</option>{civilizationOptions.map(value => <option key={value}>{value}</option>)}</select>
           <select aria-label="コスト" value={cost} onChange={event => setCost(event.target.value)} className="rounded border p-1 text-xs"><option value="">コスト</option>{costOptions.map(value => <option key={value}>{value}</option>)}</select>
@@ -656,7 +675,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
         <div className="mt-3 grid max-h-[70vh] grid-cols-3 gap-2 overflow-auto">
           {visibleCards.map(card => (
             <button type="button" key={card.id} onClick={() => setSelected(card)} aria-label={card.name} className="overflow-hidden rounded border">
-              <div className="aspect-[63/88]"><CardImage card={card} /></div>
+              <div className="relative aspect-[63/88]"><CardImage card={card} />{card.badge && <span className={`absolute left-1 top-1 rounded px-1 py-0.5 text-[9px] font-black text-white shadow ${card.badge.className}`}>{card.badge.label}</span>}</div>
             </button>
           ))}
         </div>
@@ -683,7 +702,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 id="login-required-title" className="text-xl font-black">ログインが必要です</h2>
-                <p className="mt-3 text-sm leading-6 text-gray-600">Tier表の回答を登録するにはログインしてください。入力内容は下書きとして保存され、ログイン後に復元されます。</p>
+                <p className="mt-3 text-sm leading-6 text-gray-600">{responseLabel}の回答を登録するにはログインしてください。入力内容は下書きとして保存され、ログイン後に復元されます。</p>
               </div>
               <button type="button" aria-label="閉じる" onClick={() => setShowLoginRequired(false)} className="shrink-0 px-1 text-3xl leading-none text-gray-500">×</button>
             </div>
@@ -703,9 +722,9 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
               <button type="button" aria-label="閉じる" onClick={closeExportPreview} className="shrink-0 px-1 text-3xl leading-none text-gray-500">×</button>
             </div>
             <p className="mt-2 text-sm leading-6 text-gray-600">画像を長押しして「写真に保存」を選ぶか、下のボタンから保存してください。</p>
-            <img src={exportPreviewUrl} alt={EXPORT_TITLE} className="mt-3 w-full rounded border" />
+            <img src={exportPreviewUrl} alt={exportTitle} className="mt-3 w-full rounded border" />
             <div className="mt-4 space-y-2">
-              <a href={exportPreviewUrl} download={EXPORT_FILENAME} className="block w-full rounded-xl bg-blue-700 px-4 py-3 text-center font-bold text-white">画像をダウンロード</a>
+              <a href={exportPreviewUrl} download={exportFilename} className="block w-full rounded-xl bg-blue-700 px-4 py-3 text-center font-bold text-white">画像をダウンロード</a>
               <a href={exportPreviewUrl} target="_blank" rel="noopener noreferrer" className="block w-full rounded-xl border px-4 py-3 text-center font-bold">新しいタブで開く</a>
               <button type="button" onClick={closeExportPreview} className="w-full rounded-xl border px-4 py-3 font-bold">閉じる</button>
             </div>
