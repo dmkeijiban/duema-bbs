@@ -91,6 +91,18 @@ export function parseMakerProjectConfig(value: unknown): MakerProjectConfig {
 
 export type MakerDraft = Record<string, string[]>
 
+export type MakerSubmissionMeta = {
+  title: string
+  comment: string
+}
+
+export function makerCommunityLabel(type: string) {
+  if (type === 'tier') return 'みんなのTier表'
+  if (type === 'selection' || type === 'prediction') return 'みんなの予想'
+  if (type === 'ranking') return 'みんなのランキング'
+  return 'みんなの作品'
+}
+
 export function emptyMakerDraft(groups: MakerGroup[]): MakerDraft {
   return Object.fromEntries(groups.map(group => [group.key, []]))
 }

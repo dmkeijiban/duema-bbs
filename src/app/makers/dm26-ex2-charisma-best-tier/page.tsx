@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { emptyMakerDraft, parseMakerProjectConfig, type MakerCard, type MakerDraft } from '@/lib/maker'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
@@ -44,7 +45,6 @@ export const metadata: Metadata = {
 type ProjectRow = { id: string; config: unknown }
 type LinkRow = { cards: { id: string; name: string; image_url: string | null; civilization: string[] | null; cost: number | null; card_type: string | null } }
 type AggregateRow = { card_id: string; s_count: number; a_count: number; b_count: number; c_count: number; d_count: number; rating_count: number; average_tier: number | string | null }
-type SubmissionItem = { card_id: string; group_key: string; position: number }
 type OfficialCard = { card_number: string; card_name: string }
 const metadataByName = new Map((officialCardsJson as OfficialCard[]).map(card => [card.card_name, card]))
 
@@ -91,21 +91,6 @@ export default async function PublicTierMakerPage() {
     averageTier: row.average_tier === null ? null : Number(row.average_tier),
   }))
   const draft: MakerDraft = emptyMakerDraft(config.groups)
-  let hasSavedSubmission = false
-  if (user) {
-    const { data: submission } = await admin.from('maker_submissions').select('id').eq('project_id', project.id).eq('user_id', user.id).maybeSingle()
-    if (submission) {
-      hasSavedSubmission = true
-      const { data: items } = await admin.from('maker_submission_items').select('card_id,group_key,position').eq('submission_id', submission.id).order('position')
-      const validCardIds = new Set(cards.map(card => card.id))
-      const seen = new Set<string>()
-      for (const item of (items ?? []) as SubmissionItem[]) {
-        if (!draft[item.group_key] || !validCardIds.has(item.card_id) || seen.has(item.card_id)) continue
-        seen.add(item.card_id)
-        draft[item.group_key].push(item.card_id)
-      }
-    }
-  }
 
   return (
     <main className="min-h-screen bg-slate-50 px-3 py-6">
@@ -113,6 +98,7 @@ export default async function PublicTierMakerPage() {
         <p className="text-xs font-bold text-emerald-700">新弾カードTier表メーカー</p>
         <h1 className="mt-2 text-2xl font-black">DM26-EX2 悪感謝祭 カリスマBEST Tier表</h1>
         <p className="mt-1 text-sm text-gray-500">好きな評価グループに分けてオリジナルのTier表を作れます。</p>
+        <Link href="/makers/dm26-ex2-charisma-best-tier/submissions" className="mt-4 inline-flex rounded-lg border border-blue-700 bg-white px-4 py-2 text-sm font-bold text-blue-700">みんなのTier表を見る</Link>
         <PublicTierMaker
           cards={cards}
           groups={config.groups}
@@ -120,8 +106,8 @@ export default async function PublicTierMakerPage() {
           unrated={config.unrated}
           canSave={Boolean(user)}
           saveAction={savePublicTierSubmission}
-          saveButtonLabel={user ? (hasSavedSubmission ? '更新' : '登録') : '登録'}
-          hasSavedSubmission={hasSavedSubmission}
+          saveButtonLabel={user ? '新しい作品として登録' : '登録'}
+          hasSavedSubmission={false}
           aggregates={aggregates}
         />
       </div>

@@ -2,16 +2,20 @@
 
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
-import { parseMakerProjectConfig } from '@/lib/maker'
+import { parseMakerProjectConfig, type MakerSubmissionMeta } from '@/lib/maker'
 import { recordMakerEvent } from '@/lib/maker-events'
 
 const PROJECT_SLUG = 'dm26-ex2-charisma-best-tier'
 
-export async function savePublicTierSubmission(payload: Record<string, string[]>) {
+export async function savePublicTierSubmission(payload: Record<string, string[]>, meta?: MakerSubmissionMeta) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { ok: false, message: 'ログインが必要です' }
+    const title = meta?.title.trim() ?? ''
+    const comment = meta?.comment.trim() ?? ''
+    if (!title || title.length > 40) return { ok: false, message: 'タイトルは1〜40文字で入力してください' }
+    if (comment.length > 200) return { ok: false, message: '一言コメントは200文字以内で入力してください' }
 
     const admin = createAdminClient()
     const { data: project, error: projectError } = await admin
@@ -44,11 +48,11 @@ export async function savePublicTierSubmission(payload: Record<string, string[]>
     if (!latestAuth.user || latestAuth.user.id !== user.id) return { ok: false, message: 'ログイン状態を確認できません。下書きは端末に保存されています' }
     if (publishStateError || !publishState) return { ok: false, message: 'この企画は現在公開されていません' }
 
-    const { error } = await admin.rpc('save_maker_submission', { p_project_id: project.id, p_user_id: user.id, p_items: items })
+    const { error } = await admin.rpc('create_maker_submission', { p_project_id: project.id, p_user_id: user.id, p_title: title, p_comment: comment || null, p_items: items })
     if (error) return { ok: false, message: `保存に失敗しました: ${error.message}` }
     const { data: signup } = await admin.from('maker_events').select('id').eq('project_id', project.id).eq('event_type', 'signup_completed').eq('user_id', user.id).maybeSingle()
     if (signup) await recordMakerEvent({ slug: PROJECT_SLUG, eventType: 'submission_after_signup' })
-    return { ok: true, message: 'Tier表を上書き保存しました' }
+    return { ok: true, message: '新しい作品として登録しました' }
   } catch (error) {
     const message = error instanceof Error ? error.message : '保存に失敗しました'
     console.error('savePublicTierSubmission failed', { message })
