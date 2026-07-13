@@ -16,6 +16,7 @@ export type MakerUsageStats = {
   todayNewRegistrantCount: number
   todaySubmissionActivityCount: number
   lastSubmissionAt: string | null
+  acquisitionStatsAvailable: boolean
   // maker_events（計測開始後のみ）から算出
   events: Record<MakerEventType, MakerEventCounter>
 }
@@ -87,6 +88,7 @@ export async function fetchMakerUsageStats(projectId: string): Promise<MakerUsag
     todayNewRegistrantCount,
     todaySubmissionActivityCount,
     lastSubmissionAt,
+    acquisitionStatsAvailable: !eventStatsV2Result.error,
     events,
   }
 }
