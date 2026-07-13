@@ -35,12 +35,17 @@ export async function fetchMakerUsageStats(projectId: string): Promise<MakerUsag
   const admin = createAdminClient()
   const todayStartIso = getJstTodayCutoffUtcIso()
 
-  const [submissionsResult, eventStatsResult] = await Promise.all([
+  const [submissionsResult, eventStatsV2Result] = await Promise.all([
     admin.from('maker_submissions').select('created_at,updated_at').eq('project_id', projectId).eq('is_valid', true),
     admin.rpc('maker_event_stats_v2', { p_project_id: projectId, p_today_start: todayStartIso }),
   ])
 
   if (submissionsResult.error) throw new Error(`回答データを取得できませんでした: ${submissionsResult.error.message}`)
+
+  // migration反映前のDBでも既存統計を表示し続ける。v2適用後は通常どおりv2を使う。
+  const eventStatsResult = eventStatsV2Result.error
+    ? await admin.rpc('maker_event_stats', { p_project_id: projectId, p_today_start: todayStartIso })
+    : eventStatsV2Result
   if (eventStatsResult.error) throw new Error(`イベント集計を取得できませんでした: ${eventStatsResult.error.message}`)
 
   const submissions = (submissionsResult.data ?? []) as SubmissionRow[]
