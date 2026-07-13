@@ -710,6 +710,7 @@ export default async function AdminPage({
           <div className={ADMIN_MENU_ROW_CLASS}>
             <p className={ADMIN_MENU_LABEL_CLASS}>分析・ランキング</p>
             <div className={ADMIN_MENU_GROUP_CLASS}>
+              <Link href="/admin/analytics" className={ADMIN_MENU_BTN_NEUTRAL}>📊 分析ダッシュボード</Link>
               <Link href="/admin/campaign-ranking" className={ADMIN_MENU_BTN_NEUTRAL}>🎯 キャンペーンランキング</Link>
               <Link href="/admin/duema-stats" className={ADMIN_MENU_BTN_NEUTRAL}>📊 デュエマプロフィール統計</Link>
             </div>
