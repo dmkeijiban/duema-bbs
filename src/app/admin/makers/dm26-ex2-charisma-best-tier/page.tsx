@@ -63,7 +63,7 @@ export default async function Page() {
     }
 
     if (user) {
-      const { data: submission, error: submissionError } = await admin.from('maker_submissions').select('id').eq('project_id', project.id).eq('user_id', user.id).maybeSingle()
+      const { data: submission, error: submissionError } = await admin.from('maker_submissions').select('id').eq('project_id', project.id).eq('user_id', user.id).eq('is_overwrite_slot', true).maybeSingle()
       if (submissionError) throw new Error('保存済みTier表を確認できませんでした')
       if (submission) {
         const { data: items, error: itemsError } = await admin.from('maker_submission_items').select('card_id,group_key,position').eq('submission_id', submission.id).order('position')

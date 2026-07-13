@@ -125,3 +125,21 @@ begin
 end $$;
 revoke all on function public.save_maker_submission(uuid,uuid,jsonb) from public,anon,authenticated;
 grant execute on function public.save_maker_submission(uuid,uuid,jsonb) to service_role;
+
+-- 複数作品を集計対象にするため、割合の分母もユーザー数ではなく作品数に揃える。
+create or replace view public.maker_tier_aggregates as
+select p.id project_id, c.id card_id, c.name,
+  count(*) filter(where i.group_key='s')::int s_count,
+  count(*) filter(where i.group_key='a')::int a_count,
+  count(*) filter(where i.group_key='b')::int b_count,
+  count(*) filter(where i.group_key='c')::int c_count,
+  count(*) filter(where i.group_key='d')::int d_count,
+  count(distinct s.id)::int rating_count,
+  avg(case i.group_key when 's' then 5 when 'a' then 4 when 'b' then 3 when 'c' then 2 when 'd' then 1 end)::numeric(5,2) average_tier
+from public.maker_projects p
+join public.maker_submissions s on s.project_id=p.id and s.is_valid
+join public.maker_submission_items i on i.submission_id=s.id
+join public.cards c on c.id=i.card_id
+group by p.id,c.id,c.name;
+
+revoke all on public.maker_tier_aggregates from anon, authenticated;
