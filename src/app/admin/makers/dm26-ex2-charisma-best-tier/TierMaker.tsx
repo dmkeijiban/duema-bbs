@@ -675,7 +675,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
                       <button type="button" onClick={() => setZoomedCard(card)} aria-label={`${card.name}を拡大表示`} className="h-28 w-20 shrink-0 overflow-hidden rounded border bg-slate-100"><CardImage card={card} contain /></button>
                       <div className="min-w-0 flex-1">
                         <h3 className="line-clamp-2 text-sm font-bold">{card.name}</h3>
-                        <p className="mt-1 text-xs text-gray-500">{aggregateMode === 'selection' ? `選択 ${aggregate.counts.release ?? 0}人 / ${aggregate.averageTier?.toFixed(1) ?? '0.0'}%` : `回答 ${aggregate.ratingCount}人 / 平均 ${aggregate.averageTier?.toFixed(2) ?? '-'}`}</p>
+                        <p className="mt-1 text-xs text-gray-500">{aggregateMode === 'selection' ? `選択 ${aggregate.counts.release ?? 0}人 / ${aggregate.averageTier?.toFixed(1) ?? '0.0'}%` : `回答 ${aggregate.ratingCount}件 / 平均 ${aggregate.averageTier?.toFixed(2) ?? '-'}`}</p>
                         <div className="mt-2 space-y-1">
                           {groups.map(group => {
                             const count = aggregate.counts[group.key] ?? 0

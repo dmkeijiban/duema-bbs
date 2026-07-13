@@ -42,7 +42,7 @@ export default function UsageStatsSection({ stats, errorMessage }: Props) {
       <Card label="ユニーク利用者数" value={`${e.page_viewed.uniqueActors}人`} note="ログイン時はuser ID、未ログイン時は匿名visitor ID。同一人物を完全には特定できません" />
     </Group>}
     <Group title="回答状況">
-      <Card label="回答登録者数" value={`${stats.registrantCount}人`} /><Card label="回答登録件数" value={`${stats.submissionCount}件`} note="1ユーザー1回答（上書き）" />
+      <Card label="回答登録者数" value={`${stats.registrantCount}人`} /><Card label="回答登録件数" value={`${stats.submissionCount}件`} note="同一ユーザーの複数作品を含む" />
       <Card label="今日の新規回答者数" value={`${stats.todayNewRegistrantCount}人`} /><Card label="最終回答日時" value={formatJstDateTime(stats.lastSubmissionAt)} compact />
     </Group>
     <Group title="利用状況">
