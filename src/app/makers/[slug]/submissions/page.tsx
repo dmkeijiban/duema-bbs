@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import MakerSubmissionBoard from '@/components/MakerSubmissionBoard'
 import { getPublicMakerProject, getPublicSubmissions, makerSubmissionView } from '@/lib/maker-submissions'
-import SubmissionsViewEvent from './view-event'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +12,6 @@ export default async function MakerSubmissionsPage({ params }: { params: Promise
   const { config, communityLabel } = makerSubmissionView(project)
   const submissions = await getPublicSubmissions(project.id)
   return <main className="min-h-screen bg-slate-50 px-3 py-6"><div className="mx-auto max-w-6xl">
-    <SubmissionsViewEvent slug={slug} eventType="submissions_view" />
     <Link href={`/makers/${slug}`} className="text-sm font-bold text-blue-700">← メーカーへ戻る</Link>
     <h1 className="mt-3 text-2xl font-black">{communityLabel}</h1>
     <p className="mt-1 text-sm text-gray-500">登録された作品を新着順で表示しています。</p>

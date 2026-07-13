@@ -52,7 +52,6 @@ export async function savePublicTierSubmission(payload: Record<string, string[]>
     if (error) return { ok: false, message: `保存に失敗しました: ${error.message}` }
     const { data: signup } = await admin.from('maker_events').select('id').eq('project_id', project.id).eq('event_type', 'signup_completed').eq('user_id', user.id).maybeSingle()
     if (signup) await recordMakerEvent({ slug: PROJECT_SLUG, eventType: 'submission_after_signup' })
-    await recordMakerEvent({ slug: PROJECT_SLUG, eventType: 'submission_create' })
     return { ok: true, message: '新しい作品として登録しました' }
   } catch (error) {
     const message = error instanceof Error ? error.message : '保存に失敗しました'

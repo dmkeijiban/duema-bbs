@@ -69,9 +69,6 @@ export async function fetchMakerUsageStats(projectId: string): Promise<MakerUsag
     auth_cta_clicked: emptyCounter(),
     signup_completed: emptyCounter(),
     submission_after_signup: emptyCounter(),
-    submissions_view: emptyCounter(),
-    submission_detail_view: emptyCounter(),
-    submission_create: emptyCounter(),
   }
   for (const row of (eventStatsResult.data ?? []) as EventStatsRow[]) {
     if (row.event_type in events) {
