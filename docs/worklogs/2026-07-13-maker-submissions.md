@@ -34,4 +34,10 @@
 
 ## 検証記録
 
-- 実施結果はPR本文と最終報告へ記載する。
+- TypeScript: 成功。
+- ESLint: error 0、既存warning 20。変更箇所ではplain `img` 方針によるwarningのみ。
+- `git diff --check`: 成功。
+- production build: Vercel Previewで成功。ローカルは秘密情報をworktreeへ複製しない状態では既存summaryのpage data収集で停止。
+- Preview: PC 1280px / mobile 390pxとも横スクロールなし。タイトル40文字、一言200文字、未ログイン登録モーダル、一覧空状態、存在しないsubmission 404を確認。
+- 回帰: カリスマBEST本体、みんなの評価ボタン、画像保存/X共有ボタン、殿堂解除選手権の表示を確認。
+- DB未適用のため未検証: ログイン後の複数作品登録、作品あり一覧/詳細、一言あり/なし/長いタイトル、非公開・無効・停止ユーザー実データ、詳細X共有、保存画像の実ダウンロード。
