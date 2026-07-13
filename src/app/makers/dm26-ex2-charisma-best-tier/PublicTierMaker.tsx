@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import TierMaker, { type TierAggregate } from '@/app/admin/makers/dm26-ex2-charisma-best-tier/TierMaker'
 import type { MakerCard, MakerDraft, MakerGroup } from '@/lib/maker'
+import { getMakerAnonymousId } from '@/lib/maker-events-shared'
+import { recordMakerEvent } from '@/lib/maker-events'
+import { beginMakerSignup } from '@/lib/maker-signup-source'
 
 type Props = {
   cards: MakerCard[]
@@ -21,6 +24,13 @@ type ZoomedImage = { src: string; alt: string }
 export default function PublicTierMaker(props: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
   const [zoomedImage, setZoomedImage] = useState<ZoomedImage | null>(null)
+
+  useEffect(() => {
+    const ua = navigator.userAgent.toLowerCase()
+    if (!/(bot|crawler|spider|preview|facebookexternalhit|twitterbot|slurp|bingbot|googlebot)/.test(ua)) {
+      void recordMakerEvent({ slug: 'dm26-ex2-charisma-best-tier', eventType: 'page_viewed', anonymousId: getMakerAnonymousId() }).catch(() => {})
+    }
+  }, [])
 
   useEffect(() => {
     const root = rootRef.current
@@ -77,6 +87,10 @@ export default function PublicTierMaker(props: Props) {
         aggregates={props.aggregates}
         imageProxyPath="/api/makers/dm26-ex2-card-image"
         eventSlug="dm26-ex2-charisma-best-tier"
+        beforeLogin={async () => {
+          const anonymousId = getMakerAnonymousId()
+          if (anonymousId) await beginMakerSignup(anonymousId)
+        }}
       />
 
       {zoomedImage && (

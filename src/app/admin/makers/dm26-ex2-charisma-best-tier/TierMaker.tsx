@@ -43,6 +43,7 @@ type TierMakerProps = {
   hasSavedSubmission?: boolean
   // 指定した企画slugへ利用イベントを記録する（公開ページのみ指定。未指定なら計測しない）
   eventSlug?: string
+  beforeLogin?: () => Promise<void>
 }
 
 function CardImage({ card, contain = false }: { card: MakerCard; contain?: boolean }) {
@@ -144,7 +145,7 @@ function isIOSDevice() {
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
-export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, saveButtonLabel, hasSavedSubmission = false, eventSlug }: TierMakerProps) {
+export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin }: TierMakerProps) {
   const [draft, setDraft] = useState(initialDraft)
   const [selected, setSelected] = useState<MakerCard | null>(null)
   const [query, setQuery] = useState('')
@@ -332,7 +333,8 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     })
   }
 
-  function goToLogin() {
+  async function goToLogin() {
+    await beforeLogin?.().catch(() => {})
     const next = `${location.pathname}${location.search}`
     location.assign(`/login?next=${encodeURIComponent(next)}`)
   }

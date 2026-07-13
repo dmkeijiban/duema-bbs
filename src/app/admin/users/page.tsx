@@ -79,6 +79,20 @@ export default async function AdminUsersPage() {
   ])
 
   const profiles = (data ?? []) as AdminProfile[]
+  const userIds = profiles.map(profile => profile.id)
+  const sourceByUser = new Set<string>()
+  const answeredByUser = new Set<string>()
+  if (userIds.length) {
+    const { data: project } = await supabase.from('maker_projects').select('id').eq('slug', 'dm26-ex2-charisma-best-tier').maybeSingle()
+    if (project) {
+      const [{ data: signupEvents }, { data: submissions }] = await Promise.all([
+        supabase.from('maker_events').select('user_id').eq('project_id', project.id).eq('event_type', 'signup_completed').in('user_id', userIds),
+        supabase.from('maker_submissions').select('user_id').eq('project_id', project.id).eq('is_valid', true).in('user_id', userIds),
+      ])
+      signupEvents?.forEach(row => { if (row.user_id) sourceByUser.add(row.user_id) })
+      submissions?.forEach(row => { if (row.user_id) answeredByUser.add(row.user_id) })
+    }
+  }
 
   return (
     <div className="mx-auto max-w-screen-xl px-3 py-4 text-sm">
@@ -130,6 +144,7 @@ export default async function AdminUsersPage() {
                 <th className="whitespace-nowrap border-b border-gray-200 px-3 py-2 font-semibold">
                   作成日
                 </th>
+                <th className="whitespace-nowrap border-b border-gray-200 px-3 py-2 font-semibold">登録元 / Tier回答</th>
                 <th className="whitespace-nowrap border-b border-gray-200 px-3 py-2 font-semibold">
                   最終ログイン
                 </th>
@@ -170,6 +185,10 @@ export default async function AdminUsersPage() {
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-gray-600">
                       {formatDate(profile.created_at)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 text-gray-600">
+                      <div>{sourceByUser.has(profile.id) ? 'カリスマBEST Tier表' : '不明'}</div>
+                      <div className="text-[11px] text-gray-400">{answeredByUser.has(profile.id) ? '回答登録済み' : '未回答'}</div>
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-gray-600">
                       {formatDate(profile.last_login_at)}
