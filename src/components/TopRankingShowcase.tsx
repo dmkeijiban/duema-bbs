@@ -294,7 +294,7 @@ function TierMakerShowcase() {
             fill
             priority
             sizes="44vw"
-            className="object-cover object-center transition-transform duration-300 hover:scale-[1.02]"
+            className="object-cover object-bottom transition-transform duration-300 hover:scale-[1.02]"
           />
           <span className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-slate-950 to-transparent" aria-hidden="true" />
         </Link>
