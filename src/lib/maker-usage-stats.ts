@@ -37,7 +37,7 @@ export async function fetchMakerUsageStats(projectId: string): Promise<MakerUsag
 
   const [submissionsResult, eventStatsResult] = await Promise.all([
     admin.from('maker_submissions').select('created_at,updated_at').eq('project_id', projectId).eq('is_valid', true),
-    admin.rpc('maker_event_stats', { p_project_id: projectId, p_today_start: todayStartIso }),
+    admin.rpc('maker_event_stats_v2', { p_project_id: projectId, p_today_start: todayStartIso }),
   ])
 
   if (submissionsResult.error) throw new Error(`回答データを取得できませんでした: ${submissionsResult.error.message}`)
