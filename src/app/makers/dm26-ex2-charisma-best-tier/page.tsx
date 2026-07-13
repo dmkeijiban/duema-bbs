@@ -11,7 +11,7 @@ import officialCardsJson from '../../../../scripts/fixtures/dm26-ex2-standard-89
 export const dynamic = 'force-dynamic'
 
 const PAGE_URL = 'https://www.duema-bbs.com/makers/dm26-ex2-charisma-best-tier'
-const OG_IMAGE_URL = 'https://www.duema-bbs.com/og/makers/dm26-ex2-charisma-best-tier-v2.png'
+const OG_IMAGE_URL = 'https://www.duema-bbs.com/og/makers/dm26-ex2-charisma-best-tier-v2.png?v=3'
 
 export const metadata: Metadata = {
   title: 'カリスマBEST Tier表メーカー｜デュエマ掲示板',
