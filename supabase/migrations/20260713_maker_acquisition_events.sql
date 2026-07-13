@@ -43,7 +43,9 @@ end $$;
 revoke all on function public.record_maker_event(uuid,text,uuid,text,integer) from public, anon, authenticated;
 grant execute on function public.record_maker_event(uuid,text,uuid,text,integer) to service_role;
 
-create or replace function public.maker_event_stats(p_project_id uuid, p_today_start timestamptz)
+-- 既存 maker_event_stats は4列返却のため、PostgreSQLではCREATE OR REPLACEで
+-- 5列へ変更できない。既存関数を残したままv2を追加し、段階的に切り替える。
+create or replace function public.maker_event_stats_v2(p_project_id uuid, p_today_start timestamptz)
 returns table (event_type text,total_count bigint,today_count bigint,unique_actors bigint,today_unique_actors bigint)
 language sql security definer set search_path = public as $$
   select e.event_type, count(*)::bigint,
@@ -53,7 +55,7 @@ language sql security definer set search_path = public as $$
   from public.maker_events e where e.project_id = p_project_id group by e.event_type
 $$;
 
-revoke all on function public.maker_event_stats(uuid,timestamptz) from public, anon, authenticated;
-grant execute on function public.maker_event_stats(uuid,timestamptz) to service_role;
+revoke all on function public.maker_event_stats_v2(uuid,timestamptz) from public, anon, authenticated;
+grant execute on function public.maker_event_stats_v2(uuid,timestamptz) to service_role;
 
 comment on table public.maker_events is 'メーカー企画の利用イベント。IP・フィンガープリントは保存しない。';
