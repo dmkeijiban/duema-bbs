@@ -235,7 +235,7 @@ function TierMakerShowcase() {
   return (
     <div className="mb-2 overflow-hidden border border-gray-300 bg-white">
       <div className="flex h-[112px] min-w-0 items-stretch sm:h-24">
-        <div className="flex min-w-0 flex-1 flex-col justify-center px-3 py-2 sm:px-4">
+        <div className="flex min-w-0 flex-1 flex-col justify-center px-3 py-2 sm:px-4 md:w-[430px] md:flex-none">
           <span className="mb-0.5 w-fit rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black leading-none text-amber-900">
             NEW
           </span>
@@ -257,14 +257,22 @@ function TierMakerShowcase() {
             </Link>
           </div>
         </div>
-        <div className="relative w-24 shrink-0 overflow-hidden border-l border-gray-200 bg-stone-900 sm:w-52 md:w-64">
+        <div className="relative w-24 shrink-0 overflow-hidden border-l border-gray-200 bg-stone-900 sm:w-52 md:w-auto md:flex-1">
           <Image
             src="/images/makers/dm26-ex2-charisma-best-pack-v3.jpeg"
             alt="DM26-EX2 カリスマBEST"
             fill
             priority
-            sizes="(max-width: 639px) 96px, (max-width: 767px) 208px, 256px"
-            className="object-cover object-bottom"
+            sizes="(max-width: 639px) 96px, 208px"
+            className="object-cover object-bottom md:hidden"
+          />
+          <Image
+            src="/images/makers/dm26-ex2-charisma-best-main.webp"
+            alt="DM26-EX2 悪感謝祭 カリスマBEST"
+            fill
+            priority
+            sizes="(min-width: 1280px) 848px, calc(100vw - 446px)"
+            className="hidden object-cover object-center md:block"
           />
         </div>
       </div>
