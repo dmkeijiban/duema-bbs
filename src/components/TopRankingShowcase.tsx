@@ -239,7 +239,7 @@ function TierMakerShowcase() {
           <span className="mb-0.5 w-fit rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black leading-none text-amber-900">
             NEW
           </span>
-          <h2 className="w-full whitespace-nowrap text-[16px] font-black leading-tight tracking-[-0.055em] text-slate-900 sm:text-lg sm:tracking-tight">
+          <h2 className="w-full whitespace-nowrap text-justify text-[16px] font-black leading-tight text-slate-900 [text-align-last:justify] sm:text-lg">
             カリスマBEST Tier表メーカー
           </h2>
           <p className="mt-0.5 line-clamp-1 text-[11px] leading-tight text-slate-600 sm:text-xs">
