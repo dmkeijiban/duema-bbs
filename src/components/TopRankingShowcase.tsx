@@ -235,10 +235,10 @@ function TierMakerShowcase() {
   return (
     <div className="mb-2 overflow-hidden border border-gray-300 bg-white">
       <div className="flex h-[112px] min-w-0 items-stretch sm:h-24">
-        <div className="flex min-w-0 flex-1 flex-col justify-center px-3 py-2 sm:px-4 md:grid md:grid-cols-[minmax(300px,1fr)_auto] md:items-center md:gap-8 md:px-5">
+        <div className="flex min-w-0 flex-1 flex-col justify-center px-3 py-2 sm:px-4 md:grid md:grid-cols-[minmax(300px,1fr)_auto] md:items-center md:gap-4 md:px-5">
           <div className="min-w-0">
-            <h2 className="flex w-full items-center gap-1.5 whitespace-nowrap text-[16px] font-black leading-tight tracking-[-0.055em] text-slate-900 sm:text-lg sm:tracking-tight">
-              <span className="w-fit shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black leading-none tracking-normal text-amber-900">
+            <h2 className="flex w-full items-center gap-1.5 whitespace-nowrap text-[16px] font-black leading-tight tracking-[-0.055em] text-slate-900 sm:text-lg sm:tracking-tight md:text-xl">
+              <span className="w-fit shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black leading-none tracking-normal text-amber-900 md:text-xs">
                 NEW
               </span>
               <span>カリスマBEST Tier表メーカー</span>
@@ -246,7 +246,7 @@ function TierMakerShowcase() {
             <p className="mt-0.5 line-clamp-1 text-[11px] leading-tight text-slate-600 sm:text-xs md:hidden">
               新弾カードを並べて、自分だけのTier表を作ろう！
             </p>
-            <p className="mt-1 hidden text-xs leading-tight text-slate-500 md:block">
+            <p className="mt-1 hidden text-sm leading-tight text-slate-500 md:block">
               画像保存・X共有・みんなの集計にも対応
             </p>
           </div>
@@ -259,15 +259,27 @@ function TierMakerShowcase() {
             </Link>
           </div>
         </div>
-        <div className="relative w-24 shrink-0 overflow-hidden border-l border-gray-200 bg-stone-900 sm:w-52 md:w-64">
-          <Image
-            src="/images/makers/dm26-ex2-charisma-best-main.webp"
-            alt="DM26-EX2 悪感謝祭 カリスマBEST"
-            fill
-            priority
-            sizes="(max-width: 639px) 96px, (max-width: 767px) 208px, 256px"
-            className="object-cover object-bottom"
-          />
+        <div className="flex w-24 shrink-0 sm:w-52 md:w-[512px]">
+          <Link href={makerPath} prefetch={false} aria-label="Tier表を作る" className="relative block w-full overflow-hidden border-l border-gray-200 bg-stone-900 md:w-64">
+            <Image
+              src="/images/makers/dm26-ex2-charisma-best-main.webp"
+              alt="DM26-EX2 悪感謝祭 カリスマBEST"
+              fill
+              priority
+              sizes="(max-width: 639px) 96px, (max-width: 767px) 208px, 256px"
+              className="object-cover object-center"
+            />
+          </Link>
+          <Link href={makerPath} prefetch={false} aria-label="Tier表を作る" className="relative hidden w-64 overflow-hidden border-l border-gray-200 bg-gray-100 md:block">
+            <Image
+              src="/images/makers/dm26-ex2-charisma-best-tier-sample.jpg"
+              alt="カリスマBEST Tier表の作成例"
+              fill
+              priority
+              sizes="256px"
+              className="object-cover object-left-top"
+            />
+          </Link>
         </div>
       </div>
     </div>
