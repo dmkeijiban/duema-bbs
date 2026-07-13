@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useTransition } from 'react'
+import { useCallback, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatJstDateTime, formatRate, type MakerUsageStats } from '@/lib/maker-usage-stats'
 
@@ -20,12 +20,12 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
 export default function UsageStatsSection({ stats, errorMessage }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const refresh = () => startTransition(() => router.refresh())
+  const refresh = useCallback(() => startTransition(() => router.refresh()), [router])
 
   useEffect(() => {
     const timer = window.setInterval(refresh, 300_000)
     return () => window.clearInterval(timer)
-  })
+  }, [refresh])
 
   if (!stats) return <section className="mt-4 rounded-xl border bg-slate-100/60 p-4"><h2 className="font-black">利用状況</h2><p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">統計を取得できませんでした。{errorMessage ? `（${errorMessage}）` : ''}公開設定やTier操作には影響ありません。</p></section>
   const e = stats.events
