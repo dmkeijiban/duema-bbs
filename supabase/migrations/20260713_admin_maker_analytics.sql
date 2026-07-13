@@ -1,5 +1,10 @@
--- 管理画面の企画横断分析用。作成のみで、本番へはこのPRで適用しない。
+-- 管理画面の企画横断分析用。
 -- slugを列挙せず、maker_projectsに追加された企画を自動で対象にする。
+create index if not exists maker_events_created_project_type_idx
+  on public.maker_events(created_at,project_id,event_type);
+create index if not exists maker_submissions_updated_project_valid_idx
+  on public.maker_submissions(updated_at,project_id) where is_valid;
+
 create or replace function public.admin_maker_project_stats(p_period_start timestamptz default null)
 returns table(project_id uuid,slug text,title text,project_type text,status text,is_public boolean,
   page_views bigint,today_page_views bigint,unique_visitors bigint,registrants bigint,submission_count bigint,

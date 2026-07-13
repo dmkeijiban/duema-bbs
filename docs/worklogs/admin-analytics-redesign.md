@@ -4,6 +4,7 @@
 
 - 2026-07-13: 最新 `origin/main` (`8b6641d`) から専用worktree・`feat/unified-admin-analytics` を作成。
 - リポジトリ規約と共有メモを確認済み。既存構造の調査を開始する。
+- 2026-07-13 最終レビュー: `origin/main` は引き続き `8b6641d`。競合なし。migration適用前レビューと追加修正を実施中。
 
 ## 調査済みファイル
 
@@ -37,6 +38,9 @@
 - 既存専用ページは公開設定・編集機能を含むため削除せず維持。管理メニューの主分析導線だけ統合画面へ寄せる。
 - migration: `admin_maker_project_stats(period_start)` を追加。企画横断を1 RPCで返し、slug固定列挙なし。未適用環境は既存表のサーバー集計へfallback。
 - migration適用後のSupabaseクエリ数: サイト全体は内部指標4クエリ（GA4は外部API、5分cache）、企画一覧は1 RPC、企画詳細は4（project 1 + 一覧RPC 1 + 回答view 1 + cards 1）。更新・期間切替も同数。migration未適用時は企画一覧が `1 + 2N`、詳細は `4 + 2N`（N=企画数）。
+- 最終レビューで高コストfallbackを削除。RPC未適用時は明示エラーにして、企画数比例のクエリを静かに実行しない。
+- migrationへ期間横断用index（events created_at/project/type、valid submissions updated_at/project）を追加。
+- 殿堂解除選手権へ既存共通イベント計測を接続。UI変更なしでPV・予想開始・画像保存・X共有・集計閲覧を計測する。
 
 ## 変更済みファイル
 
@@ -78,11 +82,17 @@
 - Draft PR: `https://github.com/dmkeijiban/duema-bbs/pull/551`。
 - ブラウザ: Vercel Deployment Protectionでログイン要求。Chrome連携も利用不可だったため、管理画面本体・PC/390pxスクリーンショット・実データ整合は未検証。
 - migrationはファイル作成のみ。本番/Preview DBへ未適用。
+- 最新main照合: `origin/main=8b6641d`、PRはCLEAN/MERGEABLE、管理メニュー競合なし。
+- migration権限レビュー: `SECURITY DEFINER` + `search_path=public`、PUBLIC/anon/authenticated revoke、service_roleのみgrant。既存データ変更・削除なし。
+- 本番Supabase事前確認: Supabase CLIは未認証・未リンク。Vercel projectは `mkeijibans-projects/duema-bbs` と確認したが、CLIで取得したproduction envでは `SUPABASE_DB_URL` とservice roleが空値のため、本番project ref・既存function・事前件数を照合できず。migration未適用。
+- Vercel production envの一時ファイルは確認後に削除済み。秘密値はログ出力していない。
 
 ## 次に行う具体的な作業
 
 - 最終Preview再deploy、commit、push、Draft PR作成まで完了。
 - Deployment Protectionと管理認証を通せる環境でPC/390px・実データ・期間切替・更新動作を追加確認する。
+- 追加修正のTypeScript/ESLint/build/Previewを通してPRへpushする。
+- Supabase CLI login+link、または値の入った安全なDB接続経路が用意されるまで本番migrationとマージは保留する。
 
 ## 注意点
 

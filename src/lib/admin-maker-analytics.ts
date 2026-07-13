@@ -30,36 +30,13 @@ export function normalizePeriod(value: string | undefined): AnalyticsPeriod {
 export async function fetchProjectSummaries(period: AnalyticsPeriod): Promise<ProjectSummary[]> {
   const admin = createAdminClient()
   const rpcResult = await admin.rpc('admin_maker_project_stats', { p_period_start: periodStart(period) })
-  if (!rpcResult.error) {
-    return ((rpcResult.data ?? []) as ProjectStatsRpcRow[]).map(row => ({
-      id: row.project_id, slug: row.slug, title: row.title, type: row.project_type, status: row.status, isPublic: row.is_public,
-      pv: Number(row.page_views), todayPv: Number(row.today_page_views), uniqueActors: Number(row.unique_visitors), registrants: Number(row.registrants), submissions: Number(row.submission_count),
-      events: { ...emptyEvents(), tier_created: Number(row.tier_created), image_saved: Number(row.image_saved), x_shared: Number(row.x_shared), aggregate_viewed: Number(row.aggregate_viewed), signup_completed: Number(row.signup_completed), page_viewed: Number(row.page_views) },
-    }))
+  if (rpcResult.error) {
+    throw new Error(`企画分析RPCを実行できませんでした。migrationの適用状態を確認してください: ${rpcResult.error.message}`)
   }
-  // Preview DBへmigrationが未適用でも既存データを確認できる安全なフォールバック。
-  const { data: projects, error } = await admin.from('maker_projects').select('id,slug,title,type,status,is_public').order('created_at')
-  if (error) throw new Error(`企画一覧を取得できませんでした: ${error.message}`)
-  return Promise.all((projects ?? []).map(async project => {
-    let eventsQuery = admin.from('maker_events').select('event_type,user_id,anonymous_id').eq('project_id', project.id)
-    const start = periodStart(period)
-    if (start) eventsQuery = eventsQuery.gte('created_at', start)
-    let submissionsQuery = admin.from('maker_submissions').select('user_id').eq('project_id', project.id).eq('is_valid', true)
-    if (start) submissionsQuery = submissionsQuery.gte('updated_at', start)
-    const [eventResult, submissionResult] = await Promise.all([eventsQuery, submissionsQuery])
-    if (eventResult.error) throw new Error(`${project.title}のイベント集計に失敗しました: ${eventResult.error.message}`)
-    if (submissionResult.error) throw new Error(`${project.title}の回答集計に失敗しました: ${submissionResult.error.message}`)
-    const events = emptyEvents()
-    const actors = new Set<string>()
-    for (const row of eventResult.data ?? []) {
-      if (row.event_type in events) events[row.event_type as MakerEventType] += 1
-      if (row.event_type === 'page_viewed') actors.add(row.user_id ?? row.anonymous_id ?? '')
-    }
-    const registrants = new Set((submissionResult.data ?? []).map(row => row.user_id)).size
-    const todayQuery = admin.from('maker_events').select('id', { count:'exact', head:true }).eq('project_id', project.id).eq('event_type','page_viewed').gte('created_at',getJstTodayCutoffUtcIso())
-    const todayResult = await todayQuery
-    return { id: project.id, slug: project.slug, title: project.title, type: project.type, status: project.status, isPublic: project.is_public,
-      pv: events.page_viewed, todayPv: todayResult.count ?? 0, uniqueActors: actors.has('') ? actors.size - 1 : actors.size, registrants, submissions: submissionResult.data?.length ?? 0, events }
+  return ((rpcResult.data ?? []) as ProjectStatsRpcRow[]).map(row => ({
+    id: row.project_id, slug: row.slug, title: row.title, type: row.project_type, status: row.status, isPublic: row.is_public,
+    pv: Number(row.page_views), todayPv: Number(row.today_page_views), uniqueActors: Number(row.unique_visitors), registrants: Number(row.registrants), submissions: Number(row.submission_count),
+    events: { ...emptyEvents(), tier_created: Number(row.tier_created), image_saved: Number(row.image_saved), x_shared: Number(row.x_shared), aggregate_viewed: Number(row.aggregate_viewed), signup_completed: Number(row.signup_completed), page_viewed: Number(row.page_views) },
   }))
 }
 

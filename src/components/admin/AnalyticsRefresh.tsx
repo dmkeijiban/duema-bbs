@@ -18,9 +18,11 @@ export function AnalyticsRefresh({ updatedAt }: { updatedAt: string }) {
       router.refresh()
       lastRefresh.current = Date.now()
       setLastUpdated(new Date().toISOString())
-      window.setTimeout(() => { refreshing.current = false }, 0)
     })
   }, [router])
+  useEffect(() => {
+    if (!pending) refreshing.current = false
+  }, [pending])
   useEffect(() => {
     const tick = () => { if (!document.hidden && Date.now() - lastRefresh.current >= INTERVAL) refresh() }
     const timer = window.setInterval(tick, INTERVAL)
