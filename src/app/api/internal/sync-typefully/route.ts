@@ -276,6 +276,11 @@ function collectImageUrls(value: unknown, urls = new Set<string>()): Set<string>
     for (const key of ['media_urls', 'mediaUrls', 'image_urls', 'imageUrls', 'images', 'media', 'attachments']) {
       collectImageUrls(record[key], urls)
     }
+    // Typefullyのレスポンスは媒体・公開状態によってURLのキー名が変わる。
+    // media配下に渡された未知のキーも再帰的に確認し、temporary_url等を取りこぼさない。
+    for (const nested of Object.values(record)) {
+      collectImageUrls(nested, urls)
+    }
   }
 
   return urls
@@ -553,6 +558,16 @@ async function filterExistingPublishedFallbackPosts(
 
   const skipReasons: PublishedFallbackSkipReasons = {}
   const filtered = posts.filter((post) => {
+    const existing = existingRows.find((row) => row.typefully_id === post.typefullyId)
+    const canEnrichMissingImages = Boolean(
+      existing &&
+      (existing.image_urls?.length ?? 0) === 0 &&
+      post.imageUrls.length > 0
+    )
+    // 予約時点では画像URLがまだ返らず、公開後に初めて取得できる場合がある。
+    // 画像なしの既存行だけは重複扱いにせず、公開済みデータで補完する。
+    if (canEnrichMissingImages) return true
+
     if (existingTypefullyIds.has(post.typefullyId)) {
       incrementSkipReason(skipReasons, 'existing_typefully_id')
       return false
@@ -662,12 +677,27 @@ async function upsertTodayTypefullyPosts(
         .from('x_posts')
         .update({
           source_status: post.sourceStatus,
+          image_urls: imageUrls,
           meta: nextMeta,
         })
         .eq('id', existing.id)
       if (updateMetaError) {
         errors++
         console.error('[sync-typefully] x_posts locked meta update error:', updateMetaError.message)
+      }
+
+      // スレ作成後にTypefullyから画像URLを取得できた場合も、画像未設定のスレへ後付けする。
+      const primaryImageUrl = getPrimaryImageUrl(imageUrls)
+      if (primaryImageUrl) {
+        const { error: threadImageError } = await supabase
+          .from('threads')
+          .update({ image_url: primaryImageUrl })
+          .eq('id', existing.thread_id)
+          .is('image_url', null)
+        if (threadImageError) {
+          errors++
+          console.error('[sync-typefully] thread image backfill error:', threadImageError.message)
+        }
       }
       continue
     }
