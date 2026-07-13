@@ -512,8 +512,10 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
   async function shareToX() {
     if (isSharingToX) return
-    const text = 'DM26-EX2 悪感謝祭 カリスマBESTのTier表を作りました！\n#デュエマ'
-    const tweetUrl = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(location.href)}`
+    const text = '悪感謝祭カリスマBEST Tier表メーカー'
+    // X側に残っている古いOGPキャッシュを避け、専用サムネイルを再取得させる。
+    const shareUrl = `${location.origin}/makers/dm26-ex2-charisma-best-tier?share=tier-v3`
+    const tweetUrl = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`
     const mobile = isMobileDevice()
     const popup = mobile ? null : window.open(tweetUrl, '_blank', 'noopener,noreferrer')
     if (!mobile && !popup) {
@@ -529,7 +531,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
       const blob = await getTierPng()
       deliverTierImage(blob)
       if (mobile) {
-        const message = `${text}\n${location.href}`
+        const message = `${text}\n${shareUrl}`
         location.href = `twitter://post?message=${encodeURIComponent(message)}`
       }
     } catch (error) {
