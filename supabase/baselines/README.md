@@ -3,7 +3,7 @@
 このディレクトリは履歴修復前の検証用であり、Supabase CLIの通常migration適用対象ではない。
 
 - `20260713193000_production_schema_baseline.sql`: 本番 `nodgfukqvuwvgfnlzvnh` の `public` schema catalogから生成したschema-only baseline候補。
-- 本番へ適用しない。空DBで再現検証し、本番とのschema diffが0になった後でのみ正式なmigrationディレクトリへ移す。
+- PostgreSQL 17.10一時空DBへの全適用と、本番catalogとの意味的schema diff 0を確認済み。本番へSQL適用せず、履歴repair前にmigration listを再確認する。
 - table data、seed、SPRカード、migration履歴操作、PR #551の未適用analytics RPC/indexは含まない。
 - 既存 `supabase/migrations` は変更・削除していない。
 

@@ -316,9 +316,9 @@ schema外のdata差分:
 
 ### schema-only dump取得
 
-- 公式 `supabase db dump --linked --schema public` はDocker Desktopがなく実行不能。
-- ローカル`pg_dump`、利用可能なWSL distroも存在しない。
-- 代替として `supabase db query --linked` で本番`pg_catalog`を読み、DDLをschema-only baseline候補へ再構成した。
+- EDB公式PostgreSQL 17.10 portable clientを使用し、本番PostgreSQL 17.6から`public` schema-only dumpを取得した。
+- 保存先: `docs/worklogs/pr551-production-schema-official-20260713.sql`。table dataと接続情報は含まない。
+- あわせて `supabase db query --linked` で本番`pg_catalog`を読み、DDLをschema-only baseline候補へ再構成した。
 - 生成結果: 904ステートメント、115,498文字（commit時は改行差でbyte数が変動しうる）。
 - 範囲: extensions 3、sequence 12、table 42、constraint 142、非constraint index 70、function 15、view 2、RLS 42、policy 50、trigger 8、relation/function ACL。
 - table data、`INSERT`/`UPDATE`/`DELETE`/`COPY`/`TRUNCATE`は含まない。function本体内のDMLは本番function定義そのものなので含む。
@@ -369,11 +369,14 @@ schema外のdata差分:
 - table/sequence/index/viewの重複CREATE key: 0。
 - PR #551未適用RPC/index、SPR固定UUIDの混入: 0。
 - identity sequenceはtableの`GENERATED ... AS IDENTITY`へ任せ、別CREATE SEQUENCEとの重複を除外した。
-- 未完了: Docker/Postgresを使った空DB適用、依存順・構文実行、公式pg_dumpとのdiff。
+- PostgreSQL 17.10一時空DBへbaselineを`ON_ERROR_STOP=1`で全適用し成功した。
+- 全40 foreign keyを全PK/UNIQUE/CHECK・非constraint indexの後へ移し、参照先一意制約の依存順を解消した。
+- PostgreSQL 17の`MAINTAIN` ACLを本番と同じ対象へ補完した。
+- 本番と一時DBのcatalog比較結果: column/default/nullability/identity、constraint、index、function 15件、view、RLS、policy、trigger、relation ACLが意味的に一致。function ACL配列の表示順とpg_dumpの識別子引用・owner/default ACL出力は環境差であり、public schema実体の差分は0。
 
 ### baseline後の履歴修復コマンド案（未実行）
 
-前提として、remote8件とbaselineだけを含むclean migration directory、空DB再現成功、明示承認が必要。
+前提として、remote8件とbaselineだけを含むclean migration directory、実行直前のmigration list再取得、明示承認が必要。空DB再現とschema diff 0は確認済み。
 
 ```powershell
 npx.cmd supabase migration repair --linked --status applied 20260713193000
@@ -388,4 +391,4 @@ npx.cmd supabase migration repair --linked --status reverted 20260713193000
 npx.cmd supabase migration list
 ```
 
-現時点ではbaseline候補を本番適用してはいけない。空DB検証と公式schema dump比較が未完了である。
+baseline SQLそのものを本番へ適用してはいけない。schema diff 0のため、実行直前の履歴再確認後にbaseline version 1件だけを`applied`へrepairする準備は完了している（本作業では未実行）。
