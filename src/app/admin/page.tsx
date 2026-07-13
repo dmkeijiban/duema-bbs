@@ -32,6 +32,7 @@ import { AdminSubmitButton } from './AdminSubmitButton'
 import { AccessTrendCard } from './AccessTrendCard'
 import { AdminScrollManager } from './AdminScrollManager'
 import { AdminLoginView } from './AdminLoginView'
+import { AdminDashboardRefresh } from './AdminDashboardRefresh'
 import { HonorTitleToggleButton } from './HonorTitleToggleButton'
 import { PersistentDetails } from './PersistentDetails'
 import { HONOR_TITLES } from '@/lib/honor-title'
@@ -756,6 +757,7 @@ export default async function AdminPage({
           <p className="text-[11px] text-gray-500">
             GA4の表示回数（screenPageViews）と、掲示板内部のスレ閲覧数・コメント数を分けて確認します。
           </p>
+          <AdminDashboardRefresh />
           <div>
             {ga4Dashboard.ok && (
               <div className="mb-4">
@@ -786,7 +788,7 @@ export default async function AdminPage({
                   <MetricCard label="過去7日間のユーザー数" value={ga4Dashboard.summary.sevenDayUsers} />
                 </div>
                 <p className="mt-2 text-[10px] text-gray-400">
-                  GA4 property: {ga4Dashboard.propertyId} / イベント数はPVとして扱っていません。/ {ADMIN_DASHBOARD_CACHE_SECONDS / 3600}時間キャッシュ
+                  GA4 property: {ga4Dashboard.propertyId} / イベント数はPVとして扱っていません。/ {ADMIN_DASHBOARD_CACHE_SECONDS / 60}分キャッシュ
                 </p>
               </>
             ) : (
