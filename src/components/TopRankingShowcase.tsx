@@ -259,7 +259,7 @@ function TierMakerShowcase() {
             </Link>
           </div>
         </div>
-        <div className="flex w-24 shrink-0 sm:w-52 md:w-[512px]">
+        <div className="flex w-24 shrink-0 sm:w-52 md:w-[520px] md:gap-2">
           <Link href={makerPath} prefetch={false} aria-label="Tier表を作る" className="relative hidden w-64 overflow-hidden border-l border-gray-200 bg-gray-100 md:block">
             <Image
               src="/images/makers/dm26-ex2-charisma-best-tier-sample.jpg"
