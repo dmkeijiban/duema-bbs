@@ -239,7 +239,7 @@ function TierMakerShowcase() {
           <span className="mb-0.5 w-fit rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black leading-none text-amber-900">
             NEW
           </span>
-          <h2 className="whitespace-nowrap text-[15px] font-black leading-tight tracking-tight text-slate-900 sm:text-base">
+          <h2 className="w-full whitespace-nowrap text-[16px] font-black leading-tight tracking-[-0.055em] text-slate-900 sm:text-lg sm:tracking-tight">
             カリスマBEST Tier表メーカー
           </h2>
           <p className="mt-0.5 line-clamp-1 text-[11px] leading-tight text-slate-600 sm:text-xs">
@@ -259,12 +259,12 @@ function TierMakerShowcase() {
         </div>
         <div className="relative w-24 shrink-0 overflow-hidden border-l border-gray-200 bg-stone-900 sm:w-52 md:w-64">
           <Image
-            src="/images/makers/dm26-ex2-charisma-best-pack-v2.jpeg"
+            src="/images/makers/dm26-ex2-charisma-best-pack-v3.jpeg"
             alt="DM26-EX2 カリスマBEST"
             fill
             priority
             sizes="(max-width: 639px) 96px, (max-width: 767px) 208px, 256px"
-            className="object-cover object-top"
+            className="object-cover object-bottom"
           />
         </div>
       </div>
