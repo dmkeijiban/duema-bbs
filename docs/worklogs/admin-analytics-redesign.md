@@ -5,6 +5,7 @@
 - 2026-07-13: 最新 `origin/main` (`8b6641d`) から専用worktree・`feat/unified-admin-analytics` を作成。
 - リポジトリ規約と共有メモを確認済み。既存構造の調査を開始する。
 - 2026-07-13 最終レビュー: `origin/main` は引き続き `8b6641d`。競合なし。migration適用前レビューと追加修正を実施中。
+- 2026-07-13 本番schema・migration履歴の読み取り専用照合を実施。詳細は `docs/worklogs/pr551-supabase-migration-reconciliation.md`。重複8桁versionと本番14桁versionの構造不一致があるため、baseline作成前のrepair/db push/単独適用は保留。
 
 ## 調査済みファイル
 
