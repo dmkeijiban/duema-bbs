@@ -4,6 +4,7 @@ export const TOP_SHOWCASE_MODE_VALUES = [
   'overall_ranking',
   'campaign_ranking',
   'recommended',
+  'tier_maker',
   'hidden',
 ] as const
 
@@ -36,6 +37,11 @@ export const TOP_SHOWCASE_MODE_OPTIONS: Array<{ value: TopShowcaseMode; label: s
     value: 'recommended',
     label: 'おすすめ',
     description: 'おすすめスレッドをトップ上部に表示します。',
+  },
+  {
+    value: 'tier_maker',
+    label: 'Tier表メーカー',
+    description: 'カリスマBEST Tier表メーカーへの導線を表示します。',
   },
   {
     value: 'hidden',

@@ -164,6 +164,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   const [pending, startTransition] = useTransition()
   const skipFirstDraftPersist = useRef(true)
   const hasTrackedTierCreated = useRef(false)
+  const hasOpenedCommunityFromHash = useRef(false)
   const exportImageCache = useRef(new Map<string, Promise<HTMLImageElement>>())
   const pngCache = useRef(new Map<string, Blob>())
   const pngGeneration = useRef(new Map<string, Promise<Blob>>())
@@ -263,6 +264,18 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
       // 計測失敗は無視する
     }
   }
+
+  useEffect(() => {
+    if (window.location.hash !== '#community-tier' || hasOpenedCommunityFromHash.current) return
+    hasOpenedCommunityFromHash.current = true
+    setShowCommunity(true)
+    trackEvent('aggregate_viewed')
+    window.requestAnimationFrame(() => {
+      document.getElementById('community-tier')?.scrollIntoView({ block: 'start' })
+    })
+    // 初回マウント時だけURLを確認する。trackEventはeventSlug以外の状態に依存しない。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function moveCard(cardId: string, groupKey: string | null) {
     setDraft(current => {
@@ -591,7 +604,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
         </div>
 
         {showCommunity && (
-          <section className="rounded-xl border bg-white p-4">
+          <section id="community-tier" className="scroll-mt-4 rounded-xl border bg-white p-4">
             <h2 className="text-lg font-black">みんなのTier</h2>
             <p className="mt-1 text-xs text-gray-500">カードごとの回答割合です。</p>
             {communityCards.length === 0 ? (

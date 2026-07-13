@@ -8,6 +8,7 @@ import {
 } from '@/lib/cached-queries'
 import { RecommendSection } from '@/components/RecommendSection'
 import Link from 'next/link'
+import Image from 'next/image'
 import type { ReactNode } from 'react'
 
 const AVATAR_RING_COLORS = [
@@ -228,6 +229,48 @@ function RankingShowcase({ title, users, titleHref }: { title: string; users: Sh
   )
 }
 
+function TierMakerShowcase() {
+  const makerPath = '/makers/dm26-ex2-charisma-best-tier'
+
+  return (
+    <div className="mb-2 overflow-hidden border border-gray-300 bg-white">
+      <div className="flex h-[112px] min-w-0 items-stretch sm:h-24">
+        <div className="flex min-w-0 flex-1 flex-col justify-center px-3 py-2 sm:px-4">
+          <span className="mb-0.5 w-fit rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black leading-none text-amber-900">
+            NEW
+          </span>
+          <h2 className="truncate text-sm font-black text-slate-900 sm:text-base">
+            カリスマBEST Tier表メーカー
+          </h2>
+          <p className="mt-0.5 line-clamp-1 text-[11px] leading-tight text-slate-600 sm:text-xs">
+            新弾カードを並べて、自分だけのTier表を作ろう！
+          </p>
+          <p className="mt-0.5 hidden text-[11px] leading-tight text-slate-500 md:block">
+            画像保存・X共有・みんなの集計にも対応
+          </p>
+          <div className="mt-1.5 grid grid-cols-2 gap-1.5 sm:flex">
+            <Link href={makerPath} prefetch={false} className="rounded bg-blue-800 px-2 py-1.5 text-center text-[11px] font-bold leading-none text-white hover:bg-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 sm:px-3 sm:text-xs">
+              Tier表を作る
+            </Link>
+            <Link href={`${makerPath}#community-tier`} prefetch={false} className="rounded border border-blue-700 bg-white px-2 py-1.5 text-center text-[11px] font-bold leading-none text-blue-800 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 sm:px-3 sm:text-xs">
+              みんなのTierを見る
+            </Link>
+          </div>
+        </div>
+        <div className="relative w-24 shrink-0 overflow-hidden border-l border-gray-200 bg-slate-100 sm:w-52 md:w-64">
+          <Image
+            src="/og/makers/dm26-ex2-charisma-best-tier-v2.png"
+            alt="カリスマBEST Tier表メーカーの完成イメージ"
+            fill
+            sizes="(max-width: 639px) 96px, (max-width: 767px) 208px, 256px"
+            className="object-cover object-center"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function toRankingUsers(rows: UserRankingRow[]): ShowcaseRankingUser[] {
   return rows.map((row, index) => ({
     displayName: row.display_name,
@@ -244,6 +287,10 @@ export async function TopRankingShowcase() {
 
   if (mode === 'recommended') {
     return <RecommendSection />
+  }
+
+  if (mode === 'tier_maker') {
+    return <TierMakerShowcase />
   }
 
   if (mode === 'monthly_ranking' || mode === 'overall_ranking') {
