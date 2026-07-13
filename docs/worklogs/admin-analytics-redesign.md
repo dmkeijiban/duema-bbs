@@ -86,6 +86,12 @@
 - migration権限レビュー: `SECURITY DEFINER` + `search_path=public`、PUBLIC/anon/authenticated revoke、service_roleのみgrant。既存データ変更・削除なし。
 - 本番Supabase事前確認: Supabase CLIは未認証・未リンク。Vercel projectは `mkeijibans-projects/duema-bbs` と確認したが、CLIで取得したproduction envでは `SUPABASE_DB_URL` とservice roleが空値のため、本番project ref・既存function・事前件数を照合できず。migration未適用。
 - Vercel production envの一時ファイルは確認後に削除済み。秘密値はログ出力していない。
+- 最終レビュー修正 commit: `596c2bb`。Vercel Preview build/check成功。
+- 最新Preview: `https://duema-jzvo9p4mi-mkeijibans-projects.vercel.app`。
+- ChromeではDeployment Protectionを通過。管理パスワードはローカル設定とPreviewで不一致だったため管理画面にはログインできず、管理PC/390px・実データ・クエリ数・更新動作は未検証。
+- 公開回帰（Preview）: カリスマBESTと殿堂解除選手権はPC相当幅で見出し・主要操作表示、横スクロールなし、console errorなし。390pxでも両ページとも `scrollWidth=clientWidth=384` で横スクロールなし。
+- TypeScript成功、全ESLintはerror 0（既存warning 18）、`git diff --check` 成功。
+- 本番migration、本番データ検証、Draft解除、main merge、本番deployは未実施。
 
 ## 次に行う具体的な作業
 
@@ -93,6 +99,7 @@
 - Deployment Protectionと管理認証を通せる環境でPC/390px・実データ・期間切替・更新動作を追加確認する。
 - 追加修正のTypeScript/ESLint/build/Previewを通してPRへpushする。
 - Supabase CLI login+link、または値の入った安全なDB接続経路が用意されるまで本番migrationとマージは保留する。
+- Vercelの現行 `ADMIN_PASSWORD` でPreview管理認証を通し、管理画面のPC/390px・期間・更新・Networkを検証する。
 
 ## 注意点
 
