@@ -7,6 +7,8 @@ import { getCurrentHallCards, getHallCardOfficialId } from '@/lib/hall-of-fame'
 import { getOwnedMakerSubmissionIds } from '@/lib/maker-anonymous-owner'
 import EditTierMaker from './EditTierMaker'
 import { updateMakerSubmission } from './actions'
+import { ADMIN_COOKIE, verifyAdminCookie } from '@/lib/admin-auth'
+import { cookies } from 'next/headers'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +27,7 @@ export default async function EditMakerSubmissionPage({ params }: { params: Prom
   const { slug, submissionId } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const isAdmin = verifyAdminCookie((await cookies()).get(ADMIN_COOKIE)?.value)
   const admin = createAdminClient()
   const { data: project } = await admin.from('maker_projects').select('id,type,config').eq('slug', slug).eq('is_public', true).eq('status', 'published').maybeSingle()
   if (!project || !['tier', 'prediction'].includes(project.type)) notFound()
@@ -39,7 +42,7 @@ export default async function EditMakerSubmissionPage({ params }: { params: Prom
     .maybeSingle()
   if (!submission) notFound()
   const ownedIds = await getOwnedMakerSubmissionIds(project.id, [submissionId], user?.id ?? null)
-  if (!ownedIds.has(submissionId)) notFound()
+  if (!isAdmin && !ownedIds.has(submissionId)) notFound()
 
   const config = parseMakerProjectConfig(project.config)
   const [{ data: links }, { data: items }] = await Promise.all([

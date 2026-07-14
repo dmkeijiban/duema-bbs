@@ -3,10 +3,13 @@
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 import { getMakerAnonymousEditHash } from '@/lib/maker-anonymous-owner'
+import { ADMIN_COOKIE, verifyAdminCookie } from '@/lib/admin-auth'
+import { cookies } from 'next/headers'
 
 export async function deleteMakerSubmission(slug: string, submissionId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const isAdmin = verifyAdminCookie((await cookies()).get(ADMIN_COOKIE)?.value)
   const editHash = await getMakerAnonymousEditHash()
   const admin = createAdminClient()
   const { data: project } = await admin.from('maker_projects').select('id,type').eq('slug', slug).eq('is_public', true).eq('status', 'published').maybeSingle()
@@ -23,7 +26,10 @@ export async function deleteMakerSubmission(slug: string, submissionId: string) 
   if (!submission) return { ok: false, message: '投稿が見つかりません' }
 
   let error: { message: string } | null = null
-  if (submission.user_id !== null) {
+  if (isAdmin) {
+    const result = await admin.rpc('delete_admin_maker_submission', { p_project_id: project.id, p_submission_id: submissionId })
+    error = result.error
+  } else if (submission.user_id !== null) {
     if (!user || submission.user_id !== user.id) return { ok: false, message: 'この投稿を削除する権限がありません' }
     const result = await admin.rpc('delete_owned_maker_submission', { p_project_id: project.id, p_submission_id: submissionId, p_user_id: user.id })
     error = result.error

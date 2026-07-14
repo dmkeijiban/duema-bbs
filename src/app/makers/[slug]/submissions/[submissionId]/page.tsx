@@ -5,6 +5,8 @@ import { getPublicMakerProject, getPublicSubmission, makerSubmissionView } from 
 import { createClient } from '@/lib/supabase-server'
 import SubmissionActions from '../SubmissionActions'
 import { getOwnedMakerSubmissionIds } from '@/lib/maker-anonymous-owner'
+import { ADMIN_COOKIE, verifyAdminCookie } from '@/lib/admin-auth'
+import { cookies } from 'next/headers'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +20,7 @@ export default async function MakerSubmissionDetailPage({ params }: { params: Pr
   const url = `https://www.duema-bbs.com/makers/${slug}/submissions/${submissionId}`
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const isAdmin = verifyAdminCookie((await cookies()).get(ADMIN_COOKIE)?.value)
   const prediction = project.type === 'prediction'
   const ownedSubmissionIds = await getOwnedMakerSubmissionIds(project.id, [submissionId], user?.id ?? null)
   const shareUrl = `https://twitter.com/intent/tweet?${new URLSearchParams({ text: `${submission.title}\n${project.title}`, url })}`
@@ -28,6 +31,6 @@ export default async function MakerSubmissionDetailPage({ params }: { params: Pr
     <time className="mt-1 block text-xs text-gray-400">{new Date(submission.created_at).toLocaleString('ja-JP')}</time>
     {submission.comment && <p className="mt-4 whitespace-pre-wrap break-words rounded-xl border bg-white p-4 leading-7">{submission.comment}</p>}
     <div className="mt-5"><MakerSubmissionBoard submission={submission} groups={config.groups} enableActions exportTitle={prediction ? '2026年7月27日 殿堂解除選手権' : `${submission.title}｜${project.title}`} exportLayout={prediction ? 'prediction' : 'tier'} shareUrl={shareUrl} /></div>
-    <SubmissionActions slug={slug} submissionId={submissionId} canEdit={ownedSubmissionIds.has(submissionId)} />
+    <SubmissionActions slug={slug} submissionId={submissionId} canEdit={isAdmin || ownedSubmissionIds.has(submissionId)} />
   </article></main>
 }
