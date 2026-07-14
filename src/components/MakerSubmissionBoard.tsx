@@ -61,12 +61,14 @@ export default function MakerSubmissionBoard({
   compact = false,
   enableActions = false,
   exportTitle,
+  shareUrl,
 }: {
   submission: PublicSubmission
   groups: MakerGroup[]
   compact?: boolean
   enableActions?: boolean
   exportTitle?: string
+  shareUrl?: string
 }) {
   const [zoomedCard, setZoomedCard] = useState<ZoomedCard | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -232,9 +234,12 @@ export default function MakerSubmissionBoard({
     </div>
 
     {enableActions && <div className="mt-4">
-      <button type="button" disabled={isSaving} onClick={saveImage} className="inline-flex rounded-lg border border-blue-700 bg-white px-5 py-3 font-bold text-blue-700 disabled:opacity-50">
-        {isSaving ? '画像生成中...' : '画像保存'}
-      </button>
+      <div className="grid grid-cols-2 gap-3">
+        <button type="button" disabled={isSaving} onClick={saveImage} className="flex min-h-12 items-center justify-center rounded-lg border border-blue-700 bg-white px-3 py-3 text-center font-bold text-blue-700 disabled:opacity-50">
+          {isSaving ? '画像生成中...' : '画像保存'}
+        </button>
+        {shareUrl && <a href={shareUrl} target="_blank" rel="noopener noreferrer" className="flex min-h-12 items-center justify-center rounded-lg bg-black px-3 py-3 text-center font-bold text-white">Xで共有</a>}
+      </div>
       {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
     </div>}
 
@@ -242,7 +247,6 @@ export default function MakerSubmissionBoard({
       <div className="relative max-h-full max-w-lg" onClick={event => event.stopPropagation()}>
         <button type="button" onClick={() => setZoomedCard(null)} className="absolute -right-2 -top-12 rounded bg-white px-4 py-2 font-bold text-black">閉じる</button>
         <img src={zoomedCard.imageUrl} alt={zoomedCard.name} className="max-h-[82vh] max-w-full rounded object-contain" />
-        <p className="mt-2 text-center font-bold text-white">{zoomedCard.name}</p>
       </div>
     </div>}
 
