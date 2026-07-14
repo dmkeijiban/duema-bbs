@@ -6,7 +6,7 @@ import type { PublicSubmission } from '@/lib/maker-submissions'
 
 type ZoomedCard = { name: string; imageUrl: string }
 
-const IMAGE_PROXY_PATH = '/api/admin/makers/dm26-ex2-card-image'
+const IMAGE_PROXY_PATH = '/api/makers/dm26-ex2-card-image'
 const CARDS_PER_LINE = 6
 const CARD_WIDTH = 138
 const CARD_HEIGHT = Math.round(CARD_WIDTH * 88 / 63)
