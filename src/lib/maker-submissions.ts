@@ -5,7 +5,7 @@ import { makerCommunityLabel, parseMakerProjectConfig } from '@/lib/maker'
 export type PublicMakerProject = { id: string; slug: string; title: string; type: string; config: unknown }
 export type PublicSubmission = {
   id: string; title: string; comment: string | null; thumbnail_url: string | null; created_at: string
-  user_id: string; authorName: string; items: { card_id: string; group_key: string; position: number; card: { name: string; image_url: string | null } }[]
+  user_id: string | null; authorName: string; items: { card_id: string; group_key: string; position: number; card: { name: string; image_url: string | null } }[]
 }
 
 export const getPublicMakerProject = cache(async (slug: string) => {
@@ -22,10 +22,10 @@ async function hydrate(projectId: string, submissionRows: Record<string, unknown
   if (!submissionRows.length) return []
   const admin = createAdminClient()
   const ids = submissionRows.map(row => String(row.id))
-  const userIds = [...new Set(submissionRows.map(row => String(row.user_id)))]
+  const userIds = [...new Set(submissionRows.flatMap(row => typeof row.user_id === 'string' ? [row.user_id] : []))]
   const [{ data: items }, { data: profiles }] = await Promise.all([
     admin.from('maker_submission_items').select('submission_id,card_id,group_key,position,cards(name,image_url)').in('submission_id', ids).order('position'),
-    admin.from('profiles').select('id,display_name,profile_hidden,account_suspended,withdrawn_at').in('id', userIds),
+    userIds.length ? admin.from('profiles').select('id,display_name,profile_hidden,account_suspended,withdrawn_at').in('id', userIds) : Promise.resolve({ data: [] }),
   ])
   const profilesById = new Map((profiles ?? []).map(profile => [profile.id, profile as Record<string, unknown>]))
   const itemsBySubmission = new Map<string, PublicSubmission['items']>()
@@ -38,9 +38,10 @@ async function hydrate(projectId: string, submissionRows: Record<string, unknown
     itemsBySubmission.set(item.submission_id, list)
   }
   return submissionRows.flatMap(row => {
+    if (row.user_id === null) return [{ ...row, authorName: '名無しのデュエリスト', items: itemsBySubmission.get(String(row.id)) ?? [] } as PublicSubmission]
     const profile = profilesById.get(String(row.user_id)) ?? null
     if (!visibleProfile(profile)) return []
-    return [{ ...row, authorName: String(profile?.display_name || 'デュエマプレイヤー'), items: itemsBySubmission.get(String(row.id)) ?? [] } as PublicSubmission]
+    return [{ ...row, authorName: String(profile?.display_name), items: itemsBySubmission.get(String(row.id)) ?? [] } as PublicSubmission]
   })
 }
 

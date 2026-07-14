@@ -25,7 +25,7 @@ export default async function MakerSubmissionDetailPage({ params }: { params: Pr
     <time className="mt-1 block text-xs text-gray-400">{new Date(submission.created_at).toLocaleString('ja-JP')}</time>
     {submission.comment && <p className="mt-4 whitespace-pre-wrap break-words rounded-xl border bg-white p-4 leading-7">{submission.comment}</p>}
     <div className="mt-5"><MakerSubmissionBoard submission={submission} groups={config.groups} /></div>
-    <SubmissionActions slug={slug} submissionId={submissionId} canEdit={user?.id === submission.user_id} />
+    <SubmissionActions slug={slug} submissionId={submissionId} canEdit={submission.user_id !== null && user?.id === submission.user_id} anonymousOwner={submission.user_id === null} />
     <a href={shareUrl} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex rounded-lg bg-black px-5 py-3 font-bold text-white">Xで共有</a>
   </article></main>
 }
