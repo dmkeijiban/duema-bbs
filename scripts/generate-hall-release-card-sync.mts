@@ -56,6 +56,14 @@ select name,normalized_name,image_url,'{}'::text[],null,null,regulation,true,'ta
 from hall_release_card_sync
 on conflict do nothing;
 
+-- 《幻緑の双月／母なる星域》だけ、既存カードも同期元の正しいa面URLへ追従させる。
+update public.cards c
+set image_url=s.image_url
+from hall_release_card_sync s
+where c.source_kind='takaratomy_card_id' and c.source_key=s.source_key
+  and s.source_key='dmex04-052'
+  and c.image_url is distinct from s.image_url;
+
 do $$ begin
   if (select count(*) from hall_release_card_sync s join public.cards c
       on c.source_kind='takaratomy_card_id' and c.source_key=s.source_key and c.is_active) <> 128 then
