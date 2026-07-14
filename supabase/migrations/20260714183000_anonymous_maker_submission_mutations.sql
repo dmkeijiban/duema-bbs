@@ -1,5 +1,7 @@
 -- 匿名maker投稿を、登録時と同じ端末の編集用トークンでのみ更新・削除できるようにする。
 
+begin;
+
 create or replace function public.update_anonymous_maker_submission(
   p_project_id uuid,
   p_submission_id uuid,
@@ -128,3 +130,9 @@ $$;
 
 revoke all on function public.delete_anonymous_maker_submission(uuid,uuid,text) from public,anon,authenticated;
 grant execute on function public.delete_anonymous_maker_submission(uuid,uuid,text) to service_role;
+
+insert into supabase_migrations.schema_migrations(version,name)
+values('20260714183000','anonymous_maker_submission_mutations')
+on conflict(version) do nothing;
+
+commit;
