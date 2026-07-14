@@ -55,6 +55,10 @@ function safeFilename(title: string) {
   return `${normalized || 'tier-table'}.png`
 }
 
+function regulationLabel(value: string | null) {
+  return value === 'premium_hall' ? 'プレミアム殿堂' : value === 'hall' ? '殿堂' : null
+}
+
 export default function MakerSubmissionBoard({
   submission,
   groups,
@@ -177,6 +181,17 @@ export default function MakerSubmissionBoard({
           context.fillStyle = '#e2e8f0'
           context.fillRect(x, cardY, CARD_WIDTH, CARD_HEIGHT)
         }
+        const badge = regulationLabel(item.card.regulation)
+        if (badge) {
+          context.font = 'bold 15px sans-serif'
+          const badgeWidth = context.measureText(badge).width + 14
+          context.fillStyle = item.card.regulation === 'premium_hall' ? '#991b1b' : '#facc15'
+          context.fillRect(x + CARD_WIDTH - badgeWidth - 4, cardY + CARD_HEIGHT - 25, badgeWidth, 21)
+          context.fillStyle = item.card.regulation === 'premium_hall' ? '#ffffff' : '#422006'
+          context.textAlign = 'center'
+          context.textBaseline = 'middle'
+          context.fillText(badge, x + CARD_WIDTH - badgeWidth / 2 - 4, cardY + CARD_HEIGHT - 14.5)
+        }
       }
       y += row.rowHeight + 5
     }
@@ -217,15 +232,17 @@ export default function MakerSubmissionBoard({
             {items.map(item => {
               const image = item.card.image_url
               const card = image ? { name: item.card.name, imageUrl: image } : null
+              const badge = regulationLabel(item.card.regulation)
               return <button
                 key={item.card_id}
                 type="button"
                 disabled={!enableActions || !card}
                 onClick={() => card && setZoomedCard(card)}
                 aria-label={enableActions && card ? `${item.card.name}を拡大表示` : undefined}
-                className={`aspect-[63/88] overflow-hidden rounded border bg-slate-200 ${enableActions && card ? 'cursor-zoom-in' : 'cursor-default'}`}
+                className={`relative aspect-[63/88] overflow-hidden rounded border bg-slate-200 ${enableActions && card ? 'cursor-zoom-in' : 'cursor-default'}`}
               >
                 {image ? <img src={image} alt={item.card.name} loading="lazy" className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center p-1 text-center">{item.card.name}</span>}
+                {badge && <span className={`absolute bottom-0 right-0 px-1 py-0.5 text-[8px] font-black ${item.card.regulation === 'premium_hall' ? 'bg-red-800 text-white' : 'bg-yellow-300 text-yellow-950'}`}>{badge}</span>}
               </button>
             })}
           </div>

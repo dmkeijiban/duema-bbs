@@ -1,0 +1,85 @@
+alter table public.maker_submissions
+  alter column user_id drop not null,
+  add column if not exists anonymous_id_hash text;
+
+alter table public.maker_submissions
+  drop constraint if exists maker_submissions_owner_check,
+  add constraint maker_submissions_owner_check check (
+    (user_id is not null and anonymous_id_hash is null)
+    or (user_id is null and anonymous_id_hash is not null)
+  );
+
+create index if not exists maker_submissions_anonymous_rate_idx
+  on public.maker_submissions(anonymous_id_hash, created_at desc)
+  where anonymous_id_hash is not null;
+
+create or replace function public.create_anonymous_maker_submission(
+  p_project_id uuid,
+  p_anonymous_id_hash text,
+  p_title text,
+  p_items jsonb
+) returns uuid language plpgsql security definer set search_path=public as $$
+declare
+  v_submission_id uuid;
+  v_config jsonb;
+  v_allowed_groups text[];
+  v_allow_duplicates boolean;
+  v_max_choices integer;
+  v_item_count integer;
+begin
+  if p_anonymous_id_hash !~ '^[0-9a-f]{64}$' then raise exception 'MAKER_ANONYMOUS_ID_INVALID'; end if;
+  if nullif(btrim(p_title), '') is null or char_length(btrim(p_title)) > 40 then raise exception 'MAKER_TITLE_INVALID'; end if;
+
+  select config into v_config from maker_projects
+  where id=p_project_id and status='published' and is_public=true for update;
+  if v_config is null then raise exception 'MAKER_PROJECT_NOT_PUBLISHED'; end if;
+
+  select coalesce(array_agg(value->>'key'),array[]::text[]) into v_allowed_groups
+  from jsonb_array_elements(coalesce(v_config->'groups','[]'::jsonb));
+  if cardinality(v_allowed_groups)=0 then raise exception 'MAKER_CONFIG_GROUPS_INVALID'; end if;
+  v_allow_duplicates:=coalesce((v_config->>'allowDuplicates')::boolean,false);
+  v_max_choices:=nullif(v_config->>'maxChoices','')::integer;
+  v_item_count:=jsonb_array_length(coalesce(p_items,'[]'::jsonb));
+  if v_item_count=0 then raise exception 'MAKER_EMPTY_SUBMISSION'; end if;
+
+  if exists(select 1 from jsonb_to_recordset(coalesce(p_items,'[]')) x(card_id uuid,group_key text,position integer)
+    where x.card_id is null
+      or not exists(select 1 from maker_project_cards pc join cards c on c.id=pc.card_id and c.is_active where pc.project_id=p_project_id and pc.card_id=x.card_id)
+      or x.group_key is null or not(x.group_key=any(v_allowed_groups)) or x.position is null or x.position<0)
+  then raise exception 'MAKER_ITEMS_INVALID'; end if;
+  if exists(select 1 from jsonb_to_recordset(coalesce(p_items,'[]')) x(card_id uuid,group_key text,position integer)
+    group by x.group_key,x.position having count(*)>1) then raise exception 'MAKER_DUPLICATE_POSITION'; end if;
+  if not v_allow_duplicates and exists(select 1 from jsonb_to_recordset(coalesce(p_items,'[]')) x(card_id uuid,group_key text,position integer)
+    group by x.card_id having count(*)>1) then raise exception 'MAKER_DUPLICATE_CARD'; end if;
+  if v_max_choices is not null and v_item_count>v_max_choices then raise exception 'MAKER_CHOICE_LIMIT_EXCEEDED'; end if;
+
+  perform pg_advisory_xact_lock(hashtextextended(p_anonymous_id_hash,0));
+  if exists(select 1 from maker_submissions where anonymous_id_hash=p_anonymous_id_hash and created_at>now()-interval '30 seconds')
+    or (select count(*) from maker_submissions where anonymous_id_hash=p_anonymous_id_hash and created_at>now()-interval '1 hour')>=5
+  then raise exception 'MAKER_RATE_LIMITED'; end if;
+
+  insert into maker_submissions(project_id,user_id,anonymous_id_hash,title,comment,is_valid,is_public,is_overwrite_slot)
+  values(p_project_id,null,p_anonymous_id_hash,btrim(p_title),null,true,true,false)
+  returning id into v_submission_id;
+  insert into maker_submission_items(submission_id,card_id,group_key,position)
+  select v_submission_id,x.card_id,x.group_key,x.position
+  from jsonb_to_recordset(p_items) x(card_id uuid,group_key text,position integer);
+  return v_submission_id;
+end $$;
+
+revoke all on function public.create_anonymous_maker_submission(uuid,text,text,jsonb) from public,anon,authenticated;
+grant execute on function public.create_anonymous_maker_submission(uuid,text,text,jsonb) to service_role;
+
+create or replace view public.maker_selection_aggregates as
+select p.id project_id,c.id card_id,
+  count(distinct i.submission_id)::int selection_count,
+  count(distinct s.id)::int submission_count,
+  case when count(distinct s.id)=0 then 0
+  else round(count(distinct i.submission_id)::numeric/count(distinct s.id)*100,1) end selection_rate
+from maker_projects p
+join maker_project_cards pc on pc.project_id=p.id
+join cards c on c.id=pc.card_id and c.is_active
+left join maker_submissions s on s.project_id=p.id and s.is_valid and s.is_public
+left join maker_submission_items i on i.submission_id=s.id and i.card_id=c.id and i.group_key='release'
+group by p.id,c.id;
+revoke all on public.maker_selection_aggregates from anon,authenticated;

@@ -648,7 +648,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
           </button>
           <button type="button" disabled={isSavingImage} onClick={saveImage} className="flex-1 whitespace-nowrap rounded border border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-700 disabled:opacity-50 sm:flex-none">{isSavingImage ? '画像生成中...' : '画像保存'}</button>
           <button type="button" disabled={isSharingToX} onClick={shareToX} className="flex-1 whitespace-nowrap rounded bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50 sm:flex-none">{isSharingToX ? '共有準備中...' : 'Xで共有'}</button>
-          <button type="button" onClick={() => { if (communityHref) { location.assign(communityHref); return } if (!showCommunity) trackEvent('aggregate_viewed'); setShowCommunity(value => !value) }} className="flex-1 whitespace-nowrap rounded border bg-white px-4 py-2 text-sm font-bold sm:flex-none">{communityHref ? '📊 みんなのTier表を見る' : communityButtonLabel}</button>
+          <button type="button" onClick={() => { if (communityHref) { location.assign(communityHref); return } if (!showCommunity) trackEvent('aggregate_viewed'); setShowCommunity(value => !value) }} className="flex-1 whitespace-nowrap rounded border bg-white px-4 py-2 text-sm font-bold sm:flex-none">{communityButtonLabel}</button>
           {message && <span className="self-center text-sm">{message}</span>}
         </div>
 
