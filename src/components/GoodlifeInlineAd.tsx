@@ -13,5 +13,12 @@ export async function GoodlifeInlineAd({ slot }: { slot: AdSlotName }) {
       ? 'hidden md:flex'
       : 'md:hidden'
 
-  return <GoodlifeInlineAdClient slot={slot} visibilityClass={visibilityClass} />
+  return (
+    <GoodlifeInlineAdClient
+      slot={slot}
+      visibilityClass={visibilityClass}
+      desktopEnabled={settings.desktop}
+      mobileEnabled={settings.mobile}
+    />
+  )
 }
