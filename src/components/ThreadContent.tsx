@@ -27,7 +27,6 @@ interface Props {
   page: number
   totalPages: number
   recommendSlot?: React.ReactNode
-  inlineAdSlot?: React.ReactNode
   threadRules?: string
   showAfterCommentThreadPrompt?: boolean
   showCommentFormHint?: boolean
@@ -107,7 +106,6 @@ export function ThreadContent({
   page,
   totalPages,
   recommendSlot,
-  inlineAdSlot,
   threadRules,
   showAfterCommentThreadPrompt = true,
   showCommentFormHint = true,
@@ -282,7 +280,7 @@ export function ThreadContent({
           )}
         </div>
 
-        {visiblePosts.map((post, index) => (
+        {visiblePosts.map(post => (
           <Fragment key={post.optimisticId ?? post.id}>
             <PostItem
               post={post}
@@ -304,10 +302,8 @@ export function ThreadContent({
                 次はあなたの好きな話題でスレッド投稿してみよう！
               </div>
             )}
-            {index === 5 && inlineAdSlot}
           </Fragment>
         ))}
-        {visiblePosts.length < 6 && inlineAdSlot}
       </div>
 
       {totalPages > 1 && (

@@ -898,7 +898,7 @@ export default async function AdminPage({
           </p>
           {([
             ['goodlife_inline_enabled', 'Goodlifeインライン広告', goodlifeAdSettings.enabled],
-            ['goodlife_inline_thread_list', 'スレッド一覧に表示', goodlifeAdSettings.threadList],
+            ['goodlife_inline_thread_list', 'スレッド一覧・1件目の上', goodlifeAdSettings.threadList],
             ['goodlife_inline_thread_detail', 'スレッド詳細に表示', goodlifeAdSettings.threadDetail],
             ['goodlife_inline_desktop', 'PCで表示', goodlifeAdSettings.desktop],
             ['goodlife_inline_mobile', 'スマホで表示', goodlifeAdSettings.mobile],
