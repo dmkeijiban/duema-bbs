@@ -1,3 +1,4 @@
+
 name: Daily Zukan Thread
 
 # 思い出図鑑の当日スレ作成とX予約投稿。
@@ -70,3 +71,51 @@ jobs:
             echo "::error::daily-zukan-thread が errors=${ERRORS} を返しました"
             exit 1
           fi
+
+      # 8a6309d で安定稼働した既存方式を維持する。
+      # 当日分をCron内で新規投稿せず、未来7日分を画像付きでTypefullyへ事前予約する。
+      # scheduled_date / typefully_id のガードにより、救済実行が重なっても二重予約しない。
+      - name: Refill image-backed Typefully reservations
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -uo pipefail
+
+          START_DATE=$(TZ=Asia/Tokyo date -d 'tomorrow' '+%Y-%m-%d')
+          URL="https://www.duema-bbs.com/api/internal/daily-zukan-typefully-reservations?days=7&start_date=${START_DATE}"
+
+          set +e
+          HTTP_CODE=$(curl -sS \
+            --retry 2 --retry-delay 10 --max-time 180 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -o reservation_response.json -w '%{http_code}' \
+            "${URL}")
+          CURL_EXIT=$?
+          set -e
+
+          echo "HTTP status  : ${HTTP_CODE}"
+          echo "----- 予約処理レスポンス -----"
+          cat reservation_response.json 2>/dev/null || echo "(本文なし)"
+          echo
+          echo "------------------------------"
+
+          if [ "${CURL_EXIT}" -ne 0 ]; then
+            echo "::error::Typefully予約補充のcurlが失敗しました (exit=${CURL_EXIT})"
+            exit "${CURL_EXIT}"
+          fi
+          case "${HTTP_CODE}" in
+            2*) ;;
+            *) echo "::error::Typefully予約補充がHTTP ${HTTP_CODE}を返しました"; exit 1 ;;
+          esac
+
+          OK=$(jq -r '.ok // false' reservation_response.json 2>/dev/null || echo "parse_error")
+          ERRORS=$(jq -r '.summary.errors // 0' reservation_response.json 2>/dev/null || echo "parse_error")
+          SCHEDULED=$(jq -r '.summary.scheduled // 0' reservation_response.json 2>/dev/null || echo "0")
+          SKIPPED=$(jq -r '.summary.skipped // 0' reservation_response.json 2>/dev/null || echo "0")
+          echo "reservation  : ok=${OK} scheduled=${SCHEDULED} skipped=${SKIPPED} errors=${ERRORS}"
+
+          if [ "${OK}" != "true" ] || [ "${ERRORS}" = "parse_error" ] || [ "${ERRORS}" -gt 0 ]; then
+            echo "::error::本文＋画像付きTypefully予約を完了できませんでした"
+            exit 1
+          fi
+
