@@ -884,7 +884,7 @@ export default async function AdminPage({
         />
       )}
 
-      <PersistentDetails storageKey="goodlife-ad-settings" defaultOpen={false} className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
+      <PersistentDetails storageKey="goodlife-ad-settings" defaultOpen id="goodlife-ad-settings" className="mb-4 min-w-0 scroll-mt-4 overflow-hidden rounded border border-gray-200 bg-white">
         <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
           <span className="text-gray-400 text-xs">▶</span>
           <span>広告設定</span>
