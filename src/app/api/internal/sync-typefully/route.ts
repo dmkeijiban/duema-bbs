@@ -13,11 +13,6 @@ import {
   generateTitleFromXPost,
   hashText,
 } from '@/lib/x-post-to-thread'
-import {
-  extensionForImageContentType,
-  extractTypefullyMedia,
-  shouldBlockThreadForMissingMedia,
-} from '@/lib/typefully-media'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -26,7 +21,6 @@ const TYPEFULLY_API = 'https://api.typefully.com/v2'
 const TYPEFULLY_DRAFT_LIMIT = 50
 const DEFAULT_MAX_NEW_PER_RUN = 5
 const DUE_LOOKBACK_HOURS = 24
-const IMAGE_RECOVERY_LOOKBACK_DAYS = 7
 const ERROR_MAX_LENGTH = 500
 const FIXED_POST_JST_HOURS = [7, 12, 19, 22]
 const FIXED_SLOT_TOLERANCE_MINUTES = 45
@@ -92,7 +86,6 @@ interface TodayTypefullyPost {
   body: string
   imageUrls: string[]
   expectsMedia: boolean
-  mediaPaths: string[]
   shareUrl: string | null
 }
 
@@ -140,7 +133,6 @@ interface TypefullyPostSummary {
   bodyPreview: string
   imageUrls: string[]
   expectsMedia: boolean
-  mediaPaths: string[]
 }
 
 type PublishedFallbackSkipReasons = Record<string, number>
@@ -268,123 +260,39 @@ function isHttpUrl(value: unknown): value is string {
   return typeof value === 'string' && /^https?:\/\//i.test(value.trim())
 }
 
-function collectImageUrls(value: unknown, urls = new Set<string>()): Set<string> {
-  if (!value) return urls
-
-  if (isHttpUrl(value)) {
-    urls.add(value.trim())
-    return urls
+interface TypefullyMediaStatus {
+  media_urls?: {
+    medium?: string
+    large?: string
+    original?: string
   }
-
-  if (Array.isArray(value)) {
-    for (const item of value) collectImageUrls(item, urls)
-    return urls
-  }
-
-  if (typeof value === 'object') {
-    const record = value as Record<string, unknown>
-    for (const key of ['url', 'src', 'href', 'media_url', 'mediaUrl', 'image_url', 'imageUrl']) {
-      collectImageUrls(record[key], urls)
-    }
-    for (const key of ['media_urls', 'mediaUrls', 'image_urls', 'imageUrls', 'images', 'media', 'attachments']) {
-      collectImageUrls(record[key], urls)
-    }
-    // Typefullyのレスポンスは媒体・公開状態によってURLのキー名が変わる。
-    // media配下に渡された未知のキーも再帰的に確認し、temporary_url等を取りこぼさない。
-    for (const nested of Object.values(record)) {
-      collectImageUrls(nested, urls)
-    }
-  }
-
-  return urls
-}
-
-function getDraftImageUrls(draft: TypefullyDraft, detail: TypefullyDraftDetail | null): string[] {
-  const urls = new Set<string>()
-  collectImageUrls(draft.media_urls, urls)
-  collectImageUrls(draft.image_urls, urls)
-  collectImageUrls(draft.images, urls)
-  collectImageUrls(draft.media, urls)
-  collectImageUrls(draft.attachments, urls)
-  collectImageUrls(detail?.media_urls, urls)
-  collectImageUrls(detail?.image_urls, urls)
-  collectImageUrls(detail?.images, urls)
-  collectImageUrls(detail?.media, urls)
-  collectImageUrls(detail?.attachments, urls)
-  for (const post of detail?.platforms?.x?.posts ?? []) {
-    collectImageUrls(post.media_urls, urls)
-    collectImageUrls(post.image_urls, urls)
-    collectImageUrls(post.images, urls)
-    collectImageUrls(post.media, urls)
-    collectImageUrls(post.attachments, urls)
-  }
-  return Array.from(urls)
-}
-
-function collectMediaIds(value: unknown, ids = new Set<string>()): Set<string> {
-  if (typeof value === 'string' || typeof value === 'number') {
-    const id = String(value).trim()
-    if (id) ids.add(id)
-    return ids
-  }
-  if (Array.isArray(value)) {
-    for (const item of value) collectMediaIds(item, ids)
-    return ids
-  }
-  if (value && typeof value === 'object') {
-    const record = value as Record<string, unknown>
-    for (const key of ['id', 'media_id', 'mediaId']) collectMediaIds(record[key], ids)
-  }
-  return ids
-}
-
-function getDraftMediaIds(draft: TypefullyDraft, detail: TypefullyDraftDetail | null): string[] {
-  const ids = new Set<string>()
-  collectMediaIds(draft.media_ids, ids)
-  collectMediaIds(detail?.media_ids, ids)
-  for (const post of detail?.platforms?.x?.posts ?? []) collectMediaIds(post.media_ids, ids)
-  return Array.from(ids)
 }
 
 async function resolveDraftMedia(
   apiKey: string,
   socialSetId: string,
-  draft: TypefullyDraft,
   detail: TypefullyDraftDetail | null,
-): Promise<{ imageUrls: string[]; expectsMedia: boolean; mediaPaths: string[] }> {
-  const extracted = extractTypefullyMedia(draft, detail)
-  const urls = new Set([...getDraftImageUrls(draft, detail), ...extracted.imageUrls])
-  const mediaIds = Array.from(new Set([...getDraftMediaIds(draft, detail), ...extracted.mediaIds]))
-
-  for (const mediaId of mediaIds) {
+): Promise<{ imageUrls: string[]; expectsMedia: boolean }> {
+  const mediaIds = detail?.platforms?.x?.posts
+    ?.flatMap((post) => Array.isArray(post.media_ids) ? post.media_ids.map(String) : [])
+    .filter(Boolean) ?? []
+  const urls = await Promise.all(mediaIds.map(async (mediaId) => {
     try {
-      const res = await fetch(
-        `${TYPEFULLY_API}/social-sets/${socialSetId}/media/${encodeURIComponent(mediaId)}`,
-        {
-          headers: { 'Authorization': `Bearer ${apiKey}` },
-          next: { revalidate: 0 },
-        },
-      )
-      if (!res.ok) {
-        console.warn('[sync-typefully] Typefully media API error:', {
-          mediaId,
-          status: res.status,
-        })
-        continue
-      }
-      collectImageUrls(await res.json(), urls)
-    } catch (error) {
-      console.warn('[sync-typefully] Typefully media fetch failed:', {
-        mediaId,
-        error: error instanceof Error ? error.message : String(error),
+      const res = await fetch(`${TYPEFULLY_API}/social-sets/${socialSetId}/media/${encodeURIComponent(mediaId)}`, {
+        headers: { 'Authorization': `Bearer ${apiKey}` },
+        next: { revalidate: 0 },
       })
+      if (!res.ok) return null
+      const media: TypefullyMediaStatus = await res.json()
+      return media.media_urls?.medium ?? media.media_urls?.large ?? media.media_urls?.original ?? null
+    } catch {
+      return null
     }
-  }
+  }))
 
   return {
-    imageUrls: Array.from(urls),
-    expectsMedia: extracted.expectsMedia || mediaIds.length > 0 || urls.size > 0,
-    mediaPaths: extracted.mediaPaths,
+    imageUrls: urls.filter((url): url is string => Boolean(url)),
+    expectsMedia: mediaIds.length > 0,
   }
 }
 
@@ -401,70 +309,6 @@ function getPrimaryText(lines: string[] | null): string {
 
 function getPrimaryImageUrl(urls: string[] | null): string | null {
   return (urls ?? []).find((url) => isHttpUrl(url))?.trim() ?? null
-}
-
-function safeLogUrl(rawUrl: string): string {
-  try {
-    const url = new URL(rawUrl)
-    return `${url.origin}${url.pathname}`
-  } catch {
-    return rawUrl.slice(0, 300)
-  }
-}
-
-async function persistTypefullyThreadImage(
-  supabase: SupabaseAdmin,
-  sourceId: string,
-  externalUrl: string,
-): Promise<{ url?: string; error?: string }> {
-  if (externalUrl.includes('/storage/v1/object/public/bbs-images/typefully/')) {
-    return { url: externalUrl }
-  }
-
-  let response: Response
-  try {
-    response = await fetch(externalUrl, { redirect: 'follow', cache: 'no-store' })
-  } catch (error) {
-    const message = `image_fetch_failed url=${safeLogUrl(externalUrl)} error=${error instanceof Error ? error.message : String(error)}`
-    console.error('[sync-typefully]', message)
-    return { error: message }
-  }
-
-  const contentType = response.headers.get('content-type') ?? ''
-  if (!response.ok) {
-    const message = `image_fetch_failed url=${safeLogUrl(externalUrl)} status=${response.status} content_type=${contentType || 'missing'}`
-    console.error('[sync-typefully]', message)
-    return { error: message }
-  }
-  const extension = extensionForImageContentType(contentType)
-  if (!extension) {
-    const message = `image_fetch_invalid_content_type url=${safeLogUrl(externalUrl)} status=${response.status} content_type=${contentType || 'missing'}`
-    console.error('[sync-typefully]', message)
-    return { error: message }
-  }
-
-  const bytes = new Uint8Array(await response.arrayBuffer())
-  if (bytes.byteLength === 0 || bytes.byteLength > 10 * 1024 * 1024) {
-    const message = `image_fetch_invalid_size url=${safeLogUrl(externalUrl)} status=${response.status} content_type=${contentType} bytes=${bytes.byteLength}`
-    console.error('[sync-typefully]', message)
-    return { error: message }
-  }
-
-  const safeSourceId = sourceId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 100)
-  const storagePath = `typefully/${safeSourceId}/primary.${extension}`
-  const { data, error } = await supabase.storage.from('bbs-images').upload(storagePath, bytes, {
-    contentType: contentType.split(';', 1)[0],
-    cacheControl: '31536000',
-    upsert: true,
-  })
-  if (error || !data) {
-    const message = `image_storage_failed url=${safeLogUrl(externalUrl)} status=${response.status} content_type=${contentType} path=${storagePath} error=${error?.message ?? 'missing_data'}`
-    console.error('[sync-typefully]', message)
-    return { error: message }
-  }
-
-  const { data: publicData } = supabase.storage.from('bbs-images').getPublicUrl(data.path)
-  return { url: publicData.publicUrl }
 }
 
 function isDailyZukanTypefullyPost(text: string): boolean {
@@ -496,7 +340,6 @@ function summarizeTypefullyPosts(posts: TodayTypefullyPost[]): TypefullyPostSumm
     bodyPreview: post.body.slice(0, 80),
     imageUrls: post.imageUrls,
     expectsMedia: post.expectsMedia,
-    mediaPaths: post.mediaPaths,
   }))
 }
 
@@ -557,7 +400,7 @@ async function fetchTodayTypefullyPosts(
     const detail = draftId ? await fetchDraftDetail(apiKey, socialSetId, draftId) : null
     const scheduledAt = getDraftScheduledAt(draft) ?? (detail ? getDraftScheduledAt(detail) : null)
     const body = getDraftText(draft, detail)
-    const { imageUrls, expectsMedia, mediaPaths } = await resolveDraftMedia(apiKey, socialSetId, draft, detail)
+    const { imageUrls, expectsMedia } = await resolveDraftMedia(apiKey, socialSetId, detail)
     if (!scheduledAt || !isTodayInJst(scheduledAt)) continue
     if (isDailyZukanTypefullyPost(body)) continue
 
@@ -569,7 +412,6 @@ async function fetchTodayTypefullyPosts(
       body,
       imageUrls,
       expectsMedia,
-      mediaPaths,
       shareUrl: draft.share_url ?? draft.typefully_url ?? null,
     })
   }
@@ -638,7 +480,7 @@ async function fetchTodayPublishedFallbackPosts(
       continue
     }
 
-    const { imageUrls, expectsMedia, mediaPaths } = await resolveDraftMedia(apiKey, socialSetId, draft, detail)
+    const { imageUrls, expectsMedia } = await resolveDraftMedia(apiKey, socialSetId, detail)
     const typefullyId = draftId || `published:${publishedAt}:${hashText(body)}`
     posts.push({
       typefullyId,
@@ -647,7 +489,6 @@ async function fetchTodayPublishedFallbackPosts(
       body,
       imageUrls,
       expectsMedia,
-      mediaPaths,
       shareUrl: draft.x_published_url ?? draft.share_url ?? draft.typefully_url ?? null,
     })
   }
@@ -785,7 +626,6 @@ async function upsertTodayTypefullyPosts(
       fetched_from_typefully_at: fetchedAt,
       typefully_image_urls_count: imageUrls.length,
       typefully_media_expected: post.expectsMedia,
-      typefully_media_paths: post.mediaPaths,
     }
 
     if (dryRun) {
@@ -841,23 +681,9 @@ async function upsertTodayTypefullyPosts(
       // スレ作成後にTypefullyから画像URLを取得できた場合も、画像未設定のスレへ後付けする。
       const primaryImageUrl = getPrimaryImageUrl(imageUrls)
       if (primaryImageUrl) {
-        const storedImage = await persistTypefullyThreadImage(
-          supabase,
-          post.typefullyId,
-          primaryImageUrl,
-        )
-        if (!storedImage.url) {
-          errors++
-          await supabase.from('x_posts').update({
-            status: 'error',
-            sync_error: normalizeError(storedImage.error ?? 'image_storage_failed'),
-            last_attempt_at: new Date().toISOString(),
-          }).eq('id', existing.id)
-          continue
-        }
         const { error: threadImageError } = await supabase
           .from('threads')
-          .update({ image_url: storedImage.url })
+          .update({ image_url: primaryImageUrl })
           .eq('id', existing.thread_id)
           .is('image_url', null)
         if (threadImageError) {
@@ -894,115 +720,6 @@ async function upsertTodayTypefullyPosts(
   }
 
   return { saved, updated, locked, errors, duplicate }
-}
-
-async function recoverMissingTypefullyThreadImages(
-  supabase: SupabaseAdmin,
-  apiKey: string,
-  socialSetId: string,
-  dryRun: boolean,
-): Promise<{ candidates: number; recovered: number; errors: number; results: Array<Record<string, unknown>> }> {
-  const since = new Date(Date.now() - IMAGE_RECOVERY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString()
-  const { data: xPosts, error: xPostsError } = await supabase
-    .from('x_posts')
-    .select('id, typefully_id, thread_id, image_urls, meta')
-    .not('typefully_id', 'is', null)
-    .not('thread_id', 'is', null)
-    .gte('scheduled_at', since)
-    .order('scheduled_at', { ascending: false })
-    .limit(50)
-  if (xPostsError) return { candidates: 0, recovered: 0, errors: 1, results: [{ error: xPostsError.message }] }
-
-  const rows = (xPosts ?? []).filter((row) => row.thread_id != null && row.typefully_id)
-  if (rows.length === 0) return { candidates: 0, recovered: 0, errors: 0, results: [] }
-  const { data: threads, error: threadsError } = await supabase
-    .from('threads')
-    .select('id, image_url')
-    .in('id', rows.map((row) => row.thread_id))
-  if (threadsError) return { candidates: 0, recovered: 0, errors: 1, results: [{ error: threadsError.message }] }
-
-  const missingThreadIds = new Set((threads ?? []).filter((thread) => !thread.image_url).map((thread) => thread.id))
-  const candidates = rows.filter((row) => (
-    missingThreadIds.has(row.thread_id) &&
-    !(row.meta && typeof row.meta === 'object' && row.meta.media_checked_no_image_at)
-  )).slice(0, 20)
-  let recovered = 0
-  let errors = 0
-  const results: Array<Record<string, unknown>> = []
-
-  for (const row of candidates) {
-    const detail = await fetchDraftDetail(apiKey, socialSetId, String(row.typefully_id))
-    if (!detail) {
-      errors++
-      results.push({ xPostId: row.id, threadId: row.thread_id, error: 'typefully_detail_fetch_failed' })
-      continue
-    }
-    const media = await resolveDraftMedia(apiKey, socialSetId, { id: row.typefully_id }, detail)
-    const externalImageUrl = getPrimaryImageUrl(media.imageUrls)
-    if (!externalImageUrl) {
-      if (media.expectsMedia) {
-        errors++
-        if (!dryRun) await supabase.from('x_posts').update({
-          status: 'error',
-          sync_error: 'waiting_for_typefully_media',
-          last_attempt_at: new Date().toISOString(),
-        }).eq('id', row.id)
-      }
-      if (!media.expectsMedia && !dryRun) {
-        await supabase.from('x_posts').update({
-          meta: {
-            ...(row.meta ?? {}),
-            media_checked_no_image_at: new Date().toISOString(),
-            typefully_media_paths: media.mediaPaths,
-          },
-        }).eq('id', row.id)
-      }
-      results.push({ xPostId: row.id, threadId: row.thread_id, expectsMedia: media.expectsMedia, error: media.expectsMedia ? 'waiting_for_typefully_media' : 'no_media' })
-      continue
-    }
-    if (dryRun) {
-      recovered++
-      results.push({ xPostId: row.id, threadId: row.thread_id, mediaPaths: media.mediaPaths, wouldRecover: true })
-      continue
-    }
-    const stored = await persistTypefullyThreadImage(supabase, String(row.typefully_id), externalImageUrl)
-    if (!stored.url) {
-      errors++
-      await supabase.from('x_posts').update({
-        status: 'error',
-        sync_error: normalizeError(stored.error ?? 'image_storage_failed'),
-        last_attempt_at: new Date().toISOString(),
-      }).eq('id', row.id)
-      results.push({ xPostId: row.id, threadId: row.thread_id, error: stored.error })
-      continue
-    }
-    const { error: updateThreadError } = await supabase
-      .from('threads')
-      .update({ image_url: stored.url })
-      .eq('id', row.thread_id)
-      .is('image_url', null)
-    if (updateThreadError) {
-      errors++
-      results.push({ xPostId: row.id, threadId: row.thread_id, error: updateThreadError.message })
-      continue
-    }
-    await supabase.from('x_posts').update({
-      status: 'posted',
-      image_urls: media.imageUrls,
-      sync_error: null,
-      last_attempt_at: new Date().toISOString(),
-      meta: {
-        ...(row.meta ?? {}),
-        typefully_media_expected: media.expectsMedia,
-        typefully_media_paths: media.mediaPaths,
-        image_recovered_at: new Date().toISOString(),
-        storage_image_url: stored.url,
-      },
-    }).eq('id', row.id)
-    recovered++
-    results.push({ xPostId: row.id, threadId: row.thread_id, imageUrl: stored.url, mediaPaths: media.mediaPaths })
-  }
-  return { candidates: candidates.length, recovered, errors, results }
 }
 
 async function findDueXPosts(
@@ -1202,9 +919,9 @@ async function createThreadFromXPost(
   }
 
   const title = generateTitleFromXPost(body) || 'デュエマ掲示板投稿'
-  const externalImageUrl = getPrimaryImageUrl(row.image_urls)
+  const imageUrl = getPrimaryImageUrl(row.image_urls)
   const expectsMedia = row.meta?.typefully_media_expected === true
-  if (shouldBlockThreadForMissingMedia(expectsMedia, externalImageUrl)) {
+  if (expectsMedia && !imageUrl) {
     if (!dryRun) await markXPostWaitingForMedia(supabase, row)
     return {
       xPostId: row.id,
@@ -1212,26 +929,6 @@ async function createThreadFromXPost(
       status: 'skipped',
       error: 'waiting_for_typefully_media',
     }
-  }
-  let imageUrl: string | null = null
-  if (externalImageUrl && !dryRun) {
-    const storedImage = await persistTypefullyThreadImage(
-      supabase,
-      row.typefully_id ? String(row.typefully_id) : `x-post-${row.id}`,
-      externalImageUrl,
-    )
-    if (!storedImage.url) {
-      await markXPostError(supabase, row, storedImage.error ?? 'image_storage_failed')
-      return {
-        xPostId: row.id,
-        typefullyId: row.typefully_id,
-        status: 'error',
-        error: storedImage.error ?? 'image_storage_failed',
-      }
-    }
-    imageUrl = storedImage.url
-  } else if (externalImageUrl) {
-    imageUrl = externalImageUrl
   }
   if (dryRun) {
     return {
@@ -1293,8 +990,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const dryRun = req.nextUrl.searchParams.get('dry_run') === '1'
   const maxNewPerRun = parseMaxNew(req.nextUrl.searchParams.get('max_new'))
   const supabase = createAdminClient()
-  const apiKey = sanitizeSecretValue(process.env.TYPEFULLY_API_KEY)
-  const socialSetId = sanitizeSecretValue(process.env.TYPEFULLY_SOCIAL_SET_ID)
 
   let fetchedTodayPosts = 0
   let normalizedTodayPosts = 0
@@ -1310,14 +1005,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   let publishedFallbackSkipped = 0
   let publishedFallbackSkipReasons: PublishedFallbackSkipReasons = {}
   let publishedFallbackPosts: TypefullyPostSummary[] = []
-  let imageRecovery: Awaited<ReturnType<typeof recoverMissingTypefullyThreadImages>> = {
-    candidates: 0,
-    recovered: 0,
-    errors: 0,
-    results: [],
-  }
 
   if (mode === 'fetch_today' || mode === 'fetch_and_sync') {
+    const apiKey = sanitizeSecretValue(process.env.TYPEFULLY_API_KEY)
+    const socialSetId = sanitizeSecretValue(process.env.TYPEFULLY_SOCIAL_SET_ID)
     if (!apiKey || !socialSetId) {
       console.error('[sync-typefully] TYPEFULLY_API_KEY または TYPEFULLY_SOCIAL_SET_ID が未設定')
       return NextResponse.json({ error: 'Missing Typefully config', mode, dryRun }, { status: 500 })
@@ -1374,14 +1065,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     } else {
       publishedFallbackSkipReasons = { not_needed: 1 }
     }
-
-    imageRecovery = await recoverMissingTypefullyThreadImages(
-      supabase,
-      apiKey,
-      socialSetId,
-      dryRun,
-    )
-    saveErrors += imageRecovery.errors
   }
 
   let dueRows: XPostDueRow[] = []
@@ -1418,7 +1101,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     ` publishedFallbackFetched=${publishedFallbackFetched} publishedFallbackNormalized=${publishedFallbackNormalized}` +
     ` publishedFallbackSaved=${publishedFallbackSaved} publishedFallbackSkipped=${publishedFallbackSkipped}` +
     ` lockedThreaded=${lockedThreadedPosts} saveErrors=${saveErrors}` +
-    ` imageRecoveryCandidates=${imageRecovery.candidates} imageRecovered=${imageRecovery.recovered}` +
     ` duePosts=${dueRows.length} created=${created} duplicate=${duplicate}` +
     ` skipped=${skipped} skippedDailyZukan=${skippedDailyZukan} errors=${errors}`,
   )
@@ -1451,8 +1133,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     publishedFallbackPosts,
     lockedThreadedPosts,
     saveErrors,
-    imageRecoveryLookbackDays: IMAGE_RECOVERY_LOOKBACK_DAYS,
-    imageRecovery,
     duePosts: dueRows.length,
     dueLookbackHours: DUE_LOOKBACK_HOURS,
     eligibleDueStatuses: ELIGIBLE_X_POST_STATUSES,
