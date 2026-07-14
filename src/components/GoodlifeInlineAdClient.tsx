@@ -68,7 +68,7 @@ export function GoodlifeInlineAdClient({
   return (
     <aside
       className={hasCreative
-        ? `${visibilityClass} goodlife-ad-visible mx-auto my-4 box-border flex w-full max-w-full items-center justify-center overflow-hidden px-0 text-center max-md:my-3 max-md:px-3`
+        ? `${visibilityClass} goodlife-ad-visible mx-auto my-4 box-border flex w-full max-w-full flex-col items-center justify-center overflow-hidden px-0 text-center max-md:my-3 max-md:pl-3 max-md:pr-14`
         : 'goodlife-ad-pending pointer-events-none absolute h-0 w-full overflow-hidden invisible'
       }
       data-ad-provider="goodlife"
