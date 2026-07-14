@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { emptyMakerDraft, type MakerCard, type MakerDraft, type MakerGroup, type MakerSubmissionMeta } from '@/lib/maker'
 import { recordMakerEvent } from '@/lib/maker-events'
 import { getMakerAnonymousId, type MakerEventType } from '@/lib/maker-events-shared'
+import MakerCommunityTier, { type MakerAggregate } from '@/components/MakerCommunityTier'
 import { saveTierSubmission } from './actions'
 
 const SHOW_CARD_DETAIL_FILTERS = false
@@ -19,12 +20,7 @@ function normalizeSearchText(value: string) {
   return value.normalize('NFKC').toLowerCase().replace(/[・･\s　\-‐‑‒–—―ー]/g, '')
 }
 
-export type TierAggregate = {
-  cardId: string
-  counts: Record<string, number>
-  ratingCount: number
-  averageTier: number | null
-}
+export type TierAggregate = MakerAggregate
 
 type TierMakerProps = {
   cards: MakerCard[]
@@ -34,8 +30,8 @@ type TierMakerProps = {
   canSave: boolean
   aggregates: TierAggregate[]
   imageProxyPath?: string
-  saveAction?: (payload: Record<string, string[]>, meta?: MakerSubmissionMeta) => Promise<{ ok: boolean; message: string }>
-  submissionFields?: { defaultTitle: string }
+  saveAction?: (payload: Record<string, string[]>, meta?: MakerSubmissionMeta) => Promise<{ ok: boolean; message: string; redirectTo?: string }>
+  submissionFields?: { defaultTitle: string; defaultComment?: string }
   saveButtonLabel?: string
   hasSavedSubmission?: boolean
   // 指定した企画slugへ利用イベントを記録する（公開ページのみ指定。未指定なら計測しない）
@@ -59,6 +55,8 @@ type TierMakerProps = {
   cardBadgePositionClassName?: string
   cardBadgeTextClassName?: string
   selectionImageZoom?: boolean
+  communityHref?: string
+  registrationLabel?: string
 }
 
 function CardImage({ card, contain = false }: { card: MakerCard; contain?: boolean }) {
@@ -160,7 +158,7 @@ function isIOSDevice() {
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
-export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, submissionFields, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表', groupRowClassName, groupGridClassName = 'grid-cols-[52px_1fr]', groupLabelClassName, groupLabelText, cardBadgePositionClassName = 'left-1 top-1', cardBadgeTextClassName = 'text-white', selectionImageZoom = false }: TierMakerProps) {
+export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, submissionFields, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表', groupRowClassName, groupGridClassName = 'grid-cols-[52px_1fr]', groupLabelClassName, groupLabelText, cardBadgePositionClassName = 'left-1 top-1', cardBadgeTextClassName = 'text-white', selectionImageZoom = false, communityHref, registrationLabel = '作品' }: TierMakerProps) {
   const STORAGE_KEY = `maker-draft:${storageSlug}:v1`
   const DRAFT_CHOICE_KEY = `maker-draft-choice:${storageSlug}:v1`
   const [draft, setDraft] = useState(initialDraft)
@@ -172,7 +170,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   const [poolFilter, setPoolFilter] = useState('')
   const [message, setMessage] = useState('')
   const [submissionTitle, setSubmissionTitle] = useState(submissionFields?.defaultTitle ?? '')
-  const [submissionComment, setSubmissionComment] = useState('')
+  const [submissionComment, setSubmissionComment] = useState(submissionFields?.defaultComment ?? '')
   const [showCommunity, setShowCommunity] = useState(false)
   const [showLoginRequired, setShowLoginRequired] = useState(false)
   const [localDraftConflict, setLocalDraftConflict] = useState<MakerDraft | null>(null)
@@ -192,15 +190,12 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
   const cardsById = useMemo(() => new Map(cards.map(card => [card.id, card])), [cards])
   const validCardIds = useMemo(() => new Set(cards.map(card => card.id)), [cards])
+  const aggregateByCard = useMemo(() => new Map(aggregates.map(row => [row.cardId, row])), [aggregates])
+  const communityCards = useMemo(() => cards.filter(card => aggregateByCard.has(card.id)), [cards, aggregateByCard])
   const usedCardIds = useMemo(() => new Set(Object.values(draft).flat()), [draft])
   const draftKey = useMemo(() => JSON.stringify(draft), [draft])
   const latestDraftKey = useRef(draftKey)
   latestDraftKey.current = draftKey
-  const aggregateByCard = useMemo(() => new Map(aggregates.map(row => [row.cardId, row])), [aggregates])
-  const communityCards = useMemo(
-    () => cards.filter(card => aggregateByCard.has(card.id)),
-    [cards, aggregateByCard],
-  )
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY)
@@ -349,6 +344,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
       try {
         const result = await saveAction(draft, submissionFields ? { title: submissionTitle, comment: submissionComment } : undefined)
         setMessage(result.message)
+        if (result.ok && result.redirectTo) location.assign(result.redirectTo)
       } catch (error) {
         console.error('Tier表の保存に失敗しました', error)
         setMessage('保存に失敗しました。時間をおいて再度お試しください。')
@@ -625,14 +621,13 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
         {submissionFields && (
           <div className="rounded-xl border bg-white p-4">
-            <h2 className="font-black">作品を登録</h2>
+            <h2 className="font-black">{registrationLabel}を登録</h2>
             <label className="mt-3 block text-sm font-bold">タイトル <span className="text-red-600">必須</span>
               <input value={submissionTitle} onChange={event => setSubmissionTitle(event.target.value)} required maxLength={40} className="mt-1 w-full rounded-lg border px-3 py-2 text-base font-normal" />
             </label>
             <label className="mt-3 block text-sm font-bold">一言コメント <span className="font-normal text-gray-500">任意</span>
               <textarea value={submissionComment} onChange={event => setSubmissionComment(event.target.value)} maxLength={200} rows={3} className="mt-1 w-full resize-y rounded-lg border px-3 py-2 text-base font-normal" placeholder="こだわったポイントなど" />
             </label>
-            <p className="mt-2 text-xs text-gray-500">登録するたびに新しい作品として残ります。</p>
           </div>
         )}
 
@@ -654,11 +649,12 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
           </button>
           <button type="button" disabled={isSavingImage} onClick={saveImage} className="flex-1 whitespace-nowrap rounded border border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-700 disabled:opacity-50 sm:flex-none">{isSavingImage ? '画像生成中...' : '画像保存'}</button>
           <button type="button" disabled={isSharingToX} onClick={shareToX} className="flex-1 whitespace-nowrap rounded bg-black px-4 py-2 text-sm font-bold text-white disabled:opacity-50 sm:flex-none">{isSharingToX ? '共有準備中...' : 'Xで共有'}</button>
-          <button type="button" onClick={() => { if (!showCommunity) trackEvent('aggregate_viewed'); setShowCommunity(value => !value) }} className="flex-1 whitespace-nowrap rounded border bg-white px-4 py-2 text-sm font-bold sm:flex-none">{communityButtonLabel}</button>
+          <button type="button" onClick={() => { if (communityHref) { location.assign(communityHref); return } if (!showCommunity) trackEvent('aggregate_viewed'); setShowCommunity(value => !value) }} className="flex-1 whitespace-nowrap rounded border bg-white px-4 py-2 text-sm font-bold sm:flex-none">{communityHref ? '📊 みんなのTier表を見る' : communityButtonLabel}</button>
           {message && <span className="self-center text-sm">{message}</span>}
         </div>
 
-        {showCommunity && (
+        {!communityHref && showCommunity && <MakerCommunityTier cards={cards} groups={groups} aggregates={aggregates} title={communityTitle} mode={aggregateMode} />}
+        {false && (
           <section id="community-tier" className="scroll-mt-4 rounded-xl border bg-white p-4">
             <h2 className="text-lg font-black">{communityTitle}</h2>
             <p className="mt-1 text-xs text-gray-500">カードごとの回答割合です。</p>
