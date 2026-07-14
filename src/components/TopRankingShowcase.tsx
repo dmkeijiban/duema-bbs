@@ -254,7 +254,7 @@ function TierMakerShowcase() {
             <Link href={makerPath} prefetch={false} className="rounded bg-blue-600 px-2 py-1.5 text-center text-[11px] font-bold leading-none text-white">
               Tier表を作る
             </Link>
-            <Link href={`${makerPath}/submissions#community-tier`} prefetch={false} className="rounded border border-white/70 bg-white/10 px-2 py-1.5 text-center text-[11px] font-bold leading-none text-white">
+            <Link href={`${makerPath}/submissions`} prefetch={false} className="rounded border border-white/70 bg-white/10 px-2 py-1.5 text-center text-[11px] font-bold leading-none text-white">
               みんなのTierを見る
             </Link>
           </div>
@@ -288,7 +288,7 @@ function TierMakerShowcase() {
             <Link href={makerPath} prefetch={false} className="rounded-md bg-blue-600 px-6 py-2 text-sm font-black leading-none text-white transition-colors hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
               Tier表を作る
             </Link>
-            <Link href={`${makerPath}/submissions#community-tier`} prefetch={false} className="rounded-md border border-white/70 bg-white/10 px-5 py-2 text-sm font-bold leading-none text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+            <Link href={`${makerPath}/submissions`} prefetch={false} className="rounded-md border border-white/70 bg-white/10 px-5 py-2 text-sm font-bold leading-none text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
               みんなのTierを見る
             </Link>
           </div>
