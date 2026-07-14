@@ -1,4 +1,4 @@
-import { Suspense } from 'react'
+import { Fragment, Suspense } from 'react'
 import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadCard } from '@/components/ThreadCard'
 import { Pagination } from '@/components/Pagination'
@@ -27,6 +27,7 @@ import {
 import { SITE_URL } from '@/lib/site-config'
 import type { Metadata } from 'next'
 import { AdBanner } from '@/components/AdBanner'
+import { GoodlifeInlineAd } from '@/components/GoodlifeInlineAd'
 import { getCategoryIdsForSlug } from '@/lib/categories'
 import { ADSENSE_REVIEW_MODE, isAdSenseRiskyThreadTitle, isPrNoticeForAdSenseReview } from '@/lib/adsense-review-mode'
 import { GreenCtaBanner } from '@/components/GreenCtaBanner'
@@ -269,12 +270,18 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
       )}
       <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
         {threads.map((thread, i) => (
-          <ThreadCard
-            key={thread.id}
-            thread={thread}
-            rank={sort === 'popular' ? i + 1 + (page - 1) * POPULAR_PAGE_SIZE : undefined}
-            priority={i === 0}
-          />
+          <Fragment key={thread.id}>
+            <ThreadCard
+              thread={thread}
+              rank={sort === 'popular' ? i + 1 + (page - 1) * POPULAR_PAGE_SIZE : undefined}
+              priority={i === 0}
+            />
+            {i === 5 && (
+              <div className="col-span-3 md:col-span-5">
+                <GoodlifeInlineAd slot="thread_list_inline" />
+              </div>
+            )}
+          </Fragment>
         ))}
       </div>
       {sort !== 'popular' && (

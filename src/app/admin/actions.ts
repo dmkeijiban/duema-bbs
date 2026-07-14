@@ -714,6 +714,36 @@ export async function updateSettingAction(formData: FormData) {
   redirect('/admin')
 }
 
+const GOODLIFE_BOOLEAN_SETTING_KEYS = [
+  'goodlife_inline_enabled',
+  'goodlife_inline_thread_list',
+  'goodlife_inline_thread_detail',
+  'goodlife_inline_desktop',
+  'goodlife_inline_mobile',
+] as const
+
+export async function updateGoodlifeAdSettingsAction(formData: FormData) {
+  await checkAdmin()
+
+  const updatedAt = new Date().toISOString()
+  const rows = GOODLIFE_BOOLEAN_SETTING_KEYS.map(key => ({
+    key,
+    value: formData.get(key) === 'on' ? 'true' : 'false',
+    updated_at: updatedAt,
+  }))
+
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('site_settings')
+    .upsert(rows, { onConflict: 'key' })
+
+  if (error) throw new Error(`Goodlife広告設定の保存に失敗しました: ${error.message}`)
+
+  revalidateTag('site_settings', { expire: 0 })
+  revalidatePath('/', 'layout')
+  redirect('/admin')
+}
+
 export async function updateTopShowcaseModeAction(formData: FormData) {
   await checkAdmin()
   const mode = normalizeTopShowcaseMode(formData.get('top_showcase_mode') as string)

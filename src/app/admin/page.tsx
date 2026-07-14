@@ -15,6 +15,7 @@ import {
   adminToggleAutoLockExempt,
   adminToggleThreadCommentLock,
   updateTopShowcaseModeAction,
+  updateGoodlifeAdSettingsAction,
 } from './actions'
 import { SettingEditFormClient } from './SettingEditFormClient'
 import { getAllSettings } from '@/lib/settings'
@@ -36,6 +37,7 @@ import { AdminDashboardRefresh } from './AdminDashboardRefresh'
 import { HonorTitleToggleButton } from './HonorTitleToggleButton'
 import { PersistentDetails } from './PersistentDetails'
 import { HONOR_TITLES } from '@/lib/honor-title'
+import { readGoodlifeAdSettings } from '@/lib/ads'
 import { getHonorTitleTierCounts } from '@/lib/honor-title-stats'
 
 const ADMIN_COOKIE = 'admin_auth'
@@ -454,6 +456,7 @@ export default async function AdminPage({
 
   // サイト設定
   const settings = await getAllSettings()
+  const goodlifeAdSettings = readGoodlifeAdSettings(settings)
   const honorTitleEnabled = settings.honor_title_enabled === 'true'
   const honorTitleTierCounts = await getHonorTitleTierCounts()
   const currentTopShowcaseMode = normalizeTopShowcaseMode(settings.top_showcase_mode)
@@ -880,6 +883,36 @@ export default async function AdminPage({
           label={SETTING_LABELS[editSetting]}
         />
       )}
+
+      <PersistentDetails storageKey="goodlife-ad-settings" defaultOpen={false} className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
+        <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
+          <span className="text-gray-400 text-xs">▶</span>
+          <span>広告設定</span>
+          <span className="ml-auto text-xs font-normal text-gray-500">
+            Goodlifeインライン広告: {goodlifeAdSettings.enabled ? '有効' : '無効'}
+          </span>
+        </summary>
+        <form action={updateGoodlifeAdSettingsAction} className="space-y-3 border-t border-gray-100 p-3">
+          <p className="text-xs text-gray-500">
+            許可済みの固定広告タグだけを読み込みます。ワイプ・追従広告は使用しません。
+          </p>
+          {([
+            ['goodlife_inline_enabled', 'Goodlifeインライン広告', goodlifeAdSettings.enabled],
+            ['goodlife_inline_thread_list', 'スレッド一覧に表示', goodlifeAdSettings.threadList],
+            ['goodlife_inline_thread_detail', 'スレッド詳細に表示', goodlifeAdSettings.threadDetail],
+            ['goodlife_inline_desktop', 'PCで表示', goodlifeAdSettings.desktop],
+            ['goodlife_inline_mobile', 'スマホで表示', goodlifeAdSettings.mobile],
+          ] as const).map(([name, label, checked]) => (
+            <label key={name} className="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" name={name} defaultChecked={checked} className="h-4 w-4" />
+              <span>{label}</span>
+            </label>
+          ))}
+          <button type="submit" className="rounded bg-blue-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-blue-700">
+            広告設定を保存
+          </button>
+        </form>
+      </PersistentDetails>
 
       <PersistentDetails storageKey="top-showcase" defaultOpen className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
         <summary className="flex cursor-pointer select-none flex-wrap items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
