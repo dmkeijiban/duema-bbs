@@ -58,6 +58,7 @@ type TierMakerProps = {
   communityHref?: string
   registrationLabel?: string
   registrationHeading?: string
+  autoRegisterOnImageSave?: boolean
 }
 
 function CardImage({ card, contain = false }: { card: MakerCard; contain?: boolean }) {
@@ -159,7 +160,7 @@ function isIOSDevice() {
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
-export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, submissionFields, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表', groupRowClassName, groupGridClassName = 'grid-cols-[52px_1fr]', groupLabelClassName, groupLabelText, cardBadgePositionClassName = 'left-1 top-1', cardBadgeTextClassName = 'text-white', selectionImageZoom = false, communityHref, registrationLabel = '作品', registrationHeading }: TierMakerProps) {
+export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, submissionFields, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表', groupRowClassName, groupGridClassName = 'grid-cols-[52px_1fr]', groupLabelClassName, groupLabelText, cardBadgePositionClassName = 'left-1 top-1', cardBadgeTextClassName = 'text-white', selectionImageZoom = false, communityHref, registrationLabel = '作品', registrationHeading, autoRegisterOnImageSave = false }: TierMakerProps) {
   const STORAGE_KEY = `maker-draft:${storageSlug}:v1`
   const DRAFT_CHOICE_KEY = `maker-draft-choice:${storageSlug}:v1`
   const [draft, setDraft] = useState(initialDraft)
@@ -188,6 +189,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   const exportImageCache = useRef(new Map<string, Promise<HTMLImageElement>>())
   const pngCache = useRef(new Map<string, Blob>())
   const pngGeneration = useRef(new Map<string, Promise<Blob>>())
+  const lastAutoRegisteredKey = useRef<string | null>(null)
 
   const cardsById = useMemo(() => new Map(cards.map(card => [card.id, card])), [cards])
   const validCardIds = useMemo(() => new Set(cards.map(card => card.id)), [cards])
@@ -529,6 +531,19 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
     setMessage('')
     try {
       const blob = await getTierPng()
+      const registrationKey = JSON.stringify([draft, submissionTitle.trim(), submissionComment.trim()])
+      if (autoRegisterOnImageSave && lastAutoRegisteredKey.current !== registrationKey) {
+        const result = await saveAction(
+          draft,
+          submissionFields ? { title: submissionTitle, comment: submissionComment } : undefined,
+        )
+        if (!result.ok) {
+          setMessage(`画像は保存できますが、自動登録に失敗しました: ${result.message}`)
+        } else {
+          lastAutoRegisteredKey.current = registrationKey
+          setMessage(`${responseLabel}も自動登録しました`)
+        }
+      }
       // 画像生成が成功して保存処理へ進んだ時だけ記録（生成失敗時は記録しない）
       trackEvent('image_saved')
       deliverTierImage(blob)

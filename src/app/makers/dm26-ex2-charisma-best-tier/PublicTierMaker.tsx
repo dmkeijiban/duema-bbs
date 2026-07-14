@@ -90,6 +90,7 @@ export default function PublicTierMaker(props: Props) {
         eventSlug="dm26-ex2-charisma-best-tier"
         communityHref="/makers/dm26-ex2-charisma-best-tier/submissions"
         registrationLabel="Tier表"
+        autoRegisterOnImageSave
         beforeLogin={async () => {
           const anonymousId = getMakerAnonymousId()
           if (anonymousId) await beginMakerSignup(anonymousId)
