@@ -43,6 +43,7 @@ interface TypefullyDraft {
   typefully_url?: string | null
   share_url?: string | null
   x_published_url?: string | null
+  media_ids?: unknown
   media_urls?: unknown
   image_urls?: unknown
   images?: unknown
@@ -61,6 +62,7 @@ interface TypefullyDraftDetail {
     x?: {
       posts?: Array<{
         text?: string | null
+        media_ids?: unknown
         media_urls?: unknown
         image_urls?: unknown
         images?: unknown
@@ -69,6 +71,7 @@ interface TypefullyDraftDetail {
       }>
     }
   }
+  media_ids?: unknown
   media_urls?: unknown
   image_urls?: unknown
   images?: unknown
@@ -82,6 +85,7 @@ interface TodayTypefullyPost {
   scheduledAt: string
   body: string
   imageUrls: string[]
+  expectsMedia: boolean
   shareUrl: string | null
 }
 
@@ -128,6 +132,7 @@ interface TypefullyPostSummary {
   sourceStatus: string
   bodyPreview: string
   imageUrls: string[]
+  expectsMedia: boolean
 }
 
 type PublishedFallbackSkipReasons = Record<string, number>
@@ -308,6 +313,71 @@ function getDraftImageUrls(draft: TypefullyDraft, detail: TypefullyDraftDetail |
   return Array.from(urls)
 }
 
+function collectMediaIds(value: unknown, ids = new Set<string>()): Set<string> {
+  if (typeof value === 'string' || typeof value === 'number') {
+    const id = String(value).trim()
+    if (id) ids.add(id)
+    return ids
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectMediaIds(item, ids)
+    return ids
+  }
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    for (const key of ['id', 'media_id', 'mediaId']) collectMediaIds(record[key], ids)
+  }
+  return ids
+}
+
+function getDraftMediaIds(draft: TypefullyDraft, detail: TypefullyDraftDetail | null): string[] {
+  const ids = new Set<string>()
+  collectMediaIds(draft.media_ids, ids)
+  collectMediaIds(detail?.media_ids, ids)
+  for (const post of detail?.platforms?.x?.posts ?? []) collectMediaIds(post.media_ids, ids)
+  return Array.from(ids)
+}
+
+async function resolveDraftMedia(
+  apiKey: string,
+  socialSetId: string,
+  draft: TypefullyDraft,
+  detail: TypefullyDraftDetail | null,
+): Promise<{ imageUrls: string[]; expectsMedia: boolean }> {
+  const urls = new Set(getDraftImageUrls(draft, detail))
+  const mediaIds = getDraftMediaIds(draft, detail)
+
+  for (const mediaId of mediaIds) {
+    try {
+      const res = await fetch(
+        `${TYPEFULLY_API}/social-sets/${socialSetId}/media/${encodeURIComponent(mediaId)}`,
+        {
+          headers: { 'Authorization': `Bearer ${apiKey}` },
+          next: { revalidate: 0 },
+        },
+      )
+      if (!res.ok) {
+        console.warn('[sync-typefully] Typefully media API error:', {
+          mediaId,
+          status: res.status,
+        })
+        continue
+      }
+      collectImageUrls(await res.json(), urls)
+    } catch (error) {
+      console.warn('[sync-typefully] Typefully media fetch failed:', {
+        mediaId,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
+  return {
+    imageUrls: Array.from(urls),
+    expectsMedia: mediaIds.length > 0 || urls.size > 0,
+  }
+}
+
 function textToThreadLines(text: string): string[] {
   return text
     .split(/\n{2,}---\n{2,}/)
@@ -351,6 +421,7 @@ function summarizeTypefullyPosts(posts: TodayTypefullyPost[]): TypefullyPostSumm
     sourceStatus: post.sourceStatus,
     bodyPreview: post.body.slice(0, 80),
     imageUrls: post.imageUrls,
+    expectsMedia: post.expectsMedia,
   }))
 }
 
@@ -411,7 +482,7 @@ async function fetchTodayTypefullyPosts(
     const detail = draftId ? await fetchDraftDetail(apiKey, socialSetId, draftId) : null
     const scheduledAt = getDraftScheduledAt(draft) ?? (detail ? getDraftScheduledAt(detail) : null)
     const body = getDraftText(draft, detail)
-    const imageUrls = getDraftImageUrls(draft, detail)
+    const { imageUrls, expectsMedia } = await resolveDraftMedia(apiKey, socialSetId, draft, detail)
     if (!scheduledAt || !isTodayInJst(scheduledAt)) continue
     if (isDailyZukanTypefullyPost(body)) continue
 
@@ -422,6 +493,7 @@ async function fetchTodayTypefullyPosts(
       scheduledAt,
       body,
       imageUrls,
+      expectsMedia,
       shareUrl: draft.share_url ?? draft.typefully_url ?? null,
     })
   }
@@ -490,7 +562,7 @@ async function fetchTodayPublishedFallbackPosts(
       continue
     }
 
-    const imageUrls = getDraftImageUrls(draft, detail)
+    const { imageUrls, expectsMedia } = await resolveDraftMedia(apiKey, socialSetId, draft, detail)
     const typefullyId = draftId || `published:${publishedAt}:${hashText(body)}`
     posts.push({
       typefullyId,
@@ -498,6 +570,7 @@ async function fetchTodayPublishedFallbackPosts(
       scheduledAt: publishedAt,
       body,
       imageUrls,
+      expectsMedia,
       shareUrl: draft.x_published_url ?? draft.share_url ?? draft.typefully_url ?? null,
     })
   }
@@ -634,6 +707,7 @@ async function upsertTodayTypefullyPosts(
       ...(existing?.meta ?? {}),
       fetched_from_typefully_at: fetchedAt,
       typefully_image_urls_count: imageUrls.length,
+      typefully_media_expected: post.expectsMedia,
     }
 
     if (dryRun) {
@@ -834,6 +908,25 @@ async function markXPostSkippedDailyZukan(
     .is('thread_id', null)
 }
 
+async function markXPostWaitingForMedia(
+  supabase: SupabaseAdmin,
+  row: XPostDueRow,
+): Promise<void> {
+  await supabase
+    .from('x_posts')
+    .update({
+      status: 'scheduled',
+      sync_error: 'waiting_for_typefully_media',
+      last_attempt_at: new Date().toISOString(),
+      meta: {
+        ...(row.meta ?? {}),
+        waiting_for_typefully_media: true,
+      },
+    })
+    .eq('id', row.id)
+    .is('thread_id', null)
+}
+
 async function createThreadFromXPost(
   supabase: SupabaseAdmin,
   row: XPostDueRow,
@@ -909,6 +1002,16 @@ async function createThreadFromXPost(
 
   const title = generateTitleFromXPost(body) || 'デュエマ掲示板投稿'
   const imageUrl = getPrimaryImageUrl(row.image_urls)
+  const expectsMedia = row.meta?.typefully_media_expected === true
+  if (expectsMedia && !imageUrl) {
+    if (!dryRun) await markXPostWaitingForMedia(supabase, row)
+    return {
+      xPostId: row.id,
+      typefullyId: row.typefully_id,
+      status: 'skipped',
+      error: 'waiting_for_typefully_media',
+    }
+  }
   if (dryRun) {
     return {
       xPostId: row.id,
