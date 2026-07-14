@@ -66,6 +66,8 @@ export default function MakerSubmissionBoard({
   enableActions = false,
   exportTitle,
   shareUrl,
+  compactGroupLabel,
+  showRegulationBadges = true,
 }: {
   submission: PublicSubmission
   groups: MakerGroup[]
@@ -73,6 +75,8 @@ export default function MakerSubmissionBoard({
   enableActions?: boolean
   exportTitle?: string
   shareUrl?: string
+  compactGroupLabel?: string
+  showRegulationBadges?: boolean
 }) {
   const [zoomedCard, setZoomedCard] = useState<ZoomedCard | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -227,7 +231,7 @@ export default function MakerSubmissionBoard({
       {groups.map(group => {
         const items = submission.items.filter(item => item.group_key === group.key)
         return <div key={group.key} className={`grid border-b last:border-b-0 ${compact ? 'grid-cols-[28px_1fr]' : 'grid-cols-[54px_1fr]'}`}>
-          <div className={`flex items-center justify-center font-black ${group.color}`}>{group.label}</div>
+          <div className={`flex items-center justify-center font-black ${group.color}`}><span className="whitespace-pre-line text-center">{compact && compactGroupLabel ? compactGroupLabel : group.label}</span></div>
           <div className={`grid bg-white ${compact ? 'min-h-10 grid-cols-8 gap-0.5 p-1' : 'min-h-20 grid-cols-4 gap-2 p-2 sm:grid-cols-7'}`}>
             {items.map(item => {
               const image = item.card.image_url
@@ -242,7 +246,7 @@ export default function MakerSubmissionBoard({
                 className={`relative aspect-[63/88] overflow-hidden rounded border bg-slate-200 ${enableActions && card ? 'cursor-zoom-in' : 'cursor-default'}`}
               >
                 {image ? <img src={image} alt={item.card.name} loading="lazy" className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center p-1 text-center">{item.card.name}</span>}
-                {badge && <span className={`absolute bottom-0 right-0 px-1 py-0.5 text-[8px] font-black ${item.card.regulation === 'premium_hall' ? 'bg-red-800 text-white' : 'bg-yellow-300 text-yellow-950'}`}>{badge}</span>}
+                {showRegulationBadges && badge && <span className={`absolute bottom-0 right-0 px-1 py-0.5 text-[8px] font-black ${item.card.regulation === 'premium_hall' ? 'bg-red-800 text-white' : 'bg-yellow-300 text-yellow-950'}`}>{badge}</span>}
               </button>
             })}
           </div>
