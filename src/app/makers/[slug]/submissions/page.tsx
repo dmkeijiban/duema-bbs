@@ -5,6 +5,7 @@ import MakerCommunityTier, { type MakerAggregate } from '@/components/MakerCommu
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 import type { MakerCard } from '@/lib/maker'
+import { getCurrentHallCards, getHallCardOfficialId } from '@/lib/hall-of-fame'
 import { getPublicMakerProject, getPublicSubmissions, makerSubmissionView } from '@/lib/maker-submissions'
 import SubmissionActions from './SubmissionActions'
 import SmoothHashLink from '@/components/SmoothHashLink'
@@ -18,20 +19,32 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
   const project = await getPublicMakerProject(slug)
   if (!project) notFound()
   const { config, communityLabel } = makerSubmissionView(project)
-  const { submissions, total } = await getPublicSubmissions(project.id, page)
+  const pageSize = 10
+  const { submissions, total } = await getPublicSubmissions(project.id, page, pageSize)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const admin = createAdminClient()
   const [{ data: links }, { data: rows }] = await Promise.all([
-    admin.from('maker_project_cards').select('cards!inner(id,name,image_url,civilization,cost,card_type,regulation,is_active)').eq('project_id', project.id).eq('cards.is_active', true).order('sort_order'),
+    admin.from('maker_project_cards').select('cards!inner(id,name,image_url,civilization,cost,card_type,regulation,source_key,is_active)').eq('project_id', project.id).eq('cards.is_active', true).order('sort_order'),
     project.type === 'tier' ? admin.from('maker_tier_aggregates').select('card_id,s_count,a_count,b_count,c_count,d_count,rating_count,average_tier').eq('project_id', project.id) : project.type === 'prediction' ? admin.from('maker_selection_aggregates').select('card_id,selection_count,submission_count,selection_rate').eq('project_id', project.id) : Promise.resolve({ data: [] }),
   ])
-  const cards: MakerCard[] = ((links ?? []) as unknown as { cards: { id: string; name: string; image_url: string | null; civilization: string[] | null; cost: number | null; card_type: string | null; regulation: string | null } }[]).map(({ cards: card }) => ({ id: card.id, name: card.name, imageUrl: card.image_url, civilization: card.civilization ?? [], cost: card.cost, cardType: card.card_type, badge: card.regulation === 'premium_hall' ? { label: 'プレミアム殿堂', value: 'premium', className: 'bg-red-800 text-white' } : card.regulation === 'hall' ? { label: '殿堂', value: 'hall', className: 'bg-yellow-300 text-yellow-950' } : undefined }))
+  type LinkedCard = { id: string; name: string; image_url: string | null; civilization: string[] | null; cost: number | null; card_type: string | null; regulation: string | null; source_key: string | null }
+  const linkedCards = ((links ?? []) as unknown as { cards: LinkedCard }[]).map(({ cards: card }) => card)
+  if (slug === 'hall-of-fame-release') {
+    // メーカー本体と同じ殿堂リスト順を使い、集計だけ別順になるのを防ぐ。
+    const hallOrder = new Map(
+      [...getCurrentHallCards()]
+        .sort((a, b) => Number(a.status !== 'hall') - Number(b.status !== 'hall'))
+        .map((card, index) => [getHallCardOfficialId(card), index]),
+    )
+    linkedCards.sort((a, b) => (hallOrder.get(a.source_key ?? '') ?? Number.MAX_SAFE_INTEGER) - (hallOrder.get(b.source_key ?? '') ?? Number.MAX_SAFE_INTEGER))
+  }
+  const cards: MakerCard[] = linkedCards.map(card => ({ id: card.id, name: card.name, imageUrl: card.image_url, civilization: card.civilization ?? [], cost: card.cost, cardType: card.card_type, badge: card.regulation === 'premium_hall' ? { label: 'プレミアム殿堂', value: 'premium', className: 'bg-red-800 text-white' } : card.regulation === 'hall' ? { label: '殿堂', value: 'hall', className: 'bg-yellow-300 text-yellow-950' } : undefined }))
   const aggregates: MakerAggregate[] = project.type === 'tier'
     ? ((rows ?? []) as { card_id: string; s_count: number; a_count: number; b_count: number; c_count: number; d_count: number; rating_count: number; average_tier: number | string | null }[]).map(row => ({ cardId: row.card_id, counts: { s: row.s_count, a: row.a_count, b: row.b_count, c: row.c_count, d: row.d_count }, ratingCount: row.rating_count, averageTier: row.average_tier === null ? null : Number(row.average_tier) }))
     : ((rows ?? []) as { card_id: string; selection_count: number; submission_count: number; selection_rate: number | string }[]).map(row => ({ cardId: row.card_id, counts: { release: row.selection_count }, ratingCount: row.submission_count, averageTier: Number(row.selection_rate) }))
   const prediction = project.type === 'prediction'
-  const totalPages = Math.max(1, Math.ceil(total / 30))
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
   return <main className="min-h-screen bg-slate-50 px-3 py-6"><div className="mx-auto max-w-6xl">
     <Link href={`/makers/${slug}`} className="text-sm font-bold text-blue-700">← メーカーへ戻る</Link>
     <h1 className="mt-3 text-2xl font-black">{prediction ? 'みんなの殿堂解除予想' : communityLabel}</h1>

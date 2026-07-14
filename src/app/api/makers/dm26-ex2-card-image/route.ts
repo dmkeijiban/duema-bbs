@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import sharp from 'sharp'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +26,11 @@ async function fetchAllowedImage(initialUrl: URL) {
 
 export async function GET(request: NextRequest) {
   const rawUrl = request.nextUrl.searchParams.get('url')
+  const widthValue = request.nextUrl.searchParams.get('width')
+  const parsedWidth = widthValue ? Number.parseInt(widthValue, 10) : null
+  const width = parsedWidth && Number.isFinite(parsedWidth)
+    ? Math.min(800, Math.max(48, parsedWidth))
+    : null
   if (!rawUrl) return new NextResponse('Missing URL', { status: 400 })
 
   let url: URL
@@ -37,7 +43,22 @@ export async function GET(request: NextRequest) {
   const contentType = response.headers.get('content-type') ?? ''
   if (!contentType.startsWith('image/')) return new NextResponse('Invalid content type', { status: 415 })
 
-  return new NextResponse(await response.arrayBuffer(), {
+  const source = Buffer.from(await response.arrayBuffer())
+  if (width) {
+    try {
+      const thumbnail = await sharp(source)
+        .resize({ width, withoutEnlargement: true })
+        .webp({ quality: 76 })
+        .toBuffer()
+      return new NextResponse(new Uint8Array(thumbnail), {
+        headers: { 'Content-Type': 'image/webp', 'Cache-Control': 'public, max-age=2592000, immutable' },
+      })
+    } catch {
+      return new NextResponse('Image resize failed', { status: 502 })
+    }
+  }
+
+  return new NextResponse(new Uint8Array(source), {
     headers: { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800' },
   })
 }

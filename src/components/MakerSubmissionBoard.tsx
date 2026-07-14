@@ -55,6 +55,10 @@ function safeFilename(title: string) {
   return `${normalized || 'tier-table'}.png`
 }
 
+function makerThumbnailUrl(url: string, width: number) {
+  return `${IMAGE_PROXY_PATH}?url=${encodeURIComponent(url)}&width=${width}`
+}
+
 function regulationLabel(value: string | null) {
   return value === 'premium_hall' ? 'プレミアム殿堂' : value === 'hall' ? '殿堂' : null
 }
@@ -245,7 +249,7 @@ export default function MakerSubmissionBoard({
                 aria-label={enableActions && card ? `${item.card.name}を拡大表示` : undefined}
                 className={`relative aspect-[63/88] overflow-hidden rounded border bg-slate-200 ${enableActions && card ? 'cursor-zoom-in' : 'cursor-default'}`}
               >
-                {image ? <img src={image} alt={item.card.name} loading="lazy" className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center p-1 text-center">{item.card.name}</span>}
+                {image ? <img src={compact ? makerThumbnailUrl(image, 160) : image} alt={item.card.name} loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center p-1 text-center">{item.card.name}</span>}
                 {showRegulationBadges && badge && <span className={`absolute bottom-0 right-0 px-1 py-0.5 text-[8px] font-black ${item.card.regulation === 'premium_hall' ? 'bg-red-800 text-white' : 'bg-yellow-300 text-yellow-950'}`}>{badge}</span>}
               </button>
             })}
