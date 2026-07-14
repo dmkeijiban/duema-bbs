@@ -8,10 +8,10 @@ import { createClient } from '@/lib/supabase-server'
 const SLUG = 'hall-of-fame-release'
 const ANONYMOUS_COOKIE = 'maker_anonymous_id'
 
-function anonymousHash(value: string) {
+function anonymousHash(value: string, purpose: 'actor' | 'edit') {
   const pepper = process.env.ADMIN_COOKIE_SECRET || process.env.NEXTAUTH_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!pepper) throw new Error('匿名登録のサーバー設定が不足しています')
-  return createHash('sha256').update(`${pepper}:${value}`).digest('hex')
+  return createHash('sha256').update(`${pepper}:${purpose}:${value}`).digest('hex')
 }
 
 export async function saveHallReleaseSubmission(payload: Record<string, string[]>) {
@@ -37,7 +37,7 @@ export async function saveHallReleaseSubmission(payload: Record<string, string[]
     const cookieStore = await cookies()
     let anonymousId = cookieStore.get(ANONYMOUS_COOKIE)?.value
     if (!anonymousId || !/^[A-Za-z0-9_-]{40,100}$/.test(anonymousId)) anonymousId = randomBytes(32).toString('base64url')
-    const result = await admin.rpc('create_anonymous_maker_submission', { p_project_id: project.id, p_anonymous_id_hash: anonymousHash(anonymousId), p_title: '殿堂解除予想', p_items: items })
+    const result = await admin.rpc('create_anonymous_maker_submission', { p_project_id: project.id, p_title: '殿堂解除予想', p_comment: null, p_items: items, p_edit_token_hash: anonymousHash(anonymousId, 'edit'), p_actor_hash: anonymousHash(anonymousId, 'actor') })
     submissionId = result.data
     error = result.error
     if (!error) cookieStore.set(ANONYMOUS_COOKIE, anonymousId, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 365 })
