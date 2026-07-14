@@ -26,5 +26,5 @@ export default async function EditMakerSubmissionPage({ params }: { params: Prom
   const draft = emptyMakerDraft(config.groups)
   for (const item of items ?? []) if (draft[item.group_key]) draft[item.group_key].push(item.card_id)
   const saveAction = updateMakerSubmission.bind(null, slug, submissionId)
-  return <main className="min-h-screen bg-slate-50 px-3 py-6"><div className="mx-auto max-w-7xl"><Link href={`/makers/${slug}/submissions/${submissionId}`} className="text-sm font-bold text-blue-700">← Tier表へ戻る</Link><h1 className="mt-3 text-2xl font-black">Tier表を編集</h1><EditTierMaker cards={cards} groups={config.groups} draft={draft} title={submission.title} comment={submission.comment ?? ''} saveAction={saveAction} slug={slug} /></div></main>
+  return <main className="min-h-screen bg-slate-50 px-3 py-6"><div className="mx-auto max-w-7xl"><Link href={`/makers/${slug}/submissions/${submissionId}`} className="text-sm font-bold text-blue-700">← Tier表へ戻る</Link><h1 className="mt-3 text-2xl font-black">Tier表を編集</h1><EditTierMaker cards={cards} groups={config.groups} draft={draft} title={submission.title} comment={submission.comment ?? ''} saveAction={saveAction} slug={slug} submissionId={submissionId} /></div></main>
 }

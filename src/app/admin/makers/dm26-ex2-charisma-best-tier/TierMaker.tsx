@@ -57,6 +57,7 @@ type TierMakerProps = {
   selectionImageZoom?: boolean
   communityHref?: string
   registrationLabel?: string
+  registrationHeading?: string
 }
 
 function CardImage({ card, contain = false }: { card: MakerCard; contain?: boolean }) {
@@ -158,7 +159,7 @@ function isIOSDevice() {
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
-export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, submissionFields, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表', groupRowClassName, groupGridClassName = 'grid-cols-[52px_1fr]', groupLabelClassName, groupLabelText, cardBadgePositionClassName = 'left-1 top-1', cardBadgeTextClassName = 'text-white', selectionImageZoom = false, communityHref, registrationLabel = '作品' }: TierMakerProps) {
+export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, submissionFields, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表', groupRowClassName, groupGridClassName = 'grid-cols-[52px_1fr]', groupLabelClassName, groupLabelText, cardBadgePositionClassName = 'left-1 top-1', cardBadgeTextClassName = 'text-white', selectionImageZoom = false, communityHref, registrationLabel = '作品', registrationHeading }: TierMakerProps) {
   const STORAGE_KEY = `maker-draft:${storageSlug}:v1`
   const DRAFT_CHOICE_KEY = `maker-draft-choice:${storageSlug}:v1`
   const [draft, setDraft] = useState(initialDraft)
@@ -190,8 +191,6 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
   const cardsById = useMemo(() => new Map(cards.map(card => [card.id, card])), [cards])
   const validCardIds = useMemo(() => new Set(cards.map(card => card.id)), [cards])
-  const aggregateByCard = useMemo(() => new Map(aggregates.map(row => [row.cardId, row])), [aggregates])
-  const communityCards = useMemo(() => cards.filter(card => aggregateByCard.has(card.id)), [cards, aggregateByCard])
   const usedCardIds = useMemo(() => new Set(Object.values(draft).flat()), [draft])
   const draftKey = useMemo(() => JSON.stringify(draft), [draft])
   const latestDraftKey = useRef(draftKey)
@@ -621,7 +620,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
 
         {submissionFields && (
           <div className="rounded-xl border bg-white p-4">
-            <h2 className="font-black">{registrationLabel}を登録</h2>
+            <h2 className="font-black">{registrationHeading ?? `${registrationLabel}を登録`}</h2>
             <label className="mt-3 block text-sm font-bold">タイトル <span className="text-red-600">必須</span>
               <input value={submissionTitle} onChange={event => setSubmissionTitle(event.target.value)} required maxLength={40} className="mt-1 w-full rounded-lg border px-3 py-2 text-base font-normal" />
             </label>
@@ -654,45 +653,6 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
         </div>
 
         {!communityHref && showCommunity && <MakerCommunityTier cards={cards} groups={groups} aggregates={aggregates} title={communityTitle} mode={aggregateMode} />}
-        {false && (
-          <section id="community-tier" className="scroll-mt-4 rounded-xl border bg-white p-4">
-            <h2 className="text-lg font-black">{communityTitle}</h2>
-            <p className="mt-1 text-xs text-gray-500">カードごとの回答割合です。</p>
-            {communityCards.length === 0 ? (
-              <p className="mt-4 rounded bg-slate-50 p-4 text-sm text-gray-500">まだ集計できる回答がありません。</p>
-            ) : (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {communityCards.map(card => {
-                  const aggregate = aggregateByCard.get(card.id)
-                  if (!aggregate) return null
-
-                  return (
-                    <article key={card.id} className="flex gap-3 rounded border p-3">
-                      <button type="button" onClick={() => setZoomedCard(card)} aria-label={`${card.name}を拡大表示`} className="h-28 w-20 shrink-0 overflow-hidden rounded border bg-slate-100"><CardImage card={card} contain /></button>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="line-clamp-2 text-sm font-bold">{card.name}</h3>
-                        <p className="mt-1 text-xs text-gray-500">{aggregateMode === 'selection' ? `選択 ${aggregate.counts.release ?? 0}人 / ${aggregate.averageTier?.toFixed(1) ?? '0.0'}%` : `回答 ${aggregate.ratingCount}件 / 平均 ${aggregate.averageTier?.toFixed(2) ?? '-'}`}</p>
-                        <div className="mt-2 space-y-1">
-                          {groups.map(group => {
-                            const count = aggregate.counts[group.key] ?? 0
-                            const percent = aggregate.ratingCount ? Math.round(count / aggregate.ratingCount * 100) : 0
-                            return (
-                              <div key={group.key} className="grid grid-cols-[24px_1fr_38px] items-center gap-1 text-[11px]">
-                                <b>{group.label}</b>
-                                <div className="h-2 overflow-hidden rounded bg-slate-100"><div className="h-full bg-slate-700" style={{ width: `${percent}%` }} /></div>
-                                <span className="text-right tabular-nums">{percent}%</span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    </article>
-                  )
-                })}
-              </div>
-            )}
-          </section>
-        )}
       </section>
 
       <aside className="h-fit rounded-xl border bg-white p-3 lg:sticky lg:top-3">

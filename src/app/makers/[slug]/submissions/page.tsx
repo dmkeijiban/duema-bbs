@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase-server'
 import type { MakerCard } from '@/lib/maker'
 import { getPublicMakerProject, getPublicSubmissions, makerSubmissionView } from '@/lib/maker-submissions'
 import SubmissionActions from './SubmissionActions'
+import SmoothHashLink from '@/components/SmoothHashLink'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,7 +31,7 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
     <Link href={`/makers/${slug}`} className="text-sm font-bold text-blue-700">← メーカーへ戻る</Link>
     <h1 className="mt-3 text-2xl font-black">{communityLabel}</h1>
     <p className="mt-1 text-sm text-gray-500">登録された{project.type === 'tier' ? 'Tier表' : '作品'}を新着順で表示しています。</p>
-    {project.type === 'tier' && <a href="#community-tier" className="mt-4 inline-flex rounded-lg border border-blue-700 bg-white px-4 py-2 text-sm font-bold text-blue-700 scroll-smooth">📊 カード別の評価を見る</a>}
+    {project.type === 'tier' && <SmoothHashLink targetId="community-tier" className="mt-4 inline-flex rounded-lg border border-blue-700 bg-white px-4 py-2 text-sm font-bold text-blue-700">📊 カード別の評価を見る</SmoothHashLink>}
     <div id="submissions-list" className="scroll-mt-4" />
     {submissions.length ? <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{submissions.map(submission =>
       <article key={submission.id} className={`min-w-0 rounded-xl border bg-white p-3 shadow-sm ${created === submission.id ? 'border-emerald-500 ring-2 ring-emerald-200' : ''}`}>
@@ -42,6 +43,6 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
         {submission.comment && <p className="mt-2 line-clamp-2 break-words text-sm text-gray-600">{submission.comment}</p>}
         <time className="mt-2 block text-xs text-gray-400">{new Date(submission.created_at).toLocaleString('ja-JP')}</time>
       </Link><SubmissionActions slug={slug} submissionId={submission.id} canEdit={user?.id === submission.user_id} /></article>)}</div> : <p className="mt-6 rounded-xl border bg-white p-8 text-center text-gray-500">まだ{project.type === 'tier' ? 'Tier表' : '作品'}が登録されていません。</p>}
-    {project.type === 'tier' && <div className="mt-8"><MakerCommunityTier cards={cards} groups={config.groups} aggregates={aggregates} /><a href="#submissions-list" className="mt-3 inline-flex text-sm font-bold text-blue-700">↑ Tier表一覧へ戻る</a></div>}
+    {project.type === 'tier' && <div className="mt-8"><MakerCommunityTier cards={cards} groups={config.groups} aggregates={aggregates} /><SmoothHashLink targetId="submissions-list" className="mt-3 inline-flex text-sm font-bold text-blue-700">↑ Tier表一覧へ戻る</SmoothHashLink></div>}
   </div></main>
 }

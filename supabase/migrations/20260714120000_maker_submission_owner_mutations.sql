@@ -6,7 +6,7 @@ begin
   if p_comment is not null and char_length(btrim(p_comment))>200 then raise exception 'MAKER_COMMENT_INVALID'; end if;
   select config into v_config from maker_projects where id=p_project_id and is_public and status='published' for update;
   if v_config is null then raise exception 'MAKER_PROJECT_NOT_PUBLISHED'; end if;
-  if not exists(select 1 from maker_submissions where id=p_submission_id and project_id=p_project_id and user_id=p_user_id for update) then raise exception 'MAKER_SUBMISSION_FORBIDDEN'; end if;
+  if not exists(select 1 from maker_submissions where id=p_submission_id and project_id=p_project_id and user_id=p_user_id and is_valid and is_public for update) then raise exception 'MAKER_SUBMISSION_FORBIDDEN'; end if;
   select coalesce(array_agg(value->>'key'),array[]::text[]) into v_groups from jsonb_array_elements(coalesce(v_config->'groups','[]'::jsonb));
   v_allow_duplicates:=coalesce((v_config->>'allowDuplicates')::boolean,false); v_max_choices:=nullif(v_config->>'maxChoices','')::integer;
   if exists(select 1 from jsonb_to_recordset(coalesce(p_items,'[]')) x(card_id uuid,group_key text,position integer) left join maker_project_cards pc on pc.project_id=p_project_id and pc.card_id=x.card_id where x.card_id is null or pc.card_id is null or not(x.group_key=any(v_groups)) or x.position is null or x.position<0) then raise exception 'MAKER_ITEMS_INVALID'; end if;
@@ -23,7 +23,8 @@ grant execute on function public.update_owned_maker_submission(uuid,uuid,uuid,te
 create or replace function public.delete_owned_maker_submission(p_project_id uuid,p_submission_id uuid,p_user_id uuid)
 returns void language plpgsql security definer set search_path=public as $$
 begin
-  delete from maker_submissions where id=p_submission_id and project_id=p_project_id and user_id=p_user_id;
+  if not exists(select 1 from maker_projects where id=p_project_id and is_public and status='published') then raise exception 'MAKER_PROJECT_NOT_PUBLISHED'; end if;
+  delete from maker_submissions where id=p_submission_id and project_id=p_project_id and user_id=p_user_id and is_valid and is_public;
   if not found then raise exception 'MAKER_SUBMISSION_FORBIDDEN'; end if;
 end $$;
 revoke all on function public.delete_owned_maker_submission(uuid,uuid,uuid) from public,anon,authenticated;
