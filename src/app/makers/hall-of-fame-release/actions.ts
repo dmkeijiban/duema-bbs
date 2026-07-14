@@ -4,6 +4,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
+import type { MakerSubmissionMeta } from '@/lib/maker'
 
 const SLUG = 'hall-of-fame-release'
 const ANONYMOUS_COOKIE = 'maker_anonymous_id'
@@ -14,12 +15,16 @@ function anonymousHash(value: string, purpose: 'actor' | 'edit') {
   return createHash('sha256').update(`${pepper}:${purpose}:${value}`).digest('hex')
 }
 
-export async function saveHallReleaseSubmission(payload: Record<string, string[]>) {
+export async function saveHallReleaseSubmission(payload: Record<string, string[]>, meta?: MakerSubmissionMeta) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const admin = createAdminClient()
   const { data: project } = await admin.from('maker_projects').select('id').eq('slug', SLUG).eq('status', 'published').eq('is_public', true).maybeSingle()
   if (!project) return { ok: false, message: 'この企画は現在公開されていません' }
+  const title = meta?.title.trim() || '殿堂解除予想'
+  const comment = meta?.comment.trim() ?? ''
+  if (title.length > 40) return { ok: false, message: 'タイトルは40文字以内で入力してください' }
+  if (comment.length > 200) return { ok: false, message: '一言コメントは200文字以内で入力してください' }
   const ids = payload.release ?? []
   if (!ids.length) return { ok: false, message: '解除予想カードを1枚以上選んでください' }
   if (Object.keys(payload).some(key => key !== 'release') || new Set(ids).size !== ids.length) return { ok: false, message: '不正な回答です' }
@@ -30,14 +35,14 @@ export async function saveHallReleaseSubmission(payload: Record<string, string[]
   let submissionId: string | null = null
   let error: { message: string } | null = null
   if (user) {
-    const result = await admin.rpc('create_maker_submission', { p_project_id: project.id, p_user_id: user.id, p_title: '殿堂解除予想', p_comment: null, p_items: items })
+    const result = await admin.rpc('create_maker_submission', { p_project_id: project.id, p_user_id: user.id, p_title: title, p_comment: comment || null, p_items: items })
     submissionId = result.data
     error = result.error
   } else {
     const cookieStore = await cookies()
     let anonymousId = cookieStore.get(ANONYMOUS_COOKIE)?.value
     if (!anonymousId || !/^[A-Za-z0-9_-]{40,100}$/.test(anonymousId)) anonymousId = randomBytes(32).toString('base64url')
-    const result = await admin.rpc('create_anonymous_maker_submission', { p_project_id: project.id, p_title: '殿堂解除予想', p_comment: null, p_items: items, p_edit_token_hash: anonymousHash(anonymousId, 'edit'), p_actor_hash: anonymousHash(anonymousId, 'actor') })
+    const result = await admin.rpc('create_anonymous_maker_submission', { p_project_id: project.id, p_title: title, p_comment: comment || null, p_items: items, p_edit_token_hash: anonymousHash(anonymousId, 'edit'), p_actor_hash: anonymousHash(anonymousId, 'actor') })
     submissionId = result.data
     error = result.error
     if (!error) cookieStore.set(ANONYMOUS_COOKIE, anonymousId, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 365 })
