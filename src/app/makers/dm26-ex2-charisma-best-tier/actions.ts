@@ -12,9 +12,9 @@ export async function savePublicTierSubmission(payload: Record<string, string[]>
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { ok: false, message: 'ログインが必要です' }
-    const title = meta?.title.trim() ?? ''
+    const title = meta?.title.trim() || 'カリスマBEST Tier表'
     const comment = meta?.comment.trim() ?? ''
-    if (!title || title.length > 40) return { ok: false, message: 'タイトルは1〜40文字で入力してください' }
+    if (title.length > 40) return { ok: false, message: 'タイトルは40文字以内で入力してください' }
     if (comment.length > 200) return { ok: false, message: '一言コメントは200文字以内で入力してください' }
 
     const admin = createAdminClient()
