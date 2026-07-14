@@ -13,7 +13,7 @@ export type GoodlifeAdSettings = {
 export const GOODLIFE_SETTING_DEFAULTS: GoodlifeAdSettings = {
   enabled: true,
   threadList: true,
-  threadDetail: true,
+  threadDetail: false,
   desktop: true,
   mobile: true,
 }
