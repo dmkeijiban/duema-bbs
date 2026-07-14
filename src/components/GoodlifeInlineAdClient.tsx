@@ -8,9 +8,13 @@ const CREATIVE_SELECTOR = 'iframe, img[src], ins, object, embed, video, canvas, 
 export function GoodlifeInlineAdClient({
   slot,
   visibilityClass,
+  desktopEnabled,
+  mobileEnabled,
 }: {
   slot: AdSlotName
   visibilityClass: string
+  desktopEnabled: boolean
+  mobileEnabled: boolean
 }) {
   const contentRef = useRef<HTMLDivElement>(null)
   const [hasCreative, setHasCreative] = useState(false)
@@ -36,6 +40,9 @@ export function GoodlifeInlineAdClient({
     const content = contentRef.current
     if (!content) return
 
+    const isDesktop = window.matchMedia('(min-width: 768px)').matches
+    if ((isDesktop && !desktopEnabled) || (!isDesktop && !mobileEnabled)) return
+
     content.replaceChildren()
 
     const observer = new MutationObserver(() => {
@@ -56,7 +63,7 @@ export function GoodlifeInlineAdClient({
       script.removeEventListener('load', detectCreative)
       content.replaceChildren()
     }
-  }, [detectCreative])
+  }, [desktopEnabled, detectCreative, mobileEnabled])
 
   return (
     <aside
