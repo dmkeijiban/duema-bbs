@@ -324,10 +324,6 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   }
 
   function save() {
-    if (submissionFields && !submissionTitle.trim()) {
-      setMessage('タイトルを入力してください')
-      return
-    }
     if (!canSave) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(draft))
@@ -621,8 +617,8 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
         {submissionFields && (
           <div className="rounded-xl border bg-white p-4">
             <h2 className="font-black">{registrationHeading ?? `${registrationLabel}を登録`}</h2>
-            <label className="mt-3 block text-sm font-bold">タイトル <span className="text-red-600">必須</span>
-              <input value={submissionTitle} onChange={event => setSubmissionTitle(event.target.value)} required maxLength={40} className="mt-1 w-full rounded-lg border px-3 py-2 text-base font-normal" />
+            <label className="mt-3 block text-sm font-bold">タイトル <span className="font-normal text-gray-500">任意</span>
+              <input value={submissionTitle} onChange={event => setSubmissionTitle(event.target.value)} maxLength={40} className="mt-1 w-full rounded-lg border px-3 py-2 text-base font-normal" />
             </label>
             <label className="mt-3 block text-sm font-bold">一言コメント <span className="font-normal text-gray-500">任意</span>
               <textarea value={submissionComment} onChange={event => setSubmissionComment(event.target.value)} maxLength={200} rows={3} className="mt-1 w-full resize-y rounded-lg border px-3 py-2 text-base font-normal" placeholder="こだわったポイントなど" />
