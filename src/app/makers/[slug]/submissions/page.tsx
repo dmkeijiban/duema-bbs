@@ -43,6 +43,6 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
         {submission.comment && <p className="mt-2 line-clamp-2 break-words text-sm text-gray-600">{submission.comment}</p>}
         <time className="mt-2 block text-xs text-gray-400">{new Date(submission.created_at).toLocaleString('ja-JP')}</time>
       </Link><SubmissionActions slug={slug} submissionId={submission.id} canEdit={user?.id === submission.user_id} /></article>)}</div> : <p className="mt-6 rounded-xl border bg-white p-8 text-center text-gray-500">まだ{project.type === 'tier' ? 'Tier表' : '作品'}が登録されていません。</p>}
-    {project.type === 'tier' && <div className="mt-8"><MakerCommunityTier cards={cards} groups={config.groups} aggregates={aggregates} /><SmoothHashLink targetId="submissions-list" className="mt-3 inline-flex text-sm font-bold text-blue-700">↑ Tier表一覧へ戻る</SmoothHashLink></div>}
+    {project.type === 'tier' && <div className="mt-8"><MakerCommunityTier cards={cards} groups={config.groups} aggregates={aggregates} showAllCards /><SmoothHashLink targetId="submissions-list" className="mt-3 inline-flex text-sm font-bold text-blue-700">↑ Tier表一覧へ戻る</SmoothHashLink></div>}
   </div></main>
 }
