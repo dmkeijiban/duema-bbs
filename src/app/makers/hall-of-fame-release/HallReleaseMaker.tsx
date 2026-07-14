@@ -18,7 +18,7 @@ export default function HallReleaseMaker(props: { cards: MakerCard[]; draft: Mak
   const groups: MakerGroup[] = [{ key: 'release', label: '殿堂解除予想', color: 'border-amber-400 bg-amber-100 text-amber-950' }]
   return <TierMaker cards={props.cards} groups={groups} initialDraft={props.draft} unrated canSave={props.canSave} aggregates={props.aggregates} imageProxyPath="/api/makers/dm26-ex2-card-image"
     eventSlug="hall-of-fame-release"
-    saveAction={saveHallReleaseSubmission} saveButtonLabel="予想を登録" hasSavedSubmission={props.saved}
+    saveAction={saveHallReleaseSubmission} submissionFields={{ defaultTitle: '殿堂解除予想' }} registrationHeading="殿堂解除予想を登録" saveButtonLabel="予想を登録" hasSavedSubmission={props.saved}
     storageSlug="hall-of-fame-release" exportTitle="2026年7月27日 殿堂解除選手権" exportFilename="hall-of-fame-release.png" shareText="殿堂解除選手権｜みんなで予想しよう！"
     shareUrl="/makers/hall-of-fame-release?share=release-v1" communityTitle="みんなの殿堂解除予想" communityButtonLabel="📊 みんなの殿堂解除予想を見る" communityHref="/makers/hall-of-fame-release/submissions"
     poolFilters={[{ value: 'hall', label: '殿堂' }, { value: 'premium', label: 'プレ殿' }]} aggregateMode="selection" responseLabel="殿堂解除予想"
