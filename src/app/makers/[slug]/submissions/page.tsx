@@ -9,6 +9,7 @@ import { getCurrentHallCards, getHallCardOfficialId } from '@/lib/hall-of-fame'
 import { getPublicMakerProject, getPublicSubmissions, makerSubmissionView } from '@/lib/maker-submissions'
 import SubmissionActions from './SubmissionActions'
 import SmoothHashLink from '@/components/SmoothHashLink'
+import { getOwnedMakerSubmissionIds } from '@/lib/maker-anonymous-owner'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,7 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const admin = createAdminClient()
+  const ownedSubmissionIds = await getOwnedMakerSubmissionIds(project.id, submissions.map(submission => submission.id), user?.id ?? null)
   const [{ data: links }, { data: rows }] = await Promise.all([
     admin.from('maker_project_cards').select('cards!inner(id,name,image_url,civilization,cost,card_type,regulation,source_key,is_active)').eq('project_id', project.id).eq('cards.is_active', true).order('sort_order'),
     project.type === 'tier' ? admin.from('maker_tier_aggregates').select('card_id,s_count,a_count,b_count,c_count,d_count,rating_count,average_tier').eq('project_id', project.id) : project.type === 'prediction' ? admin.from('maker_selection_aggregates').select('card_id,selection_count,submission_count,selection_rate').eq('project_id', project.id) : Promise.resolve({ data: [] }),
@@ -60,7 +62,7 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
         <p className="mt-1 text-sm text-gray-600">{submission.authorName}</p>
         {submission.comment && <p className="mt-2 line-clamp-2 break-words text-sm text-gray-600">{submission.comment}</p>}
         <time className="mt-2 block text-xs text-gray-400">{new Date(submission.created_at).toLocaleString('ja-JP')}</time>
-      </Link><SubmissionActions slug={slug} submissionId={submission.id} canEdit={user?.id === submission.user_id} /></article>)}</div> : <p className="mt-6 rounded-xl border bg-white p-8 text-center text-gray-500">まだ{project.type === 'tier' ? 'Tier表' : '作品'}が登録されていません。</p>}
+      </Link><SubmissionActions slug={slug} submissionId={submission.id} canEdit={ownedSubmissionIds.has(submission.id)} /></article>)}</div> : <p className="mt-6 rounded-xl border bg-white p-8 text-center text-gray-500">まだ{project.type === 'tier' ? 'Tier表' : '作品'}が登録されていません。</p>}
     {totalPages > 1 && <nav className="mt-6 flex items-center justify-center gap-3 text-sm font-bold"><Link aria-disabled={page <= 1} className={page <= 1 ? 'pointer-events-none text-gray-300' : 'text-blue-700'} href={`?page=${page - 1}#submissions-list`}>← 前へ</Link><span>{page} / {totalPages}</span><Link aria-disabled={page >= totalPages} className={page >= totalPages ? 'pointer-events-none text-gray-300' : 'text-blue-700'} href={`?page=${page + 1}#submissions-list`}>次へ →</Link></nav>}
     {(project.type === 'tier' || prediction) && <div className="mt-8"><MakerCommunityTier cards={cards} groups={config.groups} aggregates={aggregates} title={prediction ? 'カード別のみんなの解除予想率' : undefined} mode={prediction ? 'selection' : 'tier'} showAllCards /><SmoothHashLink targetId="submissions-list" className="mt-3 inline-flex text-sm font-bold text-blue-700">↑ {prediction ? '予想一覧へ戻る' : 'Tier表一覧へ戻る'}</SmoothHashLink></div>}
   </div></main>
