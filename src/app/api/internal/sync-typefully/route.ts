@@ -260,121 +260,39 @@ function isHttpUrl(value: unknown): value is string {
   return typeof value === 'string' && /^https?:\/\//i.test(value.trim())
 }
 
-function collectImageUrls(value: unknown, urls = new Set<string>()): Set<string> {
-  if (!value) return urls
-
-  if (isHttpUrl(value)) {
-    urls.add(value.trim())
-    return urls
+interface TypefullyMediaStatus {
+  media_urls?: {
+    medium?: string
+    large?: string
+    original?: string
   }
-
-  if (Array.isArray(value)) {
-    for (const item of value) collectImageUrls(item, urls)
-    return urls
-  }
-
-  if (typeof value === 'object') {
-    const record = value as Record<string, unknown>
-    for (const key of ['url', 'src', 'href', 'media_url', 'mediaUrl', 'image_url', 'imageUrl']) {
-      collectImageUrls(record[key], urls)
-    }
-    for (const key of ['media_urls', 'mediaUrls', 'image_urls', 'imageUrls', 'images', 'media', 'attachments']) {
-      collectImageUrls(record[key], urls)
-    }
-    // Typefullyのレスポンスは媒体・公開状態によってURLのキー名が変わる。
-    // media配下に渡された未知のキーも再帰的に確認し、temporary_url等を取りこぼさない。
-    for (const nested of Object.values(record)) {
-      collectImageUrls(nested, urls)
-    }
-  }
-
-  return urls
-}
-
-function getDraftImageUrls(draft: TypefullyDraft, detail: TypefullyDraftDetail | null): string[] {
-  const urls = new Set<string>()
-  collectImageUrls(draft.media_urls, urls)
-  collectImageUrls(draft.image_urls, urls)
-  collectImageUrls(draft.images, urls)
-  collectImageUrls(draft.media, urls)
-  collectImageUrls(draft.attachments, urls)
-  collectImageUrls(detail?.media_urls, urls)
-  collectImageUrls(detail?.image_urls, urls)
-  collectImageUrls(detail?.images, urls)
-  collectImageUrls(detail?.media, urls)
-  collectImageUrls(detail?.attachments, urls)
-  for (const post of detail?.platforms?.x?.posts ?? []) {
-    collectImageUrls(post.media_urls, urls)
-    collectImageUrls(post.image_urls, urls)
-    collectImageUrls(post.images, urls)
-    collectImageUrls(post.media, urls)
-    collectImageUrls(post.attachments, urls)
-  }
-  return Array.from(urls)
-}
-
-function collectMediaIds(value: unknown, ids = new Set<string>()): Set<string> {
-  if (typeof value === 'string' || typeof value === 'number') {
-    const id = String(value).trim()
-    if (id) ids.add(id)
-    return ids
-  }
-  if (Array.isArray(value)) {
-    for (const item of value) collectMediaIds(item, ids)
-    return ids
-  }
-  if (value && typeof value === 'object') {
-    const record = value as Record<string, unknown>
-    for (const key of ['id', 'media_id', 'mediaId']) collectMediaIds(record[key], ids)
-  }
-  return ids
-}
-
-function getDraftMediaIds(draft: TypefullyDraft, detail: TypefullyDraftDetail | null): string[] {
-  const ids = new Set<string>()
-  collectMediaIds(draft.media_ids, ids)
-  collectMediaIds(detail?.media_ids, ids)
-  for (const post of detail?.platforms?.x?.posts ?? []) collectMediaIds(post.media_ids, ids)
-  return Array.from(ids)
 }
 
 async function resolveDraftMedia(
   apiKey: string,
   socialSetId: string,
-  draft: TypefullyDraft,
   detail: TypefullyDraftDetail | null,
 ): Promise<{ imageUrls: string[]; expectsMedia: boolean }> {
-  const urls = new Set(getDraftImageUrls(draft, detail))
-  const mediaIds = getDraftMediaIds(draft, detail)
-
-  for (const mediaId of mediaIds) {
+  const mediaIds = detail?.platforms?.x?.posts
+    ?.flatMap((post) => Array.isArray(post.media_ids) ? post.media_ids.map(String) : [])
+    .filter(Boolean) ?? []
+  const urls = await Promise.all(mediaIds.map(async (mediaId) => {
     try {
-      const res = await fetch(
-        `${TYPEFULLY_API}/social-sets/${socialSetId}/media/${encodeURIComponent(mediaId)}`,
-        {
-          headers: { 'Authorization': `Bearer ${apiKey}` },
-          next: { revalidate: 0 },
-        },
-      )
-      if (!res.ok) {
-        console.warn('[sync-typefully] Typefully media API error:', {
-          mediaId,
-          status: res.status,
-        })
-        continue
-      }
-      collectImageUrls(await res.json(), urls)
-    } catch (error) {
-      console.warn('[sync-typefully] Typefully media fetch failed:', {
-        mediaId,
-        error: error instanceof Error ? error.message : String(error),
+      const res = await fetch(`${TYPEFULLY_API}/social-sets/${socialSetId}/media/${encodeURIComponent(mediaId)}`, {
+        headers: { 'Authorization': `Bearer ${apiKey}` },
+        next: { revalidate: 0 },
       })
+      if (!res.ok) return null
+      const media: TypefullyMediaStatus = await res.json()
+      return media.media_urls?.medium ?? media.media_urls?.large ?? media.media_urls?.original ?? null
+    } catch {
+      return null
     }
-  }
+  }))
 
   return {
-    imageUrls: Array.from(urls),
-    expectsMedia: mediaIds.length > 0 || urls.size > 0,
+    imageUrls: urls.filter((url): url is string => Boolean(url)),
+    expectsMedia: mediaIds.length > 0,
   }
 }
 
@@ -482,7 +400,7 @@ async function fetchTodayTypefullyPosts(
     const detail = draftId ? await fetchDraftDetail(apiKey, socialSetId, draftId) : null
     const scheduledAt = getDraftScheduledAt(draft) ?? (detail ? getDraftScheduledAt(detail) : null)
     const body = getDraftText(draft, detail)
-    const { imageUrls, expectsMedia } = await resolveDraftMedia(apiKey, socialSetId, draft, detail)
+    const { imageUrls, expectsMedia } = await resolveDraftMedia(apiKey, socialSetId, detail)
     if (!scheduledAt || !isTodayInJst(scheduledAt)) continue
     if (isDailyZukanTypefullyPost(body)) continue
 
@@ -562,7 +480,7 @@ async function fetchTodayPublishedFallbackPosts(
       continue
     }
 
-    const { imageUrls, expectsMedia } = await resolveDraftMedia(apiKey, socialSetId, draft, detail)
+    const { imageUrls, expectsMedia } = await resolveDraftMedia(apiKey, socialSetId, detail)
     const typefullyId = draftId || `published:${publishedAt}:${hashText(body)}`
     posts.push({
       typefullyId,
