@@ -14,6 +14,7 @@ import { createPublicClient } from '@/lib/supabase-public'
 import { NextReadNav } from '@/components/NextReadNav'
 import { ThreadFloatingActions } from '@/components/ThreadFloatingActions'
 import { AdBanner } from '@/components/AdBanner'
+import { GoodlifeInlineAd } from '@/components/GoodlifeInlineAd'
 import { getDisplayCategory } from '@/lib/categories'
 import { isThinThreadForAdSenseReview, isPrNoticeForAdSenseReview } from '@/lib/adsense-review-mode'
 import { getThreadCommentClosedMessage } from '@/lib/thread-auto-close'
@@ -385,6 +386,7 @@ export async function renderThreadPage(threadId: number, page: number) {
         showAfterCommentThreadPrompt={postGuidanceSettings.showAfterCommentThreadPrompt}
         showCommentFormHint={postGuidanceSettings.showCommentFormHint}
         poll={threadPoll}
+        inlineAdSlot={<GoodlifeInlineAd slot="thread_detail_inline" />}
         recommendSlot={
           <Suspense fallback={<RecommendSectionSkeleton />}>
             <RecommendSection
