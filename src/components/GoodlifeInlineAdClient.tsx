@@ -1,6 +1,5 @@
 'use client'
 
-import Script from 'next/script'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { GOODLIFE_SCRIPT_URL, type AdSlotName } from '@/lib/ads'
 
@@ -37,19 +36,25 @@ export function GoodlifeInlineAdClient({
     const content = contentRef.current
     if (!content) return
 
+    content.replaceChildren()
+
     const observer = new MutationObserver(() => {
       if (detectCreative()) observer.disconnect()
     })
     observer.observe(content, { childList: true, subtree: true, attributes: true })
 
-    const initialFrame = window.requestAnimationFrame(() => {
-      if (detectCreative()) observer.disconnect()
-    })
-    const timeout = window.setTimeout(() => observer.disconnect(), 10_000)
+    const script = document.createElement('script')
+    script.type = 'text/javascript'
+    script.charset = 'utf-8'
+    script.src = GOODLIFE_SCRIPT_URL
+    script.async = true
+    script.addEventListener('load', detectCreative)
+    content.appendChild(script)
+
     return () => {
-      window.cancelAnimationFrame(initialFrame)
-      window.clearTimeout(timeout)
       observer.disconnect()
+      script.removeEventListener('load', detectCreative)
+      content.replaceChildren()
     }
   }, [detectCreative])
 
@@ -66,15 +71,7 @@ export function GoodlifeInlineAdClient({
       aria-label={hasCreative ? '広告' : undefined}
     >
       {hasCreative && <span className="mb-1 block text-[10px] leading-none text-gray-400">広告</span>}
-      <div ref={contentRef} className="mx-auto max-w-full overflow-hidden">
-        <Script
-          id={`goodlife-${slot}`}
-          src={GOODLIFE_SCRIPT_URL}
-          strategy="lazyOnload"
-          charSet="utf-8"
-          onLoad={detectCreative}
-        />
-      </div>
+      <div ref={contentRef} className="mx-auto max-w-full overflow-hidden" />
     </aside>
   )
 }
