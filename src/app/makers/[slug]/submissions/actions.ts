@@ -2,16 +2,37 @@
 
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
+import { getMakerAnonymousEditHash } from '@/lib/maker-anonymous-owner'
 
 export async function deleteMakerSubmission(slug: string, submissionId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { ok: false, message: 'ログインが必要です' }
+  const editHash = await getMakerAnonymousEditHash()
   const admin = createAdminClient()
-  const { data: project } = await admin.from('maker_projects').select('id').eq('slug', slug).eq('is_public', true).eq('status', 'published').maybeSingle()
+  const { data: project } = await admin.from('maker_projects').select('id,type').eq('slug', slug).eq('is_public', true).eq('status', 'published').maybeSingle()
   if (!project) return { ok: false, message: '企画が見つかりません' }
-  const { data: owned } = await admin.from('maker_submissions').select('id').eq('id', submissionId).eq('project_id', project.id).eq('user_id', user.id).eq('is_valid', true).eq('is_public', true).maybeSingle()
-  if (!owned) return { ok: false, message: 'このTier表を削除する権限がありません' }
-  const { error } = await admin.rpc('delete_owned_maker_submission', { p_project_id: project.id, p_submission_id: submissionId, p_user_id: user.id })
-  return error ? { ok: false, message: '削除に失敗しました' } : { ok: true, message: 'Tier表を削除しました' }
+
+  const { data: submission } = await admin
+    .from('maker_submissions')
+    .select('id,user_id,anonymous_edit_token_hash')
+    .eq('id', submissionId)
+    .eq('project_id', project.id)
+    .eq('is_valid', true)
+    .eq('is_public', true)
+    .maybeSingle()
+  if (!submission) return { ok: false, message: '投稿が見つかりません' }
+
+  let error: { message: string } | null = null
+  if (submission.user_id !== null) {
+    if (!user || submission.user_id !== user.id) return { ok: false, message: 'この投稿を削除する権限がありません' }
+    const result = await admin.rpc('delete_owned_maker_submission', { p_project_id: project.id, p_submission_id: submissionId, p_user_id: user.id })
+    error = result.error
+  } else {
+    if (!editHash || submission.anonymous_edit_token_hash !== editHash) return { ok: false, message: 'この投稿を削除する権限がありません' }
+    const result = await admin.rpc('delete_anonymous_maker_submission', { p_project_id: project.id, p_submission_id: submissionId, p_edit_token_hash: editHash })
+    error = result.error
+  }
+
+  const label = project.type === 'prediction' ? '予想' : 'Tier表'
+  return error ? { ok: false, message: '削除に失敗しました' } : { ok: true, message: `${label}を削除しました` }
 }
