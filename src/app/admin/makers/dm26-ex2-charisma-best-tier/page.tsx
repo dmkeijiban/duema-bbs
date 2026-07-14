@@ -33,7 +33,7 @@ export default async function Page() {
 
   let cards: MakerCard[] = []
   let aggregates: TierAggregate[] = []
-  let projectConfig: MakerProjectConfig = { groups: TIER_GROUPS, unrated: true, allowDuplicates: false, ordered: true, overwrite: true, maxChoices: null }
+  let projectConfig: MakerProjectConfig = { groups: TIER_GROUPS, unrated: true, allowDuplicates: false, allowAnonymousSubmission: false, ordered: true, overwrite: true, maxChoices: null }
   let draft: MakerDraft = emptyMakerDraft(projectConfig.groups)
   let unavailableMessage = ''
   let usingFallbackCards = false
@@ -81,7 +81,7 @@ export default async function Page() {
     unavailableMessage = error instanceof Error ? error.message : 'Tier表を読み込めませんでした'
     usingFallbackCards = true
     cards = getFallbackCards()
-    projectConfig = { groups: TIER_GROUPS, unrated: true, allowDuplicates: false, ordered: true, overwrite: true, maxChoices: null }
+    projectConfig = { groups: TIER_GROUPS, unrated: true, allowDuplicates: false, allowAnonymousSubmission: false, ordered: true, overwrite: true, maxChoices: null }
     draft = emptyMakerDraft(projectConfig.groups)
     console.warn('DM26-EX2 Tier表は確認用データで表示します', { message: unavailableMessage })
   }

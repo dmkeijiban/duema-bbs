@@ -13,6 +13,7 @@ export type MakerUsageStats = {
   // 既存DB（maker_submissions）から算出
   registrantCount: number
   submissionCount: number
+  anonymousSubmissionCount: number
   todayNewRegistrantCount: number
   todaySubmissionActivityCount: number
   lastSubmissionAt: string | null
@@ -21,7 +22,7 @@ export type MakerUsageStats = {
   events: Record<MakerEventType, MakerEventCounter>
 }
 
-type SubmissionRow = { created_at: string; updated_at: string }
+type SubmissionRow = { created_at: string; updated_at: string; user_id: string | null }
 type EventStatsRow = { event_type: string; total_count: number; today_count: number; unique_actors: number; today_unique_actors: number }
 
 function emptyCounter(): MakerEventCounter {
@@ -37,7 +38,7 @@ export async function fetchMakerUsageStats(projectId: string): Promise<MakerUsag
   const todayStartIso = getJstTodayCutoffUtcIso()
 
   const [submissionsResult, eventStatsV2Result] = await Promise.all([
-    admin.from('maker_submissions').select('created_at,updated_at').eq('project_id', projectId).eq('is_valid', true),
+    admin.from('maker_submissions').select('created_at,updated_at,user_id').eq('project_id', projectId).eq('is_valid', true),
     admin.rpc('maker_event_stats_v2', { p_project_id: projectId, p_today_start: todayStartIso }),
   ])
 
@@ -55,7 +56,7 @@ export async function fetchMakerUsageStats(projectId: string): Promise<MakerUsag
   let todaySubmissionActivityCount = 0
   let lastSubmissionAt: string | null = null
   for (const row of submissions) {
-    if (new Date(row.created_at).getTime() >= todayStartMs) todayNewRegistrantCount += 1
+    if (row.user_id && new Date(row.created_at).getTime() >= todayStartMs) todayNewRegistrantCount += 1
     if (new Date(row.updated_at).getTime() >= todayStartMs) todaySubmissionActivityCount += 1
     if (!lastSubmissionAt || row.updated_at > lastSubmissionAt) lastSubmissionAt = row.updated_at
   }
@@ -82,9 +83,10 @@ export async function fetchMakerUsageStats(projectId: string): Promise<MakerUsag
   }
 
   return {
-    // 1ユーザー1回答（unique(project_id,user_id)）のため登録者数＝有効回答数
-    registrantCount: submissions.length,
+    // 登録者数はログイン済みユーザーのdistinct数。匿名回答は別集計にする。
+    registrantCount: new Set(submissions.flatMap(row => row.user_id ? [row.user_id] : [])).size,
     submissionCount: submissions.length,
+    anonymousSubmissionCount: submissions.filter(row => row.user_id === null).length,
     todayNewRegistrantCount,
     todaySubmissionActivityCount,
     lastSubmissionAt,

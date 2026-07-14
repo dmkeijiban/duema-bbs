@@ -6,6 +6,7 @@ import type { MakerCard, MakerDraft, MakerGroup, MakerSubmissionMeta } from '@/l
 import { getMakerAnonymousId } from '@/lib/maker-events-shared'
 import { recordMakerPageView } from '@/lib/maker-events'
 import { beginMakerSignup } from '@/lib/maker-signup-source'
+import { anonymousSubmissionOwnerKey } from '@/lib/maker-anonymous-owner'
 
 type Props = {
   cards: MakerCard[]
@@ -13,7 +14,7 @@ type Props = {
   initialDraft: MakerDraft
   unrated: boolean
   canSave: boolean
-  saveAction: (payload: Record<string, string[]>, meta?: MakerSubmissionMeta) => Promise<{ ok: boolean; message: string; redirectTo?: string }>
+  saveAction: (payload: Record<string, string[]>, meta?: MakerSubmissionMeta, anonymousId?: string | null) => Promise<{ ok: boolean; message: string; redirectTo?: string; submissionId?: string; ownerToken?: string }>
   saveButtonLabel: string
   hasSavedSubmission: boolean
   aggregates: TierAggregate[]
@@ -73,6 +74,14 @@ export default function PublicTierMaker(props: Props) {
     setZoomedImage({ src: target.src, alt: target.alt })
   }
 
+  async function saveWithAnonymousOwner(payload: Record<string, string[]>, meta?: MakerSubmissionMeta) {
+    const result = await props.saveAction(payload, meta, getMakerAnonymousId())
+    if (result.ok && result.submissionId && result.ownerToken) {
+      localStorage.setItem(anonymousSubmissionOwnerKey('dm26-ex2-charisma-best-tier', result.submissionId), result.ownerToken)
+    }
+    return result
+  }
+
   return (
     <div ref={rootRef} onClickCapture={handleClickCapture}>
       <TierMaker
@@ -81,7 +90,7 @@ export default function PublicTierMaker(props: Props) {
         initialDraft={props.initialDraft}
         unrated={props.unrated}
         canSave={props.canSave}
-        saveAction={props.saveAction}
+        saveAction={saveWithAnonymousOwner}
         submissionFields={{ defaultTitle: 'カリスマBEST Tier表' }}
         saveButtonLabel={props.saveButtonLabel}
         hasSavedSubmission={props.hasSavedSubmission}

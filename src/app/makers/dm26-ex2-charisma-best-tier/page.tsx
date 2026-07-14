@@ -92,7 +92,7 @@ export default async function PublicTierMakerPage() {
           groups={config.groups}
           initialDraft={draft}
           unrated={config.unrated}
-          canSave={Boolean(user)}
+          canSave={Boolean(user) || config.allowAnonymousSubmission}
           saveAction={savePublicTierSubmission}
           saveButtonLabel="登録"
           hasSavedSubmission={false}

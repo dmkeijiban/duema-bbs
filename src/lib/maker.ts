@@ -24,6 +24,7 @@ export type MakerProjectConfig = {
   ordered: boolean
   overwrite: boolean
   maxChoices: number | null
+  allowAnonymousSubmission: boolean
 }
 
 const DEFAULT_GROUP_COLORS: Record<string, string> = {
@@ -86,6 +87,7 @@ export function parseMakerProjectConfig(value: unknown): MakerProjectConfig {
     ordered: raw.ordered !== false,
     overwrite: raw.overwrite !== false,
     maxChoices: maxChoices == null ? null : Number(maxChoices),
+    allowAnonymousSubmission: raw.allowAnonymousSubmission === true,
   }
 }
 
