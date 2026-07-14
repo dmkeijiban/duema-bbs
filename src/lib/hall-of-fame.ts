@@ -2618,7 +2618,7 @@ export const HALL_OF_FAME_ENTRIES: HallEntry[] = [
         initial: '無制限 → 殿堂入り',
         description: '',
         history: ['無制限', '殿堂入り'],
-        imageUrl: officialImage('dmex04-052'),
+        imageUrl: officialImage('dmex04-052a'),
         officialUrl: officialPage('dmex04-052'),
       },
       {

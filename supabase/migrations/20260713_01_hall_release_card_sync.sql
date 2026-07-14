@@ -81,7 +81,7 @@ insert into hall_release_card_sync(sort_order,source_key,name,normalized_name,im
   (69,'dmex08-169','緊急プレミアム殿堂','緊急プレミアム殿堂','https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmex08-169.jpg','premium_hall'),
   (70,'dm10-015','緊急再誕','緊急再誕','https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm10-015.jpg','hall'),
   (71,'dmex17-054','月下旋壊 ド・リュミーズ','月下旋壊ド・リュミーズ','https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmex17-054.jpg','hall'),
-  (72,'dmex04-052','幻緑の双月／母なる星域','幻緑の双月/母なる星域','https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmex04-052.jpg','hall'),
+  (72,'dmex04-052','幻緑の双月／母なる星域','幻緑の双月/母なる星域','https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmex04-052a.jpg','hall'),
   (73,'dm29-037','光牙忍ハヤブサマル','光牙忍ハヤブサマル','https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm29-037.jpg','hall'),
   (74,'dm10-s04','黒神龍ブライゼナーガ','黒神龍ブライゼナーガ','https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm10-s04.jpg','hall'),
   (75,'dm10-025','困惑の影トラブル・アルケミスト','困惑の影トラブル・アルケミスト','https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm10-025.jpg','hall'),
@@ -155,6 +155,14 @@ insert into public.cards(name,normalized_name,image_url,civilization,cost,card_t
 select name,normalized_name,image_url,'{}'::text[],null,null,regulation,true,'takaratomy_card_id',source_key
 from hall_release_card_sync
 on conflict do nothing;
+
+-- 《幻緑の双月／母なる星域》だけ、既存カードも同期元の正しいa面URLへ追従させる。
+update public.cards c
+set image_url=s.image_url
+from hall_release_card_sync s
+where c.source_kind='takaratomy_card_id' and c.source_key=s.source_key
+  and s.source_key='dmex04-052'
+  and c.image_url is distinct from s.image_url;
 
 do $$ begin
   if (select count(*) from hall_release_card_sync s join public.cards c
