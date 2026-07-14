@@ -115,7 +115,8 @@ export default function MakerSubmissionBoard({
 
     const left = 30
     const totalWidth = canvas.width - left * 2
-    const isPredictionExport = exportLayout === 'prediction'
+    // 殿堂解除予想は呼び出し元の指定が欠けても、releaseグループから専用レイアウトを判定する。
+    const isPredictionExport = exportLayout === 'prediction' || groups.some(group => group.key === 'release')
     const cardsPerLine = isPredictionExport ? 4 : CARDS_PER_LINE
     const labelWidth = isPredictionExport ? 132 : 96
     const horizontalPadding = isPredictionExport ? 18 : 12
