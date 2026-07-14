@@ -7,6 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { notifyNewThread, notifySyncSummary } from '@/lib/discord'
 import {
@@ -901,6 +902,7 @@ async function recoverMissingTypefullyThreadImages(
   apiKey: string,
   socialSetId: string,
   dryRun: boolean,
+  targetTypefullyId: string | null,
 ): Promise<{ candidates: number; recovered: number; errors: number; results: Array<Record<string, unknown>> }> {
   const since = new Date(Date.now() - IMAGE_RECOVERY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString()
   const { data: xPosts, error: xPostsError } = await supabase
@@ -913,7 +915,11 @@ async function recoverMissingTypefullyThreadImages(
     .limit(50)
   if (xPostsError) return { candidates: 0, recovered: 0, errors: 1, results: [{ error: xPostsError.message }] }
 
-  const rows = (xPosts ?? []).filter((row) => row.thread_id != null && row.typefully_id)
+  const rows = (xPosts ?? []).filter((row) => (
+    row.thread_id != null &&
+    row.typefully_id &&
+    (!targetTypefullyId || String(row.typefully_id) === targetTypefullyId)
+  ))
   if (rows.length === 0) return { candidates: 0, recovered: 0, errors: 0, results: [] }
   const { data: threads, error: threadsError } = await supabase
     .from('threads')
@@ -923,8 +929,8 @@ async function recoverMissingTypefullyThreadImages(
 
   const missingThreadIds = new Set((threads ?? []).filter((thread) => !thread.image_url).map((thread) => thread.id))
   const candidates = rows.filter((row) => (
-    missingThreadIds.has(row.thread_id) &&
-    !(row.meta && typeof row.meta === 'object' && row.meta.media_checked_no_image_at)
+    (Boolean(targetTypefullyId) || missingThreadIds.has(row.thread_id)) &&
+    (Boolean(targetTypefullyId) || !(row.meta && typeof row.meta === 'object' && row.meta.media_checked_no_image_at))
   )).slice(0, 20)
   let recovered = 0
   let errors = 0
@@ -976,11 +982,12 @@ async function recoverMissingTypefullyThreadImages(
       results.push({ xPostId: row.id, threadId: row.thread_id, error: stored.error })
       continue
     }
-    const { error: updateThreadError } = await supabase
+    let updateThreadQuery = supabase
       .from('threads')
       .update({ image_url: stored.url })
       .eq('id', row.thread_id)
-      .is('image_url', null)
+    if (!targetTypefullyId) updateThreadQuery = updateThreadQuery.is('image_url', null)
+    const { error: updateThreadError } = await updateThreadQuery
     if (updateThreadError) {
       errors++
       results.push({ xPostId: row.id, threadId: row.thread_id, error: updateThreadError.message })
@@ -1000,6 +1007,7 @@ async function recoverMissingTypefullyThreadImages(
       },
     }).eq('id', row.id)
     recovered++
+    revalidateTag(`thread-${row.thread_id}`, { expire: 0 })
     results.push({ xPostId: row.id, threadId: row.thread_id, imageUrl: stored.url, mediaPaths: media.mediaPaths })
   }
   return { candidates: candidates.length, recovered, errors, results }
@@ -1292,6 +1300,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const mode = parseMode(req.nextUrl.searchParams.get('mode'))
   const dryRun = req.nextUrl.searchParams.get('dry_run') === '1'
   const maxNewPerRun = parseMaxNew(req.nextUrl.searchParams.get('max_new'))
+  const recoverTypefullyId = req.nextUrl.searchParams.get('recover_typefully_id')?.trim() || null
   const supabase = createAdminClient()
   const apiKey = sanitizeSecretValue(process.env.TYPEFULLY_API_KEY)
   const socialSetId = sanitizeSecretValue(process.env.TYPEFULLY_SOCIAL_SET_ID)
@@ -1380,6 +1389,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       apiKey,
       socialSetId,
       dryRun,
+      recoverTypefullyId,
     )
     saveErrors += imageRecovery.errors
   }
