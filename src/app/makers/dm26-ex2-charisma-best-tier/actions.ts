@@ -48,11 +48,11 @@ export async function savePublicTierSubmission(payload: Record<string, string[]>
     if (!latestAuth.user || latestAuth.user.id !== user.id) return { ok: false, message: 'ログイン状態を確認できません。下書きは端末に保存されています' }
     if (publishStateError || !publishState) return { ok: false, message: 'この企画は現在公開されていません' }
 
-    const { error } = await admin.rpc('create_maker_submission', { p_project_id: project.id, p_user_id: user.id, p_title: title, p_comment: comment || null, p_items: items })
-    if (error) return { ok: false, message: `保存に失敗しました: ${error.message}` }
+    const { data: submissionId, error } = await admin.rpc('create_maker_submission', { p_project_id: project.id, p_user_id: user.id, p_title: title, p_comment: comment || null, p_items: items })
+    if (error || !submissionId) return { ok: false, message: `保存に失敗しました: ${error?.message ?? '登録IDを取得できませんでした'}` }
     const { data: signup } = await admin.from('maker_events').select('id').eq('project_id', project.id).eq('event_type', 'signup_completed').eq('user_id', user.id).maybeSingle()
     if (signup) await recordMakerEvent({ slug: PROJECT_SLUG, eventType: 'submission_after_signup' })
-    return { ok: true, message: '新しい作品として登録しました' }
+    return { ok: true, message: 'Tier表を登録しました', redirectTo: `/makers/${PROJECT_SLUG}/submissions?created=${submissionId}` }
   } catch (error) {
     const message = error instanceof Error ? error.message : '保存に失敗しました'
     console.error('savePublicTierSubmission failed', { message })

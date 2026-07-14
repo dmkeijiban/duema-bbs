@@ -1,10 +1,8 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { emptyMakerDraft, parseMakerProjectConfig, type MakerCard, type MakerDraft } from '@/lib/maker'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
-import type { TierAggregate } from '@/app/admin/makers/dm26-ex2-charisma-best-tier/TierMaker'
 import PublicTierMaker from './PublicTierMaker'
 import { savePublicTierSubmission } from './actions'
 import officialCardsJson from '../../../../scripts/fixtures/dm26-ex2-standard-89.import-candidates.json'
@@ -44,7 +42,6 @@ export const metadata: Metadata = {
 
 type ProjectRow = { id: string; config: unknown }
 type LinkRow = { cards: { id: string; name: string; image_url: string | null; civilization: string[] | null; cost: number | null; card_type: string | null } }
-type AggregateRow = { card_id: string; s_count: number; a_count: number; b_count: number; c_count: number; d_count: number; rating_count: number; average_tier: number | string | null }
 type OfficialCard = { card_number: string; card_name: string }
 const metadataByName = new Map((officialCardsJson as OfficialCard[]).map(card => [card.card_name, card]))
 
@@ -64,10 +61,8 @@ export default async function PublicTierMakerPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [{ data: links, error: linksError }, { data: aggregateRows }] = await Promise.all([
-    admin.from('maker_project_cards').select('sort_order,cards!inner(id,name,image_url,civilization,cost,card_type,is_active)').eq('project_id', project.id).eq('cards.is_active', true).order('sort_order'),
-    admin.from('maker_tier_aggregates').select('card_id,s_count,a_count,b_count,c_count,d_count,rating_count,average_tier').eq('project_id', project.id),
-  ])
+  const { data: links, error: linksError } = await admin
+    .from('maker_project_cards').select('sort_order,cards!inner(id,name,image_url,civilization,cost,card_type,is_active)').eq('project_id', project.id).eq('cards.is_active', true).order('sort_order')
   if (linksError || !links?.length) notFound()
 
   const cards: MakerCard[] = (links as unknown as LinkRow[]).map(link => {
@@ -84,12 +79,6 @@ export default async function PublicTierMakerPage() {
       cardType: link.cards.card_type,
     }
   })
-  const aggregates: TierAggregate[] = ((aggregateRows ?? []) as AggregateRow[]).map(row => ({
-    cardId: row.card_id,
-    counts: { s: row.s_count ?? 0, a: row.a_count ?? 0, b: row.b_count ?? 0, c: row.c_count ?? 0, d: row.d_count ?? 0 },
-    ratingCount: row.rating_count ?? 0,
-    averageTier: row.average_tier === null ? null : Number(row.average_tier),
-  }))
   const draft: MakerDraft = emptyMakerDraft(config.groups)
 
   return (
@@ -98,7 +87,6 @@ export default async function PublicTierMakerPage() {
         <p className="text-xs font-bold text-emerald-700">新弾カードTier表メーカー</p>
         <h1 className="mt-2 text-2xl font-black">DM26-EX2 悪感謝祭 カリスマBEST Tier表</h1>
         <p className="mt-1 text-sm text-gray-500">好きな評価グループに分けてオリジナルのTier表を作れます。</p>
-        <Link href="/makers/dm26-ex2-charisma-best-tier/submissions" className="mt-4 inline-flex rounded-lg border border-blue-700 bg-white px-4 py-2 text-sm font-bold text-blue-700">みんなのTier表を見る</Link>
         <PublicTierMaker
           cards={cards}
           groups={config.groups}
@@ -106,9 +94,9 @@ export default async function PublicTierMakerPage() {
           unrated={config.unrated}
           canSave={Boolean(user)}
           saveAction={savePublicTierSubmission}
-          saveButtonLabel={user ? '新しい作品として登録' : '登録'}
+          saveButtonLabel="登録"
           hasSavedSubmission={false}
-          aggregates={aggregates}
+          aggregates={[]}
         />
       </div>
     </main>

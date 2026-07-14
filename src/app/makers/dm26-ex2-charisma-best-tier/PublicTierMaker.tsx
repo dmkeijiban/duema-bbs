@@ -13,7 +13,7 @@ type Props = {
   initialDraft: MakerDraft
   unrated: boolean
   canSave: boolean
-  saveAction: (payload: Record<string, string[]>, meta?: MakerSubmissionMeta) => Promise<{ ok: boolean; message: string }>
+  saveAction: (payload: Record<string, string[]>, meta?: MakerSubmissionMeta) => Promise<{ ok: boolean; message: string; redirectTo?: string }>
   saveButtonLabel: string
   hasSavedSubmission: boolean
   aggregates: TierAggregate[]
@@ -88,6 +88,8 @@ export default function PublicTierMaker(props: Props) {
         aggregates={props.aggregates}
         imageProxyPath="/api/makers/dm26-ex2-card-image"
         eventSlug="dm26-ex2-charisma-best-tier"
+        communityHref="/makers/dm26-ex2-charisma-best-tier/submissions"
+        registrationLabel="Tier表"
         beforeLogin={async () => {
           const anonymousId = getMakerAnonymousId()
           if (anonymousId) await beginMakerSignup(anonymousId)
