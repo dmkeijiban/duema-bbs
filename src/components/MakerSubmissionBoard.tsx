@@ -72,6 +72,7 @@ export default function MakerSubmissionBoard({
   shareUrl,
   compactGroupLabel,
   showRegulationBadges = true,
+  exportLayout = 'tier',
 }: {
   submission: PublicSubmission
   groups: MakerGroup[]
@@ -81,6 +82,7 @@ export default function MakerSubmissionBoard({
   shareUrl?: string
   compactGroupLabel?: string
   showRegulationBadges?: boolean
+  exportLayout?: 'tier' | 'prediction'
 }) {
   const [zoomedCard, setZoomedCard] = useState<ZoomedCard | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -113,9 +115,16 @@ export default function MakerSubmissionBoard({
 
     const left = 30
     const totalWidth = canvas.width - left * 2
-    const labelWidth = 96
-    const horizontalPadding = 12
-    const gap = 10
+    // 殿堂解除予想は呼び出し元の指定が欠けても、releaseグループから専用レイアウトを判定する。
+    const isPredictionExport = exportLayout === 'prediction' || groups.some(group => group.key === 'release')
+    const cardsPerLine = isPredictionExport ? 4 : CARDS_PER_LINE
+    const labelWidth = isPredictionExport ? 132 : 96
+    const horizontalPadding = isPredictionExport ? 18 : 12
+    const gap = isPredictionExport ? 14 : 10
+    const cardWidth = isPredictionExport
+      ? Math.floor((totalWidth - labelWidth - horizontalPadding * 2 - gap * (cardsPerLine - 1)) / cardsPerLine)
+      : CARD_WIDTH
+    const cardHeight = Math.round(cardWidth * 88 / 63)
     const rowGap = 10
     const top = 120
     const bottomPadding = 28
@@ -125,13 +134,14 @@ export default function MakerSubmissionBoard({
       b: { background: '#fffbeb', border: '#fcd34d', label: '#a16207', labelBackground: '#fcd34d' },
       c: { background: '#ecfdf5', border: '#6ee7b7', label: '#047857', labelBackground: '#6ee7b7' },
       d: { background: '#eff6ff', border: '#93c5fd', label: '#1d4ed8', labelBackground: '#93c5fd' },
+      release: { background: '#ffffff', border: '#1f2937', label: '#7c2d12', labelBackground: '#fff7ed' },
     }
 
     const rows = groups.map(group => {
       const items = submission.items.filter(item => item.group_key === group.key)
-      const lineCount = items.length ? Math.ceil(items.length / CARDS_PER_LINE) : 0
+      const lineCount = items.length ? Math.ceil(items.length / cardsPerLine) : 0
       const rowHeight = items.length
-        ? lineCount * CARD_HEIGHT + Math.max(0, lineCount - 1) * rowGap + 20
+        ? lineCount * cardHeight + Math.max(0, lineCount - 1) * rowGap + 20
         : 76
       return { group, items, rowHeight }
     })
@@ -171,34 +181,42 @@ export default function MakerSubmissionBoard({
       context.strokeStyle = colors.border
       context.lineWidth = 1.5
       context.strokeRect(left, y, totalWidth, row.rowHeight)
+      const labelLines = isPredictionExport && row.group.key === 'release'
+        ? ['殿堂', '解除', '予想']
+        : [row.group.label]
+      const labelFontSize = labelLines.length > 1 ? 31 : 42
+      const labelLineHeight = labelFontSize * 1.25
+      const labelStartY = y + row.rowHeight / 2 - ((labelLines.length - 1) * labelLineHeight) / 2
       context.fillStyle = colors.label
-      context.font = 'bold 42px sans-serif'
+      context.font = `bold ${labelFontSize}px sans-serif`
       context.textAlign = 'center'
       context.textBaseline = 'middle'
-      context.fillText(row.group.label, left + labelWidth / 2, y + row.rowHeight / 2)
+      for (const [lineIndex, lineText] of labelLines.entries()) {
+        context.fillText(lineText, left + labelWidth / 2, labelStartY + lineIndex * labelLineHeight)
+      }
 
       for (const [index, item] of row.items.entries()) {
-        const column = index % CARDS_PER_LINE
-        const line = Math.floor(index / CARDS_PER_LINE)
-        const x = left + labelWidth + horizontalPadding + column * (CARD_WIDTH + gap)
-        const cardY = y + 10 + line * (CARD_HEIGHT + rowGap)
+        const column = index % cardsPerLine
+        const line = Math.floor(index / cardsPerLine)
+        const x = left + labelWidth + horizontalPadding + column * (cardWidth + gap)
+        const cardY = y + 10 + line * (cardHeight + rowGap)
         const image = item.card.image_url ? loadedImages.get(item.card.image_url) : null
         if (image) {
-          context.drawImage(image, x, cardY, CARD_WIDTH, CARD_HEIGHT)
+          context.drawImage(image, x, cardY, cardWidth, cardHeight)
         } else {
           context.fillStyle = '#e2e8f0'
-          context.fillRect(x, cardY, CARD_WIDTH, CARD_HEIGHT)
+          context.fillRect(x, cardY, cardWidth, cardHeight)
         }
         const badge = regulationLabel(item.card.regulation)
         if (badge) {
           context.font = 'bold 15px sans-serif'
           const badgeWidth = context.measureText(badge).width + 14
           context.fillStyle = item.card.regulation === 'premium_hall' ? '#991b1b' : '#facc15'
-          context.fillRect(x + CARD_WIDTH - badgeWidth - 4, cardY + CARD_HEIGHT - 25, badgeWidth, 21)
+          context.fillRect(x + cardWidth - badgeWidth - 4, cardY + cardHeight - 25, badgeWidth, 21)
           context.fillStyle = item.card.regulation === 'premium_hall' ? '#ffffff' : '#422006'
           context.textAlign = 'center'
           context.textBaseline = 'middle'
-          context.fillText(badge, x + CARD_WIDTH - badgeWidth / 2 - 4, cardY + CARD_HEIGHT - 14.5)
+          context.fillText(badge, x + cardWidth - badgeWidth / 2 - 4, cardY + cardHeight - 14.5)
         }
       }
       y += row.rowHeight + 5
