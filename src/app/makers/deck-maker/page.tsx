@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import { isDeckMakerEnabled } from '@/lib/deck-maker-access'
 import DeckMaker from './DeckMaker'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'デッキメーカー｜デュエマ掲示板',
   description: 'カード名から検索して40枚デッキを作り、端末保存・PNG保存できます。',
