@@ -133,6 +133,11 @@ while (checkpoint.cards.length < maxCards && (checkpoint.pending.length || check
 
   const entry = checkpoint.pending.shift()
   if (!entry) continue
+  if (!/^[a-z0-9-]+$/i.test(entry.source_key)) {
+    checkpoint.skipped += 1
+    await saveCheckpoint(checkpoint)
+    continue
+  }
   try {
     const url = `${SEARCH_URL}detail/?id=${encodeURIComponent(entry.source_key)}`
     const html = await (await safeFetch(url)).text()
