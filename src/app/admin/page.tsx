@@ -13,22 +13,12 @@ import {
   adminHidePostsBySession,
   adminToggleAutoLockExempt,
   adminToggleThreadCommentLock,
-  updateTopShowcaseModeAction,
-  updateGoodlifeAdSettingsAction,
 } from './actions'
-import { SettingEditFormClient } from './SettingEditFormClient'
-import { getAllSettings } from '@/lib/settings'
-import { Notice } from '@/components/NoticeBlock'
 import { verifyAdminCookie } from '@/lib/admin-auth'
-import { TOP_SHOWCASE_MODE_OPTIONS, normalizeTopShowcaseMode } from '@/lib/top-showcase'
 import { AdminSubmitButton } from './AdminSubmitButton'
 import { AdminScrollManager } from './AdminScrollManager'
 import { AdminLoginView } from './AdminLoginView'
-import { HonorTitleToggleButton } from './HonorTitleToggleButton'
 import { PersistentDetails } from './PersistentDetails'
-import { HONOR_TITLES } from '@/lib/honor-title'
-import { readGoodlifeAdSettings } from '@/lib/ads'
-import { getHonorTitleTierCounts } from '@/lib/honor-title-stats'
 
 const ADMIN_COOKIE = 'admin_auth'
 const THREADS_PER_PAGE = 30
@@ -104,7 +94,6 @@ export default async function AdminPage({
     error?: string
     editThread?: string
     editPost?: string
-    editSetting?: string
     threadPage?: string
     ban?: string
     adminError?: string
@@ -113,8 +102,6 @@ export default async function AdminPage({
     order?: string
     hidden?: string
     unhidden?: string
-    topShowcaseSaved?: string
-    topShowcaseError?: string
   }>
 }) {
   const sp = await searchParams
@@ -197,26 +184,6 @@ export default async function AdminPage({
     }
   }
 
-  // お知らせ一覧
-  const { data: notices } = await supabase.from('notices').select('*').order('position').order('sort_order')
-
-  // サイト設定
-  const settings = await getAllSettings()
-  const goodlifeAdSettings = readGoodlifeAdSettings(settings)
-  const honorTitleEnabled = settings.honor_title_enabled === 'true'
-  const honorTitleTierCounts = await getHonorTitleTierCounts()
-  const currentTopShowcaseMode = normalizeTopShowcaseMode(settings.top_showcase_mode)
-  const currentTopShowcaseLabel =
-    TOP_SHOWCASE_MODE_OPTIONS.find(option => option.value === currentTopShowcaseMode)?.label ?? 'みんなのプロフィール'
-  const SETTING_LABELS: Record<string, string> = {
-    thread_rules: 'スレッド内ルール',
-    new_thread_rules: '新規スレッド作成ルール',
-    home_banner: 'ホーム緑バナー',
-    sns_x: 'X（Twitter）URL',
-    sns_youtube: 'YouTube URL',
-    sns_discord: 'Discord URL',
-  }
-  const editSetting = sp.editSetting ?? null
 
   // 特定スレのレス / 詳細パネル
   let posts: AdminPostRow[] | null = null
@@ -277,7 +244,6 @@ export default async function AdminPage({
     redirect('/admin')
   }
 
-  const positionLabel: Record<string, string> = { top: 'スレ上', mid: 'タブ下', bot: 'スレ下' }
 
   return (
     <div className="mx-auto w-full max-w-screen-xl min-w-0 overflow-x-hidden px-2 py-4 text-sm sm:px-3">
@@ -353,34 +319,6 @@ export default async function AdminPage({
         </div>
       </PersistentDetails>
 
-      <details className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
-        <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
-          <span className="text-gray-400 text-xs">▶</span>
-          <span>🎖 称号機能</span>
-          <span className={`ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold ${honorTitleEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-            {honorTitleEnabled ? '有効' : '無効'}
-          </span>
-        </summary>
-        <div className="min-w-0 space-y-3 border-t border-gray-100 p-3">
-          <p className="text-xs leading-relaxed text-gray-600">
-            OFFにしてもポイント計算・集計ロジックは動き続けます。表示だけを止めるので、いつでもすぐに再開できます。
-          </p>
-          <HonorTitleToggleButton enabled={honorTitleEnabled} />
-          <div>
-            <p className="mb-1.5 text-xs font-bold text-gray-500">称号ごとの人数（退会・凍結ユーザーを除く）</p>
-            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-              {HONOR_TITLES.slice().reverse().map(title => (
-                <div key={title.key} className="rounded border border-gray-200 bg-gray-50 px-2 py-1.5 text-center">
-                  <div className="text-base leading-none">{title.icon}</div>
-                  <div className="mt-1 text-[11px] text-gray-600">{title.label}</div>
-                  <div className="text-sm font-bold text-gray-800">{honorTitleTierCounts[title.key] ?? 0}人</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </details>
-
       {editPost && sp.thread && (
         <div className="mb-4 border-2 border-green-400 bg-green-50 p-4 rounded">
           <h2 className="font-bold text-green-800 mb-3">✏️ レス編集（#{editPost.post_number + 1} {editPost.author_name}）</h2>
@@ -397,180 +335,6 @@ export default async function AdminPage({
           </form>
         </div>
       )}
-
-      {editSetting && SETTING_LABELS[editSetting] && (
-        <SettingEditFormClient
-          settingKey={editSetting}
-          initialValue={settings[editSetting] ?? ''}
-          label={SETTING_LABELS[editSetting]}
-        />
-      )}
-
-      <PersistentDetails storageKey="goodlife-ad-settings" defaultOpen className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
-        <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
-          <span className="text-gray-400 text-xs">▶</span>
-          <span>広告設定</span>
-          <span className="ml-auto text-xs font-normal text-gray-500">
-            Goodlifeインライン広告: {goodlifeAdSettings.enabled ? '有効' : '無効'}
-          </span>
-        </summary>
-        <form action={updateGoodlifeAdSettingsAction} className="space-y-3 border-t border-gray-100 p-3">
-          <p className="text-xs text-gray-500">
-            許可済みの固定広告タグだけを読み込みます。ワイプ・追従広告は使用しません。
-          </p>
-          {([
-            ['goodlife_inline_enabled', 'Goodlifeインライン広告', goodlifeAdSettings.enabled],
-            ['goodlife_inline_thread_list', 'スレッド一覧・1件目の上', goodlifeAdSettings.threadList],
-            ['goodlife_inline_thread_detail', 'スレッド詳細に表示', goodlifeAdSettings.threadDetail],
-            ['goodlife_inline_desktop', 'PCで表示', goodlifeAdSettings.desktop],
-            ['goodlife_inline_mobile', 'スマホで表示', goodlifeAdSettings.mobile],
-          ] as const).map(([name, label, checked]) => (
-            <label key={name} className="flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" name={name} defaultChecked={checked} className="h-4 w-4" />
-              <span>{label}</span>
-            </label>
-          ))}
-          <button type="submit" className="rounded bg-blue-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-blue-700">
-            広告設定を保存
-          </button>
-        </form>
-      </PersistentDetails>
-
-      <PersistentDetails storageKey="top-showcase" defaultOpen className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
-        <summary className="flex cursor-pointer select-none flex-wrap items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
-          <span className="text-gray-400 text-xs">▶</span>
-          <span>トップ表示設定</span>
-          <span className="ml-auto text-xs font-normal text-gray-500">
-            現在: <span className="font-bold text-blue-700">{currentTopShowcaseLabel}</span>
-          </span>
-          {sp.topShowcaseSaved && (
-            <span className="rounded border border-green-200 bg-green-50 px-2 py-1 text-xs font-bold text-green-700">
-              保存しました
-            </span>
-          )}
-          {sp.topShowcaseError && (
-            <span className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs font-bold text-red-700">
-              保存できませんでした
-            </span>
-          )}
-        </summary>
-        <form action={updateTopShowcaseModeAction} className="space-y-3 border-t border-gray-100 p-3">
-          <div className="grid gap-2 md:grid-cols-2">
-            {TOP_SHOWCASE_MODE_OPTIONS.map(option => (
-              <label
-                key={option.value}
-                className="flex cursor-pointer gap-2 rounded border border-gray-200 bg-gray-50 p-2 text-sm hover:bg-blue-50"
-              >
-                <input
-                  type="radio"
-                  name="top_showcase_mode"
-                  value={option.value}
-                  defaultChecked={option.value === currentTopShowcaseMode}
-                  className="mt-1 shrink-0"
-                />
-                <span className="min-w-0">
-                  <span className="block font-bold text-gray-800">{option.label}</span>
-                  <span className="mt-0.5 block text-xs leading-relaxed text-gray-500">{option.description}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="submit"
-              className="px-4 py-1.5 text-xs font-medium text-white"
-              style={{ background: '#004085' }}
-            >
-              保存
-            </button>
-            <Link href="/" className="px-3 py-1.5 text-xs text-blue-700 underline">
-              トップを確認
-            </Link>
-          </div>
-        </form>
-      </PersistentDetails>
-
-      {/* ─── お知らせ（折り畳み） ─── */}
-      <details className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
-        <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
-          <span className="text-gray-400 text-xs">▶</span>
-          <span>📢 お知らせ</span>
-          <span className="ml-auto text-[11px] font-normal text-gray-400">{notices?.length ?? 0}件</span>
-        </summary>
-        <div className="min-w-0 border-t border-gray-100 p-3">
-          <div className="flex justify-end mb-2">
-            <Link href="/admin/notices" className="px-2.5 py-1 text-xs border border-blue-400 text-blue-600 hover:bg-blue-50 rounded">編集する →</Link>
-          </div>
-          {notices && notices.length > 0 ? (
-            <div className="space-y-1">
-              {(notices as Notice[]).map(n => (
-                <div key={n.id} className="bg-gray-50 border border-gray-200 p-2 flex items-center gap-2 rounded">
-                  <span className="shrink-0 text-[10px] px-1.5 py-0.5 border border-gray-300 text-gray-600 bg-white rounded">
-                    {positionLabel[n.position] ?? n.position}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs font-medium text-gray-800 line-clamp-1">
-                      {n.header_text || '（タイトルなし）'}
-                    </span>
-                    <span className="text-[10px] text-gray-400 ml-1">{n.columns}列 / {n.items?.length ?? 0}件</span>
-                  </div>
-                  <span className="px-2 py-0.5 text-[10px] border rounded leading-none"
-                    style={n.is_active
-                      ? { color: '#155724', borderColor: '#28a745', background: '#d4edda' }
-                      : { color: '#6c757d', borderColor: '#6c757d', background: '#f8f9fa' }}>
-                    {n.is_active ? '表示中' : '非表示'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-gray-400 py-2">お知らせはまだありません</p>
-          )}
-        </div>
-      </details>
-
-      {/* ─── サイトテキスト設定（折り畳み） ─── */}
-      <details className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
-        <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
-          <span className="text-gray-400 text-xs">▶</span>
-          <span>📝 サイトテキスト設定</span>
-        </summary>
-        <div className="min-w-0 space-y-3 border-t border-gray-100 p-3">
-
-          <div>
-            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">ルール・バナー</p>
-            <div className="space-y-1">
-              {(['thread_rules', 'new_thread_rules', 'home_banner'] as const).map(key => (
-                <div key={key} className="bg-gray-50 border border-gray-200 p-2 flex items-center gap-2 rounded">
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs font-medium text-gray-800">{SETTING_LABELS[key]}</span>
-                    <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">{(settings[key] ?? '（未設定）').slice(0, 60)}</p>
-                  </div>
-                  <a href={`/admin?editSetting=${key}`} data-admin-scroll="preserve"
-                    className="shrink-0 px-2 py-0.5 text-[10px] text-purple-700 border border-purple-400 hover:bg-purple-50 rounded">編集</a>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">SNS リンク</p>
-            <div className="space-y-1">
-              {(['sns_x', 'sns_youtube', 'sns_discord'] as const).map(key => (
-                <div key={key} className="bg-gray-50 border border-gray-200 p-2 flex items-center gap-2 rounded">
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs font-medium text-gray-800">{SETTING_LABELS[key]}</span>
-                    <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">{(settings[key] ?? '（未設定）').slice(0, 80)}</p>
-                  </div>
-                  <a href={`/admin?editSetting=${key}`} data-admin-scroll="preserve"
-                    className="shrink-0 px-2 py-0.5 text-[10px] text-purple-700 border border-purple-400 hover:bg-purple-50 rounded">編集</a>
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </div>
-      </details>
 
       {/* ─── スレッド管理 ─── */}
       <div className={selectedThread ? 'grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,0.9fr)]' : 'grid min-w-0 grid-cols-1 gap-4'}>

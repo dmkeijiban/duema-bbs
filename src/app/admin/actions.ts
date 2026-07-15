@@ -711,7 +711,7 @@ export async function updateSettingAction(formData: FormData) {
     .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
   revalidatePath('/', 'layout')
   revalidatePath('/terms')
-  redirect('/admin')
+  redirect('/admin/site/ads')
 }
 
 const GOODLIFE_BOOLEAN_SETTING_KEYS = [
@@ -761,11 +761,11 @@ export async function updateTopShowcaseModeAction(formData: FormData) {
       { onConflict: 'key' }
     )
 
-  if (error) redirect('/admin?topShowcaseError=save_failed')
+  if (error) redirect('/admin/site/top-showcase?error=save_failed')
 
   revalidatePath('/')
-  revalidatePath('/admin')
+  revalidatePath('/admin/site/top-showcase')
   revalidateTag('site_settings', { expire: 0 })
   revalidateTag('top-showcase-mode', { expire: 0 })
-  redirect('/admin?topShowcaseSaved=1')
+  redirect('/admin/site/top-showcase?saved=1')
 }

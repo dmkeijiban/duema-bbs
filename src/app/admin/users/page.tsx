@@ -114,6 +114,7 @@ export default async function AdminUsersPage() {
 
       <nav className="mb-4 flex flex-wrap gap-2 border-b border-gray-200">
         <span className="border-b-2 border-blue-600 px-3 py-2 text-xs font-bold text-blue-700">ユーザー一覧</span>
+        <Link href="/admin/users/honor-titles" className="px-3 py-2 text-xs font-bold text-gray-500 hover:text-blue-700">称号管理</Link>
         <Link href="/admin/duema-stats" className="px-3 py-2 text-xs font-bold text-gray-500 hover:text-blue-700">プロフィール統計</Link>
       </nav>
 
