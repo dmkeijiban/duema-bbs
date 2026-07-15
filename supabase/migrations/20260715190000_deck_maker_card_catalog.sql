@@ -1,4 +1,6 @@
--- DRAFT ONLY: 承認されるまで本番適用しない。既存 cards を壊さない additive migration。
+-- Additive catalog extension for the deck maker. Image binaries are never stored.
+create extension if not exists pg_trgm;
+
 alter table if exists public.cards add column if not exists name_kana text;
 alter table if exists public.cards add column if not exists is_catalog_complete boolean not null default false;
 alter table if exists public.cards add column if not exists catalog_review_status text not null default 'needs_review'
@@ -16,7 +18,11 @@ create table if not exists public.card_printings (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
 create index if not exists card_printings_card_id_idx on public.card_printings(card_id);
-create index if not exists cards_name_kana_idx on public.cards(name_kana);
+create unique index if not exists card_printings_one_representative_idx on public.card_printings(card_id) where is_representative;
+create index if not exists cards_normalized_name_trgm_idx on public.cards using gin(normalized_name gin_trgm_ops);
+create index if not exists cards_name_kana_trgm_idx on public.cards using gin(name_kana gin_trgm_ops);
+
 alter table public.card_printings enable row level security;
 comment on table public.card_printings is '収録版別の公式ページURL・画像URL。画像本体は保存しない';

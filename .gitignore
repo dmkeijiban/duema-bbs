@@ -62,3 +62,6 @@ page8-revival-targets.csv
 # local test / browser artifacts
 output/playwright/
 test-results/
+
+# Official card catalog runtime output and checkpoints.
+data/cards/
