@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { AnalyticsRefresh } from '@/components/admin/AnalyticsRefresh'
+import { TotalPvChart } from '@/components/admin/TotalPvChart'
 import {
   getGa4DashboardData,
   getInternalDashboardData,
@@ -11,51 +12,6 @@ import { fetchProjectSummaries, normalizePeriod, type ProjectSummary } from '@/l
 
 function Tabs({ active }: { active: 'site' | 'makers' }) { return <nav className="mb-4 flex gap-1 overflow-x-auto border-b"><Link prefetch={false} className={`shrink-0 px-3 py-2 text-sm font-bold ${active==='site'?'border-b-2 border-blue-600 text-blue-700':'text-gray-500'}`} href="/admin/analytics?tab=site">サイト全体</Link><Link prefetch={false} className={`shrink-0 px-3 py-2 text-sm font-bold ${active==='makers'?'border-b-2 border-blue-600 text-blue-700':'text-gray-500'}`} href="/admin/analytics?tab=makers">メーカー企画</Link><Link className="shrink-0 px-3 py-2 text-sm font-bold text-gray-500 hover:text-blue-700" href="/admin/campaign-ranking">キャンペーン</Link><Link className="shrink-0 px-3 py-2 text-sm font-bold text-gray-500 hover:text-blue-700" href="/admin/duema-stats">ユーザー・プロフィール</Link><Link className="shrink-0 px-3 py-2 text-sm font-bold text-gray-500 hover:text-blue-700" href="/admin/ranking-preview">ランキング確認</Link></nav> }
 function Metric({ label, value, note }: { label:string; value:number|string; note?:string }) { return <div className="rounded-lg border bg-white p-3"><p className="text-xs font-bold text-gray-500">{label}</p><p className="mt-1 text-2xl font-black tabular-nums">{typeof value==='number'?value.toLocaleString('ja-JP'):value}</p>{note&&<p className="mt-1 text-[10px] text-gray-400">{note}</p>}</div> }
-function TotalPvChart({ points }: { points: Array<{ date: string; views: number }> }) {
-  const width = 1000
-  const height = 240
-  const padding = { top: 24, right: 24, bottom: 42, left: 58 }
-  const maxViews = Math.max(...points.map(point => point.views), 1)
-  const plotWidth = width - padding.left - padding.right
-  const plotHeight = height - padding.top - padding.bottom
-  const coordinates = points.map((point, index) => ({
-    ...point,
-    x: padding.left + (points.length <= 1 ? plotWidth / 2 : (index / (points.length - 1)) * plotWidth),
-    y: padding.top + plotHeight - (point.views / maxViews) * plotHeight,
-  }))
-  const line = coordinates.map(point => `${point.x},${point.y}`).join(' ')
-  const area = coordinates.length > 0
-    ? `${padding.left},${padding.top + plotHeight} ${line} ${padding.left + plotWidth},${padding.top + plotHeight}`
-    : ''
-  const dateLabels = coordinates.filter((_, index) => index === 0 || index === coordinates.length - 1 || index % 7 === 0)
-  const total = points.reduce((sum, point) => sum + point.views, 0)
-
-  return <section className="mb-3 rounded-lg border bg-white p-3">
-    <div className="mb-2 flex flex-wrap items-end justify-between gap-1">
-      <div>
-        <h2 className="text-xs font-bold text-gray-700">過去28日のPV推移</h2>
-        <p className="text-[10px] text-gray-400">サイト全体の日別PV合計</p>
-      </div>
-      <p className="text-sm font-black tabular-nums text-gray-800">合計 {formatNumber(total)} PV</p>
-    </div>
-    <div className="w-full overflow-hidden">
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="過去28日の日別PV推移" className="h-auto w-full">
-        {[0, 0.5, 1].map(rate => {
-          const y = padding.top + plotHeight * rate
-          const value = Math.round(maxViews * (1 - rate))
-          return <g key={rate}>
-            <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="#e5e7eb" strokeWidth="1" />
-            <text x={padding.left - 8} y={y + 4} textAnchor="end" fontSize="11" fill="#9ca3af">{formatNumber(value)}</text>
-          </g>
-        })}
-        {area && <polygon points={area} fill="#dbeafe" opacity="0.7" />}
-        {line && <polyline points={line} fill="none" stroke="#0284c7" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />}
-        {dateLabels.map(point => <text key={point.date} x={point.x} y={height - 12} textAnchor="middle" fontSize="11" fill="#6b7280">{point.date.slice(5).replace('-', '/')}</text>)}
-      </svg>
-    </div>
-  </section>
-}
-
 function Periods({ period }: { period: string }) { return <div className="flex flex-wrap gap-1">{[['today','今日'],['7d','過去7日'],['30d','過去30日'],['all','全期間']].map(([key,label])=><Link prefetch={false} key={key} href={`/admin/analytics?tab=makers&period=${key}`} className={`rounded border px-3 py-1.5 text-xs font-bold ${period===key?'border-blue-500 bg-blue-50 text-blue-700':'bg-white text-gray-600'}`}>{label}</Link>)}</div> }
 
 type DisplayGa4PageRow = Ga4PageRow & {
