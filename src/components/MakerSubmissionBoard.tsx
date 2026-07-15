@@ -70,6 +70,7 @@ export default function MakerSubmissionBoard({
   compact = false,
   enableActions = false,
   exportTitle,
+  showExportAuthor = true,
   shareUrl,
   showRegulationBadges = true,
   exportLayout = 'tier',
@@ -79,6 +80,7 @@ export default function MakerSubmissionBoard({
   compact?: boolean
   enableActions?: boolean
   exportTitle?: string
+  showExportAuthor?: boolean
   shareUrl?: string
   showRegulationBadges?: boolean
   exportLayout?: 'tier' | 'prediction'
@@ -126,7 +128,7 @@ export default function MakerSubmissionBoard({
       : CARD_WIDTH
     const cardHeight = Math.round(cardWidth * 88 / 63)
     const rowGap = 10
-    const top = 120
+    const top = showExportAuthor ? 120 : 90
     const bottomPadding = 28
     const palette: Record<string, { background: string; border: string; label: string; labelBackground: string }> = {
       s: { background: '#fff1f2', border: '#fca5a5', label: '#be123c', labelBackground: '#fca5a5' },
@@ -162,9 +164,11 @@ export default function MakerSubmissionBoard({
     context.fillStyle = '#0f172a'
     context.font = 'bold 38px sans-serif'
     context.fillText(exportTitle ?? submission.title, 40, 58)
-    context.font = 'bold 22px sans-serif'
-    context.fillStyle = '#475569'
-    context.fillText(`制作者: ${submission.authorName}`, 40, 91)
+    if (showExportAuthor) {
+      context.font = 'bold 22px sans-serif'
+      context.fillStyle = '#475569'
+      context.fillText(`制作者: ${submission.authorName}`, 40, 91)
+    }
 
     let y = top
     for (const row of rows) {

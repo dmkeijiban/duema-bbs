@@ -30,7 +30,7 @@ export default async function MakerSubmissionDetailPage({ params }: { params: Pr
     <p className="mt-2 text-sm text-gray-600">{prediction ? '表示名' : '制作者'}: {submission.authorName}</p>
     <time className="mt-1 block text-xs text-gray-400">{new Date(submission.created_at).toLocaleString('ja-JP')}</time>
     {submission.comment && <p className="mt-4 whitespace-pre-wrap break-words rounded-xl border bg-white p-4 leading-7">{submission.comment}</p>}
-    <div className="mt-5"><MakerSubmissionBoard submission={submission} groups={config.groups} enableActions exportTitle={prediction ? '2026年7月27日 殿堂解除選手権' : `${submission.title}｜${project.title}`} exportLayout={prediction ? 'prediction' : 'tier'} shareUrl={shareUrl} /></div>
+    <div className="mt-5"><MakerSubmissionBoard submission={submission} groups={config.groups} enableActions exportTitle={prediction ? '2026年7月27日 殿堂解除選手権' : submission.title} showExportAuthor={prediction} exportLayout={prediction ? 'prediction' : 'tier'} shareUrl={shareUrl} /></div>
     <SubmissionActions slug={slug} submissionId={submissionId} canEdit={isAdmin || ownedSubmissionIds.has(submissionId)} />
   </article></main>
 }
