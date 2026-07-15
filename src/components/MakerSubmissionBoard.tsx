@@ -119,16 +119,15 @@ export default function MakerSubmissionBoard({
     const totalWidth = canvas.width - left * 2
     // 殿堂解除予想は呼び出し元の指定が欠けても、releaseグループから専用レイアウトを判定する。
     const isPredictionExport = exportLayout === 'prediction' || groups.some(group => group.key === 'release')
-    const cardsPerLine = isPredictionExport ? 4 : CARDS_PER_LINE
-    const labelWidth = isPredictionExport ? HALL_RELEASE_DESIGN.labelWidth.canvas : 96
-    const horizontalPadding = isPredictionExport ? 18 : 12
-    const gap = isPredictionExport ? 14 : 10
-    const cardWidth = isPredictionExport
-      ? Math.floor((totalWidth - labelWidth - horizontalPadding * 2 - gap * (cardsPerLine - 1)) / cardsPerLine)
-      : CARD_WIDTH
+    // メーカー本体の保存画像と同じカード配置を使う。
+    const cardsPerLine = CARDS_PER_LINE
+    const labelWidth = HALL_RELEASE_DESIGN.labelWidth.canvas
+    const horizontalPadding = 12
+    const gap = 10
+    const cardWidth = CARD_WIDTH
     const cardHeight = Math.round(cardWidth * 88 / 63)
     const rowGap = 10
-    const top = showExportAuthor ? 120 : 90
+    const top = isPredictionExport || showExportAuthor ? 120 : 90
     const bottomPadding = 28
     const palette: Record<string, { background: string; border: string; label: string; labelBackground: string }> = {
       s: { background: '#fff1f2', border: '#fca5a5', label: '#be123c', labelBackground: '#fca5a5' },
@@ -212,7 +211,7 @@ export default function MakerSubmissionBoard({
           context.fillRect(x, cardY, cardWidth, cardHeight)
         }
         const badge = regulationLabel(item.card.regulation)
-        if (badge) {
+        if (!isPredictionExport && badge) {
           context.font = 'bold 15px sans-serif'
           const badgeWidth = context.measureText(badge).width + 14
           context.fillStyle = item.card.regulation === 'premium_hall' ? '#991b1b' : '#facc15'
