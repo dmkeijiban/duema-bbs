@@ -98,6 +98,17 @@ export async function togglePublished(formData: FormData) {
   redirect('/admin/pages')
 }
 
+export async function toggleMainNav(formData: FormData) {
+  await requireAdmin()
+  const supabase = await createClient()
+  const id = parseInt(formData.get('id') as string)
+  const current = formData.get('current') === 'true'
+  await supabase.from('fixed_pages').update({ show_in_nav: !current }).eq('id', id)
+  revalidateTag('fixed_pages', OPT)
+  revalidateTag('nav-pages', OPT)
+  redirect('/admin/pages')
+}
+
 export async function movePage(formData: FormData) {
   await requireAdmin()
   const supabase = await createClient()
