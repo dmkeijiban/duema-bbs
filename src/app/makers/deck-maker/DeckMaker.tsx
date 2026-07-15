@@ -187,6 +187,7 @@ export default function DeckMaker() {
   async function savePng() {
     const cards = entries.flatMap((entry) => Array.from({ length: entry.count }, () => entry))
     if (!cards.length) return setNotice('カードを追加してください')
+    setNotice('PNGを生成中…')
     const canvas = document.createElement('canvas')
     const context = canvas.getContext('2d')
     const cardWidth = 130
@@ -203,11 +204,15 @@ export default function DeckMaker() {
     context.font = 'bold 36px sans-serif'
     context.fillText(`メインデッキ ${cards.length}枚`, padding, 58)
     const imageLoads = new Map<string, Promise<HTMLImageElement | null>>()
-    const images = await Promise.all(cards.map((card) => {
+    const pendingImages = Promise.all(cards.map((card) => {
       const key = card.imageUrl ?? `missing:${card.id}`
       if (!imageLoads.has(key)) imageLoads.set(key, loadImage(card))
       return imageLoads.get(key)!
     }))
+    const images = await Promise.race([
+      pendingImages,
+      new Promise<null[]>((resolve) => window.setTimeout(() => resolve(cards.map(() => null)), 12_000)),
+    ])
     cards.forEach((card, index) => {
       const x = padding + (index % columns) * (cardWidth + gap)
       const y = 86 + Math.floor(index / columns) * (cardHeight + gap)
@@ -224,21 +229,22 @@ export default function DeckMaker() {
     context.fillStyle = '#475569'
     context.font = '15px sans-serif'
     context.fillText('非公式ファンサービス / © TOMY', padding, canvas.height - 16)
-    canvas.toBlob((blob) => {
-      if (!blob) return setNotice('PNG生成に失敗しました')
-      const href = URL.createObjectURL(blob)
-      const anchor = document.createElement('a')
-      anchor.href = href
-      anchor.download = 'duema-deck.png'
-      anchor.style.display = 'none'
-      document.body.appendChild(anchor)
-      anchor.click()
-      window.setTimeout(() => {
-        anchor.remove()
-        URL.revokeObjectURL(href)
-      }, 60_000)
-      setNotice('PNGを保存しました')
-    }, 'image/png')
+    const blob = await Promise.race([
+      new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png')),
+      new Promise<null>((resolve) => window.setTimeout(() => resolve(null), 5_000)),
+    ])
+    const href = blob ? URL.createObjectURL(blob) : canvas.toDataURL('image/png')
+    const anchor = document.createElement('a')
+    anchor.href = href
+    anchor.download = 'duema-deck.png'
+    anchor.style.display = 'none'
+    document.body.appendChild(anchor)
+    anchor.click()
+    window.setTimeout(() => {
+      anchor.remove()
+      if (blob) URL.revokeObjectURL(href)
+    }, 60_000)
+    setNotice('PNGを保存しました')
   }
 
   if (!ready) {
