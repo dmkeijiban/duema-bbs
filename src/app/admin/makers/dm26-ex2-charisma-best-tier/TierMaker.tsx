@@ -7,6 +7,8 @@ import { emptyMakerDraft, type MakerCard, type MakerDraft, type MakerGroup, type
 import { recordMakerEvent } from '@/lib/maker-events'
 import { getMakerAnonymousId, type MakerEventType } from '@/lib/maker-events-shared'
 import MakerCommunityTier, { type MakerAggregate } from '@/components/MakerCommunityTier'
+import HallReleaseLabel from '@/components/HallReleaseLabel'
+import { HALL_RELEASE_DESIGN, HALL_RELEASE_LABEL_LINES } from '@/lib/hall-release-design'
 import { saveTierSubmission } from './actions'
 
 const SHOW_CARD_DETAIL_FILTERS = false
@@ -52,6 +54,7 @@ type TierMakerProps = {
   groupGridClassName?: string
   groupLabelClassName?: string
   groupLabelText?: Record<string, string>
+  hallReleaseLabel?: boolean
   cardBadgePositionClassName?: string
   cardBadgeTextClassName?: string
   selectionImageZoom?: boolean
@@ -160,7 +163,7 @@ function isIOSDevice() {
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
-export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, submissionFields, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表', groupRowClassName, groupGridClassName = 'grid-cols-[52px_1fr]', groupLabelClassName, groupLabelText, cardBadgePositionClassName = 'left-1 top-1', cardBadgeTextClassName = 'text-white', selectionImageZoom = false, communityHref, registrationLabel = '作品', registrationHeading, autoRegisterOnImageSave = false }: TierMakerProps) {
+export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, submissionFields, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表', groupRowClassName, groupGridClassName = 'grid-cols-[52px_1fr]', groupLabelClassName, groupLabelText, hallReleaseLabel = false, cardBadgePositionClassName = 'left-1 top-1', cardBadgeTextClassName = 'text-white', selectionImageZoom = false, communityHref, registrationLabel = '作品', registrationHeading, autoRegisterOnImageSave = false }: TierMakerProps) {
   const STORAGE_KEY = `maker-draft:${storageSlug}:v1`
   const DRAFT_CHOICE_KEY = `maker-draft-choice:${storageSlug}:v1`
   const [draft, setDraft] = useState(initialDraft)
@@ -375,7 +378,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
       b: { background: '#fffbeb', border: '#fcd34d', label: '#a16207', labelBackground: '#fcd34d' },
       c: { background: '#ecfdf5', border: '#6ee7b7', label: '#047857', labelBackground: '#6ee7b7' },
       d: { background: '#eff6ff', border: '#93c5fd', label: '#1d4ed8', labelBackground: '#93c5fd' },
-      release: { background: '#fff7ed', border: '#fdba74', label: '#9a3412', labelBackground: '#fbbf24' },
+      release: HALL_RELEASE_DESIGN.canvas,
     }
 
     const rowLayouts = groups.map(group => {
@@ -439,9 +442,11 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
       context.strokeStyle = colors.border
       context.lineWidth = 1.5
       context.strokeRect(left, y, totalWidth, row.rowHeight)
-      const labelLines = (groupLabelText?.[row.group.key] ?? row.group.label).split('\n')
-      const labelFontSize = labelLines.length > 1 ? 22 : 42
-      const labelLineHeight = labelFontSize * 1.2
+      const labelLines = hallReleaseLabel && row.group.key === 'release'
+        ? HALL_RELEASE_LABEL_LINES
+        : (groupLabelText?.[row.group.key] ?? row.group.label).split('\n')
+      const labelFontSize = hallReleaseLabel && row.group.key === 'release' ? HALL_RELEASE_DESIGN.canvas.labelFontSize : labelLines.length > 1 ? 22 : 42
+      const labelLineHeight = labelFontSize * (hallReleaseLabel && row.group.key === 'release' ? HALL_RELEASE_DESIGN.canvas.labelLineHeight : 1.2)
       const labelCenterY = y + row.rowHeight / 2
       const labelStartY = labelCenterY - ((labelLines.length - 1) * labelLineHeight) / 2
       context.fillStyle = colors.label
@@ -601,7 +606,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
               key={group.key}
               className={`grid rounded-xl border transition-[min-height] ${groupGridClassName} ${isEmpty ? 'min-h-[72px]' : 'min-h-28'} ${groupRowClassName ?? group.color}`}
             >
-              <div className={`flex items-center justify-center text-2xl font-black ${groupLabelClassName ?? ''}`}><span className="whitespace-pre-line">{groupLabelText?.[group.key] ?? group.label}</span></div>
+              <div className={`flex items-center justify-center text-2xl font-black ${groupLabelClassName ?? ''}`}>{hallReleaseLabel && group.key === 'release' ? <HallReleaseLabel /> : <span className="whitespace-pre-line">{groupLabelText?.[group.key] ?? group.label}</span>}</div>
               <div className={`grid grid-cols-4 gap-2 bg-white/80 sm:grid-cols-7 ${isEmpty ? 'p-1.5' : 'p-2'}`}>
                 {ids.map(cardId => {
                   const card = cardsById.get(cardId)

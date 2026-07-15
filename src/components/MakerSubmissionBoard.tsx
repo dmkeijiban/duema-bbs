@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react'
 import type { MakerGroup } from '@/lib/maker'
 import type { PublicSubmission } from '@/lib/maker-submissions'
+import HallReleaseLabel from '@/components/HallReleaseLabel'
+import { HALL_RELEASE_DESIGN, HALL_RELEASE_LABEL_LINES } from '@/lib/hall-release-design'
 
 type ZoomedCard = { name: string; imageUrl: string }
 
 const IMAGE_PROXY_PATH = '/api/makers/dm26-ex2-card-image'
 const CARDS_PER_LINE = 6
 const CARD_WIDTH = 138
-const CARD_HEIGHT = Math.round(CARD_WIDTH * 88 / 63)
 
 function isIOSDevice() {
   return /iPhone|iPad|iPod/i.test(navigator.userAgent)
@@ -70,7 +71,6 @@ export default function MakerSubmissionBoard({
   enableActions = false,
   exportTitle,
   shareUrl,
-  compactGroupLabel,
   showRegulationBadges = true,
   exportLayout = 'tier',
 }: {
@@ -80,10 +80,10 @@ export default function MakerSubmissionBoard({
   enableActions?: boolean
   exportTitle?: string
   shareUrl?: string
-  compactGroupLabel?: string
   showRegulationBadges?: boolean
   exportLayout?: 'tier' | 'prediction'
 }) {
+  const hallReleaseBoard = groups.some(group => group.key === 'release')
   const [zoomedCard, setZoomedCard] = useState<ZoomedCard | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -118,7 +118,7 @@ export default function MakerSubmissionBoard({
     // 殿堂解除予想は呼び出し元の指定が欠けても、releaseグループから専用レイアウトを判定する。
     const isPredictionExport = exportLayout === 'prediction' || groups.some(group => group.key === 'release')
     const cardsPerLine = isPredictionExport ? 4 : CARDS_PER_LINE
-    const labelWidth = isPredictionExport ? 132 : 96
+    const labelWidth = isPredictionExport ? HALL_RELEASE_DESIGN.labelWidth.canvas : 96
     const horizontalPadding = isPredictionExport ? 18 : 12
     const gap = isPredictionExport ? 14 : 10
     const cardWidth = isPredictionExport
@@ -134,7 +134,7 @@ export default function MakerSubmissionBoard({
       b: { background: '#fffbeb', border: '#fcd34d', label: '#a16207', labelBackground: '#fcd34d' },
       c: { background: '#ecfdf5', border: '#6ee7b7', label: '#047857', labelBackground: '#6ee7b7' },
       d: { background: '#eff6ff', border: '#93c5fd', label: '#1d4ed8', labelBackground: '#93c5fd' },
-      release: { background: '#ffffff', border: '#1f2937', label: '#7c2d12', labelBackground: '#fff7ed' },
+      release: HALL_RELEASE_DESIGN.canvas,
     }
 
     const rows = groups.map(group => {
@@ -182,10 +182,10 @@ export default function MakerSubmissionBoard({
       context.lineWidth = 1.5
       context.strokeRect(left, y, totalWidth, row.rowHeight)
       const labelLines = isPredictionExport && row.group.key === 'release'
-        ? ['殿堂', '解除', '予想']
+        ? HALL_RELEASE_LABEL_LINES
         : [row.group.label]
-      const labelFontSize = labelLines.length > 1 ? 31 : 42
-      const labelLineHeight = labelFontSize * 1.25
+      const labelFontSize = isPredictionExport && row.group.key === 'release' ? HALL_RELEASE_DESIGN.canvas.labelFontSize : 42
+      const labelLineHeight = labelFontSize * (isPredictionExport && row.group.key === 'release' ? HALL_RELEASE_DESIGN.canvas.labelLineHeight : 1.25)
       const labelStartY = y + row.rowHeight / 2 - ((labelLines.length - 1) * labelLineHeight) / 2
       context.fillStyle = colors.label
       context.font = `bold ${labelFontSize}px sans-serif`
@@ -249,11 +249,13 @@ export default function MakerSubmissionBoard({
   }
 
   return <>
-    <div className={`overflow-hidden rounded-lg border bg-slate-100 ${compact ? 'text-[9px]' : 'text-sm'}`}>
+    <div className={`overflow-hidden rounded-lg border ${hallReleaseBoard ? 'border-amber-300 bg-orange-50' : 'bg-slate-100'} ${compact ? 'text-[9px]' : 'text-sm'}`}>
       {groups.map(group => {
         const items = submission.items.filter(item => item.group_key === group.key)
-        return <div key={group.key} className={`grid border-b last:border-b-0 ${compact ? 'grid-cols-[28px_1fr]' : 'grid-cols-[54px_1fr]'}`}>
-          <div className={`flex items-center justify-center font-black ${group.color}`}><span className="whitespace-pre-line text-center">{compact && compactGroupLabel ? compactGroupLabel : group.label}</span></div>
+        const hallRelease = group.key === 'release'
+        const gridClassName = hallRelease ? (compact ? HALL_RELEASE_DESIGN.labelWidth.compactClass : HALL_RELEASE_DESIGN.labelWidth.standardClass) : (compact ? 'grid-cols-[28px_1fr]' : 'grid-cols-[54px_1fr]')
+        return <div key={group.key} className={`grid border-b last:border-b-0 ${hallRelease ? HALL_RELEASE_DESIGN.rowClassName : ''} ${gridClassName}`}>
+          <div className={`flex items-center justify-center font-black ${hallRelease ? HALL_RELEASE_DESIGN.labelClassName : group.color}`}>{hallRelease ? <HallReleaseLabel /> : <span className="whitespace-pre-line text-center">{group.label}</span>}</div>
           <div className={`grid bg-white ${compact ? 'min-h-10 grid-cols-8 gap-0.5 p-1' : 'min-h-20 grid-cols-4 gap-2 p-2 sm:grid-cols-7'}`}>
             {items.map(item => {
               const image = item.card.image_url
