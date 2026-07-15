@@ -19,6 +19,8 @@ function isAllowedImageUrl(url: URL) {
     && (!url.port || url.port === '443')
     && !url.username
     && !url.password
+    && !url.search
+    && !url.hash
     && ALLOWED_IMAGE_PATHS.some((prefix) => url.pathname.startsWith(prefix))
 }
 
