@@ -5,12 +5,13 @@
 ## 結果
 
 - `/api/card-image` は `https://dm.takaratomy.co.jp` の許可済み画像パス3種だけを受け付ける。任意URLプロキシではない。
-- URLのscheme、host、port、userinfo、pathを検証し、リダイレクト先にも同じ検証を繰り返す。
+- URLのscheme、host、port、userinfo、pathを検証し、任意query/hashを拒否する。リダイレクト先にも同じ検証を繰り返す。
 - upstreamは8秒でタイムアウトし、最大2回のリダイレクト、8 MiB、許可Content-Typeに制限する。
 - 画像レスポンスはブラウザ60秒・共有キャッシュ300秒とし、公式サイトへの重複アクセスを抑える。`CARD_IMAGES_ENABLED=false` のリクエストはupstreamへ接続せず403を返す。
-- 検索語は80文字まで、制御文字を拒否し、カード名・読み仮名を個別クエリしてPostgRESTの`.or()`文字列組み立てを廃止した。
+- 検索語は80文字まで、制御文字を拒否し、`ILIKE`のワイルドカードをエスケープする。カード名・読み仮名を個別クエリしてPostgRESTの`.or()`文字列組み立てを廃止した。
 - migrationは既存列を削除・変更せず、列・子テーブル・検索indexの追加だけを行う。既存RPC、Tier表、殿堂解除メーカーの参照先は変更しない。
 - localStorageは信頼せず、復元時に4枚・40枚へ再制限し、公式ページURL・画像URLを公式host/pathへ再制限する。
+- PNG生成は同一画像URLを1回だけ読み込み、10秒で失敗扱いにしてカード名プレースホルダーへフォールバックする。
 
 ## 残余リスク
 
