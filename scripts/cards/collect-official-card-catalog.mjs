@@ -86,7 +86,7 @@ function field(html, className) { return decode(html.match(new RegExp(`<td[^>]+c
 function parseDetail(html, sourceKey, thumbnailUrl) {
   const nameHtml = html.match(/<h3[^>]+class=["'][^"']*card-name[^"']*["'][^>]*>([\s\S]*?)<span[^>]+class=["'][^"']*packname/i)?.[1]
   const imagePath = html.match(/<div[^>]+class=["'][^"']*card-img[^"']*["'][^>]*>[\s\S]*?<img[^>]+src=["']([^"']+)["']/i)?.[1]
-  if ((!nameHtml || !imagePath) && /<title>\s*\([^<]*\?\?\?[^<]*\)\s*\|/i.test(html)) return null
+  if ((!nameHtml || !imagePath) && /<title>\s*\((?:[^<]*\?\?\?[^<]*|DM\s*\/)\)\s*\|/i.test(html)) return null
   if (!nameHtml || !imagePath) throw new Error(`必須項目(name/image)を取得できません: ${sourceKey}`)
   const pack = decode(html.match(/<span[^>]+class=["'][^"']*packname[^"']*["'][^>]*>\s*\(([^)]*)\)/i)?.[1] ?? '')
   return {
