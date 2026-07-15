@@ -12,12 +12,12 @@ export interface NavPage {
   nav_label: string
   sort_order: number
   external_url: string | null
+  is_published: boolean
+  show_in_nav: boolean
 }
 
 export interface FixedPage extends NavPage {
   content: Block[]
-  is_published: boolean
-  show_in_nav: boolean
 }
 
 export function parseBlocks(raw: unknown): Block[] {
