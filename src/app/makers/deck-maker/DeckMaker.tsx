@@ -92,6 +92,7 @@ export default function DeckMaker() {
   const [ready, setReady] = useState(false)
   const [notice, setNotice] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [resetConfirm, setResetConfirm] = useState(false)
   const requestId = useRef(0)
   const searchInput = useRef<HTMLInputElement>(null)
   const total = deckSize(entries)
@@ -177,11 +178,10 @@ export default function DeckMaker() {
   }
 
   function resetDeck() {
-    if (!entries.length || window.confirm('デッキをすべてリセットしますか？')) {
-      setEntries([])
-      setSelectedId(null)
-      setNotice('デッキをリセットしました')
-    }
+    setEntries([])
+    setSelectedId(null)
+    setResetConfirm(false)
+    setNotice('デッキをリセットしました')
   }
 
   async function savePng() {
@@ -256,7 +256,7 @@ export default function DeckMaker() {
           <button onClick={savePng} aria-label="デッキをPNGで保存" className="flex min-h-11 items-center gap-1 rounded-xl bg-blue-700 px-3 text-sm font-bold text-white hover:bg-blue-800">
             <Icon name="download" /><span>PNG保存</span>
           </button>
-          <button onClick={resetDeck} aria-label="デッキをリセット" className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-600 hover:bg-red-50 hover:text-red-700">
+          <button onClick={() => entries.length ? setResetConfirm(true) : resetDeck()} aria-label="デッキをリセット" className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-600 hover:bg-red-50 hover:text-red-700">
             <Icon name="trash" />
           </button>
         </div>
@@ -347,6 +347,19 @@ export default function DeckMaker() {
                 <button type="button" onClick={() => add(selected)} disabled={selected.count >= MAX_SAME_CARD || total >= MAX_DECK_CARDS} aria-label={`${selected.name}を1枚増やす`} className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-700 text-2xl font-bold text-white disabled:bg-slate-400">＋</button>
               </div>
               {selected.officialPageUrl && <a href={selected.officialPageUrl} target="_blank" rel="noreferrer" className="mx-auto mt-3 flex min-h-11 w-fit items-center gap-1 px-3 text-sm font-bold text-blue-700 underline">公式ページ <Icon name="external" /></a>}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {resetConfirm && (
+        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onMouseDown={(event) => { if (event.currentTarget === event.target) setResetConfirm(false) }}>
+          <section role="alertdialog" aria-modal="true" aria-labelledby="reset-dialog-title" aria-describedby="reset-dialog-description" className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+            <h2 id="reset-dialog-title" className="text-lg font-black text-slate-900">デッキをリセットしますか？</h2>
+            <p id="reset-dialog-description" className="mt-2 text-sm leading-relaxed text-slate-600">現在の40枚をすべて削除します。この操作は取り消せません。</p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => setResetConfirm(false)} className="min-h-11 rounded-xl border border-slate-300 font-bold text-slate-700">キャンセル</button>
+              <button type="button" onClick={resetDeck} aria-label="デッキをすべて削除" className="min-h-11 rounded-xl bg-red-700 font-bold text-white">すべて削除</button>
             </div>
           </section>
         </div>
