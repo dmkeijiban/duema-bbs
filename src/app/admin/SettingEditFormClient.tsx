@@ -13,9 +13,10 @@ interface Props {
   settingKey: string
   initialValue: string
   label: string
+  returnPath?: string
 }
 
-export function SettingEditFormClient({ settingKey, initialValue, label }: Props) {
+export function SettingEditFormClient({ settingKey, initialValue, label, returnPath = '/admin' }: Props) {
   // URLフィールドの場合、DB に HTML が入っていたら href だけ抽出してフォールバック
   const extractUrl = (raw: string): string => {
     if (!URL_SETTING_KEYS.has(settingKey)) return raw
@@ -37,7 +38,7 @@ export function SettingEditFormClient({ settingKey, initialValue, label }: Props
       if (result.error) {
         setError(result.error)
       } else {
-        router.push('/admin', { scroll: false })
+        router.push(returnPath, { scroll: false })
       }
     })
   }
@@ -63,7 +64,7 @@ export function SettingEditFormClient({ settingKey, initialValue, label }: Props
             style={{ background: '#6f42c1' }}>
             {isPending ? '保存中...' : '保存'}
           </button>
-          <Link href="/admin" scroll={false} data-admin-scroll="preserve" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600">
+          <Link href={returnPath} scroll={false} data-admin-scroll="preserve" className="px-4 py-1.5 text-xs border border-gray-300 text-gray-600">
             キャンセル
           </Link>
           {error && <span className="text-xs text-red-600">{error}</span>}
