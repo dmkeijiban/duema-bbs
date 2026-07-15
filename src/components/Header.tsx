@@ -23,23 +23,9 @@ function isNewProductPage(page: NavPage) {
   return text.includes('新商品') || text.includes('新着品') || text.includes('new-cards') || text.includes('dmsaishin')
 }
 
-function isYoutubePage(page: NavPage) {
-  const text = `${page.slug} ${pageLabel(page)} ${page.external_url ?? ''}`.toLowerCase()
-  return text.includes('youtube') || text.includes('youtu.be')
-}
-
-function isGuidePage(page: NavPage) {
-  const text = `${page.slug} ${pageLabel(page)}`.toLowerCase()
-  return text.includes('guide') || text.includes('使い方')
-}
-
 function buildHeaderNavItems(navPages: NavPage[]): PrimaryNavigationItem[] {
   const visiblePages = ADSENSE_REVIEW_MODE ? navPages.filter(p => !isNewProductPage(p)) : navPages
-  const remaining = [...visiblePages]
-  const take = (matcher: (page: NavPage) => boolean) => {
-    const index = remaining.findIndex(matcher)
-    return index >= 0 ? remaining.splice(index, 1)[0] : null
-  }
+  const [leadingPage, ...remainingPages] = visiblePages
   const toItem = (page: NavPage): PrimaryNavigationItem => ({
     key: String(page.id),
     label: pageLabel(page),
@@ -47,16 +33,10 @@ function buildHeaderNavItems(navPages: NavPage[]): PrimaryNavigationItem[] {
     external: Boolean(page.external_url),
   })
 
-  const newProduct = take(isNewProductPage)
-  const youtube = take(isYoutubePage)
-  const guide = take(isGuidePage)
-
   return [
-    newProduct ? toItem(newProduct) : null,
+    leadingPage ? toItem(leadingPage) : null,
     ...primarySystemNavigation,
-    youtube ? toItem(youtube) : null,
-    guide ? toItem(guide) : null,
-    ...remaining.map(toItem),
+    ...remainingPages.map(toItem),
   ].filter((item): item is PrimaryNavigationItem => item !== null)
 }
 
