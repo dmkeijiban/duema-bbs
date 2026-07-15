@@ -606,7 +606,7 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
               key={group.key}
               className={`grid rounded-xl border transition-[min-height] ${groupGridClassName} ${isEmpty ? 'min-h-[72px]' : 'min-h-28'} ${groupRowClassName ?? group.color}`}
             >
-              <div className={`flex items-center justify-center text-2xl font-black ${groupLabelClassName ?? ''}`}>{hallReleaseLabel && group.key === 'release' ? <HallReleaseLabel /> : <span className="whitespace-pre-line">{groupLabelText?.[group.key] ?? group.label}</span>}</div>
+              <div className={`flex min-w-0 items-center justify-center overflow-hidden font-black ${groupLabelClassName ?? 'text-2xl'}`}>{hallReleaseLabel && group.key === 'release' ? <HallReleaseLabel /> : <span className="max-w-full whitespace-pre-line">{groupLabelText?.[group.key] ?? group.label}</span>}</div>
               <div className={`grid grid-cols-4 gap-2 bg-white/80 sm:grid-cols-7 ${isEmpty ? 'p-1.5' : 'p-2'}`}>
                 {ids.map(cardId => {
                   const card = cardsById.get(cardId)
