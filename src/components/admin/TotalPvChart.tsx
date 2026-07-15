@@ -60,10 +60,14 @@ export function TotalPvChart({ points }: { points: Ga4DailyPoint[] }) {
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         role="img"
         aria-label="過去28日の日別PV推移"
-        className="h-auto w-full touch-pan-y"
-        onPointerMove={selectNearestPoint}
+        className="h-auto w-full touch-pan-y select-none [-webkit-touch-callout:none]"
+        onPointerMove={event => {
+          if (event.pointerType === 'mouse') selectNearestPoint(event)
+        }}
         onPointerDown={selectNearestPoint}
-        onPointerLeave={() => setActiveIndex(null)}
+        onPointerLeave={event => {
+          if (event.pointerType === 'mouse') setActiveIndex(null)
+        }}
       >
         {[0, 0.5, 1].map(rate => {
           const y = PADDING.top + plotHeight * rate
@@ -85,7 +89,7 @@ export function TotalPvChart({ points }: { points: Ga4DailyPoint[] }) {
         className="pointer-events-none absolute z-10 min-w-32 rounded border border-gray-200 bg-white px-3 py-2 text-xs shadow-lg"
         style={{
           left: `${(active.x / WIDTH) * 100}%`,
-          top: `${Math.max(0, (active.y / HEIGHT) * 100 - 12)}%`,
+          top: `clamp(56px, ${(active.y / HEIGHT) * 100}%, calc(100% - 4px))`,
           transform: active.x > WIDTH * 0.72 ? 'translate(-100%, -100%)' : active.x < WIDTH * 0.28 ? 'translate(0, -100%)' : 'translate(-50%, -100%)',
         }}
       >
