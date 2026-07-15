@@ -43,6 +43,24 @@ async function fetchOfficialImage(initialUrl: URL) {
   throw new Error('Too many redirects')
 }
 
+async function readLimitedBody(response: Response) {
+  if (!response.body) return new Uint8Array()
+  const reader = response.body.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > MAX_BYTES) { await reader.cancel(); return null }
+    chunks.push(value)
+  }
+  const bytes = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength }
+  return bytes
+}
+
 export async function GET(request: NextRequest) {
   if (process.env.CARD_IMAGES_ENABLED === 'false') return new NextResponse('Card images disabled', { status: 403 })
   const rawUrl = request.nextUrl.searchParams.get('url')
@@ -60,8 +78,8 @@ export async function GET(request: NextRequest) {
     const allowedTypes = new Set(['image/avif', 'image/gif', 'image/jpeg', 'image/png', 'image/webp'])
     if (!allowedTypes.has(contentType)) return new NextResponse('Invalid image type', { status: 415 })
     if (contentLength > MAX_BYTES) return new NextResponse('Image too large', { status: 413 })
-    const bytes = await response.arrayBuffer()
-    if (bytes.byteLength > MAX_BYTES) return new NextResponse('Image too large', { status: 413 })
+    const bytes = await readLimitedBody(response)
+    if (!bytes) return new NextResponse('Image too large', { status: 413 })
 
     return new NextResponse(bytes, { headers: {
       'Cache-Control': 'public, max-age=60, s-maxage=300',
