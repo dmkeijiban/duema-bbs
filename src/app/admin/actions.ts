@@ -372,15 +372,15 @@ export async function adminAddNgWord(formData: FormData) {
   await checkAdmin()
   const word = (formData.get('word') as string)?.trim()
   const note = (formData.get('note') as string)?.trim() || null
-  if (!word) redirect('/admin')
+  if (!word) redirect('/admin/moderation')
 
   const supabase = createAdminClient()
   await supabase
     .from('moderation_ng_words')
     .upsert({ word, note, is_active: true }, { onConflict: 'word' })
 
-  revalidatePath('/admin')
-  redirect('/admin')
+  revalidatePath('/admin/moderation')
+  redirect('/admin/moderation')
 }
 
 export async function adminDisableNgWord(formData: FormData) {
@@ -389,8 +389,8 @@ export async function adminDisableNgWord(formData: FormData) {
   const supabase = createAdminClient()
   await supabase.from('moderation_ng_words').update({ is_active: false }).eq('id', id)
 
-  revalidatePath('/admin')
-  redirect('/admin')
+  revalidatePath('/admin/moderation')
+  redirect('/admin/moderation')
 }
 
 export async function adminBanSession(formData: FormData) {
@@ -450,8 +450,8 @@ export async function adminUnbanSession(formData: FormData) {
   const supabase = createAdminClient()
   await supabase.from('moderation_bans').update({ is_active: false }).eq('id', id)
 
-  revalidatePath('/admin')
-  redirect('/admin')
+  revalidatePath('/admin/moderation')
+  redirect('/admin/moderation')
 }
 
 export async function adminToggleThreadCommentLock(formData: FormData) {
