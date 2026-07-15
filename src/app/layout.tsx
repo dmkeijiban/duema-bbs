@@ -202,17 +202,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <LazyPostHogBridge />
           <footer className="bg-white border-t border-gray-200 py-4 mt-0">
             <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-600 space-y-2">
-
-              {/* サイト案内系リンク */}
-              <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
-                <Link href="/" className="hover:underline">TOP</Link>
-                <Link href="/new" className="hover:underline">スレッド一覧</Link>
-                <Link href="/summary" className="hover:underline">人気まとめ</Link>
-                <Link href="/ranking" className="hover:underline">ランキング</Link>
-                <Link href="/mypage" className="hover:underline">マイページ</Link>
-                <Link href="/zukan" className="hover:underline">思い出図鑑</Link>
-              </div>
-              {/* 固定ページ系リンク */}
               <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
                 <Link href="/terms" className="hover:underline">利用規約</Link>
                 <Link href="/privacy" className="hover:underline">プライバシーポリシー</Link>
