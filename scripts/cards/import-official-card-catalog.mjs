@@ -14,7 +14,9 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY
 if (!url || !key) throw new Error('Supabase service role環境変数が必要です')
 const supabase = createClient(url, key, { auth: { persistSession: false } })
-const catalog = JSON.parse(await readFile(input, 'utf8'))
+const parsedInput = JSON.parse(await readFile(input, 'utf8'))
+const catalog = Array.isArray(parsedInput) ? parsedInput : parsedInput?.cards
+if (!Array.isArray(catalog)) throw new Error('入力はカード配列、または cards 配列を持つチェックポイントである必要があります')
 const normalize = (value) => value.normalize('NFKC').trim().replace(/[\s\u3000]+/g, '').replace(/[／∕]/g, '/').replace(/[・·]/g, '・')
 const chunks = (items, size = 250) => Array.from({ length: Math.ceil(items.length / size) }, (_, index) => items.slice(index * size, (index + 1) * size))
 
@@ -75,6 +77,18 @@ for (const [normalizedName, printings] of grouped) {
   }
 }
 for (const batch of chunks(printingRows)) { const { error } = await supabase.from('card_printings').upsert(batch, { onConflict: 'source_key' }); if (error) throw error }
-const afterCards = await allRows('cards', 'id,normalized_name')
+const afterCards = await allRows('cards', 'id,name,normalized_name,name_kana,image_url,civilization,cost,card_type,is_catalog_complete,catalog_review_status')
 const afterPrintings = await allRows('card_printings', 'source_key,card_id')
-console.log(JSON.stringify({ ...summary, cardsAfter: afterCards.length, printingsAfter: afterPrintings.length, insertedPrintings: printingRows.filter((row) => !existingSources.has(row.source_key)).length }, null, 2))
+const afterById = new Map(afterCards.map((row) => [row.id, row]))
+const protectedFields = ['name', 'normalized_name', 'name_kana', 'image_url', 'civilization', 'cost', 'card_type']
+const preservedValueViolations = []
+for (const before of beforeCards) {
+  const after = afterById.get(before.id)
+  if (!after) { preservedValueViolations.push({ id: before.id, field: 'row' }); continue }
+  for (const field of protectedFields) {
+    const hadManualValue = Array.isArray(before[field]) ? before[field].length > 0 : before[field] != null
+    if (hadManualValue && JSON.stringify(after[field]) !== JSON.stringify(before[field])) preservedValueViolations.push({ id: before.id, field })
+  }
+}
+if (preservedValueViolations.length) throw new Error(`既存値の非上書き検証に失敗: ${JSON.stringify(preservedValueViolations.slice(0, 10))}`)
+console.log(JSON.stringify({ ...summary, cardsAfter: afterCards.length, printingsAfter: afterPrintings.length, insertedPrintings: printingRows.filter((row) => !existingSources.has(row.source_key)).length, preservedExistingValues: beforeCards.length, preservedValueViolations: 0 }, null, 2))
