@@ -268,8 +268,10 @@ export default function DeckMaker() {
     <div className="mx-auto max-w-[1440px] overflow-x-hidden">
       <header className="mb-3 flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm sm:px-4">
         <div className="min-w-0 flex-1">
-          <label htmlFor="deck-name" className="sr-only">デッキ名</label>
-          <input id="deck-name" value={deckName} onChange={(event) => setDeckName(event.target.value.slice(0, MAX_DECK_NAME_LENGTH))} onBlur={() => { if (!deckName.trim()) setDeckName(DEFAULT_DECK_NAME) }} maxLength={MAX_DECK_NAME_LENGTH} className="w-full max-w-md border-0 bg-transparent p-0 text-lg font-black text-slate-900 outline-none placeholder:text-slate-400 sm:text-xl" placeholder={DEFAULT_DECK_NAME} />
+          <div className="flex max-w-xl items-center gap-2">
+            <label htmlFor="deck-name" className="shrink-0 text-sm font-bold text-slate-700">デッキ名</label>
+            <input id="deck-name" value={deckName} onChange={(event) => setDeckName(event.target.value.slice(0, MAX_DECK_NAME_LENGTH))} onBlur={() => { if (!deckName.trim()) setDeckName(DEFAULT_DECK_NAME) }} maxLength={MAX_DECK_NAME_LENGTH} className="h-10 min-w-0 flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 text-base font-bold text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" placeholder={DEFAULT_DECK_NAME} />
+          </div>
           <p className="text-xs font-bold text-emerald-800">メイン <span data-testid="deck-count">{total}/40</span></p>
         </div>
         <div className="flex items-center gap-1">
@@ -329,7 +331,7 @@ export default function DeckMaker() {
               <button type="button" aria-label="絞り込み（準備中）" title="絞り込みは今後対応予定" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 text-slate-500"><Icon name="filter" /></button>
             </div>
           </div>
-          <div data-testid="search-results" className="grid max-h-[48vh] min-h-24 grid-cols-4 gap-1.5 overflow-y-auto overscroll-contain p-2.5 sm:gap-2 sm:p-3 lg:max-h-[calc(100vh-230px)]">
+          <div data-testid="search-results" className="grid max-h-[62vh] min-h-24 grid-cols-4 gap-1.5 overflow-y-auto overscroll-contain p-2.5 sm:gap-2 sm:p-3 lg:max-h-[calc(100vh-170px)]">
             {results.length === 0 && <p className="col-span-4 py-8 text-center text-sm text-slate-500">カードを読み込み中、または該当カードがありません</p>}
             {results.map((card) => {
               const count = byId.get(card.id)?.count ?? 0
