@@ -6,8 +6,7 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import {
   adminDeleteThread, adminDeletePost,
   adminUpdateThread, adminUpdatePost,
-  adminAddNgWord, adminDisableNgWord,
-  adminBanSession, adminUnbanSession,
+  adminBanSession,
   adminToggleArchive,
   adminBanIpHash,
   adminHidePostsByIpHash,
@@ -53,22 +52,6 @@ function adminThreadsUrl({ page, q, sort, order }: { page?: number; q: string; s
   if (page && page > 1) p.set('threadPage', String(page))
   if (sort !== 'last_posted_at' || order !== 'desc') { p.set('sort', sort); p.set('order', order) }
   return `/admin${p.toString() ? '?' + p.toString() : ''}`
-}
-
-type ModerationNgWord = {
-  id: number
-  word: string
-  note: string | null
-  created_at: string
-}
-
-type ModerationBan = {
-  id: number
-  ban_type?: string
-  ban_value: string
-  reason: string | null
-  created_at: string
-  expires_at: string | null
 }
 
 type AdminPostRow = {
@@ -225,81 +208,6 @@ export default async function AdminPage({
   const currentTopShowcaseMode = normalizeTopShowcaseMode(settings.top_showcase_mode)
   const currentTopShowcaseLabel =
     TOP_SHOWCASE_MODE_OPTIONS.find(option => option.value === currentTopShowcaseMode)?.label ?? 'みんなのプロフィール'
-  const [{ data: ngWords }, { data: sessionBans }] = await Promise.all([
-    adminSupabase
-      .from('moderation_ng_words')
-      .select('id, word, note, created_at')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(30)
-      .then(result => result.error ? { data: [] as ModerationNgWord[] } : result),
-    adminSupabase
-      .from('moderation_bans')
-      .select('id, ban_type, ban_value, reason, created_at, expires_at')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(30)
-      .then(async result => {
-        if (!result.error) return result
-        if (result.error.code === 'PGRST205' || result.error.code === '42P01' || result.error.message?.includes('moderation_bans')) {
-          const fallback = await adminSupabase
-            .from('report_mutes')
-            .select('id, user_id, session_id, reason, created_at, revoked_at')
-            .eq('is_active', true)
-            .like('reason', 'posting_ban:%')
-            .order('created_at', { ascending: false })
-            .limit(30)
-          if (fallback.error) {
-            console.error('[admin] Failed to load posting ban fallback:', {
-              code: fallback.error.code,
-              message: fallback.error.message,
-            })
-            return { data: [] as ModerationBan[] }
-          }
-          return {
-            data: (fallback.data ?? []).map(row => ({
-              id: row.id,
-              ban_type: row.user_id ? 'user' : 'session',
-              ban_value: row.user_id ?? row.session_id,
-              reason: row.reason?.replace(/^posting_ban:/, '') ?? null,
-              created_at: row.created_at,
-              expires_at: null,
-            })).filter(row => row.ban_value) as ModerationBan[],
-          }
-        }
-        if (result.error.code !== '42703' && !result.error.message?.includes('ban_type') && !result.error.message?.includes('ban_value')) {
-          console.error('[admin] Failed to load moderation_bans:', {
-            code: result.error.code,
-            message: result.error.message,
-          })
-          return { data: [] as ModerationBan[] }
-        }
-        const legacy = await adminSupabase
-          .from('moderation_bans')
-          .select('id, session_id, reason, created_at, expires_at')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .limit(30)
-        if (legacy.error) {
-          console.error('[admin] Failed to load legacy moderation_bans:', {
-            code: legacy.error.code,
-            message: legacy.error.message,
-          })
-          return { data: [] as ModerationBan[] }
-        }
-        return {
-          data: (legacy.data ?? []).map(row => ({
-            id: row.id,
-            ban_type: 'session',
-            ban_value: row.session_id,
-            reason: row.reason,
-            created_at: row.created_at,
-            expires_at: row.expires_at,
-          })) as ModerationBan[],
-        }
-      }),
-  ])
-
   const SETTING_LABELS: Record<string, string> = {
     thread_rules: 'スレッド内ルール',
     new_thread_rules: '新規スレッド作成ルール',
@@ -581,70 +489,6 @@ export default async function AdminPage({
           </div>
         </form>
       </PersistentDetails>
-
-      {/* ─── モデレーション（NGワード・BAN）折り畳み ─── */}
-      <details className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
-        <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-50">
-          <span className="text-gray-400 text-xs">▶</span>
-          <span>🛡️ モデレーション</span>
-          <span className="ml-auto flex gap-2 text-[11px] font-normal text-gray-400">
-            NGワード {(ngWords as ModerationNgWord[]).length}件 / BAN {(sessionBans as ModerationBan[]).length}件
-          </span>
-        </summary>
-        <div className="grid min-w-0 grid-cols-1 gap-4 border-t border-gray-100 p-3 md:grid-cols-2">
-          <section>
-            <h3 className="font-bold text-gray-700 mb-2 text-xs">NGワード</h3>
-            <form action={adminAddNgWord} className="flex gap-1 mb-2">
-              <input name="word" placeholder="禁止したい言葉" className="border border-gray-300 px-2 py-1 text-xs flex-1 rounded" required />
-              <input name="note" placeholder="メモ" className="border border-gray-300 px-2 py-1 text-xs w-20 rounded" />
-              <button type="submit" className="px-2 py-1 text-xs text-white rounded" style={{ background: '#0d6efd' }}>追加</button>
-            </form>
-            <div className="space-y-1 max-h-40 overflow-y-auto">
-              {(ngWords as ModerationNgWord[]).length === 0 ? (
-                <p className="text-xs text-gray-400">まだ登録なし</p>
-              ) : (
-                (ngWords as ModerationNgWord[]).map(word => (
-                  <div key={word.id} className="flex items-center gap-2 border border-gray-200 px-2 py-1 rounded">
-                    <div className="flex-1 min-w-0">
-                      <span className="text-xs font-bold text-red-700">{word.word}</span>
-                      {word.note && <span className="text-[10px] text-gray-400 ml-2">{word.note}</span>}
-                    </div>
-                    <form action={adminDisableNgWord}>
-                      <input type="hidden" name="id" value={word.id} />
-                      <button type="submit" className="text-[10px] text-gray-500 border border-gray-300 px-1.5 py-0.5 rounded hover:bg-gray-50">無効化</button>
-                    </form>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-
-          <section>
-            <h3 className="font-bold text-gray-700 mb-2 text-xs">BAN中の投稿者</h3>
-            <div className="space-y-1 max-h-52 overflow-y-auto">
-              {(sessionBans as ModerationBan[]).length === 0 ? (
-                <p className="text-xs text-gray-400">BAN中の投稿者なし</p>
-              ) : (
-                (sessionBans as ModerationBan[]).map(ban => (
-                  <div key={ban.id} className="flex items-center gap-2 border border-red-100 bg-red-50/40 px-2 py-1 rounded">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-bold text-red-700">
-                        {ban.ban_type === 'user' ? 'user_id' : 'session_id'}
-                      </p>
-                      <p className="text-[10px] text-gray-600 break-all font-mono">{ban.ban_value}</p>
-                      {ban.reason && <p className="text-[10px] text-gray-400">理由: {ban.reason}</p>}
-                    </div>
-                    <form action={adminUnbanSession}>
-                      <input type="hidden" name="id" value={ban.id} />
-                      <button type="submit" className="text-[10px] text-blue-600 border border-blue-300 px-1.5 py-0.5 rounded hover:bg-blue-50">解除</button>
-                    </form>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-        </div>
-      </details>
 
       {/* ─── お知らせ（折り畳み） ─── */}
       <details className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-white">
