@@ -6,42 +6,10 @@ import { MobileMenu } from './MobileMenu'
 import { HeaderHomeLink } from './HeaderHomeLink'
 import { getCachedNavPages } from '@/lib/cached-queries'
 import { ADSENSE_REVIEW_MODE } from '@/lib/adsense-review-mode'
-import { primarySystemNavigation, type PrimaryNavigationItem } from '@/lib/primary-navigation'
-
-type NavPage = Awaited<ReturnType<typeof getCachedNavPages>>[number]
-
-function pageLabel(page: NavPage) {
-  return page.nav_label || page.title
-}
-
-function pageHref(page: NavPage) {
-  return page.external_url || `/${page.slug}`
-}
-
-function isNewProductPage(page: NavPage) {
-  const text = `${page.slug} ${pageLabel(page)}`.toLowerCase()
-  return text.includes('新商品') || text.includes('新着品') || text.includes('new-cards') || text.includes('dmsaishin')
-}
-
-function buildHeaderNavItems(navPages: NavPage[]): PrimaryNavigationItem[] {
-  const visiblePages = ADSENSE_REVIEW_MODE ? navPages.filter(p => !isNewProductPage(p)) : navPages
-  const [leadingPage, ...remainingPages] = visiblePages
-  const toItem = (page: NavPage): PrimaryNavigationItem => ({
-    key: String(page.id),
-    label: pageLabel(page),
-    href: pageHref(page),
-    external: Boolean(page.external_url),
-  })
-
-  return [
-    leadingPage ? toItem(leadingPage) : null,
-    ...primarySystemNavigation,
-    ...remainingPages.map(toItem),
-  ].filter((item): item is PrimaryNavigationItem => item !== null)
-}
+import { buildPrimaryNavigationItems } from '@/lib/primary-navigation'
 
 export async function Header() {
-  const navItems = buildHeaderNavItems(await getCachedNavPages())
+  const navItems = buildPrimaryNavigationItems(await getCachedNavPages(), ADSENSE_REVIEW_MODE)
 
   return (
     <header className="bg-white border-b border-gray-300 sticky top-0 z-50">
