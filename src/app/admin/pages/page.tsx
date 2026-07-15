@@ -2,7 +2,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-server'
-import { deletePage, togglePublished, movePage, createDefaultStaticPages } from './actions'
+import { deletePage, togglePublished, toggleMainNav, movePage, createDefaultStaticPages } from './actions'
 import { ConfirmDeleteButton } from '@/components/admin/ConfirmDeleteButton'
 import { verifyAdminCookie } from '@/lib/admin-auth'
 
@@ -38,7 +38,7 @@ export default async function AdminPagesPage() {
       </div>
 
       <div className="text-xs text-gray-500 mb-3 bg-blue-50 border border-blue-100 px-3 py-2 flex items-center justify-between gap-3 flex-wrap">
-        <span>ナビに表示 ✓ のページが上部ヘッダーに表示されます。並び順で左→右の順に並びます。</span>
+        <span>「メインナビ表示」が有効な固定ページだけがヘッダーに表示されます。並び順は固定ページ同士の表示順です。ランキングやメーカーなどの機能ページはコード側で別に管理されています。</span>
         <form action={createDefaultStaticPages}>
           <button type="submit"
             className="text-[11px] px-2.5 py-1 border border-blue-400 text-blue-700 bg-white hover:bg-blue-50 shrink-0 whitespace-nowrap">
@@ -52,7 +52,7 @@ export default async function AdminPagesPage() {
       ) : (
         <div className="space-y-1">
           {pages.map((page, idx) => (
-            <div key={page.id} className="bg-white border border-gray-200 px-3 py-2 flex items-center gap-2">
+            <div key={page.id} className="bg-white border border-gray-200 px-3 py-2 flex flex-wrap items-center gap-2">
               {/* 並び替え */}
               <div className="flex flex-col gap-0.5 shrink-0">
                 <form action={movePage}>
@@ -70,17 +70,17 @@ export default async function AdminPagesPage() {
               </div>
 
               {/* ステータスバッジ */}
-              <div className="flex flex-col gap-0.5 shrink-0 w-14">
+              <div className="flex flex-col gap-0.5 shrink-0 w-24">
                 <span className={`text-[9px] px-1 py-0.5 text-center font-medium ${page.is_published ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                   {page.is_published ? '公開' : '非公開'}
                 </span>
                 <span className={`text-[9px] px-1 py-0.5 text-center ${page.show_in_nav ? 'bg-blue-100 text-blue-700' : 'bg-gray-50 text-gray-400'}`}>
-                  {page.show_in_nav ? 'ナビ表示' : 'ナビ非表示'}
+                  {page.show_in_nav ? 'メインナビ表示' : 'メインナビ非表示'}
                 </span>
               </div>
 
               {/* タイトル・スラッグ */}
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-40">
                 <p className="font-medium text-gray-800 text-xs truncate">{page.title}</p>
                 <p className="text-[10px] text-gray-400">
                   {page.external_url ? `→ ${page.external_url}` : `/${page.slug}`}
@@ -88,13 +88,21 @@ export default async function AdminPagesPage() {
               </div>
 
               {/* 操作 */}
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex flex-wrap items-center justify-end gap-1 shrink-0 max-sm:w-full">
                 <form action={togglePublished}>
                   <input type="hidden" name="id" value={page.id} />
                   <input type="hidden" name="current" value={String(page.is_published)} />
                   <button type="submit"
                     className="text-[10px] px-2 py-0.5 border border-gray-300 bg-white hover:bg-gray-50">
                     {page.is_published ? '非公開に' : '公開に'}
+                  </button>
+                </form>
+                <form action={toggleMainNav}>
+                  <input type="hidden" name="id" value={page.id} />
+                  <input type="hidden" name="current" value={String(page.show_in_nav)} />
+                  <button type="submit"
+                    className="text-[10px] px-2 py-0.5 border border-gray-300 bg-white hover:bg-gray-50">
+                    {page.show_in_nav ? 'メインナビから外す' : 'メインナビに表示'}
                   </button>
                 </form>
                 <a href={`/admin/pages/${page.id}`}

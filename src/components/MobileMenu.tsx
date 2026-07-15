@@ -4,15 +4,9 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { HeaderAuthNav } from './HeaderAuthNav'
+import type { PrimaryNavigationItem } from '@/lib/primary-navigation'
 
-interface Props {
-  navItems: {
-    key: string
-    label: string
-    href: string
-    external?: boolean
-  }[]
-}
+interface Props { navItems: PrimaryNavigationItem[] }
 
 export function MobileMenu({ navItems }: Props) {
   const [open, setOpen] = useState(false)

@@ -112,7 +112,7 @@ export function PageEditor({ initial }: Props) {
             {slug && <p className="text-[10px] text-gray-400 mt-0.5">URL: /{slug}</p>}
           </div>
           <div>
-            <label className="block text-xs text-gray-600 mb-1">ナビ表示名（省略時はタイトル）</label>
+            <label className="block text-xs text-gray-600 mb-1">メインナビ表示名（省略時はタイトル）</label>
             <input type="text" value={navLabel} onChange={e => setNavLabel(e.target.value)}
               className="w-full border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400" />
           </div>
@@ -135,7 +135,7 @@ export function PageEditor({ initial }: Props) {
           </label>
           <label className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer select-none">
             <input type="checkbox" checked={showInNav} onChange={e => setShowInNav(e.target.checked)} className="cursor-pointer" />
-            ナビに表示する
+            メインナビに表示する
           </label>
         </div>
       </div>

@@ -6,15 +6,7 @@ import { MobileMenu } from './MobileMenu'
 import { HeaderHomeLink } from './HeaderHomeLink'
 import { getCachedNavPages } from '@/lib/cached-queries'
 import { ADSENSE_REVIEW_MODE } from '@/lib/adsense-review-mode'
-
-const HIDE_FROM_NAV = new Set(['terms', 'privacy', 'contact', 'settings'])
-
-type HeaderNavItem = {
-  key: string
-  label: string
-  href: string
-  external?: boolean
-}
+import { primarySystemNavigation, type PrimaryNavigationItem } from '@/lib/primary-navigation'
 
 type NavPage = Awaited<ReturnType<typeof getCachedNavPages>>[number]
 
@@ -41,14 +33,14 @@ function isGuidePage(page: NavPage) {
   return text.includes('guide') || text.includes('使い方')
 }
 
-function buildHeaderNavItems(navPages: NavPage[]): HeaderNavItem[] {
+function buildHeaderNavItems(navPages: NavPage[]): PrimaryNavigationItem[] {
   const visiblePages = ADSENSE_REVIEW_MODE ? navPages.filter(p => !isNewProductPage(p)) : navPages
   const remaining = [...visiblePages]
   const take = (matcher: (page: NavPage) => boolean) => {
     const index = remaining.findIndex(matcher)
     return index >= 0 ? remaining.splice(index, 1)[0] : null
   }
-  const toItem = (page: NavPage): HeaderNavItem => ({
+  const toItem = (page: NavPage): PrimaryNavigationItem => ({
     key: String(page.id),
     label: pageLabel(page),
     href: pageHref(page),
@@ -61,21 +53,15 @@ function buildHeaderNavItems(navPages: NavPage[]): HeaderNavItem[] {
 
   return [
     newProduct ? toItem(newProduct) : null,
-    { key: 'ranking', label: 'ランキング', href: '/ranking' },
-    { key: 'tier-maker', label: 'Tier表メーカー', href: '/makers/dm26-ex2-charisma-best-tier' },
-    { key: 'hall-release-maker', label: '殿堂解除選手権', href: '/makers/hall-of-fame-release' },
-    { key: 'zukan', label: '思い出図鑑', href: '/zukan' },
-    { key: 'zukan-articles', label: '記事一覧', href: '/zukan/articles' },
+    ...primarySystemNavigation,
     youtube ? toItem(youtube) : null,
     guide ? toItem(guide) : null,
     ...remaining.map(toItem),
-  ].filter((item): item is HeaderNavItem => item !== null)
+  ].filter((item): item is PrimaryNavigationItem => item !== null)
 }
 
 export async function Header() {
-  const allNavPages = await getCachedNavPages()
-  const navPages = allNavPages.filter(p => !HIDE_FROM_NAV.has(p.slug))
-  const navItems = buildHeaderNavItems(navPages)
+  const navItems = buildHeaderNavItems(await getCachedNavPages())
 
   return (
     <header className="bg-white border-b border-gray-300 sticky top-0 z-50">
