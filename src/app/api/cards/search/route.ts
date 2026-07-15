@@ -26,13 +26,17 @@ export async function GET(request: NextRequest) {
   if (!(await canAccessDeckMaker())) return new NextResponse(null, { status: 404 })
 
   const rawQuery = request.nextUrl.searchParams.get('q')?.trim() ?? ''
-  if (!rawQuery) return NextResponse.json({ cards: [] })
   if (rawQuery.length > MAX_QUERY_LENGTH || /[\u0000-\u001f\u007f]/.test(rawQuery)) return NextResponse.json({ error: 'Invalid query' }, { status: 400 })
   const query = escapeIlike(normalizeCardName(rawQuery))
   const kanaQuery = escapeIlike(rawQuery)
   try {
     const supabase = createAdminClient()
     const columns = 'id,name,name_kana,image_url,card_printings(source_key,official_page_url,image_url,is_representative)'
+    if (!rawQuery) {
+      const result = await supabase.from('cards').select(columns).eq('is_active', true).order('name').limit(MAX_RESULTS)
+      if (result.error) throw result.error
+      return NextResponse.json({ cards: ((result.data ?? []) as Row[]).map(mapCard) }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
+    }
     const [nameResult, kanaResult] = await Promise.all([
       supabase.from('cards').select(columns).eq('is_active', true).ilike('normalized_name', `%${query}%`).order('name').limit(MAX_RESULTS),
       supabase.from('cards').select(columns).eq('is_active', true).ilike('name_kana', `%${kanaQuery}%`).order('name').limit(MAX_RESULTS),
@@ -43,6 +47,7 @@ export async function GET(request: NextRequest) {
     for (const row of [...(nameResult.data ?? []), ...(kanaResult.data ?? [])] as Row[]) unique.set(row.id, row)
     return NextResponse.json({ cards: [...unique.values()].slice(0, MAX_RESULTS).map(mapCard) }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
   } catch {
-    return NextResponse.json({ cards: LOCAL_DECK_CARDS.filter((card) => matchesCard(card, rawQuery)).slice(0, MAX_RESULTS), fallback: true }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
+    const cards = rawQuery ? LOCAL_DECK_CARDS.filter((card) => matchesCard(card, rawQuery)) : LOCAL_DECK_CARDS
+    return NextResponse.json({ cards: cards.slice(0, MAX_RESULTS), fallback: true }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
   }
 }
