@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase-server'
 import { deletePage, togglePublished, toggleMainNav, movePage, createDefaultStaticPages } from './actions'
 import { ConfirmDeleteButton } from '@/components/admin/ConfirmDeleteButton'
 import { verifyAdminCookie } from '@/lib/admin-auth'
+import { ADSENSE_REVIEW_MODE } from '@/lib/adsense-review-mode'
+import { buildPrimaryNavigationItems, primarySystemNavigation } from '@/lib/primary-navigation'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +23,11 @@ export default async function AdminPagesPage() {
     .from('fixed_pages')
     .select('*')
     .order('sort_order')
+  const mainNavigation = buildPrimaryNavigationItems(
+    (pages ?? []).filter(page => page.is_published && page.show_in_nav),
+    ADSENSE_REVIEW_MODE,
+  )
+  const systemNavigationKeys = new Set(primarySystemNavigation.map(item => item.key))
 
   return (
     <div className="max-w-3xl mx-auto px-3 py-4 text-sm">
@@ -37,8 +44,34 @@ export default async function AdminPagesPage() {
         </div>
       </div>
 
-      <div className="text-xs text-gray-500 mb-3 bg-blue-50 border border-blue-100 px-3 py-2 flex items-center justify-between gap-3 flex-wrap">
-        <span>「メインナビ表示」が有効な固定ページだけがヘッダーに表示されます。並び順は固定ページ同士の表示順です。ランキングやメーカーなどの機能ページはコード側で別に管理されています。</span>
+      <section className="mb-5">
+        <div className="mb-2">
+          <h2 className="font-bold text-gray-800">現在のメインナビ（TOPヘッダー）</h2>
+          <p className="text-xs text-gray-500">実際のTOPヘッダーと同じ8項目・同じ順番です。</p>
+        </div>
+        <div className="space-y-1">
+          {mainNavigation.map((item, index) => {
+            const isSystemPage = systemNavigationKeys.has(item.key)
+            return (
+              <div key={item.key} className="flex items-center gap-3 border border-blue-200 bg-blue-50 px-3 py-2">
+                <span className="w-5 shrink-0 text-center text-xs font-bold text-blue-700">{index + 1}</span>
+                <span className={`shrink-0 px-2 py-0.5 text-[10px] ${isSystemPage ? 'bg-slate-200 text-slate-700' : 'bg-blue-100 text-blue-700'}`}>
+                  {isSystemPage ? '機能ページ' : '固定ページ'}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-bold text-gray-800">{item.label}</p>
+                  <p className="truncate text-[10px] text-gray-500">{item.href}</p>
+                </div>
+                <a href={item.href} target="_blank" rel="noopener noreferrer"
+                  className="shrink-0 border border-gray-300 bg-white px-2 py-0.5 text-[10px] hover:bg-gray-50">表示</a>
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
+      <div className="text-xs text-gray-500 mb-3 bg-gray-50 border border-gray-200 px-3 py-2 flex items-center justify-between gap-3 flex-wrap">
+        <span>以下は固定ページ自体の公開・メインナビ表示設定です。規約やプライバシーなど、メインナビに出さない公開ページもここで管理します。</span>
         <form action={createDefaultStaticPages}>
           <button type="submit"
             className="text-[11px] px-2.5 py-1 border border-blue-400 text-blue-700 bg-white hover:bg-blue-50 shrink-0 whitespace-nowrap">
@@ -46,6 +79,8 @@ export default async function AdminPagesPage() {
           </button>
         </form>
       </div>
+
+      <h2 className="mb-2 font-bold text-gray-800">固定ページ設定</h2>
 
       {!pages || pages.length === 0 ? (
         <p className="text-xs text-gray-400 py-4">ページがありません。「新規作成」から追加してください。</p>
