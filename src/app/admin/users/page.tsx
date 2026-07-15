@@ -103,14 +103,19 @@ export default async function AdminUsersPage() {
               管理TOP
             </Link>
             <span className="mx-2 text-gray-300">/</span>
-            <span>登録ユーザー</span>
+            <span>ユーザー管理</span>
           </div>
-          <h1 className="text-xl font-bold text-gray-800">登録ユーザー一覧</h1>
+          <h1 className="text-xl font-bold text-gray-800">ユーザー管理</h1>
         </div>
         <Link href="/" className="text-xs text-blue-600 hover:underline">
           サイトを見る
         </Link>
       </div>
+
+      <nav className="mb-4 flex flex-wrap gap-2 border-b border-gray-200">
+        <span className="border-b-2 border-blue-600 px-3 py-2 text-xs font-bold text-blue-700">ユーザー一覧</span>
+        <Link href="/admin/duema-stats" className="px-3 py-2 text-xs font-bold text-gray-500 hover:text-blue-700">プロフィール統計</Link>
+      </nav>
 
       <div className="mb-4 border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
         <div className="mb-1 font-semibold">

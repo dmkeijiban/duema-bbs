@@ -34,16 +34,8 @@ import { getHonorTitleTierCounts } from '@/lib/honor-title-stats'
 const ADMIN_COOKIE = 'admin_auth'
 const THREADS_PER_PAGE = 30
 
-// 管理メニュー：カテゴリ行（見出し＋ボタン群）とボタンの共通スタイル。
-// スマホ=2列グリッド、PC=固定幅(sm:w-[175px])で折り返すflex-wrapに切り替える。
-const ADMIN_MENU_ROW_CLASS = 'flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3'
-const ADMIN_MENU_LABEL_CLASS = 'text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:w-32 sm:shrink-0'
-const ADMIN_MENU_GROUP_CLASS = 'grid grid-cols-2 gap-2 sm:flex sm:flex-wrap'
-const ADMIN_MENU_BTN_BASE =
-  'flex min-h-9 min-w-0 items-center justify-center gap-1 rounded border px-2.5 py-1.5 text-center text-xs leading-tight sm:w-[175px] sm:shrink-0'
-const ADMIN_MENU_BTN_NEUTRAL = `${ADMIN_MENU_BTN_BASE} border-gray-300 text-gray-600 hover:bg-gray-50`
-const ADMIN_MENU_BTN_WARN = `${ADMIN_MENU_BTN_BASE} border-orange-300 text-orange-700 hover:bg-orange-50`
-const ADMIN_MENU_BTN_GREEN = `${ADMIN_MENU_BTN_BASE} border-green-400 text-green-700 hover:bg-green-50`
+const ADMIN_PARENT_MENU_CLASS =
+  'group min-w-0 rounded-lg border border-gray-200 bg-white p-3 transition hover:border-blue-300 hover:bg-blue-50/40'
 
 type SortKey = 'last_posted_at' | 'created_at' | 'post_count' | 'view_count'
 type SortOrder = 'asc' | 'desc'
@@ -432,64 +424,24 @@ export default async function AdminPage({
           <span className="text-gray-400 text-xs">▶</span>
           <span>管理メニュー</span>
         </summary>
-        <div className="min-w-0 space-y-2 border-t border-gray-100 px-3 py-2">
-
-          {/* 各カテゴリ：見出し＋ボタン群（スマホ=2列グリッド／PC=等幅ボタンのflex-wrap）。
-              横スクロールは発生させない。注意系のみ色付け、その他はグレー系で統一 */}
-          <div className={ADMIN_MENU_ROW_CLASS}>
-            <p className={ADMIN_MENU_LABEL_CLASS}>主要操作</p>
-            <div className={ADMIN_MENU_GROUP_CLASS}>
-              <Link href="/admin/x-posts" className={ADMIN_MENU_BTN_NEUTRAL}>🐦 X投稿管理</Link>
-              <Link href="/admin/x-schedule" className={ADMIN_MENU_BTN_NEUTRAL}>📅 スケジュール</Link>
-              <Link href="/admin/x-buzz" className={ADMIN_MENU_BTN_NEUTRAL}>X話題URLストック</Link>
-              <Link href="/admin/zukan/articles" className={ADMIN_MENU_BTN_NEUTRAL}>図鑑記事管理</Link>
-              <Link href="/admin/comment-import" className={ADMIN_MENU_BTN_NEUTRAL}>コメント一括取り込み</Link>
-              <Link href="/admin/users" className={ADMIN_MENU_BTN_NEUTRAL}>👤 登録ユーザー</Link>
-            </div>
+        <div className="min-w-0 border-t border-gray-100 px-3 py-3">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">主要操作</p>
+          <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              ['/admin/x', '🐦 X運用', '投稿、予約、話題URLを管理'],
+              ['/admin/site', '🗂 サイト管理', 'カテゴリ、固定ページ、SEOなどを管理'],
+              ['/admin/content-tools', '📝 コンテンツ作成・取り込み', 'スレ作成、記事・コメントの取り込み'],
+              ['/admin/zukan', '🃏 図鑑管理', '図鑑記事と自動生成を管理'],
+              ['/admin/users', '👤 ユーザー管理', '登録ユーザーとプロフィールを確認'],
+              ['/admin/moderation', '🚨 運営・モデレーション', '通報、停止、削除済みデータを管理'],
+              ['/admin/analytics', '📊 分析ダッシュボード', 'アクセス、企画、キャンペーンを分析'],
+            ].map(([href, title, description]) => (
+              <Link key={href} href={href} className={ADMIN_PARENT_MENU_CLASS}>
+                <span className="block text-sm font-bold text-gray-800 group-hover:text-blue-700">{title}</span>
+                <span className="mt-1 block text-[11px] leading-relaxed text-gray-500">{description}</span>
+              </Link>
+            ))}
           </div>
-
-          <div className={ADMIN_MENU_ROW_CLASS}>
-            <p className={ADMIN_MENU_LABEL_CLASS}>サイト管理</p>
-            <div className={ADMIN_MENU_GROUP_CLASS}>
-              <Link href="/admin/categories" className={ADMIN_MENU_BTN_NEUTRAL}>🗂 カテゴリ</Link>
-              <Link href="/admin/pages" className={ADMIN_MENU_BTN_NEUTRAL}>📄 固定ページ</Link>
-              <Link href="/admin/notices" className={ADMIN_MENU_BTN_NEUTRAL}>📢 お知らせ</Link>
-              <Link href="/admin/seo" className={ADMIN_MENU_BTN_NEUTRAL}>🔍 SEO管理</Link>
-              <Link href="/admin/ranking-preview" className={ADMIN_MENU_BTN_NEUTRAL}>🏆 ランキングプレビュー</Link>
-              <Link href="/admin/post-guidance" className={ADMIN_MENU_BTN_NEUTRAL}>💬 投稿案内設定</Link>
-            </div>
-          </div>
-
-          <div className={ADMIN_MENU_ROW_CLASS}>
-            <p className={ADMIN_MENU_LABEL_CLASS}>生成・取り込み</p>
-            <div className={ADMIN_MENU_GROUP_CLASS}>
-              <Link href="/admin/thread-bulk-create" className={ADMIN_MENU_BTN_NEUTRAL}>📝 スレ・コメント一括作成</Link>
-              <Link href="/admin/summary" className={ADMIN_MENU_BTN_NEUTRAL}>📊 まとめ生成</Link>
-              <Link href="/admin/daily-zukan" className={ADMIN_MENU_BTN_NEUTRAL}>🃏 図鑑カードスレ自動生成</Link>
-              <Link href="/admin/article-drafts" className={ADMIN_MENU_BTN_NEUTRAL}>記事下書き取り込み</Link>
-            </div>
-          </div>
-
-          <div className={ADMIN_MENU_ROW_CLASS}>
-            <p className={ADMIN_MENU_LABEL_CLASS}>運営管理</p>
-            <div className={ADMIN_MENU_GROUP_CLASS}>
-              <Link href="/admin/reports" className={ADMIN_MENU_BTN_WARN}>🚨 通報管理</Link>
-              <Link href="/admin/report-mutes" className={ADMIN_MENU_BTN_WARN}>🔇 受付停止一覧</Link>
-              <Link href="/admin/deleted-posts" className={ADMIN_MENU_BTN_WARN}>🗑️ 削除済みレス</Link>
-              <Link href="/admin/revival" className={ADMIN_MENU_BTN_GREEN}>♻️ リバイバル</Link>
-              <Link href="/admin/cleanup" className={ADMIN_MENU_BTN_NEUTRAL}>🧹 データ整理</Link>
-            </div>
-          </div>
-
-          <div className={ADMIN_MENU_ROW_CLASS}>
-            <p className={ADMIN_MENU_LABEL_CLASS}>分析・ランキング</p>
-            <div className={ADMIN_MENU_GROUP_CLASS}>
-              <Link href="/admin/analytics" className={ADMIN_MENU_BTN_NEUTRAL}>📊 分析ダッシュボード</Link>
-              <Link href="/admin/campaign-ranking" className={ADMIN_MENU_BTN_NEUTRAL}>🎯 キャンペーンランキング</Link>
-              <Link href="/admin/duema-stats" className={ADMIN_MENU_BTN_NEUTRAL}>📊 デュエマプロフィール統計</Link>
-            </div>
-          </div>
-
         </div>
       </PersistentDetails>
 

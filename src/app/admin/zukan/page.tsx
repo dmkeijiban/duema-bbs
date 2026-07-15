@@ -170,11 +170,15 @@ export default async function AdminZukanPage({
       <div className="mb-4 flex items-start justify-between flex-wrap gap-2">
         <div>
           <Link href="/admin" className="text-sm text-blue-700 hover:underline">← 管理トップへ戻る</Link>
-          <h1 className="mt-1 text-xl font-bold text-gray-900">思い出図鑑 投稿管理</h1>
+          <h1 className="mt-1 text-xl font-bold text-gray-900">図鑑管理</h1>
+          <p className="mt-1 text-xs text-gray-500">図鑑の投稿、記事、カードデータ、自動生成をまとめて管理します。</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/admin/zukan/articles" className="rounded border border-purple-300 bg-purple-50 px-3 py-1.5 text-sm font-bold text-purple-700 hover:bg-purple-100">
             図鑑記事管理 →
+          </Link>
+          <Link href="/admin/daily-zukan" className="rounded border border-orange-300 bg-orange-50 px-3 py-1.5 text-sm font-bold text-orange-700 hover:bg-orange-100">
+            カードスレ生成 →
           </Link>
           <Link href="/admin/zukan/import" className="rounded border border-green-300 bg-green-50 px-3 py-1.5 text-sm font-bold text-green-700 hover:bg-green-100">
             パックJSONインポート →
