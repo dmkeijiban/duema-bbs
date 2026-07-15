@@ -2,8 +2,7 @@
 
 import TierMaker from '@/app/admin/makers/dm26-ex2-charisma-best-tier/TierMaker'
 import type { MakerCard, MakerDraft, MakerGroup, MakerSubmissionMeta } from '@/lib/maker'
-
-const RELEASE_ROW_LABELS = { release: '殿堂解除\n予想' }
+import { HALL_RELEASE_DESIGN } from '@/lib/hall-release-design'
 
 export default function EditTierMaker({
   cards,
@@ -46,10 +45,10 @@ export default function EditTierMaker({
       poolFilters: [{ value: 'hall', label: '殿堂' }, { value: 'premium', label: 'プレ殿' }],
       aggregateMode: 'selection' as const,
       responseLabel: '殿堂解除予想',
-      groupRowClassName: 'overflow-hidden border-amber-300 bg-white text-slate-900',
-      groupGridClassName: 'grid-cols-[64px_1fr]',
-      groupLabelClassName: 'bg-amber-400 px-1 text-center text-[13px] leading-tight text-amber-950',
-      groupLabelText: RELEASE_ROW_LABELS,
+      groupRowClassName: HALL_RELEASE_DESIGN.rowClassName,
+      groupGridClassName: HALL_RELEASE_DESIGN.labelWidth.standardClass,
+      groupLabelClassName: HALL_RELEASE_DESIGN.labelClassName,
+      hallReleaseLabel: true,
       cardBadgePositionClassName: 'bottom-1 right-1',
       cardBadgeTextClassName: '',
       selectionImageZoom: true,

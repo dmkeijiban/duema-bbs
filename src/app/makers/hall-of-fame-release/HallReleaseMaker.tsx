@@ -5,9 +5,8 @@ import TierMaker, { type TierAggregate } from '@/app/admin/makers/dm26-ex2-chari
 import type { MakerCard, MakerDraft, MakerGroup } from '@/lib/maker'
 import { recordMakerPageView } from '@/lib/maker-events'
 import { getMakerAnonymousId } from '@/lib/maker-events-shared'
+import { HALL_RELEASE_DESIGN } from '@/lib/hall-release-design'
 import { saveHallReleaseSubmission } from './actions'
-
-const RELEASE_ROW_LABELS = { release: '殿堂解除\n予想' }
 
 export default function HallReleaseMaker(props: { cards: MakerCard[]; draft: MakerDraft; canSave: boolean; saved: boolean; aggregates: TierAggregate[] }) {
   const pageViewIdRef = useRef<string | null>(null)
@@ -22,6 +21,6 @@ export default function HallReleaseMaker(props: { cards: MakerCard[]; draft: Mak
     storageSlug="hall-of-fame-release" exportTitle="2026年7月27日 殿堂解除選手権" exportFilename="hall-of-fame-release.png" shareText="殿堂解除選手権｜みんなで予想しよう！"
     shareUrl="/makers/hall-of-fame-release?share=release-v1" communityTitle="みんなの殿堂解除予想" communityButtonLabel="📊 みんなの殿堂解除予想を見る" communityHref="/makers/hall-of-fame-release/submissions"
     poolFilters={[{ value: 'hall', label: '殿堂' }, { value: 'premium', label: 'プレ殿' }]} aggregateMode="selection" responseLabel="殿堂解除予想"
-    groupRowClassName="overflow-hidden border-amber-300 bg-white text-slate-900" groupGridClassName="grid-cols-[64px_1fr]" groupLabelClassName="bg-amber-400 px-1 text-center text-[13px] leading-tight text-amber-950" groupLabelText={RELEASE_ROW_LABELS}
+    groupRowClassName={HALL_RELEASE_DESIGN.rowClassName} groupGridClassName={HALL_RELEASE_DESIGN.labelWidth.standardClass} groupLabelClassName={HALL_RELEASE_DESIGN.labelClassName} hallReleaseLabel
     cardBadgePositionClassName="bottom-1 right-1" cardBadgeTextClassName="" selectionImageZoom autoRegisterOnImageSave />
 }
