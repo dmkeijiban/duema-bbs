@@ -291,7 +291,7 @@ export default function DeckMaker() {
           <div className="mb-2 px-1">
             <h2 id="deck-heading" className="text-sm font-black text-slate-800">メインデッキ</h2>
           </div>
-          <div data-testid="deck-list" className={`rounded-xl bg-slate-100 ${deckCards.length ? 'grid grid-cols-8 gap-0.5 lg:grid-cols-10' : 'flex h-[220px] items-center justify-center'}`}>
+          <div data-testid="deck-list" className={`rounded-xl bg-slate-100 ${deckCards.length ? 'grid grid-cols-8 gap-0.5' : 'flex h-[220px] items-center justify-center'}`}>
             {deckCards.length ? deckCards.map(({ entry, copy }) => (
               <button
                 key={`${entry.id}-${copy}`}
