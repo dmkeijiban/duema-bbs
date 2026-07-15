@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { isDeckMakerEnabled } from '@/lib/deck-maker-access'
+import { canAccessDeckMaker } from '@/lib/deck-maker-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,7 +63,7 @@ async function readLimitedBody(response: Response) {
 }
 
 export async function GET(request: NextRequest) {
-  if (!isDeckMakerEnabled()) return new NextResponse(null, { status: 404 })
+  if (!(await canAccessDeckMaker())) return new NextResponse(null, { status: 404 })
   if (process.env.CARD_IMAGES_ENABLED === 'false') return new NextResponse('Card images disabled', { status: 403 })
   const rawUrl = request.nextUrl.searchParams.get('url')
   if (!rawUrl || rawUrl.length > 2_048) return new NextResponse('Invalid URL', { status: 400 })

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { normalizeCardName } from '@/lib/card-name'
-import { isDeckMakerEnabled } from '@/lib/deck-maker-access'
+import { canAccessDeckMaker } from '@/lib/deck-maker-access'
 import { LOCAL_DECK_CARDS, matchesCard, type DeckCard } from '@/lib/deck-maker'
 
 export const dynamic = 'force-dynamic'
@@ -23,7 +23,7 @@ function mapCard(row: Row): DeckCard {
 }
 
 export async function GET(request: NextRequest) {
-  if (!isDeckMakerEnabled()) return new NextResponse(null, { status: 404 })
+  if (!(await canAccessDeckMaker())) return new NextResponse(null, { status: 404 })
 
   const rawQuery = request.nextUrl.searchParams.get('q')?.trim() ?? ''
   if (!rawQuery) return NextResponse.json({ cards: [] })
