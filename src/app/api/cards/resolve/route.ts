@@ -1,0 +1,7 @@
+import { NextRequest,NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase-admin'
+import { LOCAL_DECK_CARDS,type DeckCard } from '@/lib/deck-maker'
+export const dynamic='force-dynamic'
+type Row={id:string;name:string;name_kana:string|null;image_url:string|null;card_printings?:{source_key:string;official_page_url:string|null;image_url:string|null;is_representative:boolean}[]}
+function mapCard(r:Row):DeckCard{const p=r.card_printings?.find(x=>x.is_representative)??r.card_printings?.[0];return{id:r.id,name:r.name,nameKana:r.name_kana,imageUrl:p?.image_url??r.image_url,officialPageUrl:p?.official_page_url??null,sourceKey:p?.source_key??null}}
+export async function POST(req:NextRequest){const body=await req.json().catch(()=>null)as{ids?:unknown}|null,ids=Array.isArray(body?.ids)?[...new Set(body.ids.filter((id):id is string=>typeof id==='string'))].slice(0,40):[];if(!ids.length)return NextResponse.json({cards:[]});try{const{data,error}=await createAdminClient().from('cards').select('id,name,name_kana,image_url,card_printings(source_key,official_page_url,image_url,is_representative)').in('id',ids).eq('is_active',true);if(error)throw error;return NextResponse.json({cards:((data??[])as Row[]).map(mapCard)},{headers:{'Cache-Control':'no-store'}})}catch{return NextResponse.json({cards:LOCAL_DECK_CARDS.filter(c=>ids.includes(c.id)),fallback:true},{headers:{'Cache-Control':'no-store'}})}}

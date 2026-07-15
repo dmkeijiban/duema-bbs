@@ -1,14 +1,13 @@
 import { createAdminClient } from '@/lib/supabase-admin'
+import { normalizeCardName } from '@/lib/card-name'
+
+export { normalizeCardName } from '@/lib/card-name'
 
 export type CardInput = { name: string; image_url: string | null; civilization: string[]; cost: number | null; card_type: string | null; regulation: string }
 export type CardImportRow = CardInput & { row: number; normalized_name: string; status: 'new' | 'update' | 'skip' | 'duplicate'; errors: string[] }
 export type CardImportResult = { ok: boolean; rows: CardImportRow[]; errors: string[]; summary: Record<CardImportRow['status'], number>; databaseChecked: boolean }
 
 const EMPTY_SUMMARY = { new: 0, update: 0, skip: 0, duplicate: 0 }
-
-export function normalizeCardName(value: string) {
-  return value.normalize('NFKC').trim().replace(/[\s\u3000]+/g, '').replace(/[／∕]/g, '/').replace(/[・·]/g, '・')
-}
 
 function nullableString(value: unknown) { return typeof value === 'string' && value.trim() ? value.trim() : null }
 
@@ -64,12 +63,29 @@ export async function registerCardImport(json: string, confirmed: boolean) {
   if (!confirmed) return { ok: false, message: '登録確認が必要です' }
   const result = await validateCardImport(json)
   if (!result.ok || !result.databaseChecked) return { ok: false, message: result.errors[0] ?? 'cardsテーブルとの重複確認を完了できません' }
-  const targets = result.rows.filter(row => row.status === 'new' || row.status === 'update').map(row => ({
+  const targets = result.rows.filter(row => row.status === 'new').map(row => ({
     name: row.name, normalized_name: row.normalized_name, image_url: row.image_url,
     civilization: row.civilization, cost: row.cost, card_type: row.card_type,
     regulation: row.regulation, is_active: true, updated_at: new Date().toISOString(),
   }))
-  if (!targets.length) return { ok: true, message: '変更はありません', count: 0 }
-  const { error } = await createAdminClient().from('cards').upsert(targets, { onConflict: 'normalized_name' })
-  return error ? { ok: false, message: error.message } : { ok: true, message: `${targets.length}件を登録・更新しました`, count: targets.length }
+  const admin = createAdminClient()
+  const { error } = targets.length ? await admin.from('cards').insert(targets) : { error: null }
+  if (error) return { ok: false, message: error.message }
+  let filled = 0
+  for (const row of result.rows.filter(item => item.status === 'update')) {
+    const { data: old, error: readError } = await admin.from('cards').select('image_url,civilization,cost,card_type,regulation').eq('normalized_name', row.normalized_name).single()
+    if (readError) return { ok: false, message: readError.message }
+    const values: Record<string, unknown> = {}
+    if (!old.image_url && row.image_url) values.image_url = row.image_url
+    if (!(old.civilization as string[] | null)?.length && row.civilization.length) values.civilization = row.civilization
+    if (old.cost == null && row.cost != null) values.cost = row.cost
+    if (!old.card_type && row.card_type) values.card_type = row.card_type
+    if ((!old.regulation || old.regulation === 'none') && row.regulation !== 'none') values.regulation = row.regulation
+    if (Object.keys(values).length) {
+      const { error: updateError } = await admin.from('cards').update({ ...values, updated_at: new Date().toISOString() }).eq('normalized_name', row.normalized_name)
+      if (updateError) return { ok: false, message: updateError.message }
+      filled += 1
+    }
+  }
+  return { ok: true, message: `${targets.length}件を追加、${filled}件の空欄を補完しました`, count: targets.length + filled }
 }
