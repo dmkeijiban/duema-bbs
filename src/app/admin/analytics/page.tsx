@@ -11,6 +11,51 @@ import { fetchProjectSummaries, normalizePeriod, type ProjectSummary } from '@/l
 
 function Tabs({ active }: { active: 'site' | 'makers' }) { return <nav className="mb-4 flex gap-1 overflow-x-auto border-b"><Link prefetch={false} className={`shrink-0 px-3 py-2 text-sm font-bold ${active==='site'?'border-b-2 border-blue-600 text-blue-700':'text-gray-500'}`} href="/admin/analytics?tab=site">サイト全体</Link><Link prefetch={false} className={`shrink-0 px-3 py-2 text-sm font-bold ${active==='makers'?'border-b-2 border-blue-600 text-blue-700':'text-gray-500'}`} href="/admin/analytics?tab=makers">メーカー企画</Link><Link className="shrink-0 px-3 py-2 text-sm font-bold text-gray-500 hover:text-blue-700" href="/admin/campaign-ranking">キャンペーン</Link><Link className="shrink-0 px-3 py-2 text-sm font-bold text-gray-500 hover:text-blue-700" href="/admin/duema-stats">ユーザー・プロフィール</Link><Link className="shrink-0 px-3 py-2 text-sm font-bold text-gray-500 hover:text-blue-700" href="/admin/ranking-preview">ランキング確認</Link></nav> }
 function Metric({ label, value, note }: { label:string; value:number|string; note?:string }) { return <div className="rounded-lg border bg-white p-3"><p className="text-xs font-bold text-gray-500">{label}</p><p className="mt-1 text-2xl font-black tabular-nums">{typeof value==='number'?value.toLocaleString('ja-JP'):value}</p>{note&&<p className="mt-1 text-[10px] text-gray-400">{note}</p>}</div> }
+function TotalPvChart({ points }: { points: Array<{ date: string; views: number }> }) {
+  const width = 1000
+  const height = 240
+  const padding = { top: 24, right: 24, bottom: 42, left: 58 }
+  const maxViews = Math.max(...points.map(point => point.views), 1)
+  const plotWidth = width - padding.left - padding.right
+  const plotHeight = height - padding.top - padding.bottom
+  const coordinates = points.map((point, index) => ({
+    ...point,
+    x: padding.left + (points.length <= 1 ? plotWidth / 2 : (index / (points.length - 1)) * plotWidth),
+    y: padding.top + plotHeight - (point.views / maxViews) * plotHeight,
+  }))
+  const line = coordinates.map(point => `${point.x},${point.y}`).join(' ')
+  const area = coordinates.length > 0
+    ? `${padding.left},${padding.top + plotHeight} ${line} ${padding.left + plotWidth},${padding.top + plotHeight}`
+    : ''
+  const dateLabels = coordinates.filter((_, index) => index === 0 || index === coordinates.length - 1 || index % 7 === 0)
+  const total = points.reduce((sum, point) => sum + point.views, 0)
+
+  return <section className="mb-3 rounded-lg border bg-white p-3">
+    <div className="mb-2 flex flex-wrap items-end justify-between gap-1">
+      <div>
+        <h2 className="text-xs font-bold text-gray-700">過去28日のPV推移</h2>
+        <p className="text-[10px] text-gray-400">サイト全体の日別PV合計</p>
+      </div>
+      <p className="text-sm font-black tabular-nums text-gray-800">合計 {formatNumber(total)} PV</p>
+    </div>
+    <div className="w-full overflow-hidden">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="過去28日の日別PV推移" className="h-auto w-full">
+        {[0, 0.5, 1].map(rate => {
+          const y = padding.top + plotHeight * rate
+          const value = Math.round(maxViews * (1 - rate))
+          return <g key={rate}>
+            <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="#e5e7eb" strokeWidth="1" />
+            <text x={padding.left - 8} y={y + 4} textAnchor="end" fontSize="11" fill="#9ca3af">{formatNumber(value)}</text>
+          </g>
+        })}
+        {area && <polygon points={area} fill="#dbeafe" opacity="0.7" />}
+        {line && <polyline points={line} fill="none" stroke="#0284c7" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />}
+        {dateLabels.map(point => <text key={point.date} x={point.x} y={height - 12} textAnchor="middle" fontSize="11" fill="#6b7280">{point.date.slice(5).replace('-', '/')}</text>)}
+      </svg>
+    </div>
+  </section>
+}
+
 function Periods({ period }: { period: string }) { return <div className="flex flex-wrap gap-1">{[['today','今日'],['7d','過去7日'],['30d','過去30日'],['all','全期間']].map(([key,label])=><Link prefetch={false} key={key} href={`/admin/analytics?tab=makers&period=${key}`} className={`rounded border px-3 py-1.5 text-xs font-bold ${period===key?'border-blue-500 bg-blue-50 text-blue-700':'bg-white text-gray-600'}`}>{label}</Link>)}</div> }
 
 type DisplayGa4PageRow = Ga4PageRow & {
@@ -100,7 +145,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
     if(analyticsThreadIds.length>0){const {data}=await adminClient.from('threads').select('id,title').in('id',analyticsThreadIds); for(const thread of data??[]){if(thread.title)threadTitleMap.set(thread.id,thread.title)}}
     const topPageRows=ga4.ok?buildDisplayGa4Rows(ga4.topPages,threadTitleMap):[]
     const risingPageRows=ga4.ok?buildDisplayGa4Rows(ga4.risingPages,threadTitleMap):[]
-    return <><Tabs active="site"/><div className="mb-3"><AnalyticsRefresh updatedAt={updatedAt}/></div>{ga4.ok?<><section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3"><Metric label="今日PV" value={ga4.summary.todayViews}/><Metric label="過去7日PV" value={ga4.summary.sevenDayViews}/><Metric label="過去28日PV" value={ga4.summary.twentyEightDayViews}/><Metric label="今日のユーザー数" value={ga4.summary.todayUsers}/><Metric label="過去7日のユーザー数" value={ga4.summary.sevenDayUsers}/><Metric label="1ユーザーあたりPV（28日）" value={ga4.trendSummary.viewsPerUser.toFixed(2)}/></section><p className="mt-2 text-[11px] text-gray-500">既存GA4 Data APIと同じ集計式・JST境界・5分キャッシュを使用しています。</p></>:<div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">GA4の取得に失敗しました: {ga4.error}</div>}
+    return <><Tabs active="site"/><div className="mb-3"><AnalyticsRefresh updatedAt={updatedAt}/></div>{ga4.ok?<><TotalPvChart points={ga4.dailyTrend}/><section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3"><Metric label="今日PV" value={ga4.summary.todayViews}/><Metric label="過去7日PV" value={ga4.summary.sevenDayViews}/><Metric label="過去28日PV" value={ga4.summary.twentyEightDayViews}/><Metric label="今日のユーザー数" value={ga4.summary.todayUsers}/><Metric label="過去7日のユーザー数" value={ga4.summary.sevenDayUsers}/><Metric label="1ユーザーあたりPV（28日）" value={ga4.trendSummary.viewsPerUser.toFixed(2)}/></section><p className="mt-2 text-[11px] text-gray-500">既存GA4 Data APIと同じ集計式・JST境界・5分キャッシュを使用しています。</p></>:<div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">GA4の取得に失敗しました: {ga4.error}</div>}
       <section className="mt-5"><h2 className="mb-2 font-black">掲示板内部の累計指標</h2><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><Metric label="スレ総閲覧数" value={internal.totals.totalViews}/><Metric label="スレ数" value={internal.totals.threadCount}/><Metric label="コメント数" value={internal.totals.commentCount}/><Metric label="平均閲覧数" value={internal.totals.avgViews}/></div></section>
       <section className="mt-5"><h2 className="mb-2 font-black">伸びているコンテンツ</h2><div className="grid min-w-0 gap-3 xl:grid-cols-3">{ga4.ok?<Ga4PageRankingCard title="GA4 直近7日のページ" rows={topPageRows} note="サイト全体で今週よく見られているページ"/>:<Ga4UnavailableCard title="GA4 直近7日のページ" note="サイト全体で今週よく見られているページ" message={ga4.error}/>}<RecentRankingCard rows={internal.recentCommentThreads}/>{ga4.ok?<Ga4PageRankingCard title="直近24時間で急に伸びたページ" rows={risingPageRows} note="前日〜今日の表示回数が多いページ"/>:<Ga4UnavailableCard title="直近24時間で急に伸びたページ" note="前日〜今日の表示回数が多いページ" message={ga4.error}/>}</div></section></>
   }
