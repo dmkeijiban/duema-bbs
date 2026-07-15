@@ -54,9 +54,7 @@ export const getCachedNavPages = unstable_cache(
       const supabase = createPublicClient()
       const { data } = await supabase
         .from('fixed_pages')
-        .select('id, title, slug, nav_label, sort_order, external_url')
-        .eq('is_published', true)
-        .eq('show_in_nav', true)
+        .select('id, title, slug, nav_label, sort_order, external_url, is_published, show_in_nav')
         .order('sort_order')
       return (data ?? []) as NavPage[]
     } catch {
