@@ -12,7 +12,14 @@ import {
 } from '@/lib/deck-maker'
 
 const OFFICIAL_ORIGIN = 'https://dm.takaratomy.co.jp'
+const DEFAULT_DECK_NAME = 'メインデッキ'
+const MAX_DECK_NAME_LENGTH = 60
 const proxy = (url: string) => `/api/card-image?url=${encodeURIComponent(url)}`
+
+function pngFileName(deckName: string) {
+  const safeName = deckName.replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, '_').trim().slice(0, MAX_DECK_NAME_LENGTH)
+  return `${safeName || DEFAULT_DECK_NAME}.png`
+}
 
 function safeOfficialUrl(value: unknown, kind: 'image' | 'page') {
   if (typeof value !== 'string') return null
@@ -88,14 +95,16 @@ export default function DeckMaker() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<DeckCard[]>([])
   const [entries, setEntries] = useState<DeckEntry[]>([])
+  const [deckName, setDeckName] = useState(DEFAULT_DECK_NAME)
   const [ready, setReady] = useState(false)
   const [notice, setNotice] = useState('')
   const [selectedCard, setSelectedCard] = useState<DeckCard | null>(null)
   const [resetConfirm, setResetConfirm] = useState(false)
-  const [pngPreview, setPngPreview] = useState<string | null>(null)
+  const [pngPreview, setPngPreview] = useState<{ src: string; title: string; fileName: string } | null>(null)
   const requestId = useRef(0)
   const searchInput = useRef<HTMLInputElement>(null)
   const total = deckSize(entries)
+  const effectiveDeckName = deckName.trim() || DEFAULT_DECK_NAME
   const byId = useMemo(() => new Map(entries.map((entry) => [entry.id, entry])), [entries])
   const selected = selectedCard ? byId.get(selectedCard.id) ?? selectedCard : null
   const selectedCount = selected ? byId.get(selected.id)?.count ?? 0 : 0
@@ -103,8 +112,9 @@ export default function DeckMaker() {
 
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) ?? 'null') as { version?: number; entries?: DeckEntry[] } | null
+      const saved = JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) ?? 'null') as { version?: number; entries?: DeckEntry[]; deckName?: string } | null
       if (saved?.version === DECK_STORAGE_VERSION && Array.isArray(saved.entries)) {
+        if (typeof saved.deckName === 'string') setDeckName(saved.deckName.trim().slice(0, MAX_DECK_NAME_LENGTH) || DEFAULT_DECK_NAME)
         let remaining = MAX_DECK_CARDS
         const restored: DeckEntry[] = []
         for (const value of saved.entries) {
@@ -132,8 +142,8 @@ export default function DeckMaker() {
   }, [])
 
   useEffect(() => {
-    if (ready) localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ version: DECK_STORAGE_VERSION, entries }))
-  }, [entries, ready])
+    if (ready) localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ version: DECK_STORAGE_VERSION, entries, deckName }))
+  }, [deckName, entries, ready])
 
   useEffect(() => {
     const id = ++requestId.current
@@ -176,6 +186,7 @@ export default function DeckMaker() {
 
   function resetDeck() {
     setEntries([])
+    setDeckName(DEFAULT_DECK_NAME)
     setSelectedCard(null)
     setResetConfirm(false)
     setNotice('デッキをリセットしました')
@@ -198,8 +209,13 @@ export default function DeckMaker() {
     context.fillStyle = '#f8fafc'
     context.fillRect(0, 0, canvas.width, canvas.height)
     context.fillStyle = '#0f172a'
-    context.font = 'bold 36px sans-serif'
-    context.fillText(`メインデッキ ${cards.length}枚`, padding, 58)
+    let titleFontSize = 36
+    context.font = `bold ${titleFontSize}px sans-serif`
+    while (titleFontSize > 18 && context.measureText(`${effectiveDeckName} ${cards.length}枚`).width > canvas.width - padding * 2) {
+      titleFontSize -= 2
+      context.font = `bold ${titleFontSize}px sans-serif`
+    }
+    context.fillText(`${effectiveDeckName} ${cards.length}枚`, padding, 58)
     const imageLoads = new Map<string, Promise<HTMLImageElement | null>>()
     const pendingImages = Promise.all(cards.map((card) => {
       const key = card.imageUrl ?? `missing:${card.id}`
@@ -231,7 +247,8 @@ export default function DeckMaker() {
     const href = blob ? URL.createObjectURL(blob) : preview
     const anchor = document.createElement('a')
     anchor.href = href
-    anchor.download = 'duema-deck.png'
+    const fileName = pngFileName(effectiveDeckName)
+    anchor.download = fileName
     anchor.style.display = 'none'
     document.body.appendChild(anchor)
     anchor.click()
@@ -239,7 +256,7 @@ export default function DeckMaker() {
       anchor.remove()
       if (blob) URL.revokeObjectURL(href)
     }, 60_000)
-    setPngPreview(preview)
+    setPngPreview({ src: preview, title: effectiveDeckName, fileName })
     setNotice('PNGを保存しました')
   }
 
@@ -250,8 +267,9 @@ export default function DeckMaker() {
   return (
     <div className="mx-auto max-w-[1440px] overflow-x-hidden">
       <header className="mb-3 flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm sm:px-4">
-        <div className="min-w-0">
-          <h1 className="text-lg font-black text-slate-900 sm:text-xl">デッキ作成</h1>
+        <div className="min-w-0 flex-1">
+          <label htmlFor="deck-name" className="sr-only">デッキ名</label>
+          <input id="deck-name" value={deckName} onChange={(event) => setDeckName(event.target.value.slice(0, MAX_DECK_NAME_LENGTH))} onBlur={() => { if (!deckName.trim()) setDeckName(DEFAULT_DECK_NAME) }} maxLength={MAX_DECK_NAME_LENGTH} className="w-full max-w-md border-0 bg-transparent p-0 text-lg font-black text-slate-900 outline-none placeholder:text-slate-400 sm:text-xl" placeholder={DEFAULT_DECK_NAME} />
           <p className="text-xs font-bold text-emerald-800">メイン <span data-testid="deck-count">{total}/40</span></p>
         </div>
         <div className="flex items-center gap-1">
@@ -363,16 +381,16 @@ export default function DeckMaker() {
           <section role="dialog" aria-modal="true" aria-labelledby="png-preview-title" className="relative flex max-h-[calc(100dvh-24px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b px-4 py-2">
               <div>
-                <h2 id="png-preview-title" className="font-black text-slate-900">デッキPNG</h2>
+                <h2 id="png-preview-title" className="font-black text-slate-900">{pngPreview.title}</h2>
                 <p className="text-xs text-slate-500">iPhoneでは画像を長押しして保存できます</p>
               </div>
               <button type="button" onClick={() => setPngPreview(null)} aria-label="PNGプレビューを閉じる" className="flex h-11 w-11 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100"><Icon name="close" /></button>
             </div>
             <div className="min-h-0 overflow-auto bg-slate-100 p-2 sm:p-4">
-              <img src={pngPreview} alt="生成した40枚デッキPNG" className="mx-auto h-auto max-w-full shadow" />
+              <img src={pngPreview.src} alt={`${pngPreview.title}のデッキ画像`} className="mx-auto h-auto max-w-full shadow" />
             </div>
             <div className="border-t bg-white p-3">
-              <a href={pngPreview} download="duema-deck.png" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 font-bold text-white"><Icon name="download" />画像を保存</a>
+              <a href={pngPreview.src} download={pngPreview.fileName} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 font-bold text-white"><Icon name="download" />画像を保存</a>
             </div>
           </section>
         </div>
