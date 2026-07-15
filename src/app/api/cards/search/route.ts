@@ -6,6 +6,7 @@ import { LOCAL_DECK_CARDS, matchesCard, type DeckCard } from '@/lib/deck-maker'
 export const dynamic = 'force-dynamic'
 const MAX_QUERY_LENGTH = 80
 const MAX_RESULTS = 30
+const escapeIlike = (value: string) => value.replace(/[\\%_]/g, (character) => `\\${character}`)
 
 type Row = {
   id: string
@@ -24,13 +25,14 @@ export async function GET(request: NextRequest) {
   const rawQuery = request.nextUrl.searchParams.get('q')?.trim() ?? ''
   if (!rawQuery) return NextResponse.json({ cards: [] })
   if (rawQuery.length > MAX_QUERY_LENGTH || /[\u0000-\u001f\u007f]/.test(rawQuery)) return NextResponse.json({ error: 'Invalid query' }, { status: 400 })
-  const query = normalizeCardName(rawQuery)
+  const query = escapeIlike(normalizeCardName(rawQuery))
+  const kanaQuery = escapeIlike(rawQuery)
   try {
     const supabase = createAdminClient()
     const columns = 'id,name,name_kana,image_url,card_printings(source_key,official_page_url,image_url,is_representative)'
     const [nameResult, kanaResult] = await Promise.all([
       supabase.from('cards').select(columns).eq('is_active', true).ilike('normalized_name', `%${query}%`).order('name').limit(MAX_RESULTS),
-      supabase.from('cards').select(columns).eq('is_active', true).ilike('name_kana', `%${rawQuery}%`).order('name').limit(MAX_RESULTS),
+      supabase.from('cards').select(columns).eq('is_active', true).ilike('name_kana', `%${kanaQuery}%`).order('name').limit(MAX_RESULTS),
     ])
     if (nameResult.error) throw nameResult.error
     if (kanaResult.error) throw kanaResult.error
