@@ -93,6 +93,7 @@ export default function DeckMaker() {
   const [notice, setNotice] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [resetConfirm, setResetConfirm] = useState(false)
+  const [pngPreview, setPngPreview] = useState<string | null>(null)
   const requestId = useRef(0)
   const searchInput = useRef<HTMLInputElement>(null)
   const total = deckSize(entries)
@@ -233,7 +234,8 @@ export default function DeckMaker() {
       new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png')),
       new Promise<null>((resolve) => window.setTimeout(() => resolve(null), 5_000)),
     ])
-    const href = blob ? URL.createObjectURL(blob) : canvas.toDataURL('image/png')
+    const preview = canvas.toDataURL('image/png')
+    const href = blob ? URL.createObjectURL(blob) : preview
     const anchor = document.createElement('a')
     anchor.href = href
     anchor.download = 'duema-deck.png'
@@ -244,6 +246,7 @@ export default function DeckMaker() {
       anchor.remove()
       if (blob) URL.revokeObjectURL(href)
     }, 60_000)
+    setPngPreview(preview)
     setNotice('PNGを保存しました')
   }
 
@@ -366,6 +369,26 @@ export default function DeckMaker() {
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button type="button" onClick={() => setResetConfirm(false)} className="min-h-11 rounded-xl border border-slate-300 font-bold text-slate-700">キャンセル</button>
               <button type="button" onClick={resetDeck} aria-label="デッキをすべて削除" className="min-h-11 rounded-xl bg-red-700 font-bold text-white">すべて削除</button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {pngPreview && (
+        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3" onMouseDown={(event) => { if (event.currentTarget === event.target) setPngPreview(null) }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="png-preview-title" className="relative flex max-h-[calc(100dvh-24px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b px-4 py-2">
+              <div>
+                <h2 id="png-preview-title" className="font-black text-slate-900">デッキPNG</h2>
+                <p className="text-xs text-slate-500">iPhoneでは画像を長押しして保存できます</p>
+              </div>
+              <button type="button" onClick={() => setPngPreview(null)} aria-label="PNGプレビューを閉じる" className="flex h-11 w-11 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100"><Icon name="close" /></button>
+            </div>
+            <div className="min-h-0 overflow-auto bg-slate-100 p-2 sm:p-4">
+              <img src={pngPreview} alt="生成した40枚デッキPNG" className="mx-auto h-auto max-w-full shadow" />
+            </div>
+            <div className="border-t bg-white p-3">
+              <a href={pngPreview} download="duema-deck.png" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 font-bold text-white"><Icon name="download" />画像を保存</a>
             </div>
           </section>
         </div>
