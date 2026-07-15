@@ -22,18 +22,9 @@ import { getAllSettings } from '@/lib/settings'
 import { Notice } from '@/components/NoticeBlock'
 import { verifyAdminCookie } from '@/lib/admin-auth'
 import { TOP_SHOWCASE_MODE_OPTIONS, normalizeTopShowcaseMode } from '@/lib/top-showcase'
-import {
-  ADMIN_DASHBOARD_CACHE_SECONDS,
-  getGa4DashboardData,
-  getInternalDashboardData,
-  type Ga4PageRow,
-  type RecentThreadActivity,
-} from '@/lib/admin-dashboard'
 import { AdminSubmitButton } from './AdminSubmitButton'
-import { AccessTrendCard } from './AccessTrendCard'
 import { AdminScrollManager } from './AdminScrollManager'
 import { AdminLoginView } from './AdminLoginView'
-import { AdminDashboardRefresh } from './AdminDashboardRefresh'
 import { HonorTitleToggleButton } from './HonorTitleToggleButton'
 import { PersistentDetails } from './PersistentDetails'
 import { HONOR_TITLES } from '@/lib/honor-title'
@@ -70,12 +61,6 @@ function adminThreadsUrl({ page, q, sort, order }: { page?: number; q: string; s
   if (page && page > 1) p.set('threadPage', String(page))
   if (sort !== 'last_posted_at' || order !== 'desc') { p.set('sort', sort); p.set('order', order) }
   return `/admin${p.toString() ? '?' + p.toString() : ''}`
-}
-
-function normalizeAnalyticsDays(v: string | undefined): 7 | 28 | 90 {
-  if (v === '7') return 7
-  if (v === '90') return 90
-  return 28
 }
 
 type ModerationNgWord = {
@@ -131,194 +116,9 @@ type AdminThreadRow = {
   categories: { name: string }[] | { name: string } | null
 }
 
-type AnalyticsThreadTitleRow = {
-  id: number
-  title: string | null
-}
-
-type DisplayGa4PageRow = Ga4PageRow & {
-  title: string
-  displayPath: string
-  href: string
-}
-
-const PAGE_LABELS: Record<string, string> = {
-  '/': 'デュエマ掲示板 TOPページ',
-  '/ranking': 'ランキング',
-  '/zukan': '思い出図鑑',
-  '/mypage': 'マイページ',
-  '/admin': '管理画面',
-  '/login': 'ログイン',
-  '/thread/new': 'スレ作成',
-  '/settings': '設定',
-  '/favorites': 'お気に入り',
-}
-
 async function isAdmin() {
   const cookieStore = await cookies()
   return verifyAdminCookie(cookieStore.get(ADMIN_COOKIE)?.value)
-}
-
-function formatNumber(value: number) {
-  return value.toLocaleString('ja-JP')
-}
-
-function normalizePagePath(rawPath: string) {
-  if (!rawPath || rawPath === '(not set)') return rawPath || '/'
-
-  try {
-    const url = rawPath.startsWith('http://') || rawPath.startsWith('https://')
-      ? new URL(rawPath)
-      : new URL(rawPath, 'https://www.duema-bbs.com')
-    const pathname = url.pathname || '/'
-    return pathname !== '/' ? pathname.replace(/\/$/, '') : '/'
-  } catch {
-    const pathOnly = rawPath.split('?')[0]?.split('#')[0] || '/'
-    return pathOnly !== '/' ? pathOnly.replace(/\/$/, '') : '/'
-  }
-}
-
-function getThreadIdFromPagePath(pagePath: string) {
-  const match = normalizePagePath(pagePath).match(/^\/thread\/(\d+)(?:\/p\/\d+)?$/)
-  return match ? Number(match[1]) : null
-}
-
-function buildDisplayGa4Rows(rows: Ga4PageRow[], threadTitles: Map<number, string>): DisplayGa4PageRow[] {
-  return rows.map(row => {
-    const path = normalizePagePath(row.path)
-    const threadId = getThreadIdFromPagePath(path)
-
-    if (threadId) {
-      return {
-        ...row,
-        title: threadTitles.get(threadId) ?? `削除済みスレッド（/thread/${threadId}）`,
-        displayPath: path,
-        href: path,
-      }
-    }
-
-    return {
-      ...row,
-      title: PAGE_LABELS[path] ?? path,
-      displayPath: path,
-      href: path,
-    }
-  })
-}
-
-function formatDateTime(value: string | null) {
-  if (!value) return '-'
-  return new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value))
-}
-
-function MetricCard({ label, value, note }: { label: string; value: number | string; note?: string }) {
-  return (
-    <div className="rounded border border-gray-200 bg-white px-3 py-3">
-      <p className="text-[11px] font-bold text-gray-500">{label}</p>
-      <p className="mt-1 text-xl font-bold tabular-nums text-gray-900">
-        {typeof value === 'number' ? formatNumber(value) : value}
-      </p>
-      {note && <p className="mt-1 text-[10px] text-gray-400">{note}</p>}
-    </div>
-  )
-}
-
-function RecentRankingCard({
-  title,
-  rows,
-  note,
-}: {
-  title: string
-  rows: RecentThreadActivity[]
-  note?: string
-}) {
-  return (
-    <section className="rounded border border-gray-200 bg-white">
-      <div className="border-b border-gray-100 px-3 py-2">
-        <h3 className="text-xs font-bold text-gray-700">{title}</h3>
-        {note && <p className="mt-0.5 text-[10px] text-gray-400">{note}</p>}
-      </div>
-      <ol className="divide-y divide-gray-100">
-        {rows.length === 0 ? (
-          <li className="px-3 py-4 text-xs text-gray-400">直近24時間のコメント増加はありません。</li>
-        ) : rows.map((row, index) => (
-          <li key={row.id} className="flex items-start gap-2 px-3 py-2 text-xs">
-            <span className="mt-0.5 w-5 shrink-0 text-right tabular-nums text-gray-400">{index + 1}</span>
-            <div className="min-w-0 flex-1">
-              <Link href={`/thread/${row.id}`} className="line-clamp-2 font-bold text-blue-700 hover:underline">
-                {row.title}
-              </Link>
-              <p className="mt-0.5 text-[10px] text-gray-400">
-                最新 {formatDateTime(row.latestCommentAt)} / 累計コメント {formatNumber(row.postCount)}
-              </p>
-            </div>
-            <div className="shrink-0 text-right">
-              <p className="font-bold tabular-nums text-gray-800">{formatNumber(row.recentComments)}</p>
-              <p className="text-[10px] text-gray-400">直近コメント</p>
-            </div>
-          </li>
-        ))}
-      </ol>
-    </section>
-  )
-}
-
-function Ga4PageRankingCard({
-  title,
-  rows,
-  note,
-}: {
-  title: string
-  rows: DisplayGa4PageRow[]
-  note?: string
-}) {
-  return (
-    <section className="rounded border border-gray-200 bg-white">
-      <div className="border-b border-gray-100 px-3 py-2">
-        <h3 className="text-xs font-bold text-gray-700">{title}</h3>
-        {note && <p className="mt-0.5 text-[10px] text-gray-400">{note}</p>}
-      </div>
-      <ol className="divide-y divide-gray-100">
-        {rows.length === 0 ? (
-          <li className="px-3 py-4 text-xs text-gray-400">GA4上の対象ページはありません。</li>
-        ) : rows.map((row, index) => (
-          <li key={`${row.path}-${index}`} className="flex items-start gap-2 px-3 py-2 text-xs">
-            <span className="mt-0.5 w-5 shrink-0 text-right tabular-nums text-gray-400">{index + 1}</span>
-            <div className="min-w-0 flex-1">
-              <Link href={row.href} className="line-clamp-2 font-bold text-blue-700 hover:underline">
-                {row.title}
-              </Link>
-              <p className="mt-0.5 break-all text-[10px] text-gray-400">{row.displayPath}</p>
-            </div>
-            <div className="shrink-0 text-right">
-              <p className="font-bold tabular-nums text-gray-800">{formatNumber(row.views)}</p>
-              <p className="text-[10px] text-gray-400">表示回数</p>
-            </div>
-          </li>
-        ))}
-      </ol>
-    </section>
-  )
-}
-
-function Ga4UnavailableCard({ title, note, message }: { title: string; note: string; message: string }) {
-  return (
-    <section className="rounded border border-gray-200 bg-white">
-      <div className="border-b border-gray-100 px-3 py-2">
-        <h3 className="text-xs font-bold text-gray-700">{title}</h3>
-        <p className="mt-0.5 text-[10px] text-gray-400">{note}</p>
-      </div>
-      <div className="px-3 py-4 text-xs text-red-700">
-        GA4から取得できませんでした: {message}
-      </div>
-    </section>
-  )
 }
 
 export default async function AdminPage({
@@ -336,7 +136,6 @@ export default async function AdminPage({
     q?: string
     sort?: string
     order?: string
-    analyticsDays?: string
     hidden?: string
     unhidden?: string
     topShowcaseSaved?: string
@@ -355,7 +154,6 @@ export default async function AdminPage({
   const isSearching = searchQ.length > 0
   const sort = normalizeSort(sp.sort)
   const order = normalizeOrder(sp.order)
-  const analyticsDays = normalizeAnalyticsDays(sp.analyticsDays)
 
   const threadPage = isSearching ? 1 : Math.max(1, parseInt(sp.threadPage ?? '1') || 1)
   const threadOffset = (threadPage - 1) * THREADS_PER_PAGE
@@ -426,33 +224,6 @@ export default async function AdminPage({
 
   // お知らせ一覧
   const { data: notices } = await supabase.from('notices').select('*').order('position').order('sort_order')
-
-  const [ga4Dashboard, internalDashboard] = await Promise.all([
-    getGa4DashboardData(analyticsDays),
-    getInternalDashboardData(adminSupabase),
-  ])
-
-  const analyticsThreadIds = ga4Dashboard.ok
-    ? Array.from(new Set([
-      ...ga4Dashboard.topPages,
-      ...ga4Dashboard.risingPages,
-    ].map(row => getThreadIdFromPagePath(row.path)).filter((id): id is number => typeof id === 'number')))
-    : []
-
-  const threadTitleMap = new Map<number, string>()
-  if (analyticsThreadIds.length > 0) {
-    const { data: analyticsThreads } = await adminSupabase
-      .from('threads')
-      .select('id, title')
-      .in('id', analyticsThreadIds)
-
-    for (const thread of (analyticsThreads ?? []) as AnalyticsThreadTitleRow[]) {
-      if (thread.title) threadTitleMap.set(thread.id, thread.title)
-    }
-  }
-
-  const topPageRows = ga4Dashboard.ok ? buildDisplayGa4Rows(ga4Dashboard.topPages, threadTitleMap) : []
-  const risingPageRows = ga4Dashboard.ok ? buildDisplayGa4Rows(ga4Dashboard.risingPages, threadTitleMap) : []
 
   // サイト設定
   const settings = await getAllSettings()
@@ -750,115 +521,6 @@ export default async function AdminPage({
         </div>
       </details>
 
-      <details open className="mb-4 min-w-0 overflow-hidden rounded border border-gray-200 bg-gray-50">
-        <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-bold text-gray-700 hover:bg-gray-100">
-          <span className="text-gray-400 text-xs">▶</span>
-          <span>📊 アクセス・人気ダッシュボード</span>
-          <span className="ml-auto text-[11px] font-normal text-gray-400">GA4 / 内部指標</span>
-        </summary>
-
-        <div className="min-w-0 space-y-4 border-t border-gray-100 p-3">
-          <p className="text-[11px] text-gray-500">
-            GA4の表示回数（screenPageViews）と、掲示板内部のスレ閲覧数・コメント数を分けて確認します。
-          </p>
-          <AdminDashboardRefresh />
-          <div>
-            {ga4Dashboard.ok && (
-              <div className="mb-4">
-                <AccessTrendCard
-                  days={ga4Dashboard.trendDays}
-                  totalViews={ga4Dashboard.trendSummary.totalViews}
-                  totalUsers={ga4Dashboard.trendSummary.totalUsers}
-                  viewsPerUser={ga4Dashboard.trendSummary.viewsPerUser}
-                  points={ga4Dashboard.dailyTrend}
-                />
-              </div>
-            )}
-
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-bold text-gray-700">サイト全体のアクセス概要</h3>
-              <span className="rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] text-blue-700">
-                GA4 / screenPageViews
-              </span>
-            </div>
-            {ga4Dashboard.ok ? (
-              <>
-                <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
-                  <MetricCard label="今日の表示回数" value={ga4Dashboard.summary.todayViews} />
-                  <MetricCard label="昨日の表示回数" value={ga4Dashboard.summary.yesterdayViews} />
-                  <MetricCard label="過去7日間の表示回数" value={ga4Dashboard.summary.sevenDayViews} />
-                  <MetricCard label="過去28日間の表示回数" value={ga4Dashboard.summary.twentyEightDayViews} />
-                  <MetricCard label="今日のユーザー数" value={ga4Dashboard.summary.todayUsers} />
-                  <MetricCard label="過去7日間のユーザー数" value={ga4Dashboard.summary.sevenDayUsers} />
-                </div>
-                <p className="mt-2 text-[10px] text-gray-400">
-                  GA4 property: {ga4Dashboard.propertyId} / イベント数はPVとして扱っていません。/ {ADMIN_DASHBOARD_CACHE_SECONDS / 60}分キャッシュ
-                </p>
-              </>
-            ) : (
-              <div className="rounded border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-800">
-                <p className="font-bold">GA4 Data API から取得できませんでした。</p>
-                <p className="mt-1">{ga4Dashboard.error}</p>
-                {ga4Dashboard.missing && ga4Dashboard.missing.length > 0 && (
-                  <p className="mt-1">未設定: {ga4Dashboard.missing.join(', ')}</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-bold text-gray-700">掲示板内部の累計指標</h3>
-              <span className="rounded border border-gray-200 bg-white px-2 py-0.5 text-[10px] text-gray-500">
-                threads.view_count / posts
-              </span>
-            </div>
-            <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4">
-              <MetricCard label="スレ総閲覧数" value={internalDashboard.totals.totalViews} note="内部累計" />
-              <MetricCard label="スレ数" value={internalDashboard.totals.threadCount} />
-              <MetricCard label="コメント数" value={internalDashboard.totals.commentCount} />
-              <MetricCard label="平均閲覧数" value={internalDashboard.totals.avgViews} note="内部累計 ÷ スレ数" />
-            </div>
-          </div>
-
-          <div>
-            <h3 className="mb-2 text-sm font-bold text-gray-700">伸びているコンテンツ</h3>
-            <div className="grid min-w-0 gap-3 xl:grid-cols-3">
-              {ga4Dashboard.ok ? (
-                <Ga4PageRankingCard
-                  title="GA4 直近7日のページ"
-                  rows={topPageRows}
-                  note="サイト全体で今週よく見られているページ"
-                />
-              ) : (
-                <Ga4UnavailableCard
-                  title="GA4 直近7日のページ"
-                  note="サイト全体で今週よく見られているページ"
-                  message={ga4Dashboard.error}
-                />
-              )}
-              <RecentRankingCard
-                title="最近コメントが増えたスレ"
-                rows={internalDashboard.recentCommentThreads}
-                note="直近24時間のコメント増加"
-              />
-              {ga4Dashboard.ok ? (
-                <Ga4PageRankingCard
-                  title="直近24時間で急に伸びたページ"
-                  rows={risingPageRows}
-                  note="前日〜今日の表示回数が多いページ"
-                />
-              ) : (
-                <Ga4UnavailableCard
-                  title="直近24時間で急に伸びたページ"
-                  note="前日〜今日の表示回数が多いページ"
-                  message={ga4Dashboard.error}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      </details>
       {editPost && sp.thread && (
         <div className="mb-4 border-2 border-green-400 bg-green-50 p-4 rounded">
           <h2 className="font-bold text-green-800 mb-3">✏️ レス編集（#{editPost.post_number + 1} {editPost.author_name}）</h2>
