@@ -31,7 +31,6 @@ type SavedDeck = {
 type SearchResponse = {
   cards: DeckCard[]
   total: number
-  hasMore: boolean
 }
 
 function pngFileName(deckName: string) {
@@ -139,10 +138,7 @@ export default function DeckMaker() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<DeckCard[]>([])
   const [resultTotal, setResultTotal] = useState(0)
-  const [resultPage, setResultPage] = useState(0)
-  const [hasMoreResults, setHasMoreResults] = useState(false)
   const [resultsLoading, setResultsLoading] = useState(false)
-  const [moreResultsLoading, setMoreResultsLoading] = useState(false)
   const [entries, setEntries] = useState<DeckEntry[]>([])
   const [deckName, setDeckName] = useState(DEFAULT_DECK_NAME)
   const [savedDecks, setSavedDecks] = useState<SavedDeck[]>([])
@@ -228,8 +224,6 @@ export default function DeckMaker() {
     if (cached) {
       setResults(cached.cards)
       setResultTotal(cached.total)
-      setResultPage(0)
-      setHasMoreResults(cached.hasMore)
       setResultsLoading(false)
       return
     }
@@ -237,14 +231,13 @@ export default function DeckMaker() {
       const controller = new AbortController()
       searchAbort.current = controller
       setResultsLoading(true)
-      fetch(`/api/cards/search?q=${encodeURIComponent(query)}&page=0`, { signal: controller.signal })
+      fetch(`/api/cards/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
         .then((response) => response.json())
         .then((data) => {
           if (id !== requestId.current) return
           const response: SearchResponse = {
             cards: data.cards ?? [],
             total: Number.isInteger(data.total) ? data.total : (data.cards ?? []).length,
-            hasMore: Boolean(data.hasMore),
           }
           if (searchCache.current.size >= SEARCH_CACHE_SIZE) {
             const oldestKey = searchCache.current.keys().next().value
@@ -253,15 +246,12 @@ export default function DeckMaker() {
           searchCache.current.set(cacheKey, response)
           setResults(response.cards)
           setResultTotal(response.total)
-          setResultPage(0)
-          setHasMoreResults(response.hasMore)
         })
         .catch((error: unknown) => {
           if (error instanceof DOMException && error.name === 'AbortError') return
           if (id !== requestId.current) return
           setResults([])
           setResultTotal(0)
-          setHasMoreResults(false)
         })
         .finally(() => {
           if (id === requestId.current) setResultsLoading(false)
@@ -272,30 +262,6 @@ export default function DeckMaker() {
       searchAbort.current?.abort()
     }
   }, [query])
-
-  async function loadMoreResults() {
-    if (!hasMoreResults || moreResultsLoading) return
-    const id = requestId.current
-    const nextPage = resultPage + 1
-    setMoreResultsLoading(true)
-    try {
-      const response = await fetch(`/api/cards/search?q=${encodeURIComponent(query)}&page=${nextPage}`)
-      const data = await response.json()
-      if (id !== requestId.current) return
-      setResults((current) => {
-        const unique = new Map(current.map((card) => [card.id, card]))
-        for (const card of (data.cards ?? []) as DeckCard[]) unique.set(card.id, card)
-        return [...unique.values()]
-      })
-      setResultTotal(Number.isInteger(data.total) ? data.total : resultTotal)
-      setResultPage(nextPage)
-      setHasMoreResults(Boolean(data.hasMore))
-    } catch {
-      if (id === requestId.current) setNotice('追加のカードを読み込めませんでした')
-    } finally {
-      if (id === requestId.current) setMoreResultsLoading(false)
-    }
-  }
 
   useEffect(() => {
     if (!selected) return
@@ -549,6 +515,7 @@ export default function DeckMaker() {
           <div data-testid="search-results" className="grid max-h-[62vh] min-h-24 grid-cols-4 gap-1.5 overflow-y-auto overscroll-contain p-2.5 sm:gap-2 sm:p-3 lg:max-h-[calc(100vh-170px)]">
             {query.trim() && resultTotal > 0 && <p className="col-span-4 text-xs font-bold text-slate-500">{resultTotal}件・新しい収録順</p>}
             {resultsLoading && results.length === 0 && <p className="col-span-4 py-8 text-center text-sm text-slate-500">カードを読み込み中…</p>}
+            {resultsLoading && results.length > 0 && <p className="col-span-4 text-xs font-bold text-blue-600">検索結果を更新中…</p>}
             {!resultsLoading && results.length === 0 && <p className="col-span-4 py-8 text-center text-sm text-slate-500">該当カードがありません</p>}
             {results.map((card) => {
               const count = countsByCard.get(card.id) ?? 0
@@ -561,16 +528,6 @@ export default function DeckMaker() {
                 </article>
               )
             })}
-            {hasMoreResults && (
-              <button
-                type="button"
-                onClick={loadMoreResults}
-                disabled={moreResultsLoading}
-                className="col-span-4 mt-1 min-h-11 rounded-xl border border-slate-300 bg-white text-sm font-bold text-blue-700 hover:bg-blue-50 disabled:text-slate-400"
-              >
-                {moreResultsLoading ? '読み込み中…' : `さらに読み込む（${results.length}/${resultTotal}件）`}
-              </button>
-            )}
           </div>
         </section>
       </div>
