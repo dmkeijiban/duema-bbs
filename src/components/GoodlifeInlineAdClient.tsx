@@ -76,7 +76,7 @@ export function GoodlifeInlineAdClient({
   return (
     <aside
       className={hasCreative
-        ? `${visibilityClass} goodlife-ad-visible mx-auto my-4 box-border flex w-full max-w-full flex-col items-center justify-center overflow-hidden px-0 text-center max-md:my-3 max-md:pl-3 max-md:pr-14`
+        ? `${visibilityClass} goodlife-ad-visible mx-auto my-4 box-border flex w-full max-w-full flex-col items-center justify-center overflow-hidden px-3 text-center max-md:my-3`
         : 'goodlife-ad-pending pointer-events-none absolute h-0 w-full overflow-hidden invisible'
       }
       data-ad-provider="goodlife"
@@ -86,7 +86,7 @@ export function GoodlifeInlineAdClient({
       aria-label={hasCreative ? '広告' : undefined}
     >
       {hasCreative && <span className="mb-1 block text-[10px] leading-none text-gray-400">広告</span>}
-      <div ref={contentRef} className="mx-auto max-w-full overflow-hidden" />
+      <div ref={contentRef} className="mx-auto flex max-w-full justify-center overflow-hidden" />
     </aside>
   )
 }
