@@ -4,7 +4,12 @@ import { GoodlifeInlineAdClient } from '@/components/GoodlifeInlineAdClient'
 
 export async function GoodlifeInlineAd({ slot }: { slot: AdSlotName }) {
   const settings = readGoodlifeAdSettings(await getAllSettings())
-  const slotEnabled = slot === 'thread_list_inline' ? settings.threadList : settings.threadDetail
+  const slotEnabled = slot === 'thread_list_inline'
+    ? settings.threadList
+    : slot === 'thread_detail_inline'
+      ? settings.threadDetail
+      : settings.footer
+
   if (!settings.enabled || !slotEnabled || (!settings.desktop && !settings.mobile)) return null
 
   const visibilityClass = settings.desktop && settings.mobile

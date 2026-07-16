@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Script from 'next/script'
 import './globals.css'
 import { Header } from '@/components/Header'
+import { GoodlifeInlineAd } from '@/components/GoodlifeInlineAd'
 import { getSnsUrls } from '@/lib/sns-server'
 import { getCachedCategories } from '@/lib/cached-queries'
 import Link from 'next/link'
@@ -38,7 +39,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'デュエマ掲示板 | デュエルマスターズ専門掲示板',
-    description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報など何でも語ろう。',
+    description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報・環境考察など何でも語ろう。',
     images: [`${SITE_URL}/default-thumbnail.jpg`],
   },
   verification: {
@@ -200,6 +201,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <LazyDesktopFloatingActions />
           <LazyFloatingBar snsUrls={snsUrls} />
           <LazyPostHogBridge />
+          <GoodlifeInlineAd slot="footer_inline" />
           <footer className="bg-white border-t border-gray-200 py-4 mt-0">
             <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-600 space-y-2">
               <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">

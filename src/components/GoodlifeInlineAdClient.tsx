@@ -1,5 +1,6 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { GOODLIFE_SCRIPT_URL, type AdSlotName } from '@/lib/ads'
 
@@ -16,8 +17,11 @@ export function GoodlifeInlineAdClient({
   desktopEnabled: boolean
   mobileEnabled: boolean
 }) {
+  const pathname = usePathname()
   const contentRef = useRef<HTMLDivElement>(null)
   const [hasCreative, setHasCreative] = useState(false)
+  const footerRouteExcluded = slot === 'footer_inline'
+    && (pathname.startsWith('/admin') || pathname.startsWith('/auth') || pathname.startsWith('/login'))
 
   const detectCreative = useCallback(() => {
     const content = contentRef.current
@@ -37,6 +41,8 @@ export function GoodlifeInlineAdClient({
   }, [])
 
   useEffect(() => {
+    if (footerRouteExcluded) return
+
     const content = contentRef.current
     if (!content) return
 
@@ -63,7 +69,9 @@ export function GoodlifeInlineAdClient({
       script.removeEventListener('load', detectCreative)
       content.replaceChildren()
     }
-  }, [desktopEnabled, detectCreative, mobileEnabled])
+  }, [desktopEnabled, detectCreative, footerRouteExcluded, mobileEnabled])
+
+  if (footerRouteExcluded) return null
 
   return (
     <aside
