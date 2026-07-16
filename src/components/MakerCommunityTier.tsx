@@ -23,9 +23,9 @@ export default function MakerCommunityTier({ cards, groups, aggregates, title = 
     visible.sort((a, b) => {
       const aAggregate = byCard.get(a.id)
       const bAggregate = byCard.get(b.id)
-      const countDifference = (bAggregate?.ratingCount ?? 0) - (aAggregate?.ratingCount ?? 0)
-      if (countDifference !== 0) return countDifference
-      return (bAggregate?.averageTier ?? Number.NEGATIVE_INFINITY) - (aAggregate?.averageTier ?? Number.NEGATIVE_INFINITY)
+      const averageDifference = (bAggregate?.averageTier ?? Number.NEGATIVE_INFINITY) - (aAggregate?.averageTier ?? Number.NEGATIVE_INFINITY)
+      if (averageDifference !== 0) return averageDifference
+      return (bAggregate?.ratingCount ?? 0) - (aAggregate?.ratingCount ?? 0)
     })
   }
   return <section id="community-tier" className="scroll-mt-4 rounded-xl border bg-white p-4">
