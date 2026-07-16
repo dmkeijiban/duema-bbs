@@ -16,10 +16,12 @@ export type MakerAggregate = { cardId: string; counts: Record<string, number>; r
 export default function MakerCommunityTier({ cards, groups, aggregates, title = 'みんなのカード評価', mode = 'tier', showAllCards = false }: { cards: MakerCard[]; groups: MakerGroup[]; aggregates: MakerAggregate[]; title?: string; mode?: 'tier' | 'selection'; showAllCards?: boolean }) {
   const [zoomed, setZoomed] = useState<MakerCard | null>(null)
   const byCard = new Map(aggregates.map(item => [item.cardId, item]))
-  const visible = showAllCards ? cards : cards.filter(card => (byCard.get(card.id)?.ratingCount ?? 0) > 0)
+  const visible = (showAllCards ? [...cards] : cards.filter(card => (byCard.get(card.id)?.ratingCount ?? 0) > 0))
+  if (mode === 'selection') {
+    visible.sort((a, b) => (byCard.get(b.id)?.counts.release ?? 0) - (byCard.get(a.id)?.counts.release ?? 0))
+  }
   return <section id="community-tier" className="scroll-mt-4 rounded-xl border bg-white p-4">
     <h2 className="text-lg font-black">{title}</h2>
-    <p className="mt-1 text-xs text-gray-500">カードごとの回答割合です。</p>
     {visible.length === 0 ? <p className="mt-4 rounded bg-slate-50 p-4 text-sm text-gray-500">まだ集計できる回答がありません。</p> : <div className="mt-4 grid gap-3 sm:grid-cols-2">{visible.map(card => {
       const aggregate = byCard.get(card.id) ?? { cardId: card.id, counts: {}, ratingCount: 0, averageTier: null }
       return <article key={card.id} className="flex min-w-0 gap-3 rounded border p-3">
