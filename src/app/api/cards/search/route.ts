@@ -1,4 +1,4 @@
-import { after, NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { normalizeCardName } from '@/lib/card-name'
 import { canAccessDeckMaker } from '@/lib/deck-maker-access'
@@ -6,7 +6,6 @@ import { LOCAL_DECK_CARDS, matchesCard, type DeckCard } from '@/lib/deck-maker'
 
 export const dynamic = 'force-dynamic'
 const MAX_QUERY_LENGTH = 80
-const PAGE_SIZE = 48
 const QUERY_BATCH_SIZE = 500
 const CATALOG_CACHE_MS = 15 * 60 * 1000
 const DEFAULT_RESULTS = 32
@@ -63,8 +62,7 @@ type Row = {
   card_printings?: Printing[]
 }
 
-let catalogCache: { rows: Row[]; expiresAt: number } | null = null
-let catalogPromise: Promise<Row[]> | null = null
+const searchCache = new Map<string, { rows: Row[]; expiresAt: number }>()
 
 const releaseCollator = new Intl.Collator('ja', { numeric: true, sensitivity: 'base' })
 
@@ -97,9 +95,15 @@ function mapCard(row: Row): DeckCard {
   return { id: row.id, name: row.name, nameKana: row.name_kana, imageUrl: printing?.image_url ?? row.image_url, officialPageUrl: printing?.official_page_url ?? null, sourceKey: printing?.source_key ?? null }
 }
 
-async function loadCatalog(
+function escapeLikePattern(value: string) {
+  return value.replace(/[\\%_]/g, '\\$&')
+}
+
+async function loadMatches(
   supabase: ReturnType<typeof createAdminClient>,
   columns: string,
+  field: 'normalized_name' | 'name_kana',
+  query: string,
 ) {
   const rows: Row[] = []
   for (let offset = 0; ; offset += QUERY_BATCH_SIZE) {
@@ -107,6 +111,7 @@ async function loadCatalog(
       .from('cards')
       .select(columns)
       .eq('is_active', true)
+      .ilike(field, `%${escapeLikePattern(query)}%`)
       .order('id')
       .range(offset, offset + QUERY_BATCH_SIZE - 1)
     if (result.error) throw result.error
@@ -114,30 +119,30 @@ async function loadCatalog(
     rows.push(...batch)
     if (batch.length < QUERY_BATCH_SIZE) break
   }
-  return rows.sort(compareRowsNewest)
+  return rows
 }
 
-async function getCatalog(supabase: ReturnType<typeof createAdminClient>, columns: string) {
-  if (catalogCache && catalogCache.expiresAt > Date.now()) return catalogCache.rows
-  if (!catalogPromise) {
-    catalogPromise = loadCatalog(supabase, columns)
-      .then((rows) => {
-        catalogCache = { rows, expiresAt: Date.now() + CATALOG_CACHE_MS }
-        return rows
-      })
-      .finally(() => {
-        catalogPromise = null
-      })
-  }
-  return catalogPromise
+async function getMatches(supabase: ReturnType<typeof createAdminClient>, columns: string, normalizedQuery: string, kanaQuery: string) {
+  const cacheKey = `${normalizedQuery}\u0000${kanaQuery}`
+  const cached = searchCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) return cached.rows
+
+  const [nameRows, kanaRows] = await Promise.all([
+    loadMatches(supabase, columns, 'normalized_name', normalizedQuery),
+    loadMatches(supabase, columns, 'name_kana', kanaQuery),
+  ])
+  const unique = new Map<string, Row>()
+  for (const row of [...nameRows, ...kanaRows]) unique.set(row.id, row)
+  const rows = [...unique.values()].sort(compareRowsNewest)
+  if (searchCache.size >= 100) searchCache.delete(searchCache.keys().next().value ?? '')
+  searchCache.set(cacheKey, { rows, expiresAt: Date.now() + CATALOG_CACHE_MS })
+  return rows
 }
 
 export async function GET(request: NextRequest) {
   if (!(await canAccessDeckMaker())) return new NextResponse(null, { status: 404 })
 
   const rawQuery = request.nextUrl.searchParams.get('q')?.trim() ?? ''
-  const requestedPage = Number.parseInt(request.nextUrl.searchParams.get('page') ?? '0', 10)
-  const page = Number.isSafeInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0
   if (rawQuery.length > MAX_QUERY_LENGTH || /[\u0000-\u001f\u007f]/.test(rawQuery)) return NextResponse.json({ error: 'Invalid query' }, { status: 400 })
   const normalizedQuery = normalizeCardName(rawQuery)
   const kanaQuery = rawQuery.normalize('NFKC')
@@ -164,27 +169,14 @@ export async function GET(request: NextRequest) {
           if (unique.size === DEFAULT_RESULTS) break
         }
       }
-      after(async () => {
-        try {
-          await getCatalog(supabase, columns)
-        } catch {
-          // 次回の検索時に再試行する
-        }
-      })
       return NextResponse.json({ cards: [...unique.values()], total: unique.size, hasMore: false }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
     }
 
-    const catalog = await getCatalog(supabase, columns)
-    const allCards = catalog
-      .filter((row) => row.normalized_name.includes(normalizedQuery) || (row.name_kana?.normalize('NFKC').includes(kanaQuery) ?? false))
-      .map(mapCard)
-    const offset = page * PAGE_SIZE
-    const cards = allCards.slice(offset, offset + PAGE_SIZE)
-    return NextResponse.json({ cards, total: allCards.length, hasMore: offset + cards.length < allCards.length, nextPage: page + 1 }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
+    const cards = (await getMatches(supabase, columns, normalizedQuery, kanaQuery)).map(mapCard)
+    return NextResponse.json({ cards, total: cards.length, hasMore: false }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
   } catch {
     const allCards = rawQuery ? LOCAL_DECK_CARDS.filter((card) => matchesCard(card, rawQuery)) : LOCAL_DECK_CARDS
-    const offset = page * PAGE_SIZE
-    const cards = allCards.slice(offset, offset + (rawQuery ? PAGE_SIZE : DEFAULT_RESULTS))
-    return NextResponse.json({ cards, total: allCards.length, hasMore: offset + cards.length < allCards.length, nextPage: page + 1, fallback: true }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
+    const cards = rawQuery ? allCards : allCards.slice(0, DEFAULT_RESULTS)
+    return NextResponse.json({ cards, total: allCards.length, hasMore: false, fallback: true }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
   }
 }
