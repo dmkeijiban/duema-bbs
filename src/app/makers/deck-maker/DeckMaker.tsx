@@ -55,6 +55,7 @@ function safeOfficialUrl(value: unknown, kind: 'image' | 'page') {
 function safeCard(card: DeckCard): DeckCard {
   return {
     ...card,
+    sourceKey: typeof card.sourceKey === 'string' ? card.sourceKey.slice(0, 100) : null,
     name: typeof card.name === 'string' ? card.name.slice(0, 200) : '',
     nameKana: typeof card.nameKana === 'string' ? card.nameKana.slice(0, 200) : null,
     imageUrl: safeOfficialUrl(card.imageUrl, 'image'),
@@ -62,15 +63,22 @@ function safeCard(card: DeckCard): DeckCard {
   }
 }
 
+function printingKey(card: DeckCard) {
+  return `${card.id}:${card.sourceKey ?? 'representative'}`
+}
+
 function safeEntries(values: unknown): DeckEntry[] {
   if (!Array.isArray(values)) return []
   let remaining = MAX_DECK_CARDS
+  const countsByCard = new Map<string, number>()
   const restored: DeckEntry[] = []
   for (const value of values as DeckEntry[]) {
     if (!value || typeof value.id !== 'string' || value.id.length > 100 || !Number.isInteger(value.count) || remaining <= 0) continue
-    const count = Math.min(MAX_SAME_CARD, Math.max(0, value.count), remaining)
+    const sameNameRemaining = MAX_SAME_CARD - (countsByCard.get(value.id) ?? 0)
+    const count = Math.min(sameNameRemaining, Math.max(0, value.count), remaining)
     if (!count) continue
     restored.push({ ...safeCard(value), id: value.id, count })
+    countsByCard.set(value.id, (countsByCard.get(value.id) ?? 0) + count)
     remaining -= count
   }
   return restored
@@ -144,17 +152,26 @@ export default function DeckMaker() {
   const [ready, setReady] = useState(false)
   const [notice, setNotice] = useState('')
   const [selectedCard, setSelectedCard] = useState<DeckCard | null>(null)
+  const [printingOptions, setPrintingOptions] = useState<DeckCard[]>([])
+  const [printingsLoading, setPrintingsLoading] = useState(false)
   const [resetConfirm, setResetConfirm] = useState(false)
   const [pngPreview, setPngPreview] = useState<{ src: string; title: string; fileName: string } | null>(null)
   const requestId = useRef(0)
   const searchAbort = useRef<AbortController | null>(null)
+  const printingsAbort = useRef<AbortController | null>(null)
   const searchCache = useRef(new Map<string, SearchResponse>())
   const searchInput = useRef<HTMLInputElement>(null)
   const total = deckSize(entries)
   const effectiveDeckName = deckName.trim() || DEFAULT_DECK_NAME
-  const byId = useMemo(() => new Map(entries.map((entry) => [entry.id, entry])), [entries])
-  const selected = selectedCard ? byId.get(selectedCard.id) ?? selectedCard : null
-  const selectedCount = selected ? byId.get(selected.id)?.count ?? 0 : 0
+  const byPrinting = useMemo(() => new Map(entries.map((entry) => [printingKey(entry), entry])), [entries])
+  const countsByCard = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const entry of entries) counts.set(entry.id, (counts.get(entry.id) ?? 0) + entry.count)
+    return counts
+  }, [entries])
+  const selected = selectedCard ? byPrinting.get(printingKey(selectedCard)) ?? selectedCard : null
+  const selectedCount = selected ? byPrinting.get(printingKey(selected))?.count ?? 0 : 0
+  const selectedNameCount = selected ? countsByCard.get(selected.id) ?? 0 : 0
   const deckCards = useMemo(() => entries.flatMap((entry) => Array.from({ length: entry.count }, (_, copy) => ({ entry, copy }))), [entries])
 
   useEffect(() => {
@@ -171,7 +188,9 @@ export default function DeckMaker() {
             .then((response) => response.json())
             .then(({ cards }: { cards: DeckCard[] }) => {
               const latest = new Map(cards.map((card) => [card.id, safeCard(card)]))
-              setEntries((current) => current.map((entry) => ({ ...entry, ...(latest.get(entry.id) ?? {}) })))
+              setEntries((current) => current.map((entry) => entry.sourceKey && entry.imageUrl
+                ? entry
+                : { ...entry, ...(latest.get(entry.id) ?? {}) }))
             })
         }
       }
@@ -293,22 +312,56 @@ export default function DeckMaker() {
     return () => window.clearTimeout(timer)
   }, [notice])
 
-  function add(card: DeckCard) {
-    const current = byId.get(card.id)
-    if (total >= MAX_DECK_CARDS) return setNotice('メインデッキは40枚までです')
-    if (current && current.count >= MAX_SAME_CARD) return setNotice('同名カードは4枚までです')
-    setEntries((list) => current ? list.map((entry) => entry.id === card.id ? { ...entry, count: entry.count + 1 } : entry) : [...list, { ...card, count: 1 }])
+  function openCard(card: DeckCard) {
+    printingsAbort.current?.abort()
+    const controller = new AbortController()
+    printingsAbort.current = controller
+    setSelectedCard(card)
+    setPrintingOptions([card])
+    setPrintingsLoading(true)
+    fetch(`/api/cards/${encodeURIComponent(card.id)}/printings`, { signal: controller.signal })
+      .then((response) => response.json())
+      .then((data) => {
+        const cards = Array.isArray(data.cards) ? (data.cards as DeckCard[]).map(safeCard) : []
+        if (cards.length) setPrintingOptions(cards)
+      })
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === 'AbortError')) setNotice('別イラストを読み込めませんでした')
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setPrintingsLoading(false)
+      })
   }
 
-  function remove(id: string) {
-    setEntries((list) => list.flatMap((entry) => entry.id !== id ? [entry] : entry.count > 1 ? [{ ...entry, count: entry.count - 1 }] : []))
+  function closeCard() {
+    printingsAbort.current?.abort()
+    setSelectedCard(null)
+    setPrintingOptions([])
+    setPrintingsLoading(false)
+  }
+
+  function add(card: DeckCard) {
+    const key = printingKey(card)
+    const current = byPrinting.get(key)
+    if (total >= MAX_DECK_CARDS) return setNotice('メインデッキは40枚までです')
+    if ((countsByCard.get(card.id) ?? 0) >= MAX_SAME_CARD) return setNotice('同名カードは合計4枚までです')
+    setEntries((list) => current
+      ? list.map((entry) => printingKey(entry) === key ? { ...entry, count: entry.count + 1 } : entry)
+      : [...list, { ...card, count: 1 }])
+  }
+
+  function remove(card: DeckCard) {
+    const key = printingKey(card)
+    setEntries((list) => list.flatMap((entry) => printingKey(entry) !== key ? [entry] : entry.count > 1 ? [{ ...entry, count: entry.count - 1 }] : []))
   }
 
   function resetDeck() {
+    printingsAbort.current?.abort()
     setEntries([])
     setDeckName(DEFAULT_DECK_NAME)
     setActiveSavedDeckId(null)
     setSelectedCard(null)
+    setPrintingOptions([])
     setResetConfirm(false)
     setNotice('デッキをリセットしました')
   }
@@ -445,7 +498,7 @@ export default function DeckMaker() {
                 key={`${entry.id}-${copy}`}
                 type="button"
                 aria-label={`${entry.name}を編集`}
-                onClick={() => setSelectedCard(entry)}
+                onClick={() => openCard(entry)}
                 className="min-w-0 rounded-[3px] outline-none ring-emerald-600 focus-visible:ring-2"
               >
                 <CardArt card={entry} className="rounded-[3px]" />
@@ -490,10 +543,10 @@ export default function DeckMaker() {
             {resultsLoading && results.length === 0 && <p className="col-span-4 py-8 text-center text-sm text-slate-500">カードを読み込み中…</p>}
             {!resultsLoading && results.length === 0 && <p className="col-span-4 py-8 text-center text-sm text-slate-500">該当カードがありません</p>}
             {results.map((card) => {
-              const count = byId.get(card.id)?.count ?? 0
+              const count = countsByCard.get(card.id) ?? 0
               return (
                 <article key={card.id} className="group relative min-w-0 overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200">
-                  <button type="button" onClick={() => setSelectedCard(card)} aria-label={`${card.name}を拡大表示`} className="block w-full">
+                  <button type="button" onClick={() => openCard(card)} aria-label={`${card.name}を拡大表示`} className="block w-full">
                     <CardArt card={card} />
                   </button>
                   {count > 0 && <span className="absolute left-1 top-1 rounded-full bg-black/80 px-1.5 py-0.5 text-[10px] font-black text-white">{count}/4</span>}
@@ -577,16 +630,36 @@ export default function DeckMaker() {
       )}
 
       {selected && (
-        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3" onMouseDown={(event) => { if (event.currentTarget === event.target) setSelectedCard(null) }}>
+        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3" onMouseDown={(event) => { if (event.currentTarget === event.target) closeCard() }}>
           <section role="dialog" aria-modal="true" aria-labelledby="card-dialog-title" className="relative flex max-h-[calc(100dvh-24px)] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <button type="button" onClick={() => setSelectedCard(null)} aria-label="カード操作を閉じる" className="absolute right-2 top-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-slate-800 shadow"><Icon name="close" /></button>
+            <button type="button" onClick={closeCard} aria-label="カード操作を閉じる" className="absolute right-2 top-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-slate-800 shadow"><Icon name="close" /></button>
             <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
               <h2 id="card-dialog-title" className="sr-only">{selected.name}</h2>
-              <CardArt card={selected} className="mx-auto w-full max-w-[330px] rounded-xl shadow-lg" />
+              <CardArt key={printingKey(selected)} card={selected} className="mx-auto w-full max-w-[330px] rounded-xl shadow-lg" />
               <div className="mt-3 flex items-center justify-center gap-5">
-                <button type="button" onClick={() => remove(selected.id)} disabled={selectedCount === 0} aria-label={`${selected.name}を1枚減らす`} className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 text-2xl font-bold disabled:text-slate-300">−</button>
-                <div className="min-w-20 text-center"><span className="text-3xl font-black">{selectedCount}</span><span className="ml-1 text-sm text-slate-500">/4枚</span></div>
-                <button type="button" onClick={() => add(selected)} disabled={selectedCount >= MAX_SAME_CARD || total >= MAX_DECK_CARDS} aria-label={`${selected.name}を1枚増やす`} className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-700 text-2xl font-bold text-white disabled:bg-slate-400">＋</button>
+                <button type="button" onClick={() => remove(selected)} disabled={selectedCount === 0} aria-label={`${selected.name}を1枚減らす`} className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 text-2xl font-bold disabled:text-slate-300">−</button>
+                <div className="min-w-20 text-center"><span className="text-3xl font-black">{selectedCount}</span></div>
+                <button type="button" onClick={() => add(selected)} disabled={selectedNameCount >= MAX_SAME_CARD || total >= MAX_DECK_CARDS} aria-label={`${selected.name}を1枚増やす`} className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-700 text-2xl font-bold text-white disabled:bg-slate-400">＋</button>
+              </div>
+              <div className="mt-5">
+                {printingsLoading && <p className="mb-2 text-center text-xs font-bold text-slate-500">別イラストを読み込み中…</p>}
+                <div className="flex gap-3 overflow-x-auto overscroll-x-contain pb-2">
+                  {printingOptions.map((printing) => {
+                    const active = printingKey(printing) === printingKey(selected)
+                    return (
+                      <button
+                        key={printingKey(printing)}
+                        type="button"
+                        onClick={() => setSelectedCard(printing)}
+                        aria-label={`${printing.name}の別イラストを選択`}
+                        aria-pressed={active}
+                        className={`w-24 shrink-0 overflow-hidden rounded-lg transition ${active ? 'ring-2 ring-blue-600' : 'opacity-55 ring-1 ring-slate-300 hover:opacity-100'}`}
+                      >
+                        <CardArt card={printing} />
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </section>
