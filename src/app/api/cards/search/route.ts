@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { normalizeCardName } from '@/lib/card-name'
 import { canAccessDeckMaker } from '@/lib/deck-maker-access'
@@ -8,8 +8,8 @@ export const dynamic = 'force-dynamic'
 const MAX_QUERY_LENGTH = 80
 const PAGE_SIZE = 48
 const QUERY_BATCH_SIZE = 500
+const CATALOG_CACHE_MS = 15 * 60 * 1000
 const DEFAULT_RESULTS = 32
-const escapeIlike = (value: string) => value.replace(/[\\%_]/g, (character) => `\\${character}`)
 const CHARISMA_BEST_DEFAULTS = [
   ['瀑水神 ミヅハノオオミカミ', '001'],
   ['世界竜皇 ボルシャック・ヒカリスマ', '002'],
@@ -57,10 +57,14 @@ type Printing = {
 type Row = {
   id: string
   name: string
+  normalized_name: string
   name_kana: string | null
   image_url: string | null
   card_printings?: Printing[]
 }
+
+let catalogCache: { rows: Row[]; expiresAt: number } | null = null
+let catalogPromise: Promise<Row[]> | null = null
 
 const releaseCollator = new Intl.Collator('ja', { numeric: true, sensitivity: 'base' })
 
@@ -93,11 +97,9 @@ function mapCard(row: Row): DeckCard {
   return { id: row.id, name: row.name, nameKana: row.name_kana, imageUrl: printing?.image_url ?? row.image_url, officialPageUrl: printing?.official_page_url ?? null, sourceKey: printing?.source_key ?? null }
 }
 
-async function fetchAllMatches(
+async function loadCatalog(
   supabase: ReturnType<typeof createAdminClient>,
   columns: string,
-  field: 'normalized_name' | 'name_kana',
-  query: string,
 ) {
   const rows: Row[] = []
   for (let offset = 0; ; offset += QUERY_BATCH_SIZE) {
@@ -105,7 +107,6 @@ async function fetchAllMatches(
       .from('cards')
       .select(columns)
       .eq('is_active', true)
-      .ilike(field, `%${query}%`)
       .order('id')
       .range(offset, offset + QUERY_BATCH_SIZE - 1)
     if (result.error) throw result.error
@@ -113,7 +114,22 @@ async function fetchAllMatches(
     rows.push(...batch)
     if (batch.length < QUERY_BATCH_SIZE) break
   }
-  return rows
+  return rows.sort(compareRowsNewest)
+}
+
+async function getCatalog(supabase: ReturnType<typeof createAdminClient>, columns: string) {
+  if (catalogCache && catalogCache.expiresAt > Date.now()) return catalogCache.rows
+  if (!catalogPromise) {
+    catalogPromise = loadCatalog(supabase, columns)
+      .then((rows) => {
+        catalogCache = { rows, expiresAt: Date.now() + CATALOG_CACHE_MS }
+        return rows
+      })
+      .finally(() => {
+        catalogPromise = null
+      })
+  }
+  return catalogPromise
 }
 
 export async function GET(request: NextRequest) {
@@ -123,11 +139,11 @@ export async function GET(request: NextRequest) {
   const requestedPage = Number.parseInt(request.nextUrl.searchParams.get('page') ?? '0', 10)
   const page = Number.isSafeInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0
   if (rawQuery.length > MAX_QUERY_LENGTH || /[\u0000-\u001f\u007f]/.test(rawQuery)) return NextResponse.json({ error: 'Invalid query' }, { status: 400 })
-  const query = escapeIlike(normalizeCardName(rawQuery))
-  const kanaQuery = escapeIlike(rawQuery)
+  const normalizedQuery = normalizeCardName(rawQuery)
+  const kanaQuery = rawQuery.normalize('NFKC')
   try {
     const supabase = createAdminClient()
-    const columns = 'id,name,name_kana,image_url,card_printings(source_key,official_page_url,image_url,set_name,is_representative)'
+    const columns = 'id,name,normalized_name,name_kana,image_url,card_printings(source_key,official_page_url,image_url,set_name,is_representative)'
     if (!rawQuery) {
       const result = await supabase.from('cards').select(columns).eq('is_active', true).in('normalized_name', CHARISMA_BEST_DEFAULTS.map(([name]) => normalizeCardName(name)))
       if (result.error) throw result.error
@@ -148,16 +164,20 @@ export async function GET(request: NextRequest) {
           if (unique.size === DEFAULT_RESULTS) break
         }
       }
+      after(async () => {
+        try {
+          await getCatalog(supabase, columns)
+        } catch {
+          // 次回の検索時に再試行する
+        }
+      })
       return NextResponse.json({ cards: [...unique.values()], total: unique.size, hasMore: false }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
     }
 
-    const [nameRows, kanaRows] = await Promise.all([
-      fetchAllMatches(supabase, columns, 'normalized_name', query),
-      fetchAllMatches(supabase, columns, 'name_kana', kanaQuery),
-    ])
-    const unique = new Map<string, Row>()
-    for (const row of [...nameRows, ...kanaRows]) unique.set(row.id, row)
-    const allCards = [...unique.values()].sort(compareRowsNewest).map(mapCard)
+    const catalog = await getCatalog(supabase, columns)
+    const allCards = catalog
+      .filter((row) => row.normalized_name.includes(normalizedQuery) || (row.name_kana?.normalize('NFKC').includes(kanaQuery) ?? false))
+      .map(mapCard)
     const offset = page * PAGE_SIZE
     const cards = allCards.slice(offset, offset + PAGE_SIZE)
     return NextResponse.json({ cards, total: allCards.length, hasMore: offset + cards.length < allCards.length, nextPage: page + 1 }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
