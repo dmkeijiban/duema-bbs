@@ -14,7 +14,16 @@ import {
 const OFFICIAL_ORIGIN = 'https://dm.takaratomy.co.jp'
 const DEFAULT_DECK_NAME = 'メインデッキ'
 const MAX_DECK_NAME_LENGTH = 60
+const SAVED_DECKS_STORAGE_KEY = 'duema-bbs:deck-maker:saved-decks'
 const proxy = (url: string) => `/api/card-image?url=${encodeURIComponent(url)}`
+
+type SavedDeck = {
+  id: string
+  name: string
+  entries: DeckEntry[]
+  createdAt: string
+  updatedAt: string
+}
 
 function pngFileName(deckName: string) {
   const safeName = deckName.replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, '_').trim().slice(0, MAX_DECK_NAME_LENGTH)
@@ -44,6 +53,20 @@ function safeCard(card: DeckCard): DeckCard {
   }
 }
 
+function safeEntries(values: unknown): DeckEntry[] {
+  if (!Array.isArray(values)) return []
+  let remaining = MAX_DECK_CARDS
+  const restored: DeckEntry[] = []
+  for (const value of values as DeckEntry[]) {
+    if (!value || typeof value.id !== 'string' || value.id.length > 100 || !Number.isInteger(value.count) || remaining <= 0) continue
+    const count = Math.min(MAX_SAME_CARD, Math.max(0, value.count), remaining)
+    if (!count) continue
+    restored.push({ ...safeCard(value), id: value.id, count })
+    remaining -= count
+  }
+  return restored
+}
+
 function CardArt({ card, className = '' }: { card: DeckCard; className?: string }) {
   const [failed, setFailed] = useState(false)
   return (
@@ -65,9 +88,13 @@ function CardArt({ card, className = '' }: { card: DeckCard; className?: string 
   )
 }
 
-function Icon({ name }: { name: 'download' | 'trash' | 'filter' | 'close' }) {
+function Icon({ name }: { name: 'download' | 'save' | 'folder' | 'copy' | 'edit' | 'trash' | 'filter' | 'close' }) {
   const paths = {
     download: <><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 15v4h14v-4"/></>,
+    save: <><path d="M5 4h12l2 2v14H5V4Z"/><path d="M8 4v6h8V4M8 20v-6h8v6"/></>,
+    folder: <path d="M3 7h7l2 2h9v10H3V7Z"/>,
+    copy: <><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></>,
+    edit: <><path d="M4 20h4l11-11-4-4L4 16v4Z"/><path d="m13 7 4 4"/></>,
     trash: <><path d="M4 7h16M9 3h6l1 4H8l1-4Z"/><path d="m8 10 .5 9h7l.5-9"/></>,
     filter: <><path d="M4 6h16M7 12h10M10 18h4"/></>,
     close: <path d="m6 6 12 12M18 6 6 18"/>,
@@ -96,6 +123,10 @@ export default function DeckMaker() {
   const [results, setResults] = useState<DeckCard[]>([])
   const [entries, setEntries] = useState<DeckEntry[]>([])
   const [deckName, setDeckName] = useState(DEFAULT_DECK_NAME)
+  const [savedDecks, setSavedDecks] = useState<SavedDeck[]>([])
+  const [activeSavedDeckId, setActiveSavedDeckId] = useState<string | null>(null)
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  const [deleteDeckId, setDeleteDeckId] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
   const [notice, setNotice] = useState('')
   const [selectedCard, setSelectedCard] = useState<DeckCard | null>(null)
@@ -112,18 +143,11 @@ export default function DeckMaker() {
 
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) ?? 'null') as { version?: number; entries?: DeckEntry[]; deckName?: string } | null
-      if (saved?.version === DECK_STORAGE_VERSION && Array.isArray(saved.entries)) {
+      const saved = JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) ?? 'null') as { version?: number; entries?: DeckEntry[]; deckName?: string; savedDeckId?: string | null } | null
+      if (saved && saved.version === DECK_STORAGE_VERSION && Array.isArray(saved.entries)) {
         if (typeof saved.deckName === 'string') setDeckName(saved.deckName.trim().slice(0, MAX_DECK_NAME_LENGTH) || DEFAULT_DECK_NAME)
-        let remaining = MAX_DECK_CARDS
-        const restored: DeckEntry[] = []
-        for (const value of saved.entries) {
-          if (!value || typeof value.id !== 'string' || value.id.length > 100 || !Number.isInteger(value.count) || remaining <= 0) continue
-          const count = Math.min(MAX_SAME_CARD, Math.max(0, value.count), remaining)
-          if (!count) continue
-          restored.push({ ...safeCard(value), id: value.id, count })
-          remaining -= count
-        }
+        if (typeof saved.savedDeckId === 'string' && saved.savedDeckId.length <= 100) setActiveSavedDeckId(saved.savedDeckId)
+        const restored = safeEntries(saved.entries)
         setEntries(restored)
         const ids = restored.map((entry) => entry.id)
         if (ids.length) {
@@ -135,15 +159,31 @@ export default function DeckMaker() {
             })
         }
       }
+      const storedDecks = JSON.parse(localStorage.getItem(SAVED_DECKS_STORAGE_KEY) ?? '[]') as unknown
+      if (Array.isArray(storedDecks)) {
+        const now = new Date().toISOString()
+        setSavedDecks(storedDecks.flatMap((value): SavedDeck[] => {
+          if (!value || typeof value !== 'object') return []
+          const deck = value as Partial<SavedDeck>
+          if (typeof deck.id !== 'string' || deck.id.length > 100) return []
+          const name = typeof deck.name === 'string' ? deck.name.trim().slice(0, MAX_DECK_NAME_LENGTH) || DEFAULT_DECK_NAME : DEFAULT_DECK_NAME
+          return [{ id: deck.id, name, entries: safeEntries(deck.entries), createdAt: typeof deck.createdAt === 'string' ? deck.createdAt : now, updatedAt: typeof deck.updatedAt === 'string' ? deck.updatedAt : now }]
+        }))
+      }
     } catch {
       localStorage.removeItem(DECK_STORAGE_KEY)
+      localStorage.removeItem(SAVED_DECKS_STORAGE_KEY)
     }
     setReady(true)
   }, [])
 
   useEffect(() => {
-    if (ready) localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ version: DECK_STORAGE_VERSION, entries, deckName }))
-  }, [deckName, entries, ready])
+    if (ready) localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ version: DECK_STORAGE_VERSION, entries, deckName, savedDeckId: activeSavedDeckId }))
+  }, [activeSavedDeckId, deckName, entries, ready])
+
+  useEffect(() => {
+    if (ready) localStorage.setItem(SAVED_DECKS_STORAGE_KEY, JSON.stringify(savedDecks))
+  }, [ready, savedDecks])
 
   useEffect(() => {
     const id = ++requestId.current
@@ -187,9 +227,46 @@ export default function DeckMaker() {
   function resetDeck() {
     setEntries([])
     setDeckName(DEFAULT_DECK_NAME)
+    setActiveSavedDeckId(null)
     setSelectedCard(null)
     setResetConfirm(false)
     setNotice('デッキをリセットしました')
+  }
+
+  function saveCurrentDeck() {
+    if (!entries.length) return setNotice('カードを追加してください')
+    const now = new Date().toISOString()
+    if (activeSavedDeckId && savedDecks.some((deck) => deck.id === activeSavedDeckId)) {
+      setSavedDecks((decks) => decks.map((deck) => deck.id === activeSavedDeckId ? { ...deck, name: effectiveDeckName, entries: entries.map((entry) => ({ ...entry })), updatedAt: now } : deck))
+    } else {
+      const id = crypto.randomUUID()
+      setSavedDecks((decks) => [{ id, name: effectiveDeckName, entries: entries.map((entry) => ({ ...entry })), createdAt: now, updatedAt: now }, ...decks])
+      setActiveSavedDeckId(id)
+    }
+    setNotice('マイデッキに保存しました')
+  }
+
+  function openSavedDeck(deck: SavedDeck) {
+    setEntries(deck.entries.map((entry) => ({ ...entry })))
+    setDeckName(deck.name)
+    setActiveSavedDeckId(deck.id)
+    setLibraryOpen(false)
+    setNotice('デッキを開きました')
+  }
+
+  function copySavedDeck(deck: SavedDeck) {
+    const now = new Date().toISOString()
+    const copy: SavedDeck = { id: crypto.randomUUID(), name: `${deck.name} コピー`.slice(0, MAX_DECK_NAME_LENGTH), entries: deck.entries.map((entry) => ({ ...entry })), createdAt: now, updatedAt: now }
+    setSavedDecks((decks) => [copy, ...decks])
+    setNotice('デッキをコピーしました')
+  }
+
+  function deleteSavedDeck() {
+    if (!deleteDeckId) return
+    setSavedDecks((decks) => decks.filter((deck) => deck.id !== deleteDeckId))
+    if (activeSavedDeckId === deleteDeckId) setActiveSavedDeckId(null)
+    setDeleteDeckId(null)
+    setNotice('保存デッキを削除しました')
   }
 
   async function savePng() {
@@ -211,11 +288,11 @@ export default function DeckMaker() {
     context.fillStyle = '#0f172a'
     let titleFontSize = 36
     context.font = `bold ${titleFontSize}px sans-serif`
-    while (titleFontSize > 18 && context.measureText(`${effectiveDeckName} ${cards.length}枚`).width > canvas.width - padding * 2) {
+    while (titleFontSize > 18 && context.measureText(effectiveDeckName).width > canvas.width - padding * 2) {
       titleFontSize -= 2
       context.font = `bold ${titleFontSize}px sans-serif`
     }
-    context.fillText(`${effectiveDeckName} ${cards.length}枚`, padding, 58)
+    context.fillText(effectiveDeckName, padding, 58)
     const imageLoads = new Map<string, Promise<HTMLImageElement | null>>()
     const pendingImages = Promise.all(cards.map((card) => {
       const key = card.imageUrl ?? `missing:${card.id}`
@@ -239,25 +316,10 @@ export default function DeckMaker() {
         context.fillText(card.name.slice(0, 12), x + 6, y + cardHeight / 2)
       }
     })
-    const blob = await Promise.race([
-      new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png')),
-      new Promise<null>((resolve) => window.setTimeout(() => resolve(null), 5_000)),
-    ])
     const preview = canvas.toDataURL('image/png')
-    const href = blob ? URL.createObjectURL(blob) : preview
-    const anchor = document.createElement('a')
-    anchor.href = href
     const fileName = pngFileName(effectiveDeckName)
-    anchor.download = fileName
-    anchor.style.display = 'none'
-    document.body.appendChild(anchor)
-    anchor.click()
-    window.setTimeout(() => {
-      anchor.remove()
-      if (blob) URL.revokeObjectURL(href)
-    }, 60_000)
     setPngPreview({ src: preview, title: effectiveDeckName, fileName })
-    setNotice('PNGを保存しました')
+    setNotice('画像を生成しました')
   }
 
   if (!ready) {
@@ -266,17 +328,23 @@ export default function DeckMaker() {
 
   return (
     <div className="mx-auto max-w-[1440px] overflow-x-hidden">
-      <header className="mb-3 flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm sm:px-4">
-        <div className="min-w-0 flex-1">
+      <header className="mb-3 flex min-h-14 flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm sm:flex-nowrap sm:px-4">
+        <div className="min-w-0 flex-1 basis-full sm:basis-auto">
           <div className="flex max-w-xl items-center gap-2">
             <label htmlFor="deck-name" className="shrink-0 text-sm font-bold text-slate-700">デッキ名</label>
             <input id="deck-name" value={deckName} onChange={(event) => setDeckName(event.target.value.slice(0, MAX_DECK_NAME_LENGTH))} onBlur={() => { if (!deckName.trim()) setDeckName(DEFAULT_DECK_NAME) }} maxLength={MAX_DECK_NAME_LENGTH} className="h-10 min-w-0 flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 text-base font-bold text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" placeholder={DEFAULT_DECK_NAME} />
           </div>
           <p className="text-xs font-bold text-emerald-800">メイン <span data-testid="deck-count">{total}/40</span></p>
         </div>
-        <div className="flex items-center gap-1">
-          <button onClick={savePng} aria-label="デッキをPNGで保存" className="flex min-h-11 items-center gap-1 rounded-xl bg-blue-700 px-3 text-sm font-bold text-white hover:bg-blue-800">
-            <Icon name="download" /><span>保存</span>
+        <div className="ml-auto flex items-center gap-1">
+          <button onClick={saveCurrentDeck} aria-label="デッキをマイデッキに保存" className="flex min-h-11 items-center gap-1 rounded-xl bg-blue-700 px-3 text-sm font-bold text-white hover:bg-blue-800">
+            <Icon name="save" /><span>保存</span>
+          </button>
+          <button onClick={() => setLibraryOpen(true)} aria-label="マイデッキを開く" className="flex min-h-11 items-center gap-1 rounded-xl border border-slate-300 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
+            <Icon name="folder" /><span className="hidden sm:inline">マイデッキ</span>
+          </button>
+          <button onClick={savePng} aria-label="デッキ画像を出力" className="flex min-h-11 items-center gap-1 rounded-xl border border-slate-300 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
+            <Icon name="download" /><span className="hidden sm:inline">画像出力</span>
           </button>
           <button onClick={() => entries.length ? setResetConfirm(true) : resetDeck()} aria-label="デッキをリセット" className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-600 hover:bg-red-50 hover:text-red-700">
             <Icon name="trash" />
@@ -347,6 +415,68 @@ export default function DeckMaker() {
           </div>
         </section>
       </div>
+
+      {libraryOpen && (
+        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3" onMouseDown={(event) => { if (event.currentTarget === event.target) setLibraryOpen(false) }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="saved-decks-title" className="flex max-h-[calc(100dvh-24px)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-slate-50 shadow-2xl">
+            <div className="flex items-center justify-between border-b bg-white px-4 py-3">
+              <div>
+                <h2 id="saved-decks-title" className="text-xl font-black text-slate-900">マイデッキ</h2>
+                <p className="text-xs text-slate-500">この端末に保存したデッキを管理・編集</p>
+              </div>
+              <button type="button" onClick={() => setLibraryOpen(false)} aria-label="マイデッキを閉じる" className="flex h-11 w-11 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100"><Icon name="close" /></button>
+            </div>
+            <div className="min-h-0 overflow-y-auto p-3 sm:p-5">
+              {savedDecks.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-16 text-center text-sm text-slate-500">
+                  <p className="font-bold text-slate-700">保存したデッキはありません</p>
+                  <p className="mt-1">デッキ作成画面の「保存」から追加できます</p>
+                </div>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {[...savedDecks].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((deck) => {
+                    const cover = deck.entries[0]
+                    return (
+                      <article key={deck.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div className="flex gap-3 p-3">
+                          <div className="w-24 shrink-0 sm:w-28">
+                            {cover ? <CardArt card={cover} className="rounded-lg" /> : <div className="aspect-[5/7] rounded-lg bg-slate-200" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <h3 className="line-clamp-2 font-black text-slate-900">{deck.name}</h3>
+                              {deck.id === activeSavedDeckId && <span className="shrink-0 rounded-full bg-blue-100 px-2 py-1 text-[10px] font-bold text-blue-700">編集中</span>}
+                            </div>
+                            <p className="mt-2 text-xs text-slate-500">更新 {new Date(deck.updatedAt).toLocaleDateString('ja-JP')}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 border-t border-slate-200">
+                          <button type="button" onClick={() => openSavedDeck(deck)} className="flex min-h-11 items-center justify-center gap-1 text-sm font-bold text-blue-700 hover:bg-blue-50"><Icon name="edit" />編集</button>
+                          <button type="button" onClick={() => copySavedDeck(deck)} className="flex min-h-11 items-center justify-center gap-1 border-x border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50"><Icon name="copy" />コピー</button>
+                          <button type="button" onClick={() => setDeleteDeckId(deck.id)} className="flex min-h-11 items-center justify-center gap-1 text-sm font-bold text-red-700 hover:bg-red-50"><Icon name="trash" />削除</button>
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {deleteDeckId && (
+        <div role="presentation" className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4" onMouseDown={(event) => { if (event.currentTarget === event.target) setDeleteDeckId(null) }}>
+          <section role="alertdialog" aria-modal="true" aria-labelledby="delete-deck-title" className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+            <h2 id="delete-deck-title" className="text-lg font-black text-slate-900">保存デッキを削除しますか？</h2>
+            <p className="mt-2 text-sm text-slate-600">マイデッキから削除します。この操作は取り消せません。</p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => setDeleteDeckId(null)} className="min-h-11 rounded-xl border border-slate-300 font-bold text-slate-700">キャンセル</button>
+              <button type="button" onClick={deleteSavedDeck} className="min-h-11 rounded-xl bg-red-700 font-bold text-white">削除</button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {selected && (
         <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3" onMouseDown={(event) => { if (event.currentTarget === event.target) setSelectedCard(null) }}>
