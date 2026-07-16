@@ -96,7 +96,8 @@ function removeEmptyStructuredData<T>(value: T): T {
 
 export async function generateMetadata({ params }: Props) {
   const { id } = await params
-  const thread = await getCachedThread(parseInt(id))
+  const threadId = parseInt(id)
+  const thread = await getCachedThread(threadId)
 
   const hiddenUserIds = await getCachedPublicHiddenUserIds()
   if (!thread || !isPublicVisibleUserContent(thread, hiddenUserIds)) {
@@ -110,12 +111,13 @@ export async function generateMetadata({ params }: Props) {
   const canonicalUrl = `${baseUrl}/thread/${id}`
   const typedThread = thread as unknown as Thread
   const metadataDescription = buildThreadDescription(typedThread)
-  const threadPoll = thread.image_url ? null : await getCachedThreadPoll(parseInt(id))
-  const hasStarterImage = Boolean(thread.image_url || threadPoll?.options[0]?.imageUrl)
+  const threadPoll = thread.image_url ? null : await getCachedThreadPoll(threadId)
+  const starterImageUrl = await getCachedThreadStarterImageUrl(threadId, thread.image_url)
+  const hasStarterImage = Boolean(starterImageUrl || threadPoll?.options[0]?.imageUrl)
   // Keep the image URL stable while versioning deliberate OG behavior changes.
   // This avoids reusing a previously cached 404/default card on X.
   const ogImageUrl = hasStarterImage
-    ? `${baseUrl}/og/thread/${id}.jpg?v=2`
+    ? `${baseUrl}/og/thread/${id}.jpg?v=3`
     : `${baseUrl}/default-thumbnail.jpg`
 
   const meta = {
@@ -218,7 +220,7 @@ export async function renderThreadPage(threadId: number, page: number) {
   const currentPageUrl = page <= 1 ? canonicalUrl : `${canonicalUrl}/p/${page}`
   const structuredText = cleanStructuredText(typedThread.body, typedThread.title)
   const structuredDescription = buildThreadDescription(typedThread, structuredText)
-  const structuredImage = typedThread.image_url ? `${baseUrl}/og/thread/${threadId}.jpg` : undefined
+  const structuredImage = starterImageUrl ? `${baseUrl}/og/thread/${threadId}.jpg` : undefined
   const categoryForumId = typedThread.categories
     ? `${baseUrl}/category/${typedThread.categories.slug}#forum`
     : `${baseUrl}/#forum`
@@ -312,7 +314,7 @@ export async function renderThreadPage(threadId: number, page: number) {
                 ] : [
                   { "@type": "ListItem", "position": 2, "name": typedThread.title, "item": canonicalUrl },
                 ]),
-              ],
+              ]
             },
             {
               "@context": "https://schema.org",
