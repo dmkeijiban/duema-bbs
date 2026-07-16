@@ -36,5 +36,5 @@ export async function updateGoodlifeAdSettingsAction(formData: FormData) {
   revalidateTag('site_settings', { expire: 0 })
   revalidatePath('/', 'layout')
   revalidatePath('/admin/site/ads')
-  redirect('/admin/site/ads')
+  redirect('/admin/site/ads?saved=1')
 }
