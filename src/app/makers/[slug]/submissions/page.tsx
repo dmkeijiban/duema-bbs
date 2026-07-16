@@ -36,7 +36,6 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
   type LinkedCard = { id: string; name: string; image_url: string | null; civilization: string[] | null; cost: number | null; card_type: string | null; regulation: string | null; source_key: string | null }
   const linkedCards = ((links ?? []) as unknown as { cards: LinkedCard }[]).map(({ cards: card }) => card)
   if (slug === 'hall-of-fame-release') {
-    // メーカー本体と同じ殿堂リスト順を使い、同数時の並び順を安定させる。
     const hallOrder = new Map(
       [...getCurrentHallCards()]
         .sort((a, b) => Number(a.status !== 'hall') - Number(b.status !== 'hall'))
@@ -49,9 +48,17 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
     ? ((rows ?? []) as { card_id: string; s_count: number; a_count: number; b_count: number; c_count: number; d_count: number; rating_count: number; average_tier: number | string | null }[]).map(row => ({ cardId: row.card_id, counts: { s: row.s_count, a: row.a_count, b: row.b_count, c: row.c_count, d: row.d_count }, ratingCount: row.rating_count, averageTier: row.average_tier === null ? null : Number(row.average_tier) }))
     : ((rows ?? []) as { card_id: string; selection_count: number; submission_count: number; selection_rate: number | string }[]).map(row => ({ cardId: row.card_id, counts: { release: row.selection_count }, ratingCount: row.submission_count, averageTier: Number(row.selection_rate) }))
   const prediction = project.type === 'prediction'
+  const aggregateByCard = new Map(aggregates.map(aggregate => [aggregate.cardId, aggregate]))
   if (prediction) {
-    const selectionCountByCard = new Map(aggregates.map(aggregate => [aggregate.cardId, aggregate.counts.release ?? 0]))
-    cards.sort((a, b) => (selectionCountByCard.get(b.id) ?? 0) - (selectionCountByCard.get(a.id) ?? 0))
+    cards.sort((a, b) => (aggregateByCard.get(b.id)?.counts.release ?? 0) - (aggregateByCard.get(a.id)?.counts.release ?? 0))
+  } else if (project.type === 'tier') {
+    cards.sort((a, b) => {
+      const aAggregate = aggregateByCard.get(a.id)
+      const bAggregate = aggregateByCard.get(b.id)
+      const averageDifference = (bAggregate?.averageTier ?? Number.NEGATIVE_INFINITY) - (aAggregate?.averageTier ?? Number.NEGATIVE_INFINITY)
+      if (averageDifference !== 0) return averageDifference
+      return (bAggregate?.ratingCount ?? 0) - (aAggregate?.ratingCount ?? 0)
+    })
   }
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   return <main className="min-h-screen bg-slate-50 px-3 py-6"><div className="mx-auto max-w-6xl">
