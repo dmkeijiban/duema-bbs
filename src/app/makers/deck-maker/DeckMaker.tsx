@@ -477,17 +477,17 @@ export default function DeckMaker() {
           </div>
           <p className="text-xs font-bold text-emerald-800">メイン <span data-testid="deck-count">{total}/40</span></p>
         </div>
-        <div className="ml-auto flex items-center gap-1">
-          <button onClick={saveCurrentDeck} aria-label="デッキをマイデッキに保存" className="flex min-h-11 items-center gap-1 rounded-xl bg-blue-700 px-3 text-sm font-bold text-white hover:bg-blue-800">
+        <div className="ml-auto flex w-full items-center justify-end gap-1 sm:w-auto">
+          <button onClick={saveCurrentDeck} aria-label="デッキをマイデッキに保存" className="flex min-h-9 items-center gap-1 rounded-lg bg-blue-700 px-2.5 text-xs font-bold text-white hover:bg-blue-800 [&>svg]:h-4 [&>svg]:w-4">
             <Icon name="save" /><span>保存</span>
           </button>
-          <button onClick={() => setLibraryOpen(true)} aria-label="マイデッキを開く" className="flex min-h-11 items-center gap-1 rounded-xl border border-slate-300 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
-            <Icon name="folder" /><span className="hidden sm:inline">マイデッキ</span>
+          <button onClick={() => setLibraryOpen(true)} aria-label="マイデッキを開く" className="flex min-h-9 items-center gap-1 rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 hover:bg-slate-50 [&>svg]:h-4 [&>svg]:w-4">
+            <Icon name="folder" /><span>マイデッキ</span>
           </button>
-          <button onClick={savePng} aria-label="デッキ画像を出力" className="flex min-h-11 items-center gap-1 rounded-xl border border-slate-300 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
-            <Icon name="download" /><span className="hidden sm:inline">画像出力</span>
+          <button onClick={savePng} aria-label="デッキ画像を出力" className="flex min-h-9 items-center gap-1 rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 hover:bg-slate-50 [&>svg]:h-4 [&>svg]:w-4">
+            <Icon name="download" /><span>画像出力</span>
           </button>
-          <button onClick={() => entries.length ? setResetConfirm(true) : resetDeck()} aria-label="デッキをリセット" className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-600 hover:bg-red-50 hover:text-red-700">
+          <button onClick={() => entries.length ? setResetConfirm(true) : resetDeck()} aria-label="デッキをリセット" className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-red-50 hover:text-red-700 [&>svg]:h-4 [&>svg]:w-4">
             <Icon name="trash" />
           </button>
         </div>
