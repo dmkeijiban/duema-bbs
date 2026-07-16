@@ -323,7 +323,15 @@ export default function DeckMaker() {
       .then((response) => response.json())
       .then((data) => {
         const cards = Array.isArray(data.cards) ? (data.cards as DeckCard[]).map(safeCard) : []
-        if (cards.length) setPrintingOptions(cards)
+        if (cards.length) {
+          setPrintingOptions(() => {
+            const unique = new Map<string, DeckCard>()
+            for (const printing of [card, ...cards]) {
+              unique.set(printingKey(printing), printing)
+            }
+            return [...unique.values()]
+          })
+        }
       })
       .catch((error: unknown) => {
         if (!(error instanceof DOMException && error.name === 'AbortError')) setNotice('別イラストを読み込めませんでした')
