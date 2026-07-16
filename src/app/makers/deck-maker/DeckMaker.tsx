@@ -7,6 +7,7 @@ import {
   MAX_DECK_CARDS,
   MAX_SAME_CARD,
   deckSize,
+  matchesCard,
   type DeckCard,
   type DeckEntry,
 } from '@/lib/deck-maker'
@@ -14,6 +15,8 @@ import {
 const OFFICIAL_ORIGIN = 'https://dm.takaratomy.co.jp'
 const DEFAULT_DECK_NAME = 'メインデッキ'
 const MAX_DECK_NAME_LENGTH = 60
+const SEARCH_DEBOUNCE_MS = 70
+const SEARCH_CACHE_SIZE = 40
 const SAVED_DECKS_STORAGE_KEY = 'duema-bbs:deck-maker:saved-decks'
 const proxy = (url: string) => `/api/card-image?url=${encodeURIComponent(url)}`
 
@@ -23,6 +26,12 @@ type SavedDeck = {
   entries: DeckEntry[]
   createdAt: string
   updatedAt: string
+}
+
+type SearchResponse = {
+  cards: DeckCard[]
+  total: number
+  hasMore: boolean
 }
 
 function pngFileName(deckName: string) {
@@ -138,6 +147,8 @@ export default function DeckMaker() {
   const [resetConfirm, setResetConfirm] = useState(false)
   const [pngPreview, setPngPreview] = useState<{ src: string; title: string; fileName: string } | null>(null)
   const requestId = useRef(0)
+  const searchAbort = useRef<AbortController | null>(null)
+  const searchCache = useRef(new Map<string, SearchResponse>())
   const searchInput = useRef<HTMLInputElement>(null)
   const total = deckSize(entries)
   const effectiveDeckName = deckName.trim() || DEFAULT_DECK_NAME
@@ -192,18 +203,42 @@ export default function DeckMaker() {
 
   useEffect(() => {
     const id = ++requestId.current
+    const cacheKey = query.trim()
+    const cached = searchCache.current.get(cacheKey)
+    searchAbort.current?.abort()
+    if (cached) {
+      setResults(cached.cards)
+      setResultTotal(cached.total)
+      setResultPage(0)
+      setHasMoreResults(cached.hasMore)
+      setResultsLoading(false)
+      return
+    }
     const timer = window.setTimeout(() => {
+      const controller = new AbortController()
+      searchAbort.current = controller
       setResultsLoading(true)
-      fetch(`/api/cards/search?q=${encodeURIComponent(query)}&page=0`)
+      fetch(`/api/cards/search?q=${encodeURIComponent(query)}&page=0`, { signal: controller.signal })
         .then((response) => response.json())
         .then((data) => {
           if (id !== requestId.current) return
-          setResults(data.cards ?? [])
-          setResultTotal(Number.isInteger(data.total) ? data.total : (data.cards ?? []).length)
+          const response: SearchResponse = {
+            cards: data.cards ?? [],
+            total: Number.isInteger(data.total) ? data.total : (data.cards ?? []).length,
+            hasMore: Boolean(data.hasMore),
+          }
+          if (searchCache.current.size >= SEARCH_CACHE_SIZE) {
+            const oldestKey = searchCache.current.keys().next().value
+            if (typeof oldestKey === 'string') searchCache.current.delete(oldestKey)
+          }
+          searchCache.current.set(cacheKey, response)
+          setResults(response.cards)
+          setResultTotal(response.total)
           setResultPage(0)
-          setHasMoreResults(Boolean(data.hasMore))
+          setHasMoreResults(response.hasMore)
         })
-        .catch(() => {
+        .catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === 'AbortError') return
           if (id !== requestId.current) return
           setResults([])
           setResultTotal(0)
@@ -212,8 +247,11 @@ export default function DeckMaker() {
         .finally(() => {
           if (id === requestId.current) setResultsLoading(false)
         })
-    }, query.trim() ? 300 : 0)
-    return () => clearTimeout(timer)
+    }, cacheKey ? SEARCH_DEBOUNCE_MS : 0)
+    return () => {
+      clearTimeout(timer)
+      searchAbort.current?.abort()
+    }
   }, [query])
 
   async function loadMoreResults() {
@@ -431,7 +469,13 @@ export default function DeckMaker() {
                   ref={searchInput}
                   id="card-search"
                   value={query}
-                  onChange={(event) => setQuery(event.target.value)}
+                  onChange={(event) => {
+                    const nextQuery = event.target.value
+                    if (nextQuery.trim() && nextQuery.startsWith(query)) {
+                      setResults((current) => current.filter((card) => matchesCard(card, nextQuery)))
+                    }
+                    setQuery(nextQuery)
+                  }}
                   placeholder="カード名で検索"
                   aria-label="カード名検索"
                   className="h-11 w-full rounded-xl border border-slate-300 bg-slate-50 pl-9 pr-10 text-base outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
