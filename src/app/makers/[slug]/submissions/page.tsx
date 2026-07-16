@@ -22,7 +22,7 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
   const project = await getPublicMakerProject(slug)
   if (!project) notFound()
   const { config, communityLabel } = makerSubmissionView(project)
-  const pageSize = 10
+  const pageSize = slug === 'hall-of-fame-release' ? 12 : 10
   const { submissions, total } = await getPublicSubmissions(project.id, page, pageSize)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
