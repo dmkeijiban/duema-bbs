@@ -6,7 +6,8 @@ import { LOCAL_DECK_CARDS, matchesCard, type DeckCard } from '@/lib/deck-maker'
 
 export const dynamic = 'force-dynamic'
 const MAX_QUERY_LENGTH = 80
-const MAX_RESULTS = 30
+const PAGE_SIZE = 48
+const QUERY_BATCH_SIZE = 500
 const DEFAULT_RESULTS = 32
 const escapeIlike = (value: string) => value.replace(/[\\%_]/g, (character) => `\\${character}`)
 const CHARISMA_BEST_DEFAULTS = [
@@ -45,29 +46,88 @@ const CHARISMA_BEST_DEFAULTS = [
 ] as const
 const charismaImageUrl = (number: string) => `https://dm.takaratomy.co.jp/wp-content/themes/dm2019/img/product/dm26ex2/all-precedence/${number}.jpg`
 
+type Printing = {
+  source_key: string
+  official_page_url: string | null
+  image_url: string | null
+  set_name: string | null
+  is_representative: boolean
+}
+
 type Row = {
   id: string
   name: string
   name_kana: string | null
   image_url: string | null
-  card_printings?: Array<{ source_key: string; official_page_url: string | null; image_url: string | null; is_representative: boolean }>
+  card_printings?: Printing[]
+}
+
+const releaseCollator = new Intl.Collator('ja', { numeric: true, sensitivity: 'base' })
+
+function setCode(printing: Printing | undefined) {
+  return printing?.source_key.split('-')[0]?.toUpperCase() ?? ''
+}
+
+function comparePrintingsNewest(first: Printing, second: Printing) {
+  return releaseCollator.compare(setCode(second), setCode(first))
+    || releaseCollator.compare(second.source_key, first.source_key)
+}
+
+function newestPrinting(row: Row) {
+  return row.card_printings?.slice().sort(comparePrintingsNewest)[0]
+}
+
+function compareRowsNewest(first: Row, second: Row) {
+  const firstPrinting = newestPrinting(first)
+  const secondPrinting = newestPrinting(second)
+  return releaseCollator.compare(setCode(secondPrinting), setCode(firstPrinting))
+    || releaseCollator.compare(secondPrinting?.source_key ?? '', firstPrinting?.source_key ?? '')
+    || first.name.localeCompare(second.name, 'ja')
+    || first.id.localeCompare(second.id)
 }
 
 function mapCard(row: Row): DeckCard {
-  const printing = row.card_printings?.find((item) => item.is_representative) ?? row.card_printings?.[0]
+  const printing = newestPrinting(row)
+    ?? row.card_printings?.find((item) => item.is_representative)
+    ?? row.card_printings?.[0]
   return { id: row.id, name: row.name, nameKana: row.name_kana, imageUrl: printing?.image_url ?? row.image_url, officialPageUrl: printing?.official_page_url ?? null, sourceKey: printing?.source_key ?? null }
+}
+
+async function fetchAllMatches(
+  supabase: ReturnType<typeof createAdminClient>,
+  columns: string,
+  field: 'normalized_name' | 'name_kana',
+  query: string,
+) {
+  const rows: Row[] = []
+  for (let offset = 0; ; offset += QUERY_BATCH_SIZE) {
+    const result = await supabase
+      .from('cards')
+      .select(columns)
+      .eq('is_active', true)
+      .ilike(field, `%${query}%`)
+      .order('id')
+      .range(offset, offset + QUERY_BATCH_SIZE - 1)
+    if (result.error) throw result.error
+    const batch = (result.data ?? []) as unknown as Row[]
+    rows.push(...batch)
+    if (batch.length < QUERY_BATCH_SIZE) break
+  }
+  return rows
 }
 
 export async function GET(request: NextRequest) {
   if (!(await canAccessDeckMaker())) return new NextResponse(null, { status: 404 })
 
   const rawQuery = request.nextUrl.searchParams.get('q')?.trim() ?? ''
+  const requestedPage = Number.parseInt(request.nextUrl.searchParams.get('page') ?? '0', 10)
+  const page = Number.isSafeInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0
   if (rawQuery.length > MAX_QUERY_LENGTH || /[\u0000-\u001f\u007f]/.test(rawQuery)) return NextResponse.json({ error: 'Invalid query' }, { status: 400 })
   const query = escapeIlike(normalizeCardName(rawQuery))
   const kanaQuery = escapeIlike(rawQuery)
   try {
     const supabase = createAdminClient()
-    const columns = 'id,name,name_kana,image_url,card_printings(source_key,official_page_url,image_url,is_representative)'
+    const columns = 'id,name,name_kana,image_url,card_printings(source_key,official_page_url,image_url,set_name,is_representative)'
     if (!rawQuery) {
       const result = await supabase.from('cards').select(columns).eq('is_active', true).in('normalized_name', CHARISMA_BEST_DEFAULTS.map(([name]) => normalizeCardName(name)))
       if (result.error) throw result.error
@@ -88,19 +148,23 @@ export async function GET(request: NextRequest) {
           if (unique.size === DEFAULT_RESULTS) break
         }
       }
-      return NextResponse.json({ cards: [...unique.values()] }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
+      return NextResponse.json({ cards: [...unique.values()], total: unique.size, hasMore: false }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
     }
-    const [nameResult, kanaResult] = await Promise.all([
-      supabase.from('cards').select(columns).eq('is_active', true).ilike('normalized_name', `%${query}%`).order('name').limit(MAX_RESULTS),
-      supabase.from('cards').select(columns).eq('is_active', true).ilike('name_kana', `%${kanaQuery}%`).order('name').limit(MAX_RESULTS),
+
+    const [nameRows, kanaRows] = await Promise.all([
+      fetchAllMatches(supabase, columns, 'normalized_name', query),
+      fetchAllMatches(supabase, columns, 'name_kana', kanaQuery),
     ])
-    if (nameResult.error) throw nameResult.error
-    if (kanaResult.error) throw kanaResult.error
     const unique = new Map<string, Row>()
-    for (const row of [...(nameResult.data ?? []), ...(kanaResult.data ?? [])] as Row[]) unique.set(row.id, row)
-    return NextResponse.json({ cards: [...unique.values()].slice(0, MAX_RESULTS).map(mapCard) }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
+    for (const row of [...nameRows, ...kanaRows]) unique.set(row.id, row)
+    const allCards = [...unique.values()].sort(compareRowsNewest).map(mapCard)
+    const offset = page * PAGE_SIZE
+    const cards = allCards.slice(offset, offset + PAGE_SIZE)
+    return NextResponse.json({ cards, total: allCards.length, hasMore: offset + cards.length < allCards.length, nextPage: page + 1 }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
   } catch {
-    const cards = rawQuery ? LOCAL_DECK_CARDS.filter((card) => matchesCard(card, rawQuery)) : LOCAL_DECK_CARDS
-    return NextResponse.json({ cards: cards.slice(0, rawQuery ? MAX_RESULTS : DEFAULT_RESULTS), fallback: true }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
+    const allCards = rawQuery ? LOCAL_DECK_CARDS.filter((card) => matchesCard(card, rawQuery)) : LOCAL_DECK_CARDS
+    const offset = page * PAGE_SIZE
+    const cards = allCards.slice(offset, offset + (rawQuery ? PAGE_SIZE : DEFAULT_RESULTS))
+    return NextResponse.json({ cards, total: allCards.length, hasMore: offset + cards.length < allCards.length, nextPage: page + 1, fallback: true }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
   }
 }
