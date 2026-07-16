@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Script from 'next/script'
 import './globals.css'
 import { Header } from '@/components/Header'
+import { GoodlifeInlineAd } from '@/components/GoodlifeInlineAd'
 import { getSnsUrls } from '@/lib/sns-server'
 import { getCachedCategories } from '@/lib/cached-queries'
 import Link from 'next/link'
@@ -38,7 +39,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'デュエマ掲示板 | デュエルマスターズ専門掲示板',
-    description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報など何でも語ろう。',
+    description: 'デュエルマスターズ（デュエマ）専門の掲示板。デッキ相談・カード評価・大会情報・環境考察など何でも語ろう。',
     images: [`${SITE_URL}/default-thumbnail.jpg`],
   },
   verification: {
@@ -175,7 +176,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {POSTHOG_KEY && (
           <Script id="posthog-init" strategy="lazyOnload">
             {`
-              !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags reloadFeatureFlags group".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+              !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags reloadFeatureFlags group".split(" "),n=0;n<o.length;n++)g(u[n]||u,o[n]);e._i.push([i,s,a]),e.__SV=1)}(document,window.posthog||[]);
               posthog.init('${POSTHOG_KEY}', {
                 api_host: '${POSTHOG_HOST}',
                 person_profiles: 'identified_only',
@@ -200,6 +201,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <LazyDesktopFloatingActions />
           <LazyFloatingBar snsUrls={snsUrls} />
           <LazyPostHogBridge />
+          <GoodlifeInlineAd slot="footer_inline" />
           <footer className="bg-white border-t border-gray-200 py-4 mt-0">
             <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-600 space-y-2">
               <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
