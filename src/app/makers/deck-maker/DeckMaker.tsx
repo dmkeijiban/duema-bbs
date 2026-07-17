@@ -31,6 +31,8 @@ type SavedDeck = {
 type SearchResponse = {
   cards: DeckCard[]
   total: number
+  hasMore: boolean
+  nextOffset: number
 }
 
 function pngFileName(deckName: string) {
@@ -139,6 +141,8 @@ export default function DeckMaker() {
   const [results, setResults] = useState<DeckCard[]>([])
   const [resultTotal, setResultTotal] = useState(0)
   const [resultsLoading, setResultsLoading] = useState(false)
+  const [hasMoreResults, setHasMoreResults] = useState(false)
+  const [nextOffset, setNextOffset] = useState(0)
   const [entries, setEntries] = useState<DeckEntry[]>([])
   const [deckName, setDeckName] = useState(DEFAULT_DECK_NAME)
   const [savedDecks, setSavedDecks] = useState<SavedDeck[]>([])
@@ -157,6 +161,7 @@ export default function DeckMaker() {
   const printingsAbort = useRef<AbortController | null>(null)
   const searchCache = useRef(new Map<string, SearchResponse>())
   const searchInput = useRef<HTMLInputElement>(null)
+  const searchSentinel = useRef<HTMLDivElement>(null)
   const printingsScroller = useRef<HTMLDivElement>(null)
   const printingDrag = useRef({ active: false, moved: false, startX: 0, scrollLeft: 0 })
   const total = deckSize(entries)
@@ -226,20 +231,26 @@ export default function DeckMaker() {
     if (cached) {
       setResults(cached.cards)
       setResultTotal(cached.total)
+      setHasMoreResults(cached.hasMore)
+      setNextOffset(cached.nextOffset)
       setResultsLoading(false)
       return
     }
+    setHasMoreResults(false)
+    setNextOffset(0)
     const timer = window.setTimeout(() => {
       const controller = new AbortController()
       searchAbort.current = controller
       setResultsLoading(true)
-      fetch(`/api/cards/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
+      fetch(`/api/cards/search?q=${encodeURIComponent(query)}&offset=0&limit=48`, { signal: controller.signal })
         .then((response) => response.json())
         .then((data) => {
           if (id !== requestId.current) return
           const response: SearchResponse = {
             cards: data.cards ?? [],
             total: Number.isInteger(data.total) ? data.total : (data.cards ?? []).length,
+            hasMore: data.hasMore === true,
+            nextOffset: Number.isInteger(data.nextOffset) ? data.nextOffset : (data.cards ?? []).length,
           }
           if (searchCache.current.size >= SEARCH_CACHE_SIZE) {
             const oldestKey = searchCache.current.keys().next().value
@@ -248,12 +259,16 @@ export default function DeckMaker() {
           searchCache.current.set(cacheKey, response)
           setResults(response.cards)
           setResultTotal(response.total)
+          setHasMoreResults(response.hasMore)
+          setNextOffset(response.nextOffset)
         })
         .catch((error: unknown) => {
           if (error instanceof DOMException && error.name === 'AbortError') return
           if (id !== requestId.current) return
           setResults([])
           setResultTotal(0)
+          setHasMoreResults(false)
+          setNextOffset(0)
         })
         .finally(() => {
           if (id === requestId.current) setResultsLoading(false)
@@ -264,6 +279,40 @@ export default function DeckMaker() {
       searchAbort.current?.abort()
     }
   }, [query])
+
+  useEffect(() => {
+    const sentinel = searchSentinel.current
+    if (!sentinel || query.trim() || !hasMoreResults || resultsLoading) return
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries[0]?.isIntersecting) return
+      const id = requestId.current
+      const controller = new AbortController()
+      searchAbort.current = controller
+      setResultsLoading(true)
+      fetch(`/api/cards/search?q=&offset=${nextOffset}&limit=48`, { signal: controller.signal })
+        .then((response) => response.json())
+        .then((data) => {
+          if (id !== requestId.current || controller.signal.aborted) return
+          const incoming = Array.isArray(data.cards) ? data.cards as DeckCard[] : []
+          setResults((current) => {
+            const unique = new Map(current.map((card) => [card.id, card]))
+            for (const card of incoming) unique.set(card.id, card)
+            return [...unique.values()]
+          })
+          setResultTotal(Number.isInteger(data.total) ? data.total : resultTotal)
+          setHasMoreResults(data.hasMore === true)
+          setNextOffset(Number.isInteger(data.nextOffset) ? data.nextOffset : nextOffset + incoming.length)
+        })
+        .catch((error: unknown) => {
+          if (!(error instanceof DOMException && error.name === 'AbortError')) setHasMoreResults(false)
+        })
+        .finally(() => {
+          if (id === requestId.current && !controller.signal.aborted) setResultsLoading(false)
+        })
+    }, { rootMargin: '800px 0px' })
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasMoreResults, nextOffset, query, resultTotal, resultsLoading])
 
   useEffect(() => {
     if (!selected) return
@@ -553,7 +602,7 @@ export default function DeckMaker() {
           <div data-testid="search-results" className="grid min-h-24 grid-cols-4 gap-1.5 p-2.5 sm:gap-2 sm:p-3">
             {query.trim() && resultTotal > 0 && <p className="col-span-4 text-xs font-bold text-slate-500">{resultTotal}件・新しい収録順</p>}
             {resultsLoading && results.length === 0 && <p className="col-span-4 py-8 text-center text-sm text-slate-500">カードを読み込み中…</p>}
-            {resultsLoading && results.length > 0 && <p className="col-span-4 text-xs font-bold text-blue-600">検索結果を更新中…</p>}
+            {resultsLoading && results.length > 0 && query.trim() && <p className="col-span-4 text-xs font-bold text-blue-600">検索結果を更新中…</p>}
             {!resultsLoading && results.length === 0 && <p className="col-span-4 py-8 text-center text-sm text-slate-500">該当カードがありません</p>}
             {results.map((card) => {
               const count = countsByCard.get(card.id) ?? 0
@@ -566,6 +615,8 @@ export default function DeckMaker() {
                 </article>
               )
             })}
+            <div ref={searchSentinel} aria-hidden="true" className="col-span-4 h-px" />
+            {resultsLoading && results.length > 0 && !query.trim() && <p className="col-span-4 py-2 text-center text-xs text-slate-500">カードを読み込み中…</p>}
           </div>
         </section>
       </div>

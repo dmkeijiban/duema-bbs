@@ -9,6 +9,8 @@ const MAX_QUERY_LENGTH = 80
 const QUERY_BATCH_SIZE = 500
 const CATALOG_CACHE_MS = 15 * 60 * 1000
 const DEFAULT_RESULTS = 32
+const DEFAULT_PAGE_SIZE = 48
+const MAX_PAGE_SIZE = 100
 const CHARISMA_BEST_DEFAULTS = [
   ['瀑水神 ミヅハノオオミカミ', '001'],
   ['世界竜皇 ボルシャック・ヒカリスマ', '002'],
@@ -59,6 +61,7 @@ type Row = {
   normalized_name: string
   name_kana: string | null
   image_url: string | null
+  source_key: string | null
   card_printings?: Printing[]
 }
 
@@ -146,37 +149,57 @@ export async function GET(request: NextRequest) {
   if (rawQuery.length > MAX_QUERY_LENGTH || /[\u0000-\u001f\u007f]/.test(rawQuery)) return NextResponse.json({ error: 'Invalid query' }, { status: 400 })
   const normalizedQuery = normalizeCardName(rawQuery)
   const kanaQuery = rawQuery.normalize('NFKC')
+  const requestedOffset = Number(request.nextUrl.searchParams.get('offset') ?? '0')
+  const requestedLimit = Number(request.nextUrl.searchParams.get('limit') ?? String(DEFAULT_PAGE_SIZE))
+  const offset = Number.isInteger(requestedOffset) && requestedOffset >= 0 ? requestedOffset : 0
+  const limit = Number.isInteger(requestedLimit) ? Math.min(MAX_PAGE_SIZE, Math.max(DEFAULT_PAGE_SIZE, requestedLimit)) : DEFAULT_PAGE_SIZE
   try {
     const supabase = createAdminClient()
-    const columns = 'id,name,normalized_name,name_kana,image_url,card_printings(source_key,official_page_url,image_url,set_name,is_representative)'
+    const columns = 'id,name,normalized_name,name_kana,image_url,source_key,card_printings(source_key,official_page_url,image_url,set_name,is_representative)'
     if (!rawQuery) {
       const result = await supabase.from('cards').select(columns).eq('is_active', true).in('normalized_name', CHARISMA_BEST_DEFAULTS.map(([name]) => normalizeCardName(name)))
       if (result.error) throw result.error
-      const unique = new Map<string, DeckCard>()
+      const featured = new Map<string, DeckCard>()
       const rowsByName = new Map(((result.data ?? []) as Row[]).map((row) => [normalizeCardName(row.name), row]))
       for (const [name, imageNumber] of CHARISMA_BEST_DEFAULTS) {
         const row = rowsByName.get(normalizeCardName(name))
         if (!row) continue
         const card = mapCard(row)
-        unique.set(card.id, { ...card, imageUrl: charismaImageUrl(imageNumber) })
+        featured.set(card.id, { ...card, imageUrl: charismaImageUrl(imageNumber) })
       }
-      if (unique.size < DEFAULT_RESULTS) {
-        const fallbackResult = await supabase.from('cards').select(columns).eq('is_active', true).order('name').limit(DEFAULT_RESULTS)
-        if (fallbackResult.error) throw fallbackResult.error
-        for (const row of (fallbackResult.data ?? []) as Row[]) {
-          const card = mapCard(row)
-          if (!unique.has(card.id)) unique.set(card.id, card)
-          if (unique.size === DEFAULT_RESULTS) break
-        }
+
+      const featuredCards = [...featured.values()]
+      const featuredCount = featuredCards.length
+      const regularOffset = Math.max(0, offset - featuredCount)
+      const regularLimit = offset === 0 ? Math.max(0, limit - featuredCount) : limit
+      let regularRows: Row[] = []
+      let regularTotal = 0
+      if (regularLimit > 0) {
+        let regularQuery = supabase
+          .from('cards')
+          .select(columns, { count: 'exact' })
+          .eq('is_active', true)
+          .order('source_key', { ascending: false, nullsFirst: false })
+          .order('id', { ascending: true })
+          .range(regularOffset, regularOffset + regularLimit - 1)
+        if (featuredCount > 0) regularQuery = regularQuery.not('id', 'in', `(${[...featured.keys()].join(',')})`)
+        const regularResult = await regularQuery
+        if (regularResult.error) throw regularResult.error
+        regularRows = (regularResult.data ?? []) as unknown as Row[]
+        regularTotal = regularResult.count ?? regularRows.length
       }
-      return NextResponse.json({ cards: [...unique.values()], total: unique.size, hasMore: false }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
+
+      const cards = [...(offset === 0 ? featuredCards : []), ...regularRows.map(mapCard)]
+      const total = featuredCount + regularTotal
+      const nextOffset = offset + cards.length
+      return NextResponse.json({ cards, total, hasMore: nextOffset < total, nextOffset }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
     }
 
     const cards = (await getMatches(supabase, columns, normalizedQuery, kanaQuery)).map(mapCard)
-    return NextResponse.json({ cards, total: cards.length, hasMore: false }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
+    return NextResponse.json({ cards, total: cards.length, hasMore: false, nextOffset: cards.length }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
   } catch {
     const allCards = rawQuery ? LOCAL_DECK_CARDS.filter((card) => matchesCard(card, rawQuery)) : LOCAL_DECK_CARDS
     const cards = rawQuery ? allCards : allCards.slice(0, DEFAULT_RESULTS)
-    return NextResponse.json({ cards, total: allCards.length, hasMore: false, fallback: true }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
+    return NextResponse.json({ cards, total: allCards.length, hasMore: false, nextOffset: cards.length, fallback: true }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
   }
 }
