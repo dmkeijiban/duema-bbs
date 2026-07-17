@@ -320,7 +320,6 @@ export default function DeckMaker() {
     const scroller = printingsScroller.current
     if (!scroller) return
     printingDrag.current = { active: true, moved: false, startX: event.clientX, scrollLeft: scroller.scrollLeft }
-    scroller.setPointerCapture(event.pointerId)
   }
 
   function movePrintingDrag(event: ReactPointerEvent<HTMLDivElement>) {
@@ -328,7 +327,10 @@ export default function DeckMaker() {
     const scroller = printingsScroller.current
     if (!drag.active || !scroller) return
     const distance = event.clientX - drag.startX
-    if (Math.abs(distance) > 5) drag.moved = true
+    if (Math.abs(distance) > 5 && !drag.moved) {
+      drag.moved = true
+      scroller.setPointerCapture(event.pointerId)
+    }
     if (drag.moved) {
       event.preventDefault()
       scroller.scrollLeft = drag.scrollLeft - distance
