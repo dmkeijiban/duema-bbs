@@ -15,6 +15,7 @@
     "cards:faces:collect": "node scripts/cards/collect-official-card-faces.mjs",
     "cards:faces:verify": "node scripts/cards/verify-card-faces.mjs",
     "cards:faces:audit-samples": "node scripts/cards/audit-card-face-samples.mjs",
+    "cards:faces:progress": "node scripts/cards/report-card-face-progress.mjs",
     "cards:faces:import": "node scripts/cards/import-card-faces.mjs",
     "maker:validate:dm26-ex2": "node scripts/fixtures/validate-dm26-ex2-tier-pool.mjs"
   },

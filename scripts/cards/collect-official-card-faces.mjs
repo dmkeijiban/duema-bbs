@@ -15,6 +15,8 @@ const forceKeys = new Set(String(args.get('--force') ?? '').split(',').filter(Bo
 const MIN_INTERVAL_MS = 1_100
 const MAX_ATTEMPTS = 4
 let lastFetchAt = 0
+let currentIntervalMs = MIN_INTERVAL_MS
+let consecutive429 = 0
 
 const readJson = async (path, fallback) => { try { return JSON.parse(await readFile(path, 'utf8')) } catch { return fallback } }
 const saveJson = async (path, value) => { await mkdir(dirname(path), { recursive: true }); await writeFile(path, `${JSON.stringify(value, null, 2)}\n`) }
@@ -62,14 +64,23 @@ for (const [officialPageUrl, rows] of candidates) {
   if (cacheOnly && !html) continue
   for (let attempt = 1; !html && attempt <= MAX_ATTEMPTS; attempt += 1) {
     try {
-      const wait = Math.max(0, MIN_INTERVAL_MS - (Date.now() - lastFetchAt))
+      const wait = Math.max(0, currentIntervalMs - (Date.now() - lastFetchAt))
       if (wait) await sleep(wait)
       lastFetchAt = Date.now()
       const response = await fetch(officialPageUrl, { redirect: 'error', signal: AbortSignal.timeout(20_000), headers: { 'User-Agent': 'DuemaBBSCardFaceImporter/1.0 (+https://www.duema-bbs.com/contact)' } })
       responseStatus = response.status
       base.attempts += 1
-      if (response.status === 429) throw Object.assign(new Error('429 rate limited; run stopped'), { stop: true })
+      if (response.status === 429) {
+        consecutive429 += 1
+        const retryAfter = response.headers.get('retry-after')
+        const retryAfterMs = retryAfter && /^\d+$/.test(retryAfter) ? Number(retryAfter) * 1_000 : 0
+        currentIntervalMs = Math.max(currentIntervalMs * 2, retryAfterMs, MIN_INTERVAL_MS)
+        if (consecutive429 >= 2) throw Object.assign(new Error(`429 rate limited twice; run stopped at ${currentIntervalMs}ms interval`), { stop: true })
+        await sleep(currentIntervalMs)
+        continue
+      }
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      consecutive429 = 0
       html = await response.text()
     } catch (error) {
       lastError = error
