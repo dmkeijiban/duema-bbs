@@ -16,12 +16,14 @@ const full = args.has('--full')
 const maxPages = Number(args.get('--max-pages') ?? 3)
 const maxCards = Number(args.get('--max-cards') ?? 3)
 const concurrency = Number(args.get('--concurrency') ?? 1)
+const product = String(args.get('--product') ?? '')
 const checkpointPath = resolve(String(args.get('--checkpoint') ?? 'data/cards/official-catalog.checkpoint.json'))
 const outputPath = resolve(String(args.get('--output') ?? 'data/cards/official-catalog.json'))
 
 if (!Number.isInteger(maxPages) || maxPages < 1 || !Number.isInteger(maxCards) || maxCards < 1) throw new Error('上限は1以上の整数にしてください')
 if (concurrency !== 1) throw new Error('安全のため concurrency は1だけ使用できます')
 if (!full && (maxPages > 3 || maxCards > 3)) throw new Error('検証実行は最大3ページ・最大3カードです')
+if (product && !/^[a-z0-9]+$/i.test(product)) throw new Error('商品コードが不正です')
 if (full && (!execute || args.get('--confirm') !== 'I_UNDERSTAND_FULL_CATALOG' || process.env.CARD_CATALOG_FULL_RUN !== 'YES')) throw new Error('全件実行には --execute --full --confirm=I_UNDERSTAND_FULL_CATALOG と CARD_CATALOG_FULL_RUN=YES が必要です')
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms))
@@ -108,7 +110,7 @@ async function readCheckpoint() { try { return JSON.parse(await readFile(checkpo
 async function saveCheckpoint(checkpoint) { await mkdir(dirname(checkpointPath), { recursive: true }); await writeFile(checkpointPath, JSON.stringify(checkpoint, null, 2)) }
 
 if (!execute) {
-  console.log(JSON.stringify({ mode: 'dry-run', requests: 0, full, maxPages, maxCards, concurrency, minIntervalMs: MIN_INTERVAL_MS, maxExpectedCards: MAX_EXPECTED_CARDS, userAgent: USER_AGENT, checkpointPath, outputPath }, null, 2))
+  console.log(JSON.stringify({ mode: 'dry-run', requests: 0, full, product: product || null, maxPages, maxCards, concurrency, minIntervalMs: MIN_INTERVAL_MS, maxExpectedCards: MAX_EXPECTED_CARDS, userAgent: USER_AGENT, checkpointPath, outputPath }, null, 2))
   process.exit(0)
 }
 
@@ -119,6 +121,7 @@ const checkpoint = await readCheckpoint()
 while (checkpoint.cards.length < maxCards && (checkpoint.pending.length || checkpoint.nextPage <= maxPages)) {
   if (!checkpoint.pending.length) {
     const body = new URLSearchParams({ pagenum: String(checkpoint.nextPage), samename: 'show' })
+    if (product) body.set('products', product)
     const html = await (await safeFetch(SEARCH_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body })).text()
     checkpoint.requests += 1
     const page = parseSearchPage(html)

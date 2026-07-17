@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-07-17T22:45:00.285Z",
+  "previewPrintings": 149,
+  "officialPrintings": 154,
+  "officialLogicalCards": 134,
+  "matched": 149,
+  "ambiguous": 0,
+  "preview_only": 0,
+  "official_only": 5,
+  "already_migrated": 0,
+  "oneToOne": 149,
+  "duplicateMatchedOfficialKeys": 0,
+  "officialSourceKeyDuplicates": 0,
+  "cardNumberDuplicates": [],
+  "stopRequired": false
+}
