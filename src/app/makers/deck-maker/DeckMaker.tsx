@@ -604,7 +604,7 @@ export default function DeckMaker() {
               <div className="mt-3 flex items-center justify-center gap-5">
                 <button type="button" onClick={() => remove(selected)} disabled={selectedCount === 0} aria-label={`${selected.name}を1枚減らす`} className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 text-2xl font-bold disabled:text-slate-300">−</button>
                 <div className="min-w-20 text-center"><span className="text-3xl font-black">{selectedCount}</span></div>
-                <button type="button" onClick={() => add(selected)} disabled={selectedNameCount >= MAX_SAME_CARD || total >= MAX_DECK_CARDS} aria-label={`${selected.name}を1枚増やす`} className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-700 text-2xl font-bold text-white disabled:bg-slate-400">＋</button>
+                <button type="button" onClick={() => add(selected)} disabled={selectedNameCount >= MAX_SAME_CARD} aria-label={`${selected.name}を1枚増やす`} className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-700 text-2xl font-bold text-white disabled:bg-slate-400">＋</button>
               </div>
               <div className="mt-5">
                 {printingsLoading && <p className="mb-2 text-center text-xs font-bold text-slate-500">別イラストを読み込み中…</p>}
