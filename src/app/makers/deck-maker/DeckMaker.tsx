@@ -169,6 +169,7 @@ export default function DeckMaker() {
   const printingsAbort = useRef<AbortController | null>(null)
   const searchCache = useRef(new Map<string, SearchResponse>())
   const searchInput = useRef<HTMLInputElement>(null)
+  const searchResults = useRef<HTMLDivElement>(null)
   const searchSentinel = useRef<HTMLDivElement>(null)
   const printingsScroller = useRef<HTMLDivElement>(null)
   const printingDrag = useRef({ active: false, moved: false, startX: 0, scrollLeft: 0 })
@@ -320,7 +321,7 @@ export default function DeckMaker() {
         .finally(() => {
           if (id === requestId.current && !controller.signal.aborted) setResultsLoading(false)
         })
-    }, { rootMargin: '800px 0px' })
+    }, { root: searchResults.current, rootMargin: '800px 0px' })
     observer.observe(sentinel)
     return () => observer.disconnect()
   }, [hasMoreResults, nextOffset, query, resultTotal, resultsLoading])
@@ -620,7 +621,7 @@ export default function DeckMaker() {
               <button type="button" aria-label="絞り込み（準備中）" title="絞り込みは今後対応予定" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 text-slate-500"><Icon name="filter" /></button>
             </div>
           </div>
-          <div data-testid="search-results" className="grid min-h-24 grid-cols-4 gap-1.5 p-2.5 sm:gap-2 sm:p-3">
+          <div ref={searchResults} data-testid="search-results" className="grid h-[65dvh] min-h-[360px] max-h-[680px] grid-cols-4 gap-1.5 overflow-y-auto overscroll-contain p-2.5 sm:gap-2 sm:p-3 lg:h-[calc(100dvh-170px)] lg:max-h-none">
             <div className="col-span-4 flex min-h-5 items-center text-xs font-bold text-slate-500">
               {query.trim() && resultTotal > 0 && <span>{resultTotal}件・新しい収録順</span>}
               {resultsLoading && results.length > 0 && query.trim() && <span className="ml-auto text-blue-600">検索結果を更新中…</span>}
