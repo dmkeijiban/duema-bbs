@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
-import { classifyFailure, contentHash, extractOfficialCardFaces, OFFICIAL_DETAIL_URL } from './card-face-extraction.mjs'
+import { classifyFailure, contentHash, extractOfficialCardFaces, OFFICIAL_DETAIL_URL, PARSER_VERSION } from './card-face-extraction.mjs'
 
 const args = new Map(process.argv.slice(2).map((arg) => { const [key, ...value] = arg.split('='); return [key, value.join('=') || true] }))
 const inputPath = resolve(String(args.get('--input') ?? 'data/cards/card-printings.json'))
@@ -10,6 +10,7 @@ const outputPath = resolve(String(args.get('--output') ?? 'data/cards/card-faces
 const cacheDir = resolve(String(args.get('--cache-dir') ?? 'data/cards/official-html-cache'))
 const maxItems = Number(args.get('--max-items') ?? 3)
 const execute = args.has('--execute')
+const cacheOnly = args.has('--cache-only')
 const forceKeys = new Set(String(args.get('--force') ?? '').split(',').filter(Boolean))
 const MIN_INTERVAL_MS = 1_100
 const MAX_ATTEMPTS = 4
@@ -39,7 +40,7 @@ for (const row of printings) {
 
 const candidates = [...byUrl.entries()].filter(([url, rows]) => {
   const previous = checkpoint.items[rows[0].source_key]
-  return forceKeys.has(rows[0].source_key) || !previous || !['success', 'not_modified'].includes(previous.status) || previous.official_page_url !== url
+  return forceKeys.has(rows[0].source_key) || !previous || !['success', 'not_modified'].includes(previous.status) || previous.official_page_url !== url || previous.parser_version !== PARSER_VERSION
 }).slice(0, maxItems)
 
 for (const [officialPageUrl, rows] of candidates) {
@@ -53,10 +54,12 @@ for (const [officialPageUrl, rows] of candidates) {
   }
 
   let html = null
+  let cacheUsed = false
   let responseStatus = 0
   let lastError = null
   const cachedHtml = await readFile(cachePath(sourceKey), 'utf8').catch(() => null)
-  if (cachedHtml && !forceKeys.has(sourceKey)) html = cachedHtml
+  if (cachedHtml && !forceKeys.has(sourceKey)) { html = cachedHtml; cacheUsed = true }
+  if (cacheOnly && !html) continue
   for (let attempt = 1; !html && attempt <= MAX_ATTEMPTS; attempt += 1) {
     try {
       const wait = Math.max(0, MIN_INTERVAL_MS - (Date.now() - lastFetchAt))
@@ -85,17 +88,17 @@ for (const [officialPageUrl, rows] of candidates) {
   await mkdir(cacheDir, { recursive: true })
   await writeFile(cachePath(sourceKey), html)
   const hash = contentHash(html)
-  if (previous?.content_hash === hash && previous?.status === 'success' && !forceKeys.has(sourceKey)) {
-    checkpoint.items[sourceKey] = { ...previous, ...base, status: 'not_modified' }
+  if (previous?.content_hash === hash && previous?.status === 'success' && previous?.parser_version === PARSER_VERSION && !forceKeys.has(sourceKey)) {
+    checkpoint.items[sourceKey] = { ...previous, ...base, status: 'not_modified', cache_used: cacheUsed, parser_version: PARSER_VERSION }
     await saveJson(checkpointPath, checkpoint)
     continue
   }
   const faces = extractOfficialCardFaces(html, officialPageUrl)
   if (!faces.length) {
-    checkpoint.items[sourceKey] = { ...base, status: 'parse_failed', last_error: 'cardDetail not found', content_hash: hash, extracted_face_count: 0 }
+    checkpoint.items[sourceKey] = { ...base, status: 'parse_failed', last_error: 'cardDetail not found', content_hash: hash, extracted_face_count: 0, cache_used: cacheUsed, parser_version: PARSER_VERSION }
   } else {
     checkpoint.items[sourceKey] = {
-      ...base, status: 'success', last_error: null, content_hash: hash, extracted_face_count: faces.length, faces,
+      ...base, status: 'success', last_error: null, content_hash: hash, extracted_face_count: faces.length, faces, cache_used: cacheUsed, parser_version: PARSER_VERSION,
       printings: rows.map((row) => ({ id: row.id ?? null, card_id: row.card_id ?? null, source_key: row.source_key })),
     }
   }

@@ -16,3 +16,12 @@
 `scripts/cards/collect-official-card-faces.mjs`が同一URLを1回だけ取得し、HTMLキャッシュ、checkpoint、SHA-256 content hashを保存する。成功済みかつURL未変更の行は対象外。同じ内容は再解析・再upsertしない。新規公式ID、URL変更、前回失敗、未完了、明示的な`--force`だけを処理する。
 
 キャッシュとcheckpointは`data/cards/`配下に置き、Gitへ追加しない。DB投入前に`verify-card-faces.mjs`でJSON成果物を検証する。
+
+## 1,000件後の抽出精度監査
+
+- parser v4へ更新。各成果物に`parser_version`、`card_number`、`card_type`を保存する。
+- ランダム10、サイキック5、ドラグハート3、3面特殊2の計20件をキャッシュHTMLから再解析。
+- 正常20件は面順、front/back、カード番号、親`cards.id`、面ごとの異なる画像、公式URL、画像HTTP応答をすべて通過。
+- ツインパクトの2つ目の`cardDetail`は画像srcが空で、カード面ではなく呪文側メタデータ。同ブロックから後続SNSアイコンを画像として拾う誤検出を修正し、空画像detailを除外した。
+- `dmex08-111`の2面目は公式HTML自体が`{...} Bottom`形式のプレースホルダー名。面・画像構造は正しいが検索名へ投入せず`needs_review`へ自動隔離する。
+- parser更新時は取得成功状態とHTMLキャッシュを維持し、古いparser_versionだけを再解析する。公式ページ再取得は0件。

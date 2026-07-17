@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 
 export const OFFICIAL_DETAIL_URL = /^https:\/\/dm\.takaratomy\.co\.jp\/card\/detail\/?\?id=([a-z0-9_-]+)$/i
+export const PARSER_VERSION = 4
 
 const decode = (value) => value
   .replace(/<br\s*\/?\s*>/gi, '\n')
@@ -22,6 +23,10 @@ export function contentHash(html) {
   return createHash('sha256').update(html).digest('hex')
 }
 
+export function isSuspiciousFaceName(name) {
+  return /\{[^}]+\}\s*(?:Top|Bottom)\b/i.test(name) || /(?:^|\s)(?:Top|Bottom)$/.test(name)
+}
+
 export function extractOfficialCardFaces(html, officialPageUrl) {
   const starts = [...html.matchAll(/<div\b[^>]*class=(['"])[^'"]*\bcardDetail\b[^'"]*\1[^>]*>/gi)]
   return starts.map((start, sideIndex) => {
@@ -29,19 +34,23 @@ export function extractOfficialCardFaces(html, officialPageUrl) {
     const to = starts[sideIndex + 1]?.index ?? html.indexOf('<div class="productCard">', from)
     const block = html.slice(from, to > from ? to : html.length)
     const name = capture(block, /<h3\b[^>]*class=(?:['"])[^'"]*\bcard-name\b[^'"]*(?:['"])[^>]*>([\s\S]*?)(?:<span\b[^>]*class=(?:['"])[^'"]*\bpackname\b|<\/h3>)/i)
-    const imagePath = block.match(/<div\b[^>]*class=(?:['"])[^'"]*\bcard-img\b[^'"]*(?:['"])[^>]*>[\s\S]*?<img\b[^>]*src=(?:['"])([^'"]+)/i)?.[1] ?? null
+    const packLabel = capture(block, /<span\b[^>]*class=(?:['"])[^'"]*\bpackname\b[^'"]*(?:['"])[^>]*>\s*\((.*?)\)\s*<\/span>/i)
+    const imagePath = block.match(/<div\b[^>]*class=(?:['"])[^'"]*\bcard-img\b[^'"]*(?:['"])[^>]*>\s*<img\b[^>]*src=(?:['"])([^'"]*)/i)?.[1] ?? null
+    const imageUrl = imagePath ? new URL(imagePath, officialPageUrl) : null
     const kindText = capture(block, /<td\b[^>]*class=(?:['"])[^'"]*\btype\b[^'"]*(?:['"])[^>]*>([\s\S]*?)<\/td>/i)
     return name ? {
       side_index: sideIndex,
-      side_kind: sideIndex === 0 ? 'front' : kindText?.includes('呪文') ? 'spell' : sideIndex === 1 ? 'back' : 'other',
+      side_kind: sideIndex === 0 ? 'front' : 'back',
       name,
       normalized_name: normalizeCardName(name),
       name_kana: null,
-      image_url: imagePath ? new URL(imagePath, officialPageUrl).href : null,
+      card_number: packLabel?.replace(/^\S+\s+/, '') ?? null,
+      card_type: kindText,
+      image_url: imageUrl?.origin === new URL(officialPageUrl).origin && imageUrl.pathname.startsWith('/wp-content/card/cardimage/') ? imageUrl.href : null,
       official_page_url: officialPageUrl,
-      extraction_status: 'name_kana_pending',
+      extraction_status: isSuspiciousFaceName(name) ? 'needs_review' : 'name_kana_pending',
     } : null
-  }).filter(Boolean)
+  }).filter((face) => Boolean(face?.name && face.image_url))
 }
 
 export function classifyFailure(status, error) {
