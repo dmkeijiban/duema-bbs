@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-17T23:11:00.187Z",
+  "generatedAt": "2026-07-17T23:42:01.810Z",
   "readOnly": true,
   "previewPrintings": 149,
   "officialPrintingsAlreadyPresent": 0,
@@ -10,6 +10,97 @@
   "duplicateOfficialSourceKeys": 0,
   "cards": 134,
   "cardsMissingNameKana": 134,
+  "officialNameCollisionCount": 8,
+  "officialNameCollisions": [
+    {
+      "officialNormalizedName": "轟䡛合体ゴルギーオージャー",
+      "existingCardId": "56f946ee-9c48-4672-af4d-a3db817e13cd",
+      "existingName": "轟䡛合体 ゴルギーオージャー",
+      "existingIsActive": true,
+      "existingSourceKind": null,
+      "existingSourceKey": null,
+      "affectedCardIds": [
+        "cbf683f7-316d-48cf-acb5-aa5078314538"
+      ]
+    },
+    {
+      "officialNormalizedName": "堕∞魔ヴォゲンム",
+      "existingCardId": "48aa9038-c8d3-4566-ab9e-4b57dc9300bc",
+      "existingName": "堕∞魔 ヴォゲンム",
+      "existingIsActive": true,
+      "existingSourceKind": null,
+      "existingSourceKey": null,
+      "affectedCardIds": [
+        "180a8b8c-4886-478d-bef5-f89723e1f0eb"
+      ]
+    },
+    {
+      "officialNormalizedName": "~墓碑に刻まれし魔弾の名~",
+      "existingCardId": "f6cfd9a9-c46f-4006-a059-5a98f5399494",
+      "existingName": "～墓碑に刻まれし魔弾の名～",
+      "existingIsActive": true,
+      "existingSourceKind": null,
+      "existingSourceKey": null,
+      "affectedCardIds": [
+        "625c2fd3-1927-47ff-beed-ba3e6fbcc780"
+      ]
+    },
+    {
+      "officialNormalizedName": "氷柱と炎弧の決断",
+      "existingCardId": "e2064b42-671a-4cb2-9de3-9d815bbb69c6",
+      "existingName": "氷柱と炎弧の決断",
+      "existingIsActive": true,
+      "existingSourceKind": null,
+      "existingSourceKey": null,
+      "affectedCardIds": [
+        "2998fc0a-da43-41b1-9f99-ec614cf675e0"
+      ]
+    },
+    {
+      "officialNormalizedName": "一王伝双三眼槍",
+      "existingCardId": "14f5e0b6-575a-40aa-9489-8d7263b91024",
+      "existingName": "一王伝双三眼槍",
+      "existingIsActive": true,
+      "existingSourceKind": null,
+      "existingSourceKey": null,
+      "affectedCardIds": [
+        "a42ab8df-eb4d-4bd5-83ec-ecde78699dd3"
+      ]
+    },
+    {
+      "officialNormalizedName": "レーホウ・衛・デカッチ/「暴竜爵様のお出ましだッチ!」",
+      "existingCardId": "f4111132-31ad-477b-92b1-4b6847214a27",
+      "existingName": "レーホウ・衛・デカッチ / 「暴竜爵様のお出ましだッチ！」",
+      "existingIsActive": true,
+      "existingSourceKind": null,
+      "existingSourceKey": null,
+      "affectedCardIds": [
+        "9ac1186e-5590-4db0-91d0-b7494be53bf0"
+      ]
+    },
+    {
+      "officialNormalizedName": "オンソク童子",
+      "existingCardId": "fbefe031-7f0b-4c06-851c-36e029b5c7e5",
+      "existingName": "オンソク童子",
+      "existingIsActive": true,
+      "existingSourceKind": null,
+      "existingSourceKey": null,
+      "affectedCardIds": [
+        "add278b6-06bc-4ca7-90f4-82a0df270dd0"
+      ]
+    },
+    {
+      "officialNormalizedName": "魔光蟲ヴィルジニア卿",
+      "existingCardId": "a688daa9-a041-4b46-9ac7-71d9eb29748f",
+      "existingName": "魔光蟲ヴィルジニア卿",
+      "existingIsActive": true,
+      "existingSourceKind": null,
+      "existingSourceKey": null,
+      "affectedCardIds": [
+        "f370a0f4-44e7-4351-8824-22de4d7cc42f"
+      ]
+    }
+  ],
   "makerProjectLinks": 94,
   "makerProjectLinkedPreviewCards": 94,
   "makerProjectFirst32CardIds": [

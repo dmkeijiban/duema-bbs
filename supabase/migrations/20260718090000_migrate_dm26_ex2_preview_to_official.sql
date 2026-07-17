@@ -180,14 +180,51 @@ insert into public.card_printing_source_aliases(old_source_key,printing_id,offic
 select m.preview_source_key,p.id,m.official_source_key from dm26_ex2_match m join public.card_printings p on p.source_key in (m.preview_source_key,m.official_source_key)
 on conflict(old_source_key) do update set printing_id=excluded.printing_id,official_source_key=excluded.official_source_key;
 
+create table if not exists public.card_logical_aliases (
+  old_card_id uuid primary key references public.cards(id) on delete restrict,
+  canonical_card_id uuid not null references public.cards(id) on delete restrict,
+  reason text not null,
+  created_at timestamptz not null default now(),
+  check (old_card_id <> canonical_card_id)
+);
+create index if not exists card_logical_aliases_canonical_idx on public.card_logical_aliases(canonical_card_id);
+
+create temp table dm26_ex2_card_merge on commit drop as
+select distinct p.card_id as old_card_id, other.id as canonical_card_id
+from dm26_ex2_match m
+join public.card_printings p on p.source_key in (m.preview_source_key,m.official_source_key)
+join public.cards other on other.normalized_name=m.official_normalized_name and other.id<>p.card_id;
+
 do $$ begin
+  if exists(select 1 from dm26_ex2_card_merge group by old_card_id having count(*)<>1)
+    then raise exception 'DM26-EX2 logical card maps to multiple canonical cards'; end if;
+  if exists(select 1 from dm26_ex2_card_merge group by canonical_card_id having count(*)<>1)
+    then raise exception 'DM26-EX2 multiple logical cards map to one canonical card'; end if;
   if exists(
-    select 1 from (
-      select distinct p.card_id,m.official_normalized_name
-      from dm26_ex2_match m join public.card_printings p on p.source_key in (m.preview_source_key,m.official_source_key)
-    ) x join public.cards other on other.normalized_name=x.official_normalized_name and other.id<>x.card_id
-  ) then raise exception 'DM26-EX2 normalized_name collision'; end if;
+    select 1 from dm26_ex2_card_merge m
+    join public.maker_project_cards old_link on old_link.card_id=m.old_card_id
+    join public.maker_project_cards canonical_link on canonical_link.project_id=old_link.project_id and canonical_link.card_id=m.canonical_card_id
+  ) then raise exception 'DM26-EX2 maker project card merge conflict'; end if;
+  if exists(
+    select 1 from dm26_ex2_card_merge m
+    join public.maker_submission_items old_item on old_item.card_id=m.old_card_id
+    join public.maker_submission_items canonical_item on canonical_item.submission_id=old_item.submission_id and canonical_item.card_id=m.canonical_card_id
+  ) then raise exception 'DM26-EX2 maker submission card merge conflict'; end if;
 end $$;
+
+insert into public.card_logical_aliases(old_card_id,canonical_card_id,reason)
+select old_card_id,canonical_card_id,'dm26-ex2-preview-official-migration' from dm26_ex2_card_merge
+on conflict(old_card_id) do update set canonical_card_id=excluded.canonical_card_id,reason=excluded.reason;
+
+update public.maker_project_cards x set card_id=m.canonical_card_id from dm26_ex2_card_merge m where x.card_id=m.old_card_id;
+update public.maker_submission_items x set card_id=m.canonical_card_id from dm26_ex2_card_merge m where x.card_id=m.old_card_id;
+do $$ begin
+  if to_regclass('public.zukan_cards') is not null then
+    execute 'update public.zukan_cards x set card_id=m.canonical_card_id from dm26_ex2_card_merge m where x.card_id=m.old_card_id';
+  end if;
+end $$;
+update public.card_printings x set card_id=m.canonical_card_id from dm26_ex2_card_merge m where x.card_id=m.old_card_id;
+update public.cards x set is_active=false from dm26_ex2_card_merge m where x.id=m.old_card_id;
 
 with official_cards as (
   select distinct on (p.card_id) p.card_id,m.official_name,m.official_normalized_name

@@ -17,8 +17,8 @@ const officialKeys = matches.filter((row) => row.officialSourceKey).map((row) =>
 
 async function selectIn(table, columns, column, values) {
   const rows = []
-  for (let index = 0; index < values.length; index += 100) {
-    const { data, error } = await supabase.from(table).select(columns).in(column, values.slice(index, index + 100))
+  for (let index = 0; index < values.length; index += 20) {
+    const { data, error } = await supabase.from(table).select(columns).in(column, values.slice(index, index + 20))
     if (error) throw error
     rows.push(...data)
   }
@@ -39,6 +39,20 @@ for (const match of matches) {
   match.officialNormalizedName = match.officialName ? normalizeName(match.officialName) : null
 }
 if (matches.some((match) => !match.cardId)) throw new Error('照合JSONのcardId補完に失敗しました')
+const officialNormalizedNames = [...new Set(matches.map((match) => match.officialNormalizedName))]
+const cardsWithOfficialNames = await selectIn('cards', 'id,name,normalized_name,is_active,source_kind,source_key', 'normalized_name', officialNormalizedNames)
+const affectedCardIds = new Set(matches.map((match) => match.cardId))
+const officialNameCollisions = cardsWithOfficialNames
+  .filter((row) => !affectedCardIds.has(row.id))
+  .map((row) => ({
+    officialNormalizedName: row.normalized_name,
+    existingCardId: row.id,
+    existingName: row.name,
+    existingIsActive: row.is_active,
+    existingSourceKind: row.source_kind,
+    existingSourceKey: row.source_key,
+    affectedCardIds: [...new Set(matches.filter((match) => match.officialNormalizedName === row.normalized_name).map((match) => match.cardId))],
+  }))
 await writeFile('data/cards/dm26-ex2-preview-official-matches.json', `${JSON.stringify(matches, null, 2)}\n`)
 const projectResult = await supabase.from('maker_projects').select('id,slug').eq('slug', 'dm26-ex2-charisma-best-tier').maybeSingle()
 if (projectResult.error) throw projectResult.error
@@ -66,6 +80,7 @@ const report = {
   duplicatePreviewSourceKeys: previewPrintings.length - new Set(previewPrintings.map((row) => row.source_key)).size,
   duplicateOfficialSourceKeys: officialPrintings.length - new Set(officialPrintings.map((row) => row.source_key)).size,
   cards: cards.length, cardsMissingNameKana: cards.filter((row) => !row.name_kana).length,
+  officialNameCollisionCount: officialNameCollisions.length, officialNameCollisions,
   makerProjectLinks: projectLinks.length, makerProjectLinkedPreviewCards: projectLinks.filter((row) => previewCardIds.has(row.card_id)).length,
   makerProjectFirst32CardIds: projectLinks.slice(0, 32).map((row) => row.card_id),
   cardFacesTable, affectedCardFaces: faceRows.length,

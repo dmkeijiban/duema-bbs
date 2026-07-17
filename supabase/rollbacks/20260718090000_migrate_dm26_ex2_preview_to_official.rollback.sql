@@ -2,6 +2,20 @@
 -- Keeps all UUIDs and aliases; the five official-only SPR secret rows are hidden, never deleted.
 begin;
 
+create temp table dm26_ex2_card_merge on commit drop as
+select old_card_id,canonical_card_id from public.card_logical_aliases where reason='dm26-ex2-preview-official-migration';
+
+update public.maker_project_cards x set card_id=m.old_card_id from dm26_ex2_card_merge m where x.card_id=m.canonical_card_id;
+update public.maker_submission_items x set card_id=m.old_card_id from dm26_ex2_card_merge m where x.card_id=m.canonical_card_id;
+do $$ begin
+  if to_regclass('public.zukan_cards') is not null then
+    execute 'update public.zukan_cards x set card_id=m.old_card_id from dm26_ex2_card_merge m where x.card_id=m.canonical_card_id';
+  end if;
+end $$;
+update public.card_printings x set card_id=m.old_card_id from dm26_ex2_card_merge m
+where x.card_id=m.canonical_card_id and (x.source_key like 'dm26ex2-%' or x.source_key like 'DM26EX2-PREVIEW-%');
+update public.cards x set is_active=true from dm26_ex2_card_merge m where x.id=m.old_card_id;
+
 update public.card_printings p
 set source_key=a.old_source_key,
     official_page_url='https://dm.takaratomy.co.jp/product/dm26ex2/',
