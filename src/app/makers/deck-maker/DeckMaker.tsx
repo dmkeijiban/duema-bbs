@@ -97,7 +97,7 @@ function CardArt({ card, className = '' }: { card: DeckCard; className?: string 
         <img
           src={proxy(card.imageUrl)}
           alt={card.name}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain"
           loading="lazy"
           onError={() => setFailed(true)}
         />
