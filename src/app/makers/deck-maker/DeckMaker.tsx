@@ -124,6 +124,8 @@ function CardArtImage({ card, className, eager, source, canFallback, onThumbnail
             loading={eager ? 'eager' : 'lazy'}
             fetchPriority={eager ? 'high' : 'auto'}
             decoding="async"
+            draggable={false}
+            onDragStart={(event) => event.preventDefault()}
             onLoad={() => { loadedImageUrls.add(source); setStatus('loaded') }}
             onError={() => {
               if (canFallback) onThumbnailError()
@@ -765,7 +767,7 @@ export default function DeckMaker() {
             <button type="button" onClick={closeCard} aria-label="カード操作を閉じる" className="absolute right-2 top-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-slate-800 shadow"><Icon name="close" /></button>
             <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
               <h2 id="card-dialog-title" className="sr-only">{selected.name}</h2>
-              <CardArt key={printingKey(selected)} card={selected} full eager className="mx-auto w-full max-w-[330px] rounded-xl shadow-lg" />
+              <CardArt key={printingKey(selected)} card={selected} full eager className="mx-auto w-full max-w-[min(330px,calc((100dvh-310px)*5/7))] rounded-xl shadow-lg" />
               <div className="mt-3 flex items-center justify-center gap-5">
                 <button type="button" onClick={() => remove(selected)} disabled={selectedCount === 0} aria-label={`${selected.name}を1枚減らす`} className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 text-2xl font-bold disabled:text-slate-300">−</button>
                 <div className="min-w-20 text-center"><span className="text-3xl font-black">{selectedCount}</span></div>
@@ -775,7 +777,7 @@ export default function DeckMaker() {
                 {printingsLoading && <p className="mb-2 text-center text-xs font-bold text-slate-500">別イラストを読み込み中…</p>}
                 <div
                   ref={printingsScroller}
-                  className="flex cursor-grab gap-3 overflow-x-auto overscroll-x-contain pb-2 active:cursor-grabbing"
+                  className="flex cursor-grab select-none gap-3 overflow-x-auto overscroll-x-contain pb-2 active:cursor-grabbing"
                   onPointerDown={startPrintingDrag}
                   onPointerMove={movePrintingDrag}
                   onPointerUp={endPrintingDrag}
