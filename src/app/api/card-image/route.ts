@@ -29,7 +29,7 @@ async function fetchOfficialImage(initialUrl: URL) {
   let url = initialUrl
   for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
     const response = await fetch(url, {
-      cache: 'no-store',
+      next: { revalidate: 604_800 },
       redirect: 'manual',
       signal: AbortSignal.timeout(TIMEOUT_MS),
       headers: { Accept: 'image/avif,image/webp,image/jpeg,image/png,image/*;q=0.8', 'User-Agent': USER_AGENT },
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const response = await fetchOfficialImage(url)
-    if (!response.ok) return new NextResponse('Image fetch failed', { status: 502 })
+    if (!response.ok) return new NextResponse('Image fetch failed', { status: 502, headers: { 'Cache-Control': 'public, max-age=30, s-maxage=60' } })
     const contentType = response.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase() ?? ''
     const contentLength = Number(response.headers.get('content-length') ?? 0)
     const allowedTypes = new Set(['image/avif', 'image/gif', 'image/jpeg', 'image/png', 'image/webp'])
@@ -84,12 +84,12 @@ export async function GET(request: NextRequest) {
     if (!bytes) return new NextResponse('Image too large', { status: 413 })
 
     return new NextResponse(bytes, { headers: {
-      'Cache-Control': 'public, max-age=60, s-maxage=300',
+      'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000, immutable',
       'Content-Length': String(bytes.byteLength),
       'Content-Type': contentType,
       'X-Content-Type-Options': 'nosniff',
     } })
   } catch {
-    return new NextResponse('Image fetch failed', { status: 502 })
+    return new NextResponse('Image fetch failed', { status: 502, headers: { 'Cache-Control': 'public, max-age=30, s-maxage=60' } })
   }
 }
