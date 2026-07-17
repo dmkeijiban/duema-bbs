@@ -19,6 +19,16 @@ const SEARCH_DEBOUNCE_MS = 70
 const SEARCH_CACHE_SIZE = 40
 const SAVED_DECKS_STORAGE_KEY = 'duema-bbs:deck-maker:saved-decks'
 const proxy = (url: string) => `/api/card-image?url=${encodeURIComponent(url)}`
+const loadedImageUrls = new Set<string>()
+const prefetchedImageUrls = new Set<string>()
+
+function thumbnailUrl(card: DeckCard) {
+  const sourceKey = card.sourceKey?.trim()
+  if (sourceKey && /^[a-zA-Z0-9_-]+$/.test(sourceKey)) {
+    return `${OFFICIAL_ORIGIN}/wp-content/card/cardthumb/${sourceKey}.jpg`
+  }
+  return card.imageUrl
+}
 
 type SavedDeck = {
   id: string
@@ -85,32 +95,58 @@ function safeEntries(values: unknown): DeckEntry[] {
   return restored
 }
 
-function CardArt({ card, className = '' }: { card: DeckCard; className?: string }) {
-  const [failed, setFailed] = useState(false)
+function CardArt({ card, className = '', full = false, eager = false }: { card: DeckCard; className?: string; full?: boolean; eager?: boolean }) {
+  const [useOriginal, setUseOriginal] = useState(full)
+  const source = useOriginal ? card.imageUrl : thumbnailUrl(card)
+  const proxiedSource = source ? proxy(source) : null
+
+  return <CardArtImage key={proxiedSource ?? `missing:${card.id}`} card={card} className={className} eager={eager} proxiedSource={proxiedSource} onThumbnailError={() => {
+    if (!useOriginal && card.imageUrl && source !== card.imageUrl) setUseOriginal(true)
+  }} canFallback={!useOriginal && Boolean(card.imageUrl && source !== card.imageUrl)} />
+}
+
+function CardArtImage({ card, className, eager, proxiedSource, canFallback, onThumbnailError }: { card: DeckCard; className: string; eager: boolean; proxiedSource: string | null; canFallback: boolean; onThumbnailError: () => void }) {
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'failed'>(() => proxiedSource && loadedImageUrls.has(proxiedSource) ? 'loaded' : 'loading')
+
   return (
     <div className={`relative aspect-[5/7] overflow-hidden bg-slate-800 ${className}`}>
-      {!card.imageUrl || failed ? (
+      {!proxiedSource || status === 'failed' ? (
         <div data-testid="card-placeholder" className="flex h-full items-center justify-center p-1 text-center text-[8px] font-bold leading-tight text-white sm:text-xs">
           {card.name}
         </div>
       ) : (
-        <img
-          src={proxy(card.imageUrl)}
-          alt={card.name}
-          className="h-full w-full object-contain"
-          loading="lazy"
-          onError={() => setFailed(true)}
-        />
+        <>
+          {status === 'loading' && <div data-testid="card-image-skeleton" className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-700 via-slate-600 to-slate-700" />}
+          <img
+            key={proxiedSource}
+            src={proxiedSource}
+            alt={card.name}
+            className={`relative h-full w-full object-contain transition-opacity duration-200 ${status === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
+            loading={eager ? 'eager' : 'lazy'}
+            fetchPriority={eager ? 'high' : 'auto'}
+            decoding="async"
+            onLoad={() => { loadedImageUrls.add(proxiedSource); setStatus('loaded') }}
+            onError={() => {
+              if (canFallback) onThumbnailError()
+              else setStatus('failed')
+            }}
+          />
+        </>
       )}
     </div>
   )
 }
 
 function prefetchCardImages(cards: DeckCard[]) {
-  for (const card of cards.slice(0, 8)) {
-    if (!card.imageUrl) continue
+  for (const card of cards.slice(0, 4)) {
+    const source = thumbnailUrl(card)
+    if (!source) continue
+    const proxiedSource = proxy(source)
+    if (loadedImageUrls.has(proxiedSource) || prefetchedImageUrls.has(proxiedSource)) continue
+    prefetchedImageUrls.add(proxiedSource)
     const image = new Image()
-    image.src = proxy(card.imageUrl)
+    image.onload = () => loadedImageUrls.add(proxiedSource)
+    image.src = proxiedSource
   }
 }
 
@@ -168,6 +204,7 @@ export default function DeckMaker() {
   const searchAbort = useRef<AbortController | null>(null)
   const printingsAbort = useRef<AbortController | null>(null)
   const searchCache = useRef(new Map<string, SearchResponse>())
+  const printingsCache = useRef(new Map<string, DeckCard[]>())
   const searchInput = useRef<HTMLInputElement>(null)
   const searchResults = useRef<HTMLDivElement>(null)
   const searchSentinel = useRef<HTMLDivElement>(null)
@@ -293,14 +330,14 @@ export default function DeckMaker() {
 
   useEffect(() => {
     const sentinel = searchSentinel.current
-    if (!sentinel || query.trim() || !hasMoreResults || resultsLoading) return
+    if (!sentinel || !hasMoreResults || resultsLoading) return
     const observer = new IntersectionObserver((entries) => {
       if (!entries[0]?.isIntersecting) return
       const id = requestId.current
       const controller = new AbortController()
       searchAbort.current = controller
       setResultsLoading(true)
-      fetch(`/api/cards/search?q=&offset=${nextOffset}&limit=48`, { signal: controller.signal })
+      fetch(`/api/cards/search?q=${encodeURIComponent(query.trim())}&offset=${nextOffset}&limit=48`, { signal: controller.signal })
         .then((response) => response.json())
         .then((data) => {
           if (id !== requestId.current || controller.signal.aborted) return
@@ -311,6 +348,17 @@ export default function DeckMaker() {
             for (const card of incoming) unique.set(card.id, card)
             return [...unique.values()]
           })
+          const cached = searchCache.current.get(query.trim())
+          if (cached) {
+            const unique = new Map(cached.cards.map((card) => [card.id, card]))
+            for (const card of incoming) unique.set(card.id, card)
+            searchCache.current.set(query.trim(), {
+              cards: [...unique.values()],
+              total: Number.isInteger(data.total) ? data.total : cached.total,
+              hasMore: data.hasMore === true,
+              nextOffset: Number.isInteger(data.nextOffset) ? data.nextOffset : nextOffset + incoming.length,
+            })
+          }
           setResultTotal(Number.isInteger(data.total) ? data.total : resultTotal)
           setHasMoreResults(data.hasMore === true)
           setNextOffset(Number.isInteger(data.nextOffset) ? data.nextOffset : nextOffset + incoming.length)
@@ -343,22 +391,28 @@ export default function DeckMaker() {
 
   function openCard(card: DeckCard) {
     printingsAbort.current?.abort()
+    const cached = printingsCache.current.get(card.id)
     const controller = new AbortController()
     printingsAbort.current = controller
     setSelectedCard(card)
-    setPrintingOptions([card])
-    setPrintingsLoading(true)
+    setPrintingOptions(cached ?? [card])
+    setPrintingsLoading(!cached)
+    if (cached) {
+      prefetchCardImages(cached)
+      return
+    }
     fetch(`/api/cards/${encodeURIComponent(card.id)}/printings`, { signal: controller.signal })
       .then((response) => response.json())
       .then((data) => {
         const cards = Array.isArray(data.cards) ? (data.cards as DeckCard[]).map(safeCard) : []
         if (cards.length) {
-          setPrintingOptions(() => {
-            const unique = new Map<string, DeckCard>()
-            for (const printing of cards) unique.set(printingKey(printing), printing)
-            if (!unique.has(printingKey(card))) unique.set(printingKey(card), card)
-            return [...unique.values()]
-          })
+          const unique = new Map<string, DeckCard>()
+          for (const printing of cards) unique.set(printingKey(printing), printing)
+          if (!unique.has(printingKey(card))) unique.set(printingKey(card), card)
+          const options = [...unique.values()]
+          printingsCache.current.set(card.id, options)
+          prefetchCardImages(options)
+          setPrintingOptions(options)
         }
       })
       .catch((error: unknown) => {
@@ -568,7 +622,7 @@ export default function DeckMaker() {
           <div data-testid="deck-list" className={`rounded-xl bg-slate-100 ${deckCards.length ? 'grid grid-cols-8 gap-0.5' : 'flex h-[220px] items-center justify-center'}`}>
             {deckCards.length ? deckCards.map(({ entry, copy }) => (
               <button
-                key={`${entry.id}-${copy}`}
+                key={`${printingKey(entry)}-${copy}`}
                 type="button"
                 aria-label={`${entry.name}を編集`}
                 onClick={() => openCard(entry)}
@@ -628,12 +682,12 @@ export default function DeckMaker() {
             </div>
             {resultsLoading && results.length === 0 && <p className="col-span-4 py-8 text-center text-sm text-slate-500">カードを読み込み中…</p>}
             {!resultsLoading && results.length === 0 && <p className="col-span-4 py-8 text-center text-sm text-slate-500">該当カードがありません</p>}
-            {results.map((card) => {
+            {results.map((card, index) => {
               const count = countsByCard.get(card.id) ?? 0
               return (
                 <article key={card.id} className="group relative min-w-0 overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200">
                   <button type="button" onClick={() => openCard(card)} aria-label={`${card.name}を拡大表示`} className="block w-full">
-                    <CardArt card={card} />
+                    <CardArt card={card} eager={index < 4} />
                   </button>
                   {count > 0 && <span className="absolute left-1 top-1 rounded-full bg-black/80 px-1.5 py-0.5 text-[10px] font-black text-white">{count}/4</span>}
                 </article>
@@ -713,7 +767,7 @@ export default function DeckMaker() {
             <button type="button" onClick={closeCard} aria-label="カード操作を閉じる" className="absolute right-2 top-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-slate-800 shadow"><Icon name="close" /></button>
             <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
               <h2 id="card-dialog-title" className="sr-only">{selected.name}</h2>
-              <CardArt key={printingKey(selected)} card={selected} className="mx-auto w-full max-w-[330px] rounded-xl shadow-lg" />
+              <CardArt key={printingKey(selected)} card={selected} full eager className="mx-auto w-full max-w-[330px] rounded-xl shadow-lg" />
               <div className="mt-3 flex items-center justify-center gap-5">
                 <button type="button" onClick={() => remove(selected)} disabled={selectedCount === 0} aria-label={`${selected.name}を1枚減らす`} className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 text-2xl font-bold disabled:text-slate-300">−</button>
                 <div className="min-w-20 text-center"><span className="text-3xl font-black">{selectedCount}</span></div>

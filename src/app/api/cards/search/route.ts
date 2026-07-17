@@ -211,8 +211,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ cards, total, hasMore: nextOffset < total, nextOffset }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
     }
 
-    const cards = (await getMatches(supabase, columns, normalizedQuery, kanaQuery)).map(mapCard)
-    return NextResponse.json({ cards, total: cards.length, hasMore: false, nextOffset: cards.length }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
+    const matches = await getMatches(supabase, columns, normalizedQuery, kanaQuery)
+    const rows = matches.slice(offset, offset + limit)
+    const cards = rows.map(mapCard)
+    const nextOffset = offset + cards.length
+    return NextResponse.json({ cards, total: matches.length, hasMore: nextOffset < matches.length, nextOffset }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
   } catch {
     const allCards = rawQuery ? LOCAL_DECK_CARDS.filter((card) => matchesCard(card, rawQuery)) : LOCAL_DECK_CARDS
     const cards = rawQuery ? allCards : allCards.slice(0, DEFAULT_RESULTS)
