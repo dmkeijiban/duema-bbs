@@ -49,7 +49,6 @@ export function GoodlifeInlineAdClient({
     const isDesktop = window.matchMedia('(min-width: 768px)').matches
     if ((isDesktop && !desktopEnabled) || (!isDesktop && !mobileEnabled)) return
 
-    setHasCreative(false)
     content.replaceChildren()
 
     const observer = new MutationObserver(() => {
@@ -70,7 +69,7 @@ export function GoodlifeInlineAdClient({
       script.removeEventListener('load', detectCreative)
       content.replaceChildren()
     }
-  }, [desktopEnabled, detectCreative, footerRouteExcluded, mobileEnabled, pathname])
+  }, [desktopEnabled, detectCreative, footerRouteExcluded, mobileEnabled])
 
   if (footerRouteExcluded) return null
 
