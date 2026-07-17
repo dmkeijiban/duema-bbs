@@ -7,6 +7,7 @@ import { LOCAL_DECK_CARDS, matchesCard, type DeckCard } from '@/lib/deck-maker'
 export const dynamic = 'force-dynamic'
 const MAX_QUERY_LENGTH = 80
 const QUERY_BATCH_SIZE = 500
+const CATALOG_BATCH_SIZE = 1000
 const CATALOG_CACHE_MS = 15 * 60 * 1000
 const DEFAULT_RESULTS = 32
 const DEFAULT_PAGE_SIZE = 48
@@ -61,11 +62,11 @@ type Row = {
   normalized_name: string
   name_kana: string | null
   image_url: string | null
-  source_key: string | null
   card_printings?: Printing[]
 }
 
 const searchCache = new Map<string, { rows: Row[]; expiresAt: number }>()
+let catalogCache: { rows: Row[]; expiresAt: number } | null = null
 
 const releaseCollator = new Intl.Collator('ja', { numeric: true, sensitivity: 'base' })
 
@@ -142,6 +143,26 @@ async function getMatches(supabase: ReturnType<typeof createAdminClient>, column
   return rows
 }
 
+async function getCatalog(supabase: ReturnType<typeof createAdminClient>, columns: string) {
+  if (catalogCache && catalogCache.expiresAt > Date.now()) return catalogCache.rows
+  const rows: Row[] = []
+  for (let offset = 0; ; offset += CATALOG_BATCH_SIZE) {
+    const result = await supabase
+      .from('cards')
+      .select(columns)
+      .eq('is_active', true)
+      .order('id')
+      .range(offset, offset + CATALOG_BATCH_SIZE - 1)
+    if (result.error) throw result.error
+    const batch = (result.data ?? []) as unknown as Row[]
+    rows.push(...batch)
+    if (batch.length < CATALOG_BATCH_SIZE) break
+  }
+  rows.sort(compareRowsNewest)
+  catalogCache = { rows, expiresAt: Date.now() + CATALOG_CACHE_MS }
+  return rows
+}
+
 export async function GET(request: NextRequest) {
   if (!(await canAccessDeckMaker())) return new NextResponse(null, { status: 404 })
 
@@ -155,12 +176,11 @@ export async function GET(request: NextRequest) {
   const limit = Number.isInteger(requestedLimit) ? Math.min(MAX_PAGE_SIZE, Math.max(DEFAULT_PAGE_SIZE, requestedLimit)) : DEFAULT_PAGE_SIZE
   try {
     const supabase = createAdminClient()
-    const columns = 'id,name,normalized_name,name_kana,image_url,source_key,card_printings(source_key,official_page_url,image_url,set_name,is_representative)'
+    const columns = 'id,name,normalized_name,name_kana,image_url,card_printings(source_key,official_page_url,image_url,set_name,is_representative)'
     if (!rawQuery) {
-      const result = await supabase.from('cards').select(columns).eq('is_active', true).in('normalized_name', CHARISMA_BEST_DEFAULTS.map(([name]) => normalizeCardName(name)))
-      if (result.error) throw result.error
+      const catalog = await getCatalog(supabase, columns)
       const featured = new Map<string, DeckCard>()
-      const rowsByName = new Map(((result.data ?? []) as Row[]).map((row) => [normalizeCardName(row.name), row]))
+      const rowsByName = new Map(catalog.map((row) => [normalizeCardName(row.name), row]))
       for (const [name, imageNumber] of CHARISMA_BEST_DEFAULTS) {
         const row = rowsByName.get(normalizeCardName(name))
         if (!row) continue
@@ -172,25 +192,11 @@ export async function GET(request: NextRequest) {
       const featuredCount = featuredCards.length
       const regularOffset = Math.max(0, offset - featuredCount)
       const regularLimit = offset === 0 ? Math.max(0, limit - featuredCount) : limit
-      let regularRows: Row[] = []
-      let regularTotal = 0
-      if (regularLimit > 0) {
-        let regularQuery = supabase
-          .from('cards')
-          .select(columns, { count: 'exact' })
-          .eq('is_active', true)
-          .order('source_key', { ascending: false, nullsFirst: false })
-          .order('id', { ascending: true })
-          .range(regularOffset, regularOffset + regularLimit - 1)
-        if (featuredCount > 0) regularQuery = regularQuery.not('id', 'in', `(${[...featured.keys()].join(',')})`)
-        const regularResult = await regularQuery
-        if (regularResult.error) throw regularResult.error
-        regularRows = (regularResult.data ?? []) as unknown as Row[]
-        regularTotal = regularResult.count ?? regularRows.length
-      }
+      const regularCatalog = catalog.filter((row) => !featured.has(row.id))
+      const regularRows = regularCatalog.slice(regularOffset, regularOffset + regularLimit)
 
       const cards = [...(offset === 0 ? featuredCards : []), ...regularRows.map(mapCard)]
-      const total = featuredCount + regularTotal
+      const total = featuredCount + regularCatalog.length
       const nextOffset = offset + cards.length
       return NextResponse.json({ cards, total, hasMore: nextOffset < total, nextOffset }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
     }
