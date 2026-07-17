@@ -71,11 +71,17 @@ function safeCard(card: DeckCard): DeckCard {
     nameKana: typeof card.nameKana === 'string' ? card.nameKana.slice(0, 200) : null,
     imageUrl: safeOfficialUrl(card.imageUrl, 'image'),
     officialPageUrl: safeOfficialUrl(card.officialPageUrl, 'page'),
+    matchedFace: card.matchedFace && typeof card.matchedFace.name === 'string' && Number.isInteger(card.matchedFace.sideIndex) ? {
+      name: card.matchedFace.name.slice(0, 200),
+      imageUrl: safeOfficialUrl(card.matchedFace.imageUrl, 'image'),
+      sideIndex: card.matchedFace.sideIndex,
+      sideKind: typeof card.matchedFace.sideKind === 'string' ? card.matchedFace.sideKind.slice(0, 50) : null,
+    } : null,
   }
 }
 
 function printingKey(card: DeckCard) {
-  return `${card.id}:${card.sourceKey ?? 'representative'}`
+  return `${card.id}:${card.sourceKey ?? 'representative'}:${card.matchedFace?.sideIndex ?? 'front'}`
 }
 
 function safeEntries(values: unknown): DeckEntry[] {
@@ -688,6 +694,7 @@ export default function DeckMaker() {
                 <article key={card.id} className="group relative min-w-0 overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200">
                   <button type="button" onClick={() => openCard(card)} aria-label={`${card.name}を拡大表示`} className="block w-full">
                     <CardArt card={card} eager={index < 4} />
+                    {card.matchedFace && <span className="block min-h-8 px-1 py-1 text-left text-[10px] font-bold leading-tight text-slate-800">{card.matchedFace.name}</span>}
                   </button>
                   {count > 0 && <span className="absolute left-1 top-1 rounded-full bg-black/80 px-1.5 py-0.5 text-[10px] font-black text-white">{count}/4</span>}
                 </article>
@@ -766,7 +773,7 @@ export default function DeckMaker() {
           <section role="dialog" aria-modal="true" aria-labelledby="card-dialog-title" className="relative flex max-h-[calc(100dvh-24px)] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             <button type="button" onClick={closeCard} aria-label="カード操作を閉じる" className="absolute right-2 top-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-slate-800 shadow"><Icon name="close" /></button>
             <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
-              <h2 id="card-dialog-title" className="sr-only">{selected.name}</h2>
+              <h2 id="card-dialog-title" className="mb-3 pr-12 text-center text-base font-black text-slate-900">{selected.name}</h2>
               <CardArt key={printingKey(selected)} card={selected} full eager className="mx-auto w-full max-w-[min(330px,calc((100dvh-310px)*5/7))] rounded-xl shadow-lg" />
               <div className="mt-3 flex items-center justify-center gap-5">
                 <button type="button" onClick={() => remove(selected)} disabled={selectedCount === 0} aria-label={`${selected.name}を1枚減らす`} className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 text-2xl font-bold disabled:text-slate-300">−</button>
@@ -774,7 +781,8 @@ export default function DeckMaker() {
                 <button type="button" onClick={() => add(selected)} disabled={selectedNameCount >= MAX_SAME_CARD} aria-label={`${selected.name}を1枚増やす`} className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-700 text-2xl font-bold text-white disabled:bg-slate-400">＋</button>
               </div>
               <div className="mt-5">
-                {printingsLoading && <p className="mb-2 text-center text-xs font-bold text-slate-500">別イラストを読み込み中…</p>}
+                <p className="mb-2 text-center text-xs font-bold text-slate-600">表裏面・収録版</p>
+                {printingsLoading && <p className="mb-2 text-center text-xs font-bold text-slate-500">表裏面と収録版を読み込み中…</p>}
                 <div
                   ref={printingsScroller}
                   className="flex cursor-grab select-none gap-3 overflow-x-auto overscroll-x-contain pb-2 active:cursor-grabbing"
@@ -790,11 +798,12 @@ export default function DeckMaker() {
                         key={printingKey(printing)}
                         type="button"
                         onClick={() => selectPrinting(printing)}
-                        aria-label={`${printing.name}の別イラストを選択`}
+                        aria-label={`${printing.name}の面または収録版を選択`}
                         aria-pressed={active}
                         className={`w-24 shrink-0 overflow-hidden rounded-lg transition ${active ? 'ring-2 ring-blue-600' : 'opacity-55 ring-1 ring-slate-300 hover:opacity-100'}`}
                       >
                         <CardArt card={printing} />
+                        <span className="block min-h-8 bg-white px-1 py-1 text-[9px] font-bold leading-tight text-slate-800">{printing.name}</span>
                       </button>
                     )
                   })}

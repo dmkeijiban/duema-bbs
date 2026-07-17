@@ -6,11 +6,22 @@ import type { DeckCard } from '@/lib/deck-maker'
 export const dynamic = 'force-dynamic'
 
 type Printing = {
+  id: string
   source_key: string
   official_page_url: string | null
   image_url: string | null
   set_name: string | null
   card_number: string | null
+}
+
+type Face = {
+  card_printing_id: string | null
+  side_index: number
+  side_kind: string | null
+  name: string
+  name_kana: string | null
+  image_url: string | null
+  official_page_url: string | null
 }
 
 type Row = {
@@ -19,6 +30,7 @@ type Row = {
   name_kana: string | null
   image_url: string | null
   card_printings?: Printing[]
+  card_faces?: Face[]
 }
 
 const printingCollator = new Intl.Collator('ja', { numeric: true, sensitivity: 'base' })
@@ -39,9 +51,15 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
   }
 
   try {
-    const { data, error } = await createAdminClient()
+    const admin = createAdminClient()
+    const faceProbe = await admin.from('card_faces').select('id', { head: true, count: 'exact' }).limit(1)
+    const facesAvailable = !faceProbe.error
+    const columns = facesAvailable
+      ? 'id,name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,card_number),card_faces(card_printing_id,side_index,side_kind,name,name_kana,image_url,official_page_url)'
+      : 'id,name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,card_number)'
+    const { data, error } = await admin
       .from('cards')
-      .select('id,name,name_kana,image_url,card_printings(source_key,official_page_url,image_url,set_name,card_number)')
+      .select(columns)
       .eq('id', id)
       .eq('is_active', true)
       .maybeSingle()
@@ -52,14 +70,19 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     const cards: DeckCard[] = (row.card_printings ?? [])
       .filter((printing) => Boolean(printing.source_key))
       .sort(compareNewest)
-      .map((printing) => ({
-        id: row.id,
-        name: row.name,
-        nameKana: row.name_kana,
-        imageUrl: printing.image_url ?? row.image_url,
-        officialPageUrl: printing.official_page_url ?? `https://dm.takaratomy.co.jp/card/detail/?id=${encodeURIComponent(printing.source_key)}`,
-        sourceKey: printing.source_key,
-      }))
+      .flatMap((printing): DeckCard[] => {
+        const faces = (row.card_faces ?? []).filter((face) => face.card_printing_id === printing.id).sort((a, b) => a.side_index - b.side_index)
+        if (!faces.length) return [{ id: row.id, name: row.name, nameKana: row.name_kana, imageUrl: printing.image_url ?? row.image_url, officialPageUrl: printing.official_page_url ?? `https://dm.takaratomy.co.jp/card/detail/?id=${encodeURIComponent(printing.source_key)}`, sourceKey: printing.source_key }]
+        return faces.map((face) => ({
+          id: row.id,
+          name: face.name,
+          nameKana: face.name_kana ?? row.name_kana,
+          imageUrl: face.image_url ?? printing.image_url ?? row.image_url,
+          officialPageUrl: face.official_page_url ?? printing.official_page_url,
+          sourceKey: printing.source_key,
+          matchedFace: { name: face.name, imageUrl: face.image_url, sideIndex: face.side_index, sideKind: face.side_kind },
+        }))
+      })
 
     if (!cards.length) {
       cards.push({ id: row.id, name: row.name, nameKana: row.name_kana, imageUrl: row.image_url, officialPageUrl: null, sourceKey: null })

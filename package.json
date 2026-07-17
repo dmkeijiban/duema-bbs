@@ -11,6 +11,10 @@
     "content:import-draft": "node scripts/content/import-article-draft.mjs",
     "zukan:seed": "node scripts/zukan/generate-seed.mjs",
     "zukan:validate": "node scripts/zukan/validate-pack.mjs",
+    "cards:faces:export": "node scripts/cards/export-card-face-input.mjs",
+    "cards:faces:collect": "node scripts/cards/collect-official-card-faces.mjs",
+    "cards:faces:verify": "node scripts/cards/verify-card-faces.mjs",
+    "cards:faces:import": "node scripts/cards/import-card-faces.mjs",
     "maker:validate:dm26-ex2": "node scripts/fixtures/validate-dm26-ex2-tier-pool.mjs"
   },
   "dependencies": {

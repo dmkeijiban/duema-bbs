@@ -1,6 +1,7 @@
 import { normalizeCardSearch } from '@/lib/card-name'
 
-export type DeckCard = { id: string; name: string; nameKana: string | null; imageUrl: string | null; officialPageUrl: string | null; sourceKey: string | null }
+export type CardFace = { name: string; imageUrl: string | null; sideIndex: number; sideKind: string | null }
+export type DeckCard = { id: string; name: string; nameKana: string | null; imageUrl: string | null; officialPageUrl: string | null; sourceKey: string | null; matchedFace?: CardFace | null }
 export type DeckEntry = DeckCard & { count: number }
 export const DECK_STORAGE_KEY = 'duema-bbs:deck-maker'
 export const DECK_STORAGE_VERSION = 1

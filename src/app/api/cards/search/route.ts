@@ -49,6 +49,7 @@ const CHARISMA_BEST_DEFAULTS = [
 const charismaImageUrl = (number: string) => `https://dm.takaratomy.co.jp/wp-content/themes/dm2019/img/product/dm26ex2/all-precedence/${number}.jpg`
 
 type Printing = {
+  id: string
   source_key: string
   official_page_url: string | null
   image_url: string | null
@@ -63,6 +64,20 @@ type Row = {
   name_kana: string | null
   image_url: string | null
   card_printings?: Printing[]
+  card_faces?: Face[]
+  matched_face?: Face | null
+}
+
+type Face = {
+  card_id?: string
+  side_index: number
+  side_kind: string | null
+  name: string
+  normalized_name: string
+  name_kana: string | null
+  image_url: string | null
+  official_page_url: string | null
+  card_printing_id: string | null
 }
 
 const searchCache = new Map<string, { rows: Row[]; expiresAt: number }>()
@@ -93,10 +108,35 @@ function compareRowsNewest(first: Row, second: Row) {
 }
 
 function mapCard(row: Row): DeckCard {
-  const printing = newestPrinting(row)
+  const printing = row.matched_face?.card_printing_id
+    ? row.card_printings?.find((item) => item.id === row.matched_face?.card_printing_id)
+    : newestPrinting(row)
     ?? row.card_printings?.find((item) => item.is_representative)
     ?? row.card_printings?.[0]
-  return { id: row.id, name: row.name, nameKana: row.name_kana, imageUrl: printing?.image_url ?? row.image_url, officialPageUrl: printing?.official_page_url ?? null, sourceKey: printing?.source_key ?? null }
+  const face = row.matched_face
+  return {
+    id: row.id,
+    name: face?.name ?? row.name,
+    nameKana: face?.name_kana ?? row.name_kana,
+    imageUrl: face?.image_url ?? printing?.image_url ?? row.image_url,
+    officialPageUrl: face?.official_page_url ?? printing?.official_page_url ?? null,
+    sourceKey: printing?.source_key ?? null,
+    matchedFace: face ? { name: face.name, imageUrl: face.image_url, sideIndex: face.side_index, sideKind: face.side_kind } : null,
+  }
+}
+
+async function loadFaceMatches(supabase: ReturnType<typeof createAdminClient>, field: 'normalized_name' | 'name_kana', query: string) {
+  const faces: Face[] = []
+  for (let offset = 0; ; offset += QUERY_BATCH_SIZE) {
+    const result = await supabase.from('card_faces')
+      .select('card_id,side_index,side_kind,name,normalized_name,name_kana,image_url,official_page_url,card_printing_id')
+      .ilike(field, `%${escapeLikePattern(query)}%`).order('id').range(offset, offset + QUERY_BATCH_SIZE - 1)
+    if (result.error) throw result.error
+    const batch = (result.data ?? []) as Face[]
+    faces.push(...batch)
+    if (batch.length < QUERY_BATCH_SIZE) break
+  }
+  return faces
 }
 
 function escapeLikePattern(value: string) {
@@ -126,27 +166,42 @@ async function loadMatches(
   return rows
 }
 
-async function getMatches(supabase: ReturnType<typeof createAdminClient>, columns: string, normalizedQuery: string, kanaQuery: string) {
+async function getMatches(supabase: ReturnType<typeof createAdminClient>, columns: string, normalizedQuery: string, kanaQuery: string, facesAvailable: boolean) {
   const cacheKey = `${normalizedQuery}\u0000${kanaQuery}`
   const cached = searchCache.get(cacheKey)
   if (cached && cached.expiresAt > Date.now()) return cached.rows
 
   if (catalogCache && catalogCache.expiresAt > Date.now()) {
-    const rows = catalogCache.rows.filter((row) => (
-      row.normalized_name.includes(normalizedQuery)
-      || (row.name_kana?.normalize('NFKC').includes(kanaQuery) ?? false)
-    ))
+    const rows = catalogCache.rows.flatMap((row) => {
+      const face = facesAvailable ? row.card_faces?.find((item) => item.normalized_name.includes(normalizedQuery) || (item.name_kana?.normalize('NFKC').includes(kanaQuery) ?? false)) : undefined
+      return row.normalized_name.includes(normalizedQuery) || (row.name_kana?.normalize('NFKC').includes(kanaQuery) ?? false) || face
+        ? [{ ...row, matched_face: face ?? null }]
+        : []
+    })
     if (searchCache.size >= 100) searchCache.delete(searchCache.keys().next().value ?? '')
     searchCache.set(cacheKey, { rows, expiresAt: Date.now() + CATALOG_CACHE_MS })
     return rows
   }
 
-  const [nameRows, kanaRows] = await Promise.all([
+  const [nameRows, kanaRows, faceNameRows, faceKanaRows] = await Promise.all([
     loadMatches(supabase, columns, 'normalized_name', normalizedQuery),
     loadMatches(supabase, columns, 'name_kana', kanaQuery),
+    facesAvailable ? loadFaceMatches(supabase, 'normalized_name', normalizedQuery) : Promise.resolve([]),
+    facesAvailable ? loadFaceMatches(supabase, 'name_kana', kanaQuery) : Promise.resolve([]),
   ])
+  const faces = [...faceNameRows, ...faceKanaRows]
+  const faceByCard = new Map<string, Face>()
+  for (const face of faces) if (face.card_id && !faceByCard.has(face.card_id)) faceByCard.set(face.card_id, face)
+  const faceCardIds = [...faceByCard.keys()]
+  const faceRows: Row[] = []
+  for (let index = 0; index < faceCardIds.length; index += 500) {
+    const result = await supabase.from('cards').select(columns).eq('is_active', true).in('id', faceCardIds.slice(index, index + 500))
+    if (result.error) throw result.error
+    faceRows.push(...(result.data ?? []) as unknown as Row[])
+  }
   const unique = new Map<string, Row>()
-  for (const row of [...nameRows, ...kanaRows]) unique.set(row.id, row)
+  for (const row of [...nameRows, ...kanaRows]) unique.set(row.id, { ...row, matched_face: null })
+  for (const row of faceRows) unique.set(row.id, { ...row, matched_face: faceByCard.get(row.id) ?? null })
   const rows = [...unique.values()].sort(compareRowsNewest)
   if (searchCache.size >= 100) searchCache.delete(searchCache.keys().next().value ?? '')
   searchCache.set(cacheKey, { rows, expiresAt: Date.now() + CATALOG_CACHE_MS })
@@ -186,7 +241,11 @@ export async function GET(request: NextRequest) {
   const limit = Number.isInteger(requestedLimit) ? Math.min(MAX_PAGE_SIZE, Math.max(DEFAULT_PAGE_SIZE, requestedLimit)) : DEFAULT_PAGE_SIZE
   try {
     const supabase = createAdminClient()
-    const columns = 'id,name,normalized_name,name_kana,image_url,card_printings(source_key,official_page_url,image_url,set_name,is_representative)'
+    const faceProbe = await supabase.from('card_faces').select('id', { head: true, count: 'exact' }).limit(1)
+    const facesAvailable = !faceProbe.error
+    const columns = facesAvailable
+      ? 'id,name,normalized_name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,is_representative),card_faces(side_index,side_kind,name,normalized_name,name_kana,image_url,official_page_url,card_printing_id)'
+      : 'id,name,normalized_name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,is_representative)'
     if (!rawQuery) {
       const catalog = await getCatalog(supabase, columns)
       const featured = new Map<string, DeckCard>()
@@ -211,7 +270,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ cards, total, hasMore: nextOffset < total, nextOffset }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
     }
 
-    const matches = await getMatches(supabase, columns, normalizedQuery, kanaQuery)
+    const matches = await getMatches(supabase, columns, normalizedQuery, kanaQuery, facesAvailable)
     const rows = matches.slice(offset, offset + limit)
     const cards = rows.map(mapCard)
     const nextOffset = offset + cards.length
