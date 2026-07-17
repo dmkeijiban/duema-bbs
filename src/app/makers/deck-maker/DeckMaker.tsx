@@ -106,6 +106,14 @@ function CardArt({ card, className = '' }: { card: DeckCard; className?: string 
   )
 }
 
+function prefetchCardImages(cards: DeckCard[]) {
+  for (const card of cards.slice(0, 8)) {
+    if (!card.imageUrl) continue
+    const image = new Image()
+    image.src = proxy(card.imageUrl)
+  }
+}
+
 function Icon({ name }: { name: 'download' | 'save' | 'folder' | 'copy' | 'edit' | 'trash' | 'filter' | 'close' }) {
   const paths = {
     download: <><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 15v4h14v-4"/></>,
@@ -229,6 +237,7 @@ export default function DeckMaker() {
     const cached = searchCache.current.get(cacheKey)
     searchAbort.current?.abort()
     if (cached) {
+      prefetchCardImages(cached.cards)
       setResults(cached.cards)
       setResultTotal(cached.total)
       setHasMoreResults(cached.hasMore)
@@ -257,6 +266,7 @@ export default function DeckMaker() {
             if (typeof oldestKey === 'string') searchCache.current.delete(oldestKey)
           }
           searchCache.current.set(cacheKey, response)
+          prefetchCardImages(response.cards)
           setResults(response.cards)
           setResultTotal(response.total)
           setHasMoreResults(response.hasMore)
@@ -294,6 +304,7 @@ export default function DeckMaker() {
         .then((data) => {
           if (id !== requestId.current || controller.signal.aborted) return
           const incoming = Array.isArray(data.cards) ? data.cards as DeckCard[] : []
+          prefetchCardImages(incoming)
           setResults((current) => {
             const unique = new Map(current.map((card) => [card.id, card]))
             for (const card of incoming) unique.set(card.id, card)
@@ -586,7 +597,17 @@ export default function DeckMaker() {
                   onChange={(event) => {
                     const nextQuery = event.target.value
                     if (nextQuery.trim() && nextQuery.startsWith(query)) {
-                      setResults((current) => current.filter((card) => matchesCard(card, nextQuery)))
+                      setResults((current) => {
+                        const cachedPrefix = [...searchCache.current.entries()]
+                          .filter(([key]) => key && nextQuery.trim().startsWith(key))
+                          .sort(([first], [second]) => second.length - first.length)[0]?.[1].cards
+                        const filtered = (cachedPrefix ?? current).filter((card) => matchesCard(card, nextQuery))
+                        if (filtered.length > 0) {
+                          prefetchCardImages(filtered)
+                          return filtered
+                        }
+                        return current
+                      })
                     }
                     setQuery(nextQuery)
                   }}
@@ -600,9 +621,11 @@ export default function DeckMaker() {
             </div>
           </div>
           <div data-testid="search-results" className="grid min-h-24 grid-cols-4 gap-1.5 p-2.5 sm:gap-2 sm:p-3">
-            {query.trim() && resultTotal > 0 && <p className="col-span-4 text-xs font-bold text-slate-500">{resultTotal}件・新しい収録順</p>}
+            <div className="col-span-4 flex min-h-5 items-center text-xs font-bold text-slate-500">
+              {query.trim() && resultTotal > 0 && <span>{resultTotal}件・新しい収録順</span>}
+              {resultsLoading && results.length > 0 && query.trim() && <span className="ml-auto text-blue-600">検索結果を更新中…</span>}
+            </div>
             {resultsLoading && results.length === 0 && <p className="col-span-4 py-8 text-center text-sm text-slate-500">カードを読み込み中…</p>}
-            {resultsLoading && results.length > 0 && query.trim() && <p className="col-span-4 text-xs font-bold text-blue-600">検索結果を更新中…</p>}
             {!resultsLoading && results.length === 0 && <p className="col-span-4 py-8 text-center text-sm text-slate-500">該当カードがありません</p>}
             {results.map((card) => {
               const count = countsByCard.get(card.id) ?? 0

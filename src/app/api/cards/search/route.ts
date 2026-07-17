@@ -131,6 +131,16 @@ async function getMatches(supabase: ReturnType<typeof createAdminClient>, column
   const cached = searchCache.get(cacheKey)
   if (cached && cached.expiresAt > Date.now()) return cached.rows
 
+  if (catalogCache && catalogCache.expiresAt > Date.now()) {
+    const rows = catalogCache.rows.filter((row) => (
+      row.normalized_name.includes(normalizedQuery)
+      || (row.name_kana?.normalize('NFKC').includes(kanaQuery) ?? false)
+    ))
+    if (searchCache.size >= 100) searchCache.delete(searchCache.keys().next().value ?? '')
+    searchCache.set(cacheKey, { rows, expiresAt: Date.now() + CATALOG_CACHE_MS })
+    return rows
+  }
+
   const [nameRows, kanaRows] = await Promise.all([
     loadMatches(supabase, columns, 'normalized_name', normalizedQuery),
     loadMatches(supabase, columns, 'name_kana', kanaQuery),
