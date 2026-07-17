@@ -98,19 +98,18 @@ function safeEntries(values: unknown): DeckEntry[] {
 function CardArt({ card, className = '', full = false, eager = false }: { card: DeckCard; className?: string; full?: boolean; eager?: boolean }) {
   const [useOriginal, setUseOriginal] = useState(full)
   const source = useOriginal ? card.imageUrl : thumbnailUrl(card)
-  const proxiedSource = source ? proxy(source) : null
 
-  return <CardArtImage key={proxiedSource ?? `missing:${card.id}`} card={card} className={className} eager={eager} proxiedSource={proxiedSource} onThumbnailError={() => {
+  return <CardArtImage key={source ?? `missing:${card.id}`} card={card} className={className} eager={eager} source={source} onThumbnailError={() => {
     if (!useOriginal && card.imageUrl && source !== card.imageUrl) setUseOriginal(true)
   }} canFallback={!useOriginal && Boolean(card.imageUrl && source !== card.imageUrl)} />
 }
 
-function CardArtImage({ card, className, eager, proxiedSource, canFallback, onThumbnailError }: { card: DeckCard; className: string; eager: boolean; proxiedSource: string | null; canFallback: boolean; onThumbnailError: () => void }) {
-  const [status, setStatus] = useState<'loading' | 'loaded' | 'failed'>(() => proxiedSource && loadedImageUrls.has(proxiedSource) ? 'loaded' : 'loading')
+function CardArtImage({ card, className, eager, source, canFallback, onThumbnailError }: { card: DeckCard; className: string; eager: boolean; source: string | null; canFallback: boolean; onThumbnailError: () => void }) {
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'failed'>(() => source && loadedImageUrls.has(source) ? 'loaded' : 'loading')
 
   return (
     <div className={`relative aspect-[5/7] overflow-hidden bg-slate-800 ${className}`}>
-      {!proxiedSource || status === 'failed' ? (
+      {!source || status === 'failed' ? (
         <div data-testid="card-placeholder" className="flex h-full items-center justify-center p-1 text-center text-[8px] font-bold leading-tight text-white sm:text-xs">
           {card.name}
         </div>
@@ -118,14 +117,14 @@ function CardArtImage({ card, className, eager, proxiedSource, canFallback, onTh
         <>
           {status === 'loading' && <div data-testid="card-image-skeleton" className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-700 via-slate-600 to-slate-700" />}
           <img
-            key={proxiedSource}
-            src={proxiedSource}
+            key={source}
+            src={source}
             alt={card.name}
             className={`relative h-full w-full object-contain transition-opacity duration-200 ${status === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
             loading={eager ? 'eager' : 'lazy'}
             fetchPriority={eager ? 'high' : 'auto'}
             decoding="async"
-            onLoad={() => { loadedImageUrls.add(proxiedSource); setStatus('loaded') }}
+            onLoad={() => { loadedImageUrls.add(source); setStatus('loaded') }}
             onError={() => {
               if (canFallback) onThumbnailError()
               else setStatus('failed')
@@ -141,12 +140,11 @@ function prefetchCardImages(cards: DeckCard[]) {
   for (const card of cards.slice(0, 4)) {
     const source = thumbnailUrl(card)
     if (!source) continue
-    const proxiedSource = proxy(source)
-    if (loadedImageUrls.has(proxiedSource) || prefetchedImageUrls.has(proxiedSource)) continue
-    prefetchedImageUrls.add(proxiedSource)
+    if (loadedImageUrls.has(source) || prefetchedImageUrls.has(source)) continue
+    prefetchedImageUrls.add(source)
     const image = new Image()
-    image.onload = () => loadedImageUrls.add(proxiedSource)
-    image.src = proxiedSource
+    image.onload = () => loadedImageUrls.add(source)
+    image.src = source
   }
 }
 
