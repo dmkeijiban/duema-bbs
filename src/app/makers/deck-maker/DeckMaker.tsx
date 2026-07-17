@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   DECK_STORAGE_KEY,
   DECK_STORAGE_VERSION,
@@ -157,6 +157,8 @@ export default function DeckMaker() {
   const printingsAbort = useRef<AbortController | null>(null)
   const searchCache = useRef(new Map<string, SearchResponse>())
   const searchInput = useRef<HTMLInputElement>(null)
+  const printingsScroller = useRef<HTMLDivElement>(null)
+  const printingDrag = useRef({ active: false, moved: false, startX: 0, scrollLeft: 0 })
   const total = deckSize(entries)
   const effectiveDeckName = deckName.trim() || DEFAULT_DECK_NAME
   const byPrinting = useMemo(() => new Map(entries.map((entry) => [printingKey(entry), entry])), [entries])
@@ -292,9 +294,8 @@ export default function DeckMaker() {
         if (cards.length) {
           setPrintingOptions(() => {
             const unique = new Map<string, DeckCard>()
-            for (const printing of [card, ...cards]) {
-              unique.set(printingKey(printing), printing)
-            }
+            for (const printing of cards) unique.set(printingKey(printing), printing)
+            if (!unique.has(printingKey(card))) unique.set(printingKey(card), card)
             return [...unique.values()]
           })
         }
@@ -312,6 +313,42 @@ export default function DeckMaker() {
     setSelectedCard(null)
     setPrintingOptions([])
     setPrintingsLoading(false)
+  }
+
+  function startPrintingDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== 'mouse' || event.button !== 0) return
+    const scroller = printingsScroller.current
+    if (!scroller) return
+    printingDrag.current = { active: true, moved: false, startX: event.clientX, scrollLeft: scroller.scrollLeft }
+    scroller.setPointerCapture(event.pointerId)
+  }
+
+  function movePrintingDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = printingDrag.current
+    const scroller = printingsScroller.current
+    if (!drag.active || !scroller) return
+    const distance = event.clientX - drag.startX
+    if (Math.abs(distance) > 5) drag.moved = true
+    if (drag.moved) {
+      event.preventDefault()
+      scroller.scrollLeft = drag.scrollLeft - distance
+    }
+  }
+
+  function endPrintingDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!printingDrag.current.active) return
+    printingDrag.current.active = false
+    if (printingsScroller.current?.hasPointerCapture(event.pointerId)) {
+      printingsScroller.current.releasePointerCapture(event.pointerId)
+    }
+  }
+
+  function selectPrinting(printing: DeckCard) {
+    if (printingDrag.current.moved) {
+      printingDrag.current.moved = false
+      return
+    }
+    setSelectedCard(printing)
   }
 
   function add(card: DeckCard) {
@@ -441,7 +478,6 @@ export default function DeckMaker() {
             <label htmlFor="deck-name" className="shrink-0 text-sm font-bold text-slate-700">デッキ名</label>
             <input id="deck-name" value={deckName} onChange={(event) => setDeckName(event.target.value.slice(0, MAX_DECK_NAME_LENGTH))} onBlur={() => { if (!deckName.trim()) setDeckName(DEFAULT_DECK_NAME) }} maxLength={MAX_DECK_NAME_LENGTH} className="h-10 min-w-0 flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 text-base font-bold text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" placeholder={DEFAULT_DECK_NAME} />
           </div>
-          <p className="text-xs font-bold text-emerald-800">メイン <span data-testid="deck-count">{total}/40</span></p>
         </div>
         <div className="ml-auto flex w-full items-center justify-end gap-1 sm:w-auto">
           <button onClick={saveCurrentDeck} aria-label="デッキをマイデッキに保存" className="flex min-h-9 items-center gap-1 rounded-lg bg-blue-700 px-2.5 text-xs font-bold text-white hover:bg-blue-800 [&>svg]:h-4 [&>svg]:w-4">
@@ -464,7 +500,7 @@ export default function DeckMaker() {
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.85fr)_minmax(320px,1fr)] lg:items-start">
         <section aria-labelledby="deck-heading" className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm sm:p-3">
           <div className="mb-2 px-1">
-            <h2 id="deck-heading" className="text-sm font-black text-slate-800">メインデッキ</h2>
+            <h2 id="deck-heading" className="text-sm font-black text-slate-800">メインデッキ <span data-testid="deck-count">{total}/40</span></h2>
           </div>
           <div data-testid="deck-list" className={`rounded-xl bg-slate-100 ${deckCards.length ? 'grid grid-cols-8 gap-0.5' : 'flex h-[220px] items-center justify-center'}`}>
             {deckCards.length ? deckCards.map(({ entry, copy }) => (
@@ -512,7 +548,7 @@ export default function DeckMaker() {
               <button type="button" aria-label="絞り込み（準備中）" title="絞り込みは今後対応予定" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 text-slate-500"><Icon name="filter" /></button>
             </div>
           </div>
-          <div data-testid="search-results" className="grid max-h-[62vh] min-h-24 grid-cols-4 gap-1.5 overflow-y-auto overscroll-contain p-2.5 sm:gap-2 sm:p-3 lg:max-h-[calc(100vh-170px)]">
+          <div data-testid="search-results" className="grid min-h-24 grid-cols-4 gap-1.5 p-2.5 sm:gap-2 sm:p-3">
             {query.trim() && resultTotal > 0 && <p className="col-span-4 text-xs font-bold text-slate-500">{resultTotal}件・新しい収録順</p>}
             {resultsLoading && results.length === 0 && <p className="col-span-4 py-8 text-center text-sm text-slate-500">カードを読み込み中…</p>}
             {resultsLoading && results.length > 0 && <p className="col-span-4 text-xs font-bold text-blue-600">検索結果を更新中…</p>}
@@ -608,14 +644,21 @@ export default function DeckMaker() {
               </div>
               <div className="mt-5">
                 {printingsLoading && <p className="mb-2 text-center text-xs font-bold text-slate-500">別イラストを読み込み中…</p>}
-                <div className="flex gap-3 overflow-x-auto overscroll-x-contain pb-2">
+                <div
+                  ref={printingsScroller}
+                  className="flex cursor-grab gap-3 overflow-x-auto overscroll-x-contain pb-2 active:cursor-grabbing"
+                  onPointerDown={startPrintingDrag}
+                  onPointerMove={movePrintingDrag}
+                  onPointerUp={endPrintingDrag}
+                  onPointerCancel={endPrintingDrag}
+                >
                   {printingOptions.map((printing) => {
                     const active = printingKey(printing) === printingKey(selected)
                     return (
                       <button
                         key={printingKey(printing)}
                         type="button"
-                        onClick={() => setSelectedCard(printing)}
+                        onClick={() => selectPrinting(printing)}
                         aria-label={`${printing.name}の別イラストを選択`}
                         aria-pressed={active}
                         className={`w-24 shrink-0 overflow-hidden rounded-lg transition ${active ? 'ring-2 ring-blue-600' : 'opacity-55 ring-1 ring-slate-300 hover:opacity-100'}`}
