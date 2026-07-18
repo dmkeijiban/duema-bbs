@@ -4,8 +4,10 @@ import { redirect } from 'next/navigation'
 import { ADMIN_COOKIE, verifyAdminCookie } from '@/lib/admin-auth'
 import { getAllSettings } from '@/lib/settings'
 import { readGoodlifeAdSettings } from '@/lib/ads'
-import { updateGoodlifeAdSettingsAction } from './actions'
+import { readGamAdSettings } from '@/lib/gam'
+import { updateGamAdSettingsAction, updateGoodlifeAdSettingsAction } from './actions'
 import { AdSettingsForm } from './AdSettingsForm'
+import { GamSettingsForm } from './GamSettingsForm'
 
 export default async function Page({
   searchParams,
@@ -13,10 +15,12 @@ export default async function Page({
   searchParams: Promise<{ saved?: string }>
 }) {
   if (!verifyAdminCookie((await cookies()).get(ADMIN_COOKIE)?.value)) redirect('/admin')
-  const [ads, sp] = await Promise.all([
-    getAllSettings().then(readGoodlifeAdSettings),
+  const [allSettings, sp] = await Promise.all([
+    getAllSettings(),
     searchParams,
   ])
+  const ads = readGoodlifeAdSettings(allSettings)
+  const gamAds = readGamAdSettings(allSettings)
 
   return (
     <main className="mx-auto max-w-3xl px-3 py-5">
@@ -31,6 +35,8 @@ export default async function Page({
       )}
 
       <AdSettingsForm action={updateGoodlifeAdSettingsAction} ads={ads} />
+
+      <GamSettingsForm action={updateGamAdSettingsAction} ads={gamAds} />
     </main>
   )
 }

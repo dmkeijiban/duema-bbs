@@ -3,6 +3,7 @@ import Script from 'next/script'
 import './globals.css'
 import { Header } from '@/components/Header'
 import { GoodlifeInlineAd } from '@/components/GoodlifeInlineAd'
+import { GamAd } from '@/components/GamAd'
 import { getSnsUrls } from '@/lib/sns-server'
 import { getCachedCategories } from '@/lib/cached-queries'
 import Link from 'next/link'
@@ -202,6 +203,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <LazyFloatingBar snsUrls={snsUrls} />
           <LazyPostHogBridge />
           <GoodlifeInlineAd slot="footer_inline" />
+          <GamAd slot="footer" />
           <footer className="bg-white border-t border-gray-200 py-4 mt-0">
             <div className="max-w-screen-xl mx-auto px-3 text-center text-xs text-gray-600 space-y-2">
               <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">

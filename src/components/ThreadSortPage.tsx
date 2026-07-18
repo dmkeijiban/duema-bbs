@@ -1,4 +1,4 @@
-import { Suspense } from 'react'
+import { Fragment, Suspense } from 'react'
 import { createPublicClient } from '@/lib/supabase-public'
 import { ThreadRow } from '@/components/ThreadRow'
 import { Pagination } from '@/components/Pagination'
@@ -24,6 +24,7 @@ import {
   isArchiveSchemaMissing,
 } from '@/lib/thread-archive'
 import { GoodlifeInlineAd } from '@/components/GoodlifeInlineAd'
+import { GamAd } from '@/components/GamAd'
 
 const PAGE_SIZE = 60
 
@@ -218,8 +219,18 @@ async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
         }}
       />
       <GoodlifeInlineAd slot="thread_list_inline" />
+      <GamAd slot="list_top" />
       <div className="border border-gray-300 bg-white">
-        {typedThreads.map(thread => <ThreadRow key={thread.id} thread={thread} />)}
+        {typedThreads.map((thread, i) => (
+          <Fragment key={thread.id}>
+            <ThreadRow thread={thread} />
+            {i === 9 && (
+              <div className="border-b border-gray-200">
+                <GamAd slot="list_infeed" />
+              </div>
+            )}
+          </Fragment>
+        ))}
       </div>
       <Pagination currentPage={page} totalPages={totalPages} basePath={basePath} />
     </>
