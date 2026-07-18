@@ -26,8 +26,8 @@ export default async function GenericMakerPage({ params, searchParams }: { param
       admin.from('maker_submission_items').select('card_id,position,cards!inner(id,name,image_url,civilization,cost,card_type)').eq('submission_id', edit).eq('group_key', 'selected').order('position'),
     ])
     if (!submission?.creation_session_id) notFound()
-    type Item = { cards: { id: string; name: string; image_url: string | null; civilization: string[] | null; cost: number | null; card_type: string | null } }
-    initialDraft = { cards: ((items ?? []) as unknown as Item[]).map(item => item.cards), title: submission.title, comment: submission.comment ?? '', listPublic: submission.is_public, sessionId: submission.creation_session_id, submissionId: submission.id, completedEventSent: true }
+    type Item = { cards: { id: string; name: string; image_url: string | null } }
+    initialDraft = { cards: ((items ?? []) as unknown as Item[]).map(item => ({ id: item.cards.id, name: item.cards.name, nameKana: null, imageUrl: item.cards.image_url, officialPageUrl: null, sourceKey: null })), title: submission.title, comment: submission.comment ?? '', listPublic: submission.is_public, sessionId: submission.creation_session_id, submissionId: submission.id, completedEventSent: true }
   }
   return <main className="min-h-screen bg-slate-50 px-3 py-6"><div className="mx-auto max-w-7xl"><p className="text-xs font-bold text-blue-700">参加型カード選択企画</p><h1 className="mt-2 text-2xl font-black sm:text-3xl">{project.title}</h1>{config.description && <p className="mt-2 text-sm leading-6 text-gray-600">{config.description}</p>}<SelectMaker slug={slug} title={project.title} config={config} initialDraft={initialDraft}/></div></main>
 }

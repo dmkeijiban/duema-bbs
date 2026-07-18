@@ -17,7 +17,6 @@ export type FixedNavigationSource = {
 
 export const primarySystemNavigation = [
   { key: 'ranking', managementSlug: 'nav-ranking', label: 'ランキング', href: '/ranking' },
-  { key: 'makers', managementSlug: 'nav-makers', label: 'カードメーカー', href: '/makers' },
   { key: 'deck-maker', managementSlug: 'nav-deck-maker', label: 'デッキメーカー', href: '/makers/deck-maker' },
   { key: 'tier-maker', managementSlug: 'nav-tier-maker', label: 'Tier表メーカー', href: '/makers/dm26-ex2-charisma-best-tier' },
   { key: 'hall-release-maker', managementSlug: 'nav-hall-release', label: '殿堂解除選手権', href: '/makers/hall-of-fame-release' },
@@ -49,14 +48,6 @@ export function buildPrimaryNavigationItems(
 
   if (usesManagedSystemPages) {
     const items = visiblePages.map(toItem)
-    if (!items.some(item => item.href === '/makers')) {
-      const rankingIndex = items.findIndex(item => item.href === '/ranking')
-      items.splice(rankingIndex >= 0 ? rankingIndex + 1 : 0, 0, {
-        key: 'makers',
-        label: 'カードメーカー',
-        href: '/makers',
-      })
-    }
     if (!items.some(item => item.href === '/makers/deck-maker')) {
       const rankingIndex = items.findIndex(item => item.href === '/ranking')
       items.splice(rankingIndex >= 0 ? rankingIndex + 1 : 0, 0, {
