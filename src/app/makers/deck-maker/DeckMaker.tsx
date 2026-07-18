@@ -10,7 +10,7 @@ import {
   type DeckCard,
   type DeckEntry,
 } from '@/lib/deck-maker'
-import { CardCatalogGrid } from '@/components/CardCatalogGrid'
+import { CardCatalogSearchPanel } from '@/components/CardCatalogSearchPanel'
 import { useCardCatalogSearch } from '@/hooks/use-card-catalog-search'
 
 const OFFICIAL_ORIGIN = 'https://dm.takaratomy.co.jp'
@@ -531,28 +531,7 @@ export default function DeckMaker() {
           </div>
         </section>
 
-        <section aria-labelledby="search-heading" className="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm lg:sticky lg:top-3">
-          <div className="sticky top-0 z-20 rounded-t-2xl border-b border-slate-200 bg-white/95 p-2.5 backdrop-blur sm:p-3">
-            <h2 id="search-heading" className="sr-only">カード検索</h2>
-            <div className="flex gap-2">
-              <div className="relative min-w-0 flex-1">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true">⌕</span>
-                <input
-                  ref={searchInput}
-                  id="card-search"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="カード名で検索"
-                  aria-label="カード名検索"
-                  className="h-11 w-full rounded-xl border border-slate-300 bg-slate-50 pl-9 pr-10 text-base outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
-                />
-                {query && <button type="button" onClick={() => { setQuery(''); searchInput.current?.focus() }} aria-label="検索文字をクリア" className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center text-slate-500"><Icon name="close" /></button>}
-              </div>
-              <button type="button" aria-label="絞り込み（準備中）" title="絞り込みは今後対応予定" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 text-slate-500"><Icon name="filter" /></button>
-            </div>
-          </div>
-          <CardCatalogGrid cards={results} total={resultTotal} query={query} loading={resultsLoading} hasMore={hasMoreResults} onLoadMore={loadMore} onSelect={openCard} selectedCount={card => countsByCard.get(card.id) ?? 0} selectedBadge={count => `${count}/4`} renderCardArt={(card, index) => <CardArt card={card} eager={index < 4} />} />
-        </section>
+        <CardCatalogSearchPanel cards={results} total={resultTotal} query={query} loading={resultsLoading} hasMore={hasMoreResults} onLoadMore={loadMore} onSelect={openCard} onQueryChange={setQuery} onClear={() => { setQuery(''); searchInput.current?.focus() }} inputRef={searchInput} clearIcon={<Icon name="close" />} filterIcon={<Icon name="filter" />} selectedCount={card => countsByCard.get(card.id) ?? 0} selectedBadge={count => `${count}/4`} renderCardArt={(card, index) => <CardArt card={card} eager={index < 4} />} />
       </div>
 
       {libraryOpen && (
