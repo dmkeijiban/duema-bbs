@@ -101,6 +101,23 @@ function safeEntries(values: unknown): DeckEntry[] {
   return restored
 }
 
+async function resolveStoredEntries(entries: DeckEntry[]) {
+  if (!entries.length) return entries
+  const response = await fetch('/api/cards/resolve', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids: entries.map((entry) => entry.id), sourceKeys: entries.flatMap((entry) => entry.sourceKey ? [entry.sourceKey] : []) }),
+  })
+  const payload = await response.json() as { cards?: DeckCard[]; aliases?: { oldSourceKey: string; card: DeckCard }[] }
+  const latest = new Map((payload.cards ?? []).map((card) => [card.id, safeCard(card)]))
+  const aliases = new Map((payload.aliases ?? []).map((alias) => [alias.oldSourceKey, safeCard(alias.card)]))
+  return entries.map((entry) => {
+    const resolved = entry.sourceKey ? aliases.get(entry.sourceKey) : null
+    const fallback = latest.get(entry.id)
+    return { ...entry, ...(resolved ?? (!entry.sourceKey || !entry.imageUrl ? fallback : null) ?? {}) }
+  })
+}
+
 function CardArt({ card, className = '', full = false, eager = false }: { card: DeckCard; className?: string; full?: boolean; eager?: boolean }) {
   const [useOriginal, setUseOriginal] = useState(full)
   const source = useOriginal ? card.imageUrl : thumbnailUrl(card)
@@ -237,17 +254,7 @@ export default function DeckMaker() {
         if (typeof saved.savedDeckId === 'string' && saved.savedDeckId.length <= 100) setActiveSavedDeckId(saved.savedDeckId)
         const restored = safeEntries(saved.entries)
         setEntries(restored)
-        const ids = restored.map((entry) => entry.id)
-        if (ids.length) {
-          fetch('/api/cards/resolve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) })
-            .then((response) => response.json())
-            .then(({ cards }: { cards: DeckCard[] }) => {
-              const latest = new Map(cards.map((card) => [card.id, safeCard(card)]))
-              setEntries((current) => current.map((entry) => entry.sourceKey && entry.imageUrl
-                ? entry
-                : { ...entry, ...(latest.get(entry.id) ?? {}) }))
-            })
-        }
+        resolveStoredEntries(restored).then(setEntries).catch(() => {})
       }
       const storedDecks = JSON.parse(localStorage.getItem(SAVED_DECKS_STORAGE_KEY) ?? '[]') as unknown
       if (Array.isArray(storedDecks)) {
@@ -514,7 +521,9 @@ export default function DeckMaker() {
   }
 
   function openSavedDeck(deck: SavedDeck) {
-    setEntries(deck.entries.map((entry) => ({ ...entry })))
+    const restored = deck.entries.map((entry) => ({ ...entry }))
+    setEntries(restored)
+    resolveStoredEntries(restored).then(setEntries).catch(() => {})
     setDeckName(deck.name)
     setActiveSavedDeckId(deck.id)
     setLibraryOpen(false)

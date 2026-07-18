@@ -12,6 +12,7 @@ type Printing = {
   image_url: string | null
   set_name: string | null
   card_number: string | null
+  is_search_visible: boolean
 }
 
 type Face = {
@@ -55,8 +56,8 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     const faceProbe = await admin.from('card_faces').select('id', { head: true, count: 'exact' }).limit(1)
     const facesAvailable = !faceProbe.error
     const columns = facesAvailable
-      ? 'id,name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,card_number),card_faces(card_printing_id,side_index,side_kind,name,name_kana,image_url,official_page_url)'
-      : 'id,name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,card_number)'
+      ? 'id,name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,card_number,is_search_visible),card_faces(card_printing_id,side_index,side_kind,name,name_kana,image_url,official_page_url)'
+      : 'id,name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,card_number,is_search_visible)'
     const { data, error } = await admin
       .from('cards')
       .select(columns)
@@ -68,7 +69,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
 
     const row = data as unknown as Row
     const cards: DeckCard[] = (row.card_printings ?? [])
-      .filter((printing) => Boolean(printing.source_key))
+      .filter((printing) => Boolean(printing.source_key) && printing.is_search_visible)
       .sort(compareNewest)
       .flatMap((printing): DeckCard[] => {
         const faces = (row.card_faces ?? []).filter((face) => face.card_printing_id === printing.id).sort((a, b) => a.side_index - b.side_index)

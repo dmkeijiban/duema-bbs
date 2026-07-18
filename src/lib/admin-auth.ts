@@ -13,11 +13,7 @@ function getAdminPassword(): string | null {
 }
 
 function getAdminSecret(): string | null {
-  const secret =
-    process.env.ADMIN_COOKIE_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    null
+  const secret = process.env.ADMIN_COOKIE_SECRET || null
 
   if (!secret && !hasLoggedMissingAdminSecret) {
     console.error('[admin-auth] admin cookie secret is not configured')

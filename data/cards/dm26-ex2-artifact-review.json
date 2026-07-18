@@ -1,0 +1,259 @@
+{
+  "generatedAt": "2026-07-18T00:11:10.013Z",
+  "matched": 149,
+  "officialOnly": 5,
+  "ambiguous": 0,
+  "previewOnly": 0,
+  "duplicatePreviewSourceKeys": 0,
+  "duplicateOfficialSourceKeys": 0,
+  "missingCardIds": 0,
+  "invalidMatchMethods": 0,
+  "nonExactConfidence": 0,
+  "missingCardNumbers": 0,
+  "missingPreviewImages": 0,
+  "missingOfficialImages": 0,
+  "officialOnlySourceKeys": [
+    "dm26ex2-SPRSEC001",
+    "dm26ex2-SPRSEC002",
+    "dm26ex2-SPRSEC003",
+    "dm26ex2-SPRSEC004",
+    "dm26ex2-SPRSEC005"
+  ],
+  "officialOnlyAreSprSecrets": true,
+  "officialOnlyReuseExistingCardIds": true,
+  "officialLogicalCards": 134,
+  "officialNameDifferences": 23,
+  "differences": [
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-010",
+      "officialSourceKey": "dm26ex2-PR005",
+      "cardId": "cbf683f7-316d-48cf-acb5-aa5078314538",
+      "cardNumber": "PR5/PR10",
+      "previewName": "轟轟合体 ゴルギーオージャー",
+      "officialName": "轟䡛合体 ゴルギーオージャー",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-020",
+      "officialSourceKey": "dm26ex2-PR005CHO",
+      "cardId": "cbf683f7-316d-48cf-acb5-aa5078314538",
+      "cardNumber": "PR5超/PR10",
+      "previewName": "轟轟合体 ゴルギーオージャー",
+      "officialName": "轟䡛合体 ゴルギーオージャー",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-047",
+      "officialSourceKey": "dm26ex2-MC017",
+      "cardId": "180a8b8c-4886-478d-bef5-f89723e1f0eb",
+      "cardNumber": "MC17/MC30",
+      "previewName": "「覇〇魔ヴォゲンム」",
+      "officialName": "堕∞魔 ヴォゲンム",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-064",
+      "officialSourceKey": "dm26ex2-004",
+      "cardId": "0bc55a14-1314-486d-9988-c3d8c91932c8",
+      "cardNumber": "4/89",
+      "previewName": "水雲 フカフチノカミ",
+      "officialName": "水蜃 フカフチノカミ",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-065",
+      "officialSourceKey": "dm26ex2-005",
+      "cardId": "3f8b7813-6984-4e10-ba44-3845c9207a37",
+      "cardNumber": "5/89",
+      "previewName": "風神 ミッツノクエビコ",
+      "officialName": "嵐神 ミヅハノクエビコ",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-067",
+      "officialSourceKey": "dm26ex2-007",
+      "cardId": "625c2fd3-1927-47ff-beed-ba3e6fbcc780",
+      "cardNumber": "7/89",
+      "previewName": "冥界神に刻まれし魔弾の名",
+      "officialName": "～墓碑に刻まれし魔弾の名～",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-076",
+      "officialSourceKey": "dm26ex2-016",
+      "cardId": "35efd121-b729-4ff3-ae27-5453fb910b0d",
+      "cardNumber": "16/89",
+      "previewName": "鬼黒皇 ヴィオラスト・ジャオウガ",
+      "officialName": "鬼黒皇グレイテスト・ジャオウガ",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-077",
+      "officialSourceKey": "dm26ex2-017",
+      "cardId": "ed45378c-fde7-47d6-8081-4d8e3de93234",
+      "cardNumber": "17/89",
+      "previewName": "パルフェ・ルピア／「あとは任せたのんだぞ！」",
+      "officialName": "パルフェ・ルピア / 「あとはたのんだぞ」",
+      "category": "twinpact_or_slash_notation",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-080",
+      "officialSourceKey": "dm26ex2-020",
+      "cardId": "421cbb99-70fc-4bd3-a33c-4673cf033501",
+      "cardNumber": "20/89",
+      "previewName": "轟速 ザ・ドッグ",
+      "officialName": "轟速 ザ・ドック",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-085",
+      "officialSourceKey": "dm26ex2-025",
+      "cardId": "2998fc0a-da43-41b1-9f99-ec614cf675e0",
+      "cardNumber": "25/89",
+      "previewName": "氷柱と炎狐の決断",
+      "officialName": "氷柱と炎弧の決断",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-089",
+      "officialSourceKey": "dm26ex2-029",
+      "cardId": "106f27aa-97b4-42cf-997d-a3ac5abba458",
+      "cardNumber": "29/89",
+      "previewName": "ワダユメミノミコト",
+      "officialName": "ワダユメ＝縛＝ノミコト",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-106",
+      "officialSourceKey": "dm26ex2-046",
+      "cardId": "9326cbf2-4f0e-4fba-a2fa-730464778dc4",
+      "cardNumber": "46/89",
+      "previewName": "断罪のロスト・ソーン",
+      "officialName": "断罪のロスト・サイン",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-108",
+      "officialSourceKey": "dm26ex2-048",
+      "cardId": "a42ab8df-eb4d-4bd5-83ec-ecde78699dd3",
+      "cardNumber": "48/89",
+      "previewName": "一王伍双三眼槍",
+      "officialName": "一王伝双三眼槍",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-119",
+      "officialSourceKey": "dm26ex2-059",
+      "cardId": "9ac1186e-5590-4db0-91d0-b7494be53bf0",
+      "cardNumber": "59/89",
+      "previewName": "レーホウの街・デカッチ／「暴竜爵様のお出ましだッチ！」",
+      "officialName": "レーホウ・衛・デカッチ / 「暴竜爵様のお出ましだッチ！」",
+      "category": "twinpact_or_slash_notation",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-120",
+      "officialSourceKey": "dm26ex2-060",
+      "cardId": "d419bd79-9374-4e89-a8ee-7649a82414f9",
+      "cardNumber": "60/89",
+      "previewName": "轟速 ザ・ダラー／「イグニッション!!ソニックドローォォ!!」",
+      "officialName": "轟速 ザ・ダラー / 「イグニッション！ソニックドロォォォ!!」",
+      "category": "twinpact_or_slash_notation",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-128",
+      "officialSourceKey": "dm26ex2-068",
+      "cardId": "10d1441e-e4ca-4938-b89d-c0918577415c",
+      "cardNumber": "68/89",
+      "previewName": "ワダウサノミコト",
+      "officialName": "ワダウザノミコト",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-136",
+      "officialSourceKey": "dm26ex2-076",
+      "cardId": "f370a0f4-44e7-4351-8824-22de4d7cc42f",
+      "cardNumber": "76/89",
+      "previewName": "「魔光蟲ヴィルジニア卿」",
+      "officialName": "魔光蟲ヴィルジニア卿",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-138",
+      "officialSourceKey": "dm26ex2-078",
+      "cardId": "d06f7656-4a9c-409a-8273-c0042e2ab938",
+      "cardNumber": "78/89",
+      "previewName": "冠火の守護者ジャオウガ・メルキス",
+      "officialName": "鬼火の守護者ジャオウガ・メルキス",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-139",
+      "officialSourceKey": "dm26ex2-079",
+      "cardId": "add278b6-06bc-4ca7-90f4-82a0df270dd0",
+      "cardNumber": "79/89",
+      "previewName": "オソック童子＜ターボ.鬼＞",
+      "officialName": "オンソク童子",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-140",
+      "officialSourceKey": "dm26ex2-080",
+      "cardId": "f973ee1a-dc2b-4895-acd3-ebb1cb87e20e",
+      "cardNumber": "80/89",
+      "previewName": "鶏と蛙 クローラ＆ルピア",
+      "officialName": "鶏と蛙 ケローラ&ルピア",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-142",
+      "officialSourceKey": "dm26ex2-082",
+      "cardId": "7de2acef-8371-4b28-add4-b35761bd1b94",
+      "cardNumber": "82/89",
+      "previewName": "轟速 ザ・シオ／「キサマのデュエマは周回遅れだ！」",
+      "officialName": "轟速 ザ・ジオ / 「キサマのデュエマは周回遅れだ！」",
+      "category": "twinpact_or_slash_notation",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-143",
+      "officialSourceKey": "dm26ex2-083",
+      "cardId": "5f0b410f-3241-441f-b3b0-e559b353d6af",
+      "cardNumber": "83/89",
+      "previewName": "鬼覇 ザーデッドジャオウガ",
+      "officialName": "鬼覇 ザ=デッドジャオウガ",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    },
+    {
+      "previewSourceKey": "DM26EX2-PREVIEW-149",
+      "officialSourceKey": "dm26ex2-089",
+      "cardId": "1febb6c1-67b3-45a7-8884-0599419ae43e",
+      "cardNumber": "89/89",
+      "previewName": "轟速 ザ・トリノグ",
+      "officialName": "轟速 ザ・トリング",
+      "category": "official_spelling_correction",
+      "sameCardConfirmedBy": "card_number"
+    }
+  ],
+  "stopRequired": false
+}
