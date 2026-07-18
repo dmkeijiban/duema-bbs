@@ -69,6 +69,11 @@ create index if not exists face_import_runs_checked_at_idx on public.face_import
 alter table public.card_faces enable row level security;
 alter table public.face_import_runs enable row level security;
 
+-- RLS intentionally has no client policies. Keep direct client writes unavailable,
+-- including when a previous draft granted table privileges.
+revoke all privileges on public.card_faces from anon, authenticated;
+revoke all privileges on public.face_import_runs from anon, authenticated;
+
 comment on table public.card_faces is 'A logical card face per printing; cards.id remains deck identity.';
 comment on table public.face_import_runs is 'Incremental official face extraction state; safe to resume without refetching successes.';
 
