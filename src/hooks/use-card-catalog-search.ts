@@ -13,7 +13,7 @@ type SearchResponse = {
 }
 
 export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {}) {
-  const [query, setQuery] = useState('')
+  const [query, setQueryState] = useState('')
   const [cards, setCards] = useState<DeckCard[]>([])
   const [total, setTotal] = useState(0)
   const [hasMore, setHasMore] = useState(false)
@@ -24,6 +24,14 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
   const cache = useRef(new Map<string, SearchResponse>())
 
   const cacheKey = `${makerSlug ?? ''}:${query.trim()}`
+
+  const setQuery = useCallback((value: string) => {
+    requestId.current += 1
+    abort.current?.abort()
+    setHasMore(false)
+    setNextOffset(0)
+    setQueryState(value)
+  }, [])
 
   useEffect(() => {
     const id = ++requestId.current

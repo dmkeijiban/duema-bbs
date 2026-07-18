@@ -20,6 +20,10 @@ export function CardCatalogGrid({ cards, total, query, loading, hasMore, onLoadM
   const sentinel = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (scroller.current) scroller.current.scrollTop = 0
+  }, [query])
+
+  useEffect(() => {
     if (!sentinel.current || !hasMore || loading) return
     const observer = new IntersectionObserver(entries => { if (entries[0]?.isIntersecting) onLoadMore() }, { root: scroller.current, rootMargin: '800px 0px' })
     observer.observe(sentinel.current)
