@@ -9,6 +9,8 @@ create table if not exists public.card_faces (
   name text not null check (btrim(name) <> ''),
   normalized_name text not null check (btrim(normalized_name) <> ''),
   name_kana text,
+  card_number text,
+  card_type text,
   image_url text,
   official_page_url text,
   extraction_status text not null default 'complete'
@@ -18,6 +20,10 @@ create table if not exists public.card_faces (
   updated_at timestamptz not null default now(),
   unique (card_printing_id, side_index)
 );
+
+-- Keep reruns safe if a Preview applied an earlier draft of this additive migration.
+alter table public.card_faces add column if not exists card_number text;
+alter table public.card_faces add column if not exists card_type text;
 
 create index if not exists card_faces_card_id_idx on public.card_faces(card_id);
 create index if not exists card_faces_card_printing_id_idx on public.card_faces(card_printing_id);
