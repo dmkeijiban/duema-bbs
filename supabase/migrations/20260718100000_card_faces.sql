@@ -1,5 +1,7 @@
 -- Additive multi-face catalog for deck search and future zukan use.
 -- cards.id remains the logical card identity used by deck limits.
+create extension if not exists pg_trgm;
+
 create table if not exists public.card_faces (
   id uuid primary key default gen_random_uuid(),
   card_id uuid not null references public.cards(id) on delete cascade,

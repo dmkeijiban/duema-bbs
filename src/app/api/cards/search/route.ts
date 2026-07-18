@@ -171,18 +171,6 @@ async function getMatches(supabase: ReturnType<typeof createAdminClient>, column
   const cached = searchCache.get(cacheKey)
   if (cached && cached.expiresAt > Date.now()) return cached.rows
 
-  if (catalogCache && catalogCache.expiresAt > Date.now()) {
-    const rows = catalogCache.rows.flatMap((row) => {
-      const face = facesAvailable ? row.card_faces?.find((item) => item.normalized_name.includes(normalizedQuery) || (item.name_kana?.normalize('NFKC').includes(kanaQuery) ?? false)) : undefined
-      return row.normalized_name.includes(normalizedQuery) || (row.name_kana?.normalize('NFKC').includes(kanaQuery) ?? false) || face
-        ? [{ ...row, matched_face: face ?? null }]
-        : []
-    })
-    if (searchCache.size >= 100) searchCache.delete(searchCache.keys().next().value ?? '')
-    searchCache.set(cacheKey, { rows, expiresAt: Date.now() + CATALOG_CACHE_MS })
-    return rows
-  }
-
   const [nameRows, kanaRows, faceNameRows, faceKanaRows] = await Promise.all([
     loadMatches(supabase, columns, 'normalized_name', normalizedQuery),
     loadMatches(supabase, columns, 'name_kana', kanaQuery),
@@ -243,9 +231,7 @@ export async function GET(request: NextRequest) {
     const supabase = createAdminClient()
     const faceProbe = await supabase.from('card_faces').select('id', { head: true, count: 'exact' }).limit(1)
     const facesAvailable = !faceProbe.error
-    const columns = facesAvailable
-      ? 'id,name,normalized_name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,is_representative),card_faces(side_index,side_kind,name,normalized_name,name_kana,image_url,official_page_url,card_printing_id)'
-      : 'id,name,normalized_name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,is_representative)'
+    const columns = 'id,name,normalized_name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,is_representative)'
     if (!rawQuery) {
       const catalog = await getCatalog(supabase, columns)
       const featured = new Map<string, DeckCard>()
