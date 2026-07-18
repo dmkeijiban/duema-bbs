@@ -1,0 +1,1883 @@
+{
+  "generated_at": "2026-07-18T06:20:52.855Z",
+  "nonstandard_url": {
+    "count": 1,
+    "classification": "intentional_quarantine_resolved",
+    "detail": "The former DM26EX2 product-page source was removed from the current target and replaced by 154 formal card-detail URLs and printing IDs using the reviewed extracted JSON artifact."
+  },
+  "needs_review": [],
+  "manual_overrides": [
+    {
+      "card_printing_id": "0b203f3a-e01e-4b75-827a-f2f8b61bd7a5",
+      "side_index": 1,
+      "name": "撃墜王ガイアール・キラードラゴン",
+      "reason": "Official HTML contains an unexpanded `{...} Bottom` template marker; the card image and surrounding official metadata identify the intended back-face name."
+    }
+  ],
+  "three_and_four_face_printings": [
+    {
+      "card_printing_id": "0129bc4d-c744-42a2-9801-f3939fc228cb",
+      "source_key": "dm25ex4-PR4",
+      "card_id": "ff8e774d-1abf-440d-895c-5826bc02144a",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dm25ex4-PR4",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "勝首領龍 カツドン",
+          "normalized_name": "勝首領龍カツドン",
+          "card_number": "PR4/PR5",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-PR4a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "勝首領将軍 カツキング",
+          "normalized_name": "勝首領将軍カツキング",
+          "card_number": "PR4/PR5",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-PR4b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "最終勝首領 カツマスター",
+          "normalized_name": "最終勝首領カツマスター",
+          "card_number": "PR4/PR5",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-PR4c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "0403ae4d-6a7f-418d-9518-b46135349b1e",
+      "source_key": "dmbd14-001",
+      "card_id": "edaec1e4-02fe-4c2a-a493-a464caa6d793",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmbd14-001",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "爆熱剣 バトライ刃",
+          "normalized_name": "爆熱剣バトライ刃",
+          "card_number": "1/25",
+          "card_type": "ドラグハート・ウエポン",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd14-001a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "爆熱天守 バトライ閣",
+          "normalized_name": "爆熱天守バトライ閣",
+          "card_number": "1/25",
+          "card_type": "ドラグハート・フォートレス",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd14-001b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "爆熱DX バトライ武神",
+          "normalized_name": "爆熱dxバトライ武神",
+          "card_number": "1/25",
+          "card_type": "ドラグハート・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd14-001c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "09f3ebe3-4fe1-4a5f-8c67-c361a27ddcac",
+      "source_key": "dmx22b-061",
+      "card_id": "390f23a0-f01b-4704-ab2f-2d1662e08921",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmx22b-061",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "邪帝斧 ボアロアックス",
+          "normalized_name": "邪帝斧ボアロアックス",
+          "card_number": "61~63/？？？",
+          "card_type": "ドラグハート・ウエポン",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx22b-061a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "邪帝遺跡 ボアロパゴス",
+          "normalized_name": "邪帝遺跡ボアロパゴス",
+          "card_number": "61~63/？？？",
+          "card_type": "ドラグハート・フォートレス",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx22b-061b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "我臥牙 ヴェロキボアロス",
+          "normalized_name": "我臥牙ヴェロキボアロス",
+          "card_number": "61~63/？？？",
+          "card_type": "ドラグハート・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx22b-061c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "13c96648-6868-4dc3-ab86-3cfda8d8d878",
+      "source_key": "promoy24-117",
+      "card_id": "edaec1e4-02fe-4c2a-a493-a464caa6d793",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=promoy24-117",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "爆熱剣 バトライ刃",
+          "normalized_name": "爆熱剣バトライ刃",
+          "card_number": "P117/Y24",
+          "card_type": "ドラグハート・ウエポン",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/promoy24-117a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "爆熱天守 バトライ閣",
+          "normalized_name": "爆熱天守バトライ閣",
+          "card_number": "P117/Y24",
+          "card_type": "ドラグハート・フォートレス",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/promoy24-117b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "爆熱DX バトライ武神",
+          "normalized_name": "爆熱dxバトライ武神",
+          "card_number": "P117/Y24",
+          "card_type": "ドラグハート・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/promoy24-117c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "1ec7d9c2-8099-4663-b579-c6c404cea12a",
+      "source_key": "dm25ex4-PR1",
+      "card_id": "3a6b5317-8798-4e57-bb99-78decf10ef4b",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dm25ex4-PR1",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "金河刃 ニケ",
+          "normalized_name": "金河刃ニケ",
+          "card_number": "PR1/PR5",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-PR1a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "金河美刃 ミケランジェロ",
+          "normalized_name": "金河美刃ミケランジェロ",
+          "card_number": "PR1/PR5",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-PR1b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "最終金河 アヴァンギャルド",
+          "normalized_name": "最終金河アヴァンギャルド",
+          "card_number": "PR1/PR5",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-PR1c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "205069df-b9df-4f36-a38c-679bb1899e89",
+      "source_key": "dmx18-021",
+      "card_id": "a1cc76b1-f67c-4888-a9d5-08cb1687a1e9",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmx18-021",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "太陽槍 ラヴェリテ",
+          "normalized_name": "太陽槍ラヴェリテ",
+          "card_number": "21/50",
+          "card_type": "ドラグハート・ウエポン",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-021a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "白夜教会 ブランノワール",
+          "normalized_name": "白夜教会ブランノワール",
+          "card_number": "21/50",
+          "card_type": "ドラグハート・フォートレス",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-021b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "日蝕の精霊龍 ソレイルノワール",
+          "normalized_name": "日蝕の精霊龍ソレイルノワール",
+          "card_number": "21/50",
+          "card_type": "ドラグハート・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-021c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "2adcbe15-40ed-421c-b768-8959dbd1f405",
+      "source_key": "dmx18-041",
+      "card_id": "be7b0b73-6ad5-4190-a8e5-8cf29a79098a",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmx18-041",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "熱龍爪 メリケン・バルク",
+          "normalized_name": "熱龍爪メリケン・バルク",
+          "card_number": "41/50",
+          "card_type": "ドラグハート・ウエポン",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-041a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "熱決闘場 バルク・アリーナ",
+          "normalized_name": "熱決闘場バルク・アリーナ",
+          "card_number": "41/50",
+          "card_type": "ドラグハート・フォートレス",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-041b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "熱血龍 バリキレ・メガマッチョ",
+          "normalized_name": "熱血龍バリキレ・メガマッチョ",
+          "card_number": "41/50",
+          "card_type": "ドラグハート・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-041c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "2b838063-63b9-4b7b-8bff-674973107334",
+      "source_key": "dmx18-031",
+      "card_id": "543f0c3d-4839-43cc-9aa2-33e71b6d6b08",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmx18-031",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "立体兵器 龍素ランチャー",
+          "normalized_name": "立体兵器龍素ランチャー",
+          "card_number": "31/50",
+          "card_type": "ドラグハート・ウエポン",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-031a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "龍素戦闘機 エウクレイデス",
+          "normalized_name": "龍素戦闘機エウクレイデス",
+          "card_number": "31/50",
+          "card_type": "ドラグハート・フォートレス",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-031b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "龍素記号Ad ユークリッド",
+          "normalized_name": "龍素記号adユークリッド",
+          "card_number": "31/50",
+          "card_type": "ドラグハート・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-031c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "2f9b03d2-8175-4066-89b4-3110edc13a4d",
+      "source_key": "dmx18-036",
+      "card_id": "6c5a294a-40c1-4a1f-aa75-77b1625e396b",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmx18-036",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "悪夢卍 ミガワリ",
+          "normalized_name": "悪夢卍ミガワリ",
+          "card_number": "36/50",
+          "card_type": "ドラグハート・ウエポン",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-036a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "忍者屋敷 カラクリガエシ",
+          "normalized_name": "忍者屋敷カラクリガエシ",
+          "card_number": "36/50",
+          "card_type": "ドラグハート・フォートレス",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-036b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "絡繰の悪魔龍 ウツセミヘンゲ",
+          "normalized_name": "絡繰の悪魔龍ウツセミヘンゲ",
+          "card_number": "36/50",
+          "card_type": "ドラグハート・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-036c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "3e6f548e-90dc-4534-9d9b-382535c2d67f",
+      "source_key": "dm25ex4-PR3",
+      "card_id": "4f9d7352-b1b5-4c35-a5c5-3ac11f63f6f9",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dm25ex4-PR3",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "豚葬槍 ブータン",
+          "normalized_name": "豚葬槍ブータン",
+          "card_number": "PR3/PR5",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-PR3a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "地獄葬槍 ブリティッシュ",
+          "normalized_name": "地獄葬槍ブリティッシュ",
+          "card_number": "PR3/PR5",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-PR3b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "最終神聖牙 PIG パンク",
+          "normalized_name": "最終神聖牙pigパンク",
+          "card_number": "PR3/PR5",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-PR3c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "3fcc1ab0-702e-421d-97e1-ae8b0e880c85",
+      "source_key": "dmbd13-001",
+      "card_id": "df32c9e3-6ff5-44d5-a083-52ce3418150e",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmbd13-001",
+      "face_count": 4,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "激浪のリュウセイ・スプラッシュ",
+          "normalized_name": "激浪のリュウセイ・スプラッシュ",
+          "card_number": "1/26",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd13-001a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "灼熱のリュウセイ・ボルケーノ",
+          "normalized_name": "灼熱のリュウセイ・ボルケーノ",
+          "card_number": "1/26",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd13-001b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "大地のリュウセイ・ガイア",
+          "normalized_name": "大地のリュウセイ・ガイア",
+          "card_number": "1/26",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd13-001c.jpg"
+        },
+        {
+          "side_index": 3,
+          "side_kind": "back",
+          "name": "真羅万龍 リュウセイ・ザ・ファイナル",
+          "normalized_name": "真羅万龍リュウセイ・ザ・ファイナル",
+          "card_number": "1/26",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd13-001d.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "4845cd94-2d00-4c6b-bc61-e7ce76fe7b1d",
+      "source_key": "dmbd14-003",
+      "card_id": "78a40aa6-c485-4db9-af1e-e1aa38937ed3",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmbd14-003",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "煉獄刃 ヘルフエズ",
+          "normalized_name": "煉獄刃ヘルフエズ",
+          "card_number": "3/25",
+          "card_type": "ドラグハート・ウエポン",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd14-003a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "煉獄宮殿 ヘルクライム",
+          "normalized_name": "煉獄宮殿ヘルクライム",
+          "card_number": "3/25",
+          "card_type": "ドラグハート・フォートレス",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd14-003b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "大殺壊 ヘルセカイ",
+          "normalized_name": "大殺壊ヘルセカイ",
+          "card_number": "3/25",
+          "card_type": "ドラグハート・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd14-003c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "4f656a35-b95f-442c-bfff-3bd9388022bf",
+      "source_key": "dmx18-011",
+      "card_id": "78a40aa6-c485-4db9-af1e-e1aa38937ed3",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmx18-011",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "煉獄刃 ヘルフエズ",
+          "normalized_name": "煉獄刃ヘルフエズ",
+          "card_number": "11/50",
+          "card_type": "ドラグハート・ウエポン",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-011a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "煉獄宮殿 ヘルクライム",
+          "normalized_name": "煉獄宮殿ヘルクライム",
+          "card_number": "11/50",
+          "card_type": "ドラグハート・フォートレス",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-011b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "大殺壊 ヘルセカイ",
+          "normalized_name": "大殺壊ヘルセカイ",
+          "card_number": "11/50",
+          "card_type": "ドラグハート・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-011c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "4fd5c326-2dd5-46aa-a1e0-a0a1bdce0fe0",
+      "source_key": "dmx18-016",
+      "card_id": "390f23a0-f01b-4704-ab2f-2d1662e08921",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmx18-016",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "邪帝斧 ボアロアックス",
+          "normalized_name": "邪帝斧ボアロアックス",
+          "card_number": "16/50",
+          "card_type": "ドラグハート・ウエポン",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-016a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "邪帝遺跡 ボアロパゴス",
+          "normalized_name": "邪帝遺跡ボアロパゴス",
+          "card_number": "16/50",
+          "card_type": "ドラグハート・フォートレス",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-016b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "我臥牙 ヴェロキボアロス",
+          "normalized_name": "我臥牙ヴェロキボアロス",
+          "card_number": "16/50",
+          "card_type": "ドラグハート・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-016c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "8ede6b2a-4cf4-48a9-ad7b-1537e3ec5700",
+      "source_key": "dmx18-046",
+      "card_id": "16c9ca9a-982f-4177-8c35-7f0465346815",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmx18-046",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "卵殻塊 ジュラピル",
+          "normalized_name": "卵殻塊ジュラピル",
+          "card_number": "46/50",
+          "card_type": "ドラグハート・ウエポン",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-046a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "生誕神秘 ル=ピラッジュ",
+          "normalized_name": "生誕神秘ル=ピラッジュ",
+          "card_number": "46/50",
+          "card_type": "ドラグハート・フォートレス",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-046b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "成長類石塊目 ジュランクルーガ",
+          "normalized_name": "成長類石塊目ジュランクルーガ",
+          "card_number": "46/50",
+          "card_type": "ドラグハート・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-046c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "988ba076-c955-4625-aed1-22b312278a1d",
+      "source_key": "dm25ex4-PR5",
+      "card_id": "e03de67f-e404-4ca4-88c9-6a3994cfdbb0",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dm25ex4-PR5",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "覇音獣 五朗丸",
+          "normalized_name": "覇音獣五朗丸",
+          "card_number": "PR5/PR5",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-PR5a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "獣音覇音 グローバル",
+          "normalized_name": "獣音覇音グローバル",
+          "card_number": "PR5/PR5",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-PR5b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "最終覇音 ワールド無法松",
+          "normalized_name": "最終覇音ワールド無法松",
+          "card_number": "PR5/PR5",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-PR5c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "a9f6b74e-14b5-4ca9-a207-19422a5ea90d",
+      "source_key": "dmx18-026",
+      "card_id": "149a21d0-c308-49df-8c80-589eb0bbd1f1",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmx18-026",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "龍芭扇 ファンパイ",
+          "normalized_name": "龍芭扇ファンパイ",
+          "card_number": "26/50",
+          "card_type": "ドラグハート・ウエポン",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-026a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "龍脈空船 トンナンシャーペ",
+          "normalized_name": "龍脈空船トンナンシャーペ",
+          "card_number": "26/50",
+          "card_type": "ドラグハート・フォートレス",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-026b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "亜空艦 ダイスーシドラ",
+          "normalized_name": "亜空艦ダイスーシドラ",
+          "card_number": "26/50",
+          "card_type": "ドラグハート・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-026c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "c068ee15-6761-49d4-a89f-6d5dfa342aeb",
+      "source_key": "dmart15-002",
+      "card_id": "390f23a0-f01b-4704-ab2f-2d1662e08921",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmart15-002",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "邪帝斧 ボアロアックス",
+          "normalized_name": "邪帝斧ボアロアックス",
+          "card_number": "2/5",
+          "card_type": "ドラグハート・ウエポン",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmart15-002a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "邪帝遺跡 ボアロパゴス",
+          "normalized_name": "邪帝遺跡ボアロパゴス",
+          "card_number": "2/5",
+          "card_type": "ドラグハート・フォートレス",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmart15-002b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "我臥牙 ヴェロキボアロス",
+          "normalized_name": "我臥牙ヴェロキボアロス",
+          "card_number": "2/5",
+          "card_type": "ドラグハート・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmart15-002c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "c2f18891-02bd-4410-82b6-dafbb1715b02",
+      "source_key": "dmex08-148",
+      "card_id": "edaec1e4-02fe-4c2a-a493-a464caa6d793",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmex08-148",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "爆熱剣 バトライ刃",
+          "normalized_name": "爆熱剣バトライ刃",
+          "card_number": "148/???",
+          "card_type": "ドラグハート・ウエポン",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmex08-148a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "爆熱天守 バトライ閣",
+          "normalized_name": "爆熱天守バトライ閣",
+          "card_number": "148/???",
+          "card_type": "ドラグハート・フォートレス",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmex08-148b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "爆熱DX バトライ武神",
+          "normalized_name": "爆熱dxバトライ武神",
+          "card_number": "148/???",
+          "card_type": "ドラグハート・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmex08-148c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "d15d8a5e-38b4-4a8b-bdea-a6b8e7bc7139",
+      "source_key": "dmx18-006",
+      "card_id": "42348dd7-6c25-4bce-baf7-0f8afbdbb33c",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmx18-006",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "百獣槍 ジャベレオン",
+          "normalized_name": "百獣槍ジャベレオン",
+          "card_number": "6/50",
+          "card_type": "ドラグハート・ウエポン",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-006a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "百獣聖堂 レオサイユ",
+          "normalized_name": "百獣聖堂レオサイユ",
+          "card_number": "6/50",
+          "card_type": "ドラグハート・フォートレス",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-006b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "頂天聖 レオザワルド",
+          "normalized_name": "頂天聖レオザワルド",
+          "card_number": "6/50",
+          "card_type": "ドラグハート・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-006c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "d3c53961-3287-4bb2-b2a5-09b036d73322",
+      "source_key": "dm25ex4-PR2",
+      "card_id": "f0f3d7df-5b51-47e3-a5e0-45ce04c1f942",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dm25ex4-PR2",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "超哲駆 ロビー",
+          "normalized_name": "超哲駆ロビー",
+          "card_number": "PR2/PR5",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-PR2a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "絶超哲駆 ロビンフッド",
+          "normalized_name": "絶超哲駆ロビンフッド",
+          "card_number": "PR2/PR5",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-PR2b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "最終哲駆 ランスロッド",
+          "normalized_name": "最終哲駆ランスロッド",
+          "card_number": "PR2/PR5",
+          "card_type": "サイキック・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-PR2c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "dfaba7a2-3e60-43e4-afaa-1dccdf558504",
+      "source_key": "dmbd14-002",
+      "card_id": "42348dd7-6c25-4bce-baf7-0f8afbdbb33c",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmbd14-002",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "百獣槍 ジャベレオン",
+          "normalized_name": "百獣槍ジャベレオン",
+          "card_number": "2/25",
+          "card_type": "ドラグハート・ウエポン",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd14-002a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "百獣聖堂 レオサイユ",
+          "normalized_name": "百獣聖堂レオサイユ",
+          "card_number": "2/25",
+          "card_type": "ドラグハート・フォートレス",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd14-002b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "頂天聖 レオザワルド",
+          "normalized_name": "頂天聖レオザワルド",
+          "card_number": "2/25",
+          "card_type": "ドラグハート・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd14-002c.jpg"
+        }
+      ]
+    },
+    {
+      "card_printing_id": "dfb2534d-629d-4b88-a19c-fc2497a23c5a",
+      "source_key": "dmx18-001",
+      "card_id": "edaec1e4-02fe-4c2a-a493-a464caa6d793",
+      "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmx18-001",
+      "face_count": 3,
+      "checks": {
+        "contiguous_side_indexes": true,
+        "one_parent_card": true,
+        "distinct_images": true,
+        "official_card_images_only": true,
+        "official_detail_page_only": true
+      },
+      "faces": [
+        {
+          "side_index": 0,
+          "side_kind": "front",
+          "name": "爆熱剣 バトライ刃",
+          "normalized_name": "爆熱剣バトライ刃",
+          "card_number": "1/50",
+          "card_type": "ドラグハート・ウエポン",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-001a.jpg"
+        },
+        {
+          "side_index": 1,
+          "side_kind": "back",
+          "name": "爆熱天守 バトライ閣",
+          "normalized_name": "爆熱天守バトライ閣",
+          "card_number": "1/50",
+          "card_type": "ドラグハート・フォートレス",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-001b.jpg"
+        },
+        {
+          "side_index": 2,
+          "side_kind": "back",
+          "name": "爆熱DX バトライ武神",
+          "normalized_name": "爆熱dxバトライ武神",
+          "card_number": "1/50",
+          "card_type": "ドラグハート・クリーチャー",
+          "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmx18-001c.jpg"
+        }
+      ]
+    }
+  ],
+  "structural_two_face_samples": {
+    "psychic": [
+      {
+        "card_printing_id": "006ae0ef-190a-4ef0-b160-24067e58e20f",
+        "source_key": "dmr01-041",
+        "card_id": "9e667d4b-b01a-453a-bcd3-913f898892b1",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmr01-041",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "イオの伝道師ガガ・パックン",
+            "normalized_name": "イオの伝道師ガガ・パックン",
+            "card_number": "41/110",
+            "card_type": "サイキック・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmr01-041a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "貪欲バリバリ・パックンガー",
+            "normalized_name": "貪欲バリバリ・パックンガー",
+            "card_number": "41/110",
+            "card_type": "サイキック・スーパー・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmr01-041b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "0147b0cb-ceec-4a5f-985f-7ddcdacfa8f1",
+        "source_key": "dm25ex4-T19",
+        "card_id": "f3185356-4ad3-4e0f-a8a1-16e9f26878aa",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dm25ex4-T19",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "頂上の精霊 ミラクルスZ",
+            "normalized_name": "頂上の精霊ミラクルスz",
+            "card_number": "T19/T30",
+            "card_type": "サイキック・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-T19a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "勝利の頂上 ヴォルグ・イソレイト6th",
+            "normalized_name": "勝利の頂上ヴォルグ・イソレイト6th",
+            "card_number": "T19/T30",
+            "card_type": "サイキック・スーパー・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-T19b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "03a97104-31fe-47d0-bbd0-deee0042f099",
+        "source_key": "dmbd21-006",
+        "card_id": "15566734-0ed0-4848-9b97-c95f2694a0da",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmbd21-006",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "時空の禁断 レッドゾーンX",
+            "normalized_name": "時空の禁断レッドゾーンx",
+            "card_number": "6/27",
+            "card_type": "進化サイキック・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd21-006a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "終焉の覚醒者 レッドゾーンBSR",
+            "normalized_name": "終焉の覚醒者レッドゾーンbsr",
+            "card_number": "6/27",
+            "card_type": "サイキック・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd21-006b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "04d5e218-cfbf-4156-8186-26991287c4e3",
+        "source_key": "39-SECS003",
+        "card_id": "0feaaf55-65dd-4dc2-a315-3660e50f5dc2",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=39-SECS003",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "超時空ストームG・XX",
+            "normalized_name": "超時空ストームg・xx",
+            "card_number": "㊙S3/S5",
+            "card_type": "進化サイキック・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/39-SECS003a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "超覚醒ラスト・ストームXX",
+            "normalized_name": "超覚醒ラスト・ストームxx",
+            "card_number": "㊙S3/S5",
+            "card_type": "サイキック・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/39-SECS003b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "076c60ae-af05-4e44-b0af-48d9c5a07c2f",
+        "source_key": "dmc68-001",
+        "card_id": "8bee5f28-2d38-4315-b526-c9742db46438",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmc68-001",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "時空の不滅ギャラクシー",
+            "normalized_name": "時空の不滅ギャラクシー",
+            "card_number": "1/22",
+            "card_type": "サイキック・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmc68-001a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "撃滅の覚醒者キング・オブ・ギャラクシー",
+            "normalized_name": "撃滅の覚醒者キング・オブ・ギャラクシー",
+            "card_number": "1/22",
+            "card_type": "サイキック・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmc68-001b.jpg"
+          }
+        ]
+      }
+    ],
+    "dragheart": [
+      {
+        "card_printing_id": "02846eeb-f783-4aea-afb4-2535faccf006",
+        "source_key": "dm25ex4-SP4",
+        "card_id": "514c683e-7d4e-4ea8-a789-08b1b7bfb202",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dm25ex4-SP4",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "爆銀王剣 バトガイ刃斗",
+            "normalized_name": "爆銀王剣バトガイ刃斗",
+            "card_number": "SP4/SP5",
+            "card_type": "ドラグハート・ウエポン",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-SP4a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "爆熱王ＤＸ バトガイ銀河",
+            "normalized_name": "爆熱王dxバトガイ銀河",
+            "card_number": "SP4/SP5",
+            "card_type": "ドラグハート・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-SP4b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "03d84dd4-e3fe-46a9-ba51-383a8cd75931",
+        "source_key": "dm25bd3-001",
+        "card_id": "4354b583-8e6e-4eed-b964-d55675f1bee5",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dm25bd3-001",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "闘将銀河城 ハートバーン",
+            "normalized_name": "闘将銀河城ハートバーン",
+            "card_number": "1/20",
+            "card_type": "ドラグハート・フォートレス",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25bd3-001a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "超戦覇龍 ガイNEXT",
+            "normalized_name": "超戦覇龍ガイnext",
+            "card_number": "1/20",
+            "card_type": "ドラグハート・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25bd3-001b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "09353059-dab7-4d8b-85f2-0414b688930d",
+        "source_key": "dm22ex1-002",
+        "card_id": "cf4c57c6-8dbe-4bae-833f-37c56e59055a",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dm22ex1-002",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "滅殺刃 ゴー・トゥ・ヘル",
+            "normalized_name": "滅殺刃ゴー・トゥ・ヘル",
+            "card_number": "2/130",
+            "card_type": "ドラグハート・ウエポン",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm22ex1-002a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "魔壊王 デスシラズ",
+            "normalized_name": "魔壊王デスシラズ",
+            "card_number": "2/130",
+            "card_type": "ドラグハート・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm22ex1-002b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "0bcaf646-e5ec-4a4f-9589-082717e061c5",
+        "source_key": "dmr15-vv01",
+        "card_id": "d82d02fc-6522-4d2e-946a-25091c3a717d",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmr15-vv01",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "無敵王剣 ギガハート",
+            "normalized_name": "無敵王剣ギガハート",
+            "card_number": "VV1/VV1",
+            "card_type": "ドラグハート・ウエポン",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmr15-vv01a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "最強熱血 オウギンガ",
+            "normalized_name": "最強熱血オウギンガ",
+            "card_number": "VV1/VV1",
+            "card_type": "ドラグハート・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmr15-vv01b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "0fa95cf2-4697-47f9-8f14-c681749a3cbc",
+        "source_key": "dmr16g-v01",
+        "card_id": "bd383581-afc1-44b9-91b2-c83314226144",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmr16g-v01",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "極魔王殿 ウェルカム・ヘル",
+            "normalized_name": "極魔王殿ウェルカム・ヘル",
+            "card_number": "V1/V1",
+            "card_type": "ドラグハート・フォートレス",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmr16g-v01a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "極・魔壊王 デスゴロス",
+            "normalized_name": "極・魔壊王デスゴロス",
+            "card_number": "V1/V1",
+            "card_type": "ドラグハート・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmr16g-v01b.jpg"
+          }
+        ]
+      }
+    ],
+    "forbidden": [
+      {
+        "card_printing_id": "03a97104-31fe-47d0-bbd0-deee0042f099",
+        "source_key": "dmbd21-006",
+        "card_id": "15566734-0ed0-4848-9b97-c95f2694a0da",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmbd21-006",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "時空の禁断 レッドゾーンX",
+            "normalized_name": "時空の禁断レッドゾーンx",
+            "card_number": "6/27",
+            "card_type": "進化サイキック・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd21-006a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "終焉の覚醒者 レッドゾーンBSR",
+            "normalized_name": "終焉の覚醒者レッドゾーンbsr",
+            "card_number": "6/27",
+            "card_type": "サイキック・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd21-006b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "144d281f-63e4-4d85-bd97-7d62924a5de2",
+        "source_key": "dmex08-106",
+        "card_id": "31978ed3-1525-4e6a-8bb3-994ffba211dd",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmex08-106",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "禁断 ～封印されしX～",
+            "normalized_name": "禁断~封印されしx~",
+            "card_number": "106/???",
+            "card_type": "禁断の鼓動",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmex08-106a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "伝説の禁断 ドキンダムX",
+            "normalized_name": "伝説の禁断ドキンダムx",
+            "card_number": "106/???",
+            "card_type": "禁断クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmex08-106b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "303c8a03-6611-4eef-88fe-87f2e42a063b",
+        "source_key": "dmr23-ffl01",
+        "card_id": "c87706ba-a6a1-49da-923f-68bb7c8e681c",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmr23-ffl01",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "FORBIDDEN STAR ～世界最後の日～",
+            "normalized_name": "forbiddenstar~世界最後の日~",
+            "card_number": "FFL1/FFL1",
+            "card_type": "最終禁断フィールド",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmr23-ffl01a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "終焉の禁断 ドルマゲドンX",
+            "normalized_name": "終焉の禁断ドルマゲドンx",
+            "card_number": "FFL1/FFL1",
+            "card_type": "最終禁断クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmr23-ffl01b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "3a1fb63a-f6dc-49c1-ab2c-9f870312dd90",
+        "source_key": "dm25ex4-TR04",
+        "card_id": "31978ed3-1525-4e6a-8bb3-994ffba211dd",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dm25ex4-TR04",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "禁断 ～封印されしX～",
+            "normalized_name": "禁断~封印されしx~",
+            "card_number": "TR4/TR21",
+            "card_type": "禁断の鼓動",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-TR04a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "伝説の禁断 ドキンダムX",
+            "normalized_name": "伝説の禁断ドキンダムx",
+            "card_number": "TR4/TR21",
+            "card_type": "禁断クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-TR04b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "468e3230-5180-43da-b9f5-1e0ac1aac5d1",
+        "source_key": "dmr19-fl01",
+        "card_id": "31978ed3-1525-4e6a-8bb3-994ffba211dd",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmr19-fl01",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "禁断 ～封印されしX～",
+            "normalized_name": "禁断~封印されしx~",
+            "card_number": "FL1/FL1",
+            "card_type": "禁断の鼓動",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmr19-fl01a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "伝説の禁断 ドキンダムX",
+            "normalized_name": "伝説の禁断ドキンダムx",
+            "card_number": "FL1/FL1",
+            "card_type": "禁断クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmr19-fl01b.jpg"
+          }
+        ]
+      }
+    ],
+    "zero_dragon": [
+      {
+        "card_printing_id": "28e75d68-f0c6-4d38-ad62-0243d9c741eb",
+        "source_key": "dmbd22-001",
+        "card_id": "d0dab9d1-8c2a-49e0-8837-33d33953e973",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmbd22-001",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "滅亡の起源 零無",
+            "normalized_name": "滅亡の起源零無",
+            "card_number": "1/25",
+            "card_type": "零龍の儀",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd22-001a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "零龍",
+            "normalized_name": "零龍",
+            "card_number": "1/25",
+            "card_type": "零龍クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd22-001b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "2ad14b03-60c6-48a5-93b9-46ba5b2c496e",
+        "source_key": "dmrp12-mz4",
+        "card_id": "308fb9af-1450-43eb-bcf7-dd8a5d696e6b",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmrp12-mz4",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "破壊の儀",
+            "normalized_name": "破壊の儀",
+            "card_number": "MZ4/MZ5",
+            "card_type": "零龍星雲",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmrp12-mz4a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "零龍",
+            "normalized_name": "零龍",
+            "card_number": "MZ4/MZ5",
+            "card_type": "零龍クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmrp12-mz4b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "2ccfe635-5150-4bef-a5af-b5bd7433c8c1",
+        "source_key": "dmrp12-mz2",
+        "card_id": "5a4c65ab-7617-41ef-8f24-2d9c2235318c",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmrp12-mz2",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "手札の儀",
+            "normalized_name": "手札の儀",
+            "card_number": "MZ2/MZ5",
+            "card_type": "零龍星雲",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmrp12-mz2a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "零龍",
+            "normalized_name": "零龍",
+            "card_number": "MZ2/MZ5",
+            "card_type": "零龍クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmrp12-mz2b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "484f2d87-a7fa-4e75-94cf-bdc9068c4f9d",
+        "source_key": "dmbd22-002",
+        "card_id": "5a4c65ab-7617-41ef-8f24-2d9c2235318c",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmbd22-002",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "手札の儀",
+            "normalized_name": "手札の儀",
+            "card_number": "2/25",
+            "card_type": "零龍星雲",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd22-002a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "零龍",
+            "normalized_name": "零龍",
+            "card_number": "2/25",
+            "card_type": "零龍クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd22-002b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "6a18949f-96f1-4c62-bab4-b1b69d24d753",
+        "source_key": "dmbd22-004",
+        "card_id": "308fb9af-1450-43eb-bcf7-dd8a5d696e6b",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmbd22-004",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "破壊の儀",
+            "normalized_name": "破壊の儀",
+            "card_number": "4/25",
+            "card_type": "零龍星雲",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd22-004a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "零龍",
+            "normalized_name": "零龍",
+            "card_number": "4/25",
+            "card_type": "零龍クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd22-004b.jpg"
+          }
+        ]
+      }
+    ],
+    "twin_pact": [],
+    "landscape": [
+      {
+        "card_printing_id": "006ae0ef-190a-4ef0-b160-24067e58e20f",
+        "source_key": "dmr01-041",
+        "card_id": "9e667d4b-b01a-453a-bcd3-913f898892b1",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmr01-041",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "イオの伝道師ガガ・パックン",
+            "normalized_name": "イオの伝道師ガガ・パックン",
+            "card_number": "41/110",
+            "card_type": "サイキック・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmr01-041a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "貪欲バリバリ・パックンガー",
+            "normalized_name": "貪欲バリバリ・パックンガー",
+            "card_number": "41/110",
+            "card_type": "サイキック・スーパー・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmr01-041b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "0147b0cb-ceec-4a5f-985f-7ddcdacfa8f1",
+        "source_key": "dm25ex4-T19",
+        "card_id": "f3185356-4ad3-4e0f-a8a1-16e9f26878aa",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dm25ex4-T19",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "頂上の精霊 ミラクルスZ",
+            "normalized_name": "頂上の精霊ミラクルスz",
+            "card_number": "T19/T30",
+            "card_type": "サイキック・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-T19a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "勝利の頂上 ヴォルグ・イソレイト6th",
+            "normalized_name": "勝利の頂上ヴォルグ・イソレイト6th",
+            "card_number": "T19/T30",
+            "card_type": "サイキック・スーパー・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-T19b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "02846eeb-f783-4aea-afb4-2535faccf006",
+        "source_key": "dm25ex4-SP4",
+        "card_id": "514c683e-7d4e-4ea8-a789-08b1b7bfb202",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dm25ex4-SP4",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "爆銀王剣 バトガイ刃斗",
+            "normalized_name": "爆銀王剣バトガイ刃斗",
+            "card_number": "SP4/SP5",
+            "card_type": "ドラグハート・ウエポン",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-SP4a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "爆熱王ＤＸ バトガイ銀河",
+            "normalized_name": "爆熱王dxバトガイ銀河",
+            "card_number": "SP4/SP5",
+            "card_type": "ドラグハート・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25ex4-SP4b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "03a97104-31fe-47d0-bbd0-deee0042f099",
+        "source_key": "dmbd21-006",
+        "card_id": "15566734-0ed0-4848-9b97-c95f2694a0da",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dmbd21-006",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "時空の禁断 レッドゾーンX",
+            "normalized_name": "時空の禁断レッドゾーンx",
+            "card_number": "6/27",
+            "card_type": "進化サイキック・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd21-006a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "終焉の覚醒者 レッドゾーンBSR",
+            "normalized_name": "終焉の覚醒者レッドゾーンbsr",
+            "card_number": "6/27",
+            "card_type": "サイキック・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dmbd21-006b.jpg"
+          }
+        ]
+      },
+      {
+        "card_printing_id": "03d84dd4-e3fe-46a9-ba51-383a8cd75931",
+        "source_key": "dm25bd3-001",
+        "card_id": "4354b583-8e6e-4eed-b964-d55675f1bee5",
+        "official_page_url": "https://dm.takaratomy.co.jp/card/detail/?id=dm25bd3-001",
+        "face_count": 2,
+        "checks": {
+          "contiguous_side_indexes": true,
+          "one_parent_card": true,
+          "distinct_images": true,
+          "official_card_images_only": true,
+          "official_detail_page_only": true
+        },
+        "faces": [
+          {
+            "side_index": 0,
+            "side_kind": "front",
+            "name": "闘将銀河城 ハートバーン",
+            "normalized_name": "闘将銀河城ハートバーン",
+            "card_number": "1/20",
+            "card_type": "ドラグハート・フォートレス",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25bd3-001a.jpg"
+          },
+          {
+            "side_index": 1,
+            "side_kind": "back",
+            "name": "超戦覇龍 ガイNEXT",
+            "normalized_name": "超戦覇龍ガイnext",
+            "card_number": "1/20",
+            "card_type": "ドラグハート・クリーチャー",
+            "image_url": "https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm25bd3-001b.jpg"
+          }
+        ]
+      }
+    ]
+  },
+  "same_name_multiple_faces": [],
+  "truncated_html_cache": [],
+  "all_special_checks_pass": true
+}

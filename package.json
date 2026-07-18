@@ -11,6 +11,14 @@
     "content:import-draft": "node scripts/content/import-article-draft.mjs",
     "zukan:seed": "node scripts/zukan/generate-seed.mjs",
     "zukan:validate": "node scripts/zukan/validate-pack.mjs",
+    "cards:faces:export": "node scripts/cards/export-card-face-input.mjs",
+    "cards:faces:collect": "node scripts/cards/collect-official-card-faces.mjs",
+    "cards:faces:verify": "node scripts/cards/verify-card-faces.mjs",
+    "cards:faces:audit-samples": "node scripts/cards/audit-card-face-samples.mjs",
+    "cards:faces:progress": "node scripts/cards/report-card-face-progress.mjs",
+    "cards:faces:reconcile-dm26-ex2": "node scripts/cards/reconcile-dm26-ex2-card-face-checkpoint.mjs",
+    "cards:faces:import": "node scripts/cards/import-card-faces.mjs",
+    "cards:faces:test-local": "node scripts/cards/test-card-faces-local.mjs",
     "maker:validate:dm26-ex2": "node scripts/fixtures/validate-dm26-ex2-tier-pool.mjs"
   },
   "dependencies": {
@@ -48,6 +56,7 @@
     "@types/web-push": "^3.6.4",
     "csv-parse": "^6.2.1",
     "csv-stringify": "^6.7.0",
+    "embedded-postgres": "^18.4.0-beta.17",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
     "tailwindcss": "^4",
