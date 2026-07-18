@@ -11,6 +11,7 @@ type Printing = {
   image_url: string | null
   set_name: string | null
   card_number: string | null
+  is_search_visible: boolean
 }
 
 type Row = {
@@ -41,7 +42,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
   try {
     const { data, error } = await createAdminClient()
       .from('cards')
-      .select('id,name,name_kana,image_url,card_printings(source_key,official_page_url,image_url,set_name,card_number)')
+      .select('id,name,name_kana,image_url,card_printings(source_key,official_page_url,image_url,set_name,card_number,is_search_visible)')
       .eq('id', id)
       .eq('is_active', true)
       .maybeSingle()
@@ -50,7 +51,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
 
     const row = data as unknown as Row
     const cards: DeckCard[] = (row.card_printings ?? [])
-      .filter((printing) => Boolean(printing.source_key))
+      .filter((printing) => Boolean(printing.source_key) && printing.is_search_visible)
       .sort(compareNewest)
       .map((printing) => ({
         id: row.id,

@@ -1,0 +1,144 @@
+{
+  "generatedAt": "2026-07-17T23:42:01.810Z",
+  "readOnly": true,
+  "previewPrintings": 149,
+  "officialPrintingsAlreadyPresent": 0,
+  "previewLogicalCards": 134,
+  "officialLogicalCardsAlreadyPresent": 0,
+  "previewAndOfficialSameCardIds": 0,
+  "duplicatePreviewSourceKeys": 0,
+  "duplicateOfficialSourceKeys": 0,
+  "cards": 134,
+  "cardsMissingNameKana": 134,
+  "officialNameCollisionCount": 8,
+  "officialNameCollisions": [
+    {
+      "officialNormalizedName": "轟䡛合体ゴルギーオージャー",
+      "existingCardId": "56f946ee-9c48-4672-af4d-a3db817e13cd",
+      "existingName": "轟䡛合体 ゴルギーオージャー",
+      "existingIsActive": true,
+      "existingSourceKind": null,
+      "existingSourceKey": null,
+      "affectedCardIds": [
+        "cbf683f7-316d-48cf-acb5-aa5078314538"
+      ]
+    },
+    {
+      "officialNormalizedName": "堕∞魔ヴォゲンム",
+      "existingCardId": "48aa9038-c8d3-4566-ab9e-4b57dc9300bc",
+      "existingName": "堕∞魔 ヴォゲンム",
+      "existingIsActive": true,
+      "existingSourceKind": null,
+      "existingSourceKey": null,
+      "affectedCardIds": [
+        "180a8b8c-4886-478d-bef5-f89723e1f0eb"
+      ]
+    },
+    {
+      "officialNormalizedName": "~墓碑に刻まれし魔弾の名~",
+      "existingCardId": "f6cfd9a9-c46f-4006-a059-5a98f5399494",
+      "existingName": "～墓碑に刻まれし魔弾の名～",
+      "existingIsActive": true,
+      "existingSourceKind": null,
+      "existingSourceKey": null,
+      "affectedCardIds": [
+        "625c2fd3-1927-47ff-beed-ba3e6fbcc780"
+      ]
+    },
+    {
+      "officialNormalizedName": "氷柱と炎弧の決断",
+      "existingCardId": "e2064b42-671a-4cb2-9de3-9d815bbb69c6",
+      "existingName": "氷柱と炎弧の決断",
+      "existingIsActive": true,
+      "existingSourceKind": null,
+      "existingSourceKey": null,
+      "affectedCardIds": [
+        "2998fc0a-da43-41b1-9f99-ec614cf675e0"
+      ]
+    },
+    {
+      "officialNormalizedName": "一王伝双三眼槍",
+      "existingCardId": "14f5e0b6-575a-40aa-9489-8d7263b91024",
+      "existingName": "一王伝双三眼槍",
+      "existingIsActive": true,
+      "existingSourceKind": null,
+      "existingSourceKey": null,
+      "affectedCardIds": [
+        "a42ab8df-eb4d-4bd5-83ec-ecde78699dd3"
+      ]
+    },
+    {
+      "officialNormalizedName": "レーホウ・衛・デカッチ/「暴竜爵様のお出ましだッチ!」",
+      "existingCardId": "f4111132-31ad-477b-92b1-4b6847214a27",
+      "existingName": "レーホウ・衛・デカッチ / 「暴竜爵様のお出ましだッチ！」",
+      "existingIsActive": true,
+      "existingSourceKind": null,
+      "existingSourceKey": null,
+      "affectedCardIds": [
+        "9ac1186e-5590-4db0-91d0-b7494be53bf0"
+      ]
+    },
+    {
+      "officialNormalizedName": "オンソク童子",
+      "existingCardId": "fbefe031-7f0b-4c06-851c-36e029b5c7e5",
+      "existingName": "オンソク童子",
+      "existingIsActive": true,
+      "existingSourceKind": null,
+      "existingSourceKey": null,
+      "affectedCardIds": [
+        "add278b6-06bc-4ca7-90f4-82a0df270dd0"
+      ]
+    },
+    {
+      "officialNormalizedName": "魔光蟲ヴィルジニア卿",
+      "existingCardId": "a688daa9-a041-4b46-9ac7-71d9eb29748f",
+      "existingName": "魔光蟲ヴィルジニア卿",
+      "existingIsActive": true,
+      "existingSourceKind": null,
+      "existingSourceKey": null,
+      "affectedCardIds": [
+        "f370a0f4-44e7-4351-8824-22de4d7cc42f"
+      ]
+    }
+  ],
+  "makerProjectLinks": 94,
+  "makerProjectLinkedPreviewCards": 94,
+  "makerProjectFirst32CardIds": [
+    "ea146803-0cee-498d-8161-d04c6a1b9427",
+    "5e706e9a-575f-4109-8eb6-bf253dccf787",
+    "476bf64d-eb11-4d09-814d-99a72d59816e",
+    "adb8647d-8127-4b2c-9e27-4c55c72633eb",
+    "5c4ce844-ec6d-479e-9239-f1bebeee6089",
+    "29466096-c021-405b-ba5e-536e73d6d264",
+    "7899dea5-4e61-45cd-98c9-4ba0091b0e83",
+    "f5ec1292-5068-422e-8921-d61f8d0c831c",
+    "0bc55a14-1314-486d-9988-c3d8c91932c8",
+    "3f8b7813-6984-4e10-ba44-3845c9207a37",
+    "4454ba12-7195-400d-8449-4a57acab370c",
+    "625c2fd3-1927-47ff-beed-ba3e6fbcc780",
+    "a1f7ddeb-cb94-4035-8b97-f9464b9d28eb",
+    "08705d33-11d8-40f5-b04e-9801a913642a",
+    "fae35e0b-e7e8-4d14-93dc-746489e72c55",
+    "bfd6a07d-9272-45c6-b2fc-aeb3b04c0678",
+    "5a7d7b03-dc51-44ad-ad67-a7823f250a15",
+    "f6197690-45d9-4861-8173-13bfde635dc3",
+    "c67ebf84-a778-4109-b8eb-4a3256606e32",
+    "acd1e777-bfab-4139-8a20-08e0acf863b2",
+    "35efd121-b729-4ff3-ae27-5453fb910b0d",
+    "ed45378c-fde7-47d6-8081-4d8e3de93234",
+    "f6ae6894-2785-4463-b92c-a1106869c359",
+    "612c8808-f919-4451-9063-0d804ea1d2c9",
+    "421cbb99-70fc-4bd3-a33c-4673cf033501",
+    "6c71cb88-6b25-4c28-83dc-d4130d971e3f",
+    "58826af7-7a5e-4ad7-aa48-1cf102c92437",
+    "06a938cb-392a-44a3-85b3-a01b7b58b350",
+    "aa9d42d2-85ef-4bc9-9c48-646c1dd58469",
+    "2998fc0a-da43-41b1-9f99-ec614cf675e0",
+    "67ddffe8-73c4-4fc9-90a5-2c9149bc1f0b",
+    "c71b9ce5-618e-40da-9272-fc0161cf47da"
+  ],
+  "cardFacesTable": false,
+  "affectedCardFaces": 0,
+  "previewOfficialPageProductUrls": 149,
+  "previewImageUrls": 149
+}
