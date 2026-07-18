@@ -7,16 +7,15 @@ import {
   MAX_DECK_CARDS,
   MAX_SAME_CARD,
   deckSize,
-  matchesCard,
   type DeckCard,
   type DeckEntry,
 } from '@/lib/deck-maker'
+import { CardCatalogGrid } from '@/components/CardCatalogGrid'
+import { useCardCatalogSearch } from '@/hooks/use-card-catalog-search'
 
 const OFFICIAL_ORIGIN = 'https://dm.takaratomy.co.jp'
 const DEFAULT_DECK_NAME = 'メインデッキ'
 const MAX_DECK_NAME_LENGTH = 60
-const SEARCH_DEBOUNCE_MS = 70
-const SEARCH_CACHE_SIZE = 40
 const SAVED_DECKS_STORAGE_KEY = 'duema-bbs:deck-maker:saved-decks'
 const proxy = (url: string) => `/api/card-image?url=${encodeURIComponent(url)}`
 const loadedImageUrls = new Set<string>()
@@ -36,13 +35,6 @@ type SavedDeck = {
   entries: DeckEntry[]
   createdAt: string
   updatedAt: string
-}
-
-type SearchResponse = {
-  cards: DeckCard[]
-  total: number
-  hasMore: boolean
-  nextOffset: number
 }
 
 function pngFileName(deckName: string) {
@@ -204,12 +196,7 @@ async function loadImage(card: DeckCard) {
 }
 
 export default function DeckMaker() {
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<DeckCard[]>([])
-  const [resultTotal, setResultTotal] = useState(0)
-  const [resultsLoading, setResultsLoading] = useState(false)
-  const [hasMoreResults, setHasMoreResults] = useState(false)
-  const [nextOffset, setNextOffset] = useState(0)
+  const { query, setQuery, cards: results, total: resultTotal, loading: resultsLoading, hasMore: hasMoreResults, loadMore } = useCardCatalogSearch()
   const [entries, setEntries] = useState<DeckEntry[]>([])
   const [deckName, setDeckName] = useState(DEFAULT_DECK_NAME)
   const [savedDecks, setSavedDecks] = useState<SavedDeck[]>([])
@@ -223,14 +210,9 @@ export default function DeckMaker() {
   const [printingsLoading, setPrintingsLoading] = useState(false)
   const [resetConfirm, setResetConfirm] = useState(false)
   const [pngPreview, setPngPreview] = useState<{ src: string; title: string; fileName: string } | null>(null)
-  const requestId = useRef(0)
-  const searchAbort = useRef<AbortController | null>(null)
   const printingsAbort = useRef<AbortController | null>(null)
-  const searchCache = useRef(new Map<string, SearchResponse>())
   const printingsCache = useRef(new Map<string, DeckCard[]>())
   const searchInput = useRef<HTMLInputElement>(null)
-  const searchResults = useRef<HTMLDivElement>(null)
-  const searchSentinel = useRef<HTMLDivElement>(null)
   const printingsScroller = useRef<HTMLDivElement>(null)
   const printingDrag = useRef({ active: false, moved: false, startX: 0, scrollLeft: 0 })
   const total = deckSize(entries)
@@ -281,111 +263,6 @@ export default function DeckMaker() {
   useEffect(() => {
     if (ready) localStorage.setItem(SAVED_DECKS_STORAGE_KEY, JSON.stringify(savedDecks))
   }, [ready, savedDecks])
-
-  useEffect(() => {
-    const id = ++requestId.current
-    const cacheKey = query.trim()
-    const cached = searchCache.current.get(cacheKey)
-    searchAbort.current?.abort()
-    if (cached) {
-      prefetchCardImages(cached.cards)
-      setResults(cached.cards)
-      setResultTotal(cached.total)
-      setHasMoreResults(cached.hasMore)
-      setNextOffset(cached.nextOffset)
-      setResultsLoading(false)
-      return
-    }
-    setHasMoreResults(false)
-    setNextOffset(0)
-    const timer = window.setTimeout(() => {
-      const controller = new AbortController()
-      searchAbort.current = controller
-      setResultsLoading(true)
-      fetch(`/api/cards/search?q=${encodeURIComponent(query)}&offset=0&limit=48`, { signal: controller.signal })
-        .then((response) => response.json())
-        .then((data) => {
-          if (id !== requestId.current) return
-          const response: SearchResponse = {
-            cards: data.cards ?? [],
-            total: Number.isInteger(data.total) ? data.total : (data.cards ?? []).length,
-            hasMore: data.hasMore === true,
-            nextOffset: Number.isInteger(data.nextOffset) ? data.nextOffset : (data.cards ?? []).length,
-          }
-          if (searchCache.current.size >= SEARCH_CACHE_SIZE) {
-            const oldestKey = searchCache.current.keys().next().value
-            if (typeof oldestKey === 'string') searchCache.current.delete(oldestKey)
-          }
-          searchCache.current.set(cacheKey, response)
-          prefetchCardImages(response.cards)
-          setResults(response.cards)
-          setResultTotal(response.total)
-          setHasMoreResults(response.hasMore)
-          setNextOffset(response.nextOffset)
-        })
-        .catch((error: unknown) => {
-          if (error instanceof DOMException && error.name === 'AbortError') return
-          if (id !== requestId.current) return
-          setResults([])
-          setResultTotal(0)
-          setHasMoreResults(false)
-          setNextOffset(0)
-        })
-        .finally(() => {
-          if (id === requestId.current) setResultsLoading(false)
-        })
-    }, cacheKey ? SEARCH_DEBOUNCE_MS : 0)
-    return () => {
-      clearTimeout(timer)
-      searchAbort.current?.abort()
-    }
-  }, [query])
-
-  useEffect(() => {
-    const sentinel = searchSentinel.current
-    if (!sentinel || !hasMoreResults || resultsLoading) return
-    const observer = new IntersectionObserver((entries) => {
-      if (!entries[0]?.isIntersecting) return
-      const id = requestId.current
-      const controller = new AbortController()
-      searchAbort.current = controller
-      setResultsLoading(true)
-      fetch(`/api/cards/search?q=${encodeURIComponent(query.trim())}&offset=${nextOffset}&limit=48`, { signal: controller.signal })
-        .then((response) => response.json())
-        .then((data) => {
-          if (id !== requestId.current || controller.signal.aborted) return
-          const incoming = Array.isArray(data.cards) ? data.cards as DeckCard[] : []
-          prefetchCardImages(incoming)
-          setResults((current) => {
-            const unique = new Map(current.map((card) => [card.id, card]))
-            for (const card of incoming) unique.set(card.id, card)
-            return [...unique.values()]
-          })
-          const cached = searchCache.current.get(query.trim())
-          if (cached) {
-            const unique = new Map(cached.cards.map((card) => [card.id, card]))
-            for (const card of incoming) unique.set(card.id, card)
-            searchCache.current.set(query.trim(), {
-              cards: [...unique.values()],
-              total: Number.isInteger(data.total) ? data.total : cached.total,
-              hasMore: data.hasMore === true,
-              nextOffset: Number.isInteger(data.nextOffset) ? data.nextOffset : nextOffset + incoming.length,
-            })
-          }
-          setResultTotal(Number.isInteger(data.total) ? data.total : resultTotal)
-          setHasMoreResults(data.hasMore === true)
-          setNextOffset(Number.isInteger(data.nextOffset) ? data.nextOffset : nextOffset + incoming.length)
-        })
-        .catch((error: unknown) => {
-          if (!(error instanceof DOMException && error.name === 'AbortError')) setHasMoreResults(false)
-        })
-        .finally(() => {
-          if (id === requestId.current && !controller.signal.aborted) setResultsLoading(false)
-        })
-    }, { root: searchResults.current, rootMargin: '800px 0px' })
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [hasMoreResults, nextOffset, query, resultTotal, resultsLoading])
 
   useEffect(() => {
     if (!selected) return
@@ -664,23 +541,7 @@ export default function DeckMaker() {
                   ref={searchInput}
                   id="card-search"
                   value={query}
-                  onChange={(event) => {
-                    const nextQuery = event.target.value
-                    if (nextQuery.trim() && nextQuery.startsWith(query)) {
-                      setResults((current) => {
-                        const cachedPrefix = [...searchCache.current.entries()]
-                          .filter(([key]) => key && nextQuery.trim().startsWith(key))
-                          .sort(([first], [second]) => second.length - first.length)[0]?.[1].cards
-                        const filtered = (cachedPrefix ?? current).filter((card) => matchesCard(card, nextQuery))
-                        if (filtered.length > 0) {
-                          prefetchCardImages(filtered)
-                          return filtered
-                        }
-                        return current
-                      })
-                    }
-                    setQuery(nextQuery)
-                  }}
+                  onChange={(event) => setQuery(event.target.value)}
                   placeholder="カード名で検索"
                   aria-label="カード名検索"
                   className="h-11 w-full rounded-xl border border-slate-300 bg-slate-50 pl-9 pr-10 text-base outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
@@ -690,28 +551,7 @@ export default function DeckMaker() {
               <button type="button" aria-label="絞り込み（準備中）" title="絞り込みは今後対応予定" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 text-slate-500"><Icon name="filter" /></button>
             </div>
           </div>
-          <div ref={searchResults} data-testid="search-results" className="grid h-[65dvh] min-h-[360px] max-h-[680px] auto-rows-max content-start grid-cols-4 gap-1.5 overflow-y-auto overscroll-contain p-2.5 sm:gap-2 sm:p-3 lg:h-[calc(100dvh-170px)] lg:max-h-none">
-            <div className="col-span-4 flex min-h-5 items-center text-xs font-bold text-slate-500">
-              {query.trim() && resultTotal > 0 && <span>{resultTotal}件・新しい収録順</span>}
-              {resultsLoading && results.length > 0 && query.trim() && <span className="ml-auto text-blue-600">検索結果を更新中…</span>}
-            </div>
-            {resultsLoading && results.length === 0 && <p className="col-span-4 py-8 text-center text-sm text-slate-500">カードを読み込み中…</p>}
-            {!resultsLoading && results.length === 0 && <p className="col-span-4 py-8 text-center text-sm text-slate-500">該当カードがありません</p>}
-            {results.map((card, index) => {
-              const count = countsByCard.get(card.id) ?? 0
-              return (
-                <article key={card.id} className="group relative min-w-0 overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200">
-                  <button type="button" onClick={() => openCard(card)} aria-label={`${card.name}を拡大表示`} className="block w-full">
-                    <CardArt card={card} eager={index < 4} />
-                    {card.matchedFace && <span className="block min-h-8 px-1 py-1 text-left text-[10px] font-bold leading-tight text-slate-800">{card.matchedFace.name}</span>}
-                  </button>
-                  {count > 0 && <span className="absolute left-1 top-1 rounded-full bg-black/80 px-1.5 py-0.5 text-[10px] font-black text-white">{count}/4</span>}
-                </article>
-              )
-            })}
-            <div ref={searchSentinel} aria-hidden="true" className="col-span-4 h-px" />
-            {resultsLoading && results.length > 0 && !query.trim() && <p className="col-span-4 py-2 text-center text-xs text-slate-500">カードを読み込み中…</p>}
-          </div>
+          <CardCatalogGrid cards={results} total={resultTotal} query={query} loading={resultsLoading} hasMore={hasMoreResults} onLoadMore={loadMore} onSelect={openCard} selectedCount={card => countsByCard.get(card.id) ?? 0} selectedBadge={count => `${count}/4`} renderCardArt={(card, index) => <CardArt card={card} eager={index < 4} />} />
         </section>
       </div>
 

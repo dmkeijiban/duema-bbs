@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { normalizeCardName } from '@/lib/card-name'
 import { canAccessDeckMaker } from '@/lib/deck-maker-access'
 import { LOCAL_DECK_CARDS, matchesCard, type DeckCard } from '@/lib/deck-maker'
+import { parseSelectMakerConfig } from '@/lib/maker'
 
 export const dynamic = 'force-dynamic'
 const MAX_QUERY_LENGTH = 80
@@ -193,10 +194,22 @@ async function getCatalog(supabase: ReturnType<typeof createAdminClient>, column
   return rows
 }
 
+async function getMakerCardPool(supabase: ReturnType<typeof createAdminClient>, makerSlug: string) {
+  if (!makerSlug) return null
+  if (!/^[a-z0-9-]{1,80}$/.test(makerSlug)) throw new Error('invalid_maker')
+  const { data: project } = await supabase.from('maker_projects').select('id,type,config').eq('slug', makerSlug).eq('status', 'published').eq('is_public', true).maybeSingle()
+  if (!project || project.type !== 'select') throw new Error('maker_not_found')
+  if (parseSelectMakerConfig(project.config).cardPool !== 'manual') return null
+  const { data, error } = await supabase.from('maker_project_cards').select('card_id').eq('project_id', project.id).limit(5000)
+  if (error) throw error
+  return new Set((data ?? []).map(row => row.card_id))
+}
+
 export async function GET(request: NextRequest) {
   if (!(await canAccessDeckMaker())) return new NextResponse(null, { status: 404 })
 
   const rawQuery = request.nextUrl.searchParams.get('q')?.trim() ?? ''
+  const makerSlug = request.nextUrl.searchParams.get('makerSlug')?.trim() ?? ''
   if (rawQuery.length > MAX_QUERY_LENGTH || /[\u0000-\u001f\u007f]/.test(rawQuery)) return NextResponse.json({ error: 'Invalid query' }, { status: 400 })
   const normalizedQuery = normalizeCardName(rawQuery)
   const kanaQuery = rawQuery.normalize('NFKC')
@@ -206,11 +219,13 @@ export async function GET(request: NextRequest) {
   const limit = Number.isInteger(requestedLimit) ? Math.min(MAX_PAGE_SIZE, Math.max(DEFAULT_PAGE_SIZE, requestedLimit)) : DEFAULT_PAGE_SIZE
   try {
     const supabase = createAdminClient()
+    const makerCardPool = await getMakerCardPool(supabase, makerSlug)
     const faceProbe = await supabase.from('card_faces').select('id', { head: true, count: 'exact' }).limit(1)
     const facesAvailable = !faceProbe.error
     const columns = 'id,name,normalized_name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,is_representative,is_search_visible)'
     if (!rawQuery) {
-      const catalog = await getCatalog(supabase, columns)
+      const fullCatalog = await getCatalog(supabase, columns)
+      const catalog = makerCardPool ? fullCatalog.filter(row => makerCardPool.has(row.id)) : fullCatalog
       const featured = new Map<string, DeckCard>()
       const bySourceKey = new Map(catalog.flatMap((row) => (row.card_printings ?? []).filter((printing) => printing.is_search_visible).map((printing) => [printing.source_key, { row, printing }] as const)))
       for (const sourceKey of CHARISMA_BEST_DEFAULT_SOURCE_KEYS) {
@@ -233,12 +248,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ cards, total, hasMore: nextOffset < total, nextOffset }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
     }
 
-    const matches = await getMatches(supabase, columns, normalizedQuery, kanaQuery, facesAvailable)
+    const allMatches = await getMatches(supabase, columns, normalizedQuery, kanaQuery, facesAvailable)
+    const matches = makerCardPool ? allMatches.filter(row => makerCardPool.has(row.id)) : allMatches
     const rows = matches.slice(offset, offset + limit)
     const cards = rows.map((row) => mapCard(row))
     const nextOffset = offset + cards.length
     return NextResponse.json({ cards, total: matches.length, hasMore: nextOffset < matches.length, nextOffset }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
   } catch {
+    if (makerSlug) return NextResponse.json({ error: 'maker_not_found' }, { status: 404 })
     const allCards = rawQuery ? LOCAL_DECK_CARDS.filter((card) => matchesCard(card, rawQuery)) : LOCAL_DECK_CARDS
     const cards = rawQuery ? allCards : allCards.slice(0, DEFAULT_RESULTS)
     return NextResponse.json({ cards, total: allCards.length, hasMore: false, nextOffset: cards.length, fallback: true }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })

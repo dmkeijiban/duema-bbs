@@ -1,23 +1,21 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { SelectMakerConfig } from '@/lib/maker'
+import type { DeckCard } from '@/lib/deck-maker'
+import { CardCatalogGrid } from '@/components/CardCatalogGrid'
+import { useCardCatalogSearch } from '@/hooks/use-card-catalog-search'
 import { getMakerAnonymousId } from '@/lib/maker-events-shared'
 import { recordMakerEvent, recordMakerPageView } from '@/lib/maker-events'
 import { saveSelectSubmission } from './actions'
 
-type Card = { id: string; name: string; image_url: string | null; civilization: string[] | null; cost: number | null; card_type: string | null }
-type Draft = { cards: Card[]; title: string; comment: string; listPublic: boolean; sessionId: string; submissionId: string | null; completedEventSent: boolean }
+type Draft = { cards: DeckCard[]; title: string; comment: string; listPublic: boolean; sessionId: string; submissionId: string | null; completedEventSent: boolean }
 
 export default function SelectMaker({ slug, config, initialDraft }: { slug: string; title: string; config: SelectMakerConfig; initialDraft?: Draft }) {
   const storageKey = `select-maker:${slug}:v1`
-  const [selected, setSelected] = useState<Card[]>([])
-  const [results, setResults] = useState<Card[]>([])
-  const [query, setQuery] = useState('')
-  const [civilization, setCivilization] = useState('')
-  const [cost, setCost] = useState('')
-  const [cardType, setCardType] = useState('')
+  const [selected, setSelected] = useState<DeckCard[]>([])
+  const { query, setQuery, cards: results, total: resultTotal, loading: resultsLoading, hasMore, loadMore } = useCardCatalogSearch({ makerSlug: slug })
   const [title, setTitle] = useState(config.defaultTitle)
   const [comment, setComment] = useState(config.defaultComment)
   const [listPublic, setListPublic] = useState(config.defaultListPublic)
@@ -25,7 +23,7 @@ export default function SelectMaker({ slug, config, initialDraft }: { slug: stri
   const [submissionId, setSubmissionId] = useState<string | null>(null)
   const [completedEventSent, setCompletedEventSent] = useState(false)
   const [message, setMessage] = useState('')
-  const [zoom, setZoom] = useState<Card | null>(null)
+  const [zoom, setZoom] = useState<DeckCard | null>(null)
   const [busy, setBusy] = useState(false)
   const hydrated = useRef(false)
 
@@ -51,16 +49,13 @@ export default function SelectMaker({ slug, config, initialDraft }: { slug: stri
     localStorage.setItem(storageKey, JSON.stringify({ cards: selected, title, comment, listPublic, sessionId, submissionId, completedEventSent }))
   }, [selected, title, comment, listPublic, sessionId, submissionId, completedEventSent, storageKey])
 
-  const search = useCallback(async () => {
-    const params = new URLSearchParams({ q: query, civilization, cost, cardType })
-    const response = await fetch(`/api/makers/${slug}/cards?${params}`)
-    const body = await response.json() as { cards?: Card[] }
-    setResults(body.cards ?? [])
-    void recordMakerEvent({ slug, eventType: 'card_searched', anonymousId: getMakerAnonymousId() })
-  }, [query, civilization, cost, cardType, slug])
-  useEffect(() => { const timer = setTimeout(() => void search(), 250); return () => clearTimeout(timer) }, [search])
+  useEffect(() => {
+    if (!query.trim()) return
+    const timer = setTimeout(() => void recordMakerEvent({ slug, eventType: 'card_searched', anonymousId: getMakerAnonymousId() }), 300)
+    return () => clearTimeout(timer)
+  }, [query, slug])
 
-  function add(card: Card) {
+  function add(card: DeckCard) {
     if (selected.length >= config.maxChoices) return setMessage(`選べるのは最大${config.maxChoices}枚です`)
     if (selected.some(item => config.duplicateRule === 'card_name' ? item.name === card.name : item.id === card.id)) return setMessage('同じカード名は重複して選べません')
     const next = [...selected, card]; setSelected(next); setMessage('')
@@ -78,7 +73,7 @@ export default function SelectMaker({ slug, config, initialDraft }: { slug: stri
     const columns = selected.length <= 3 ? selected.length : selected.length <= 9 ? 3 : 4
     const rows = Math.ceil(selected.length / columns); const gap = 18; const areaW = 1040; const areaH = 1150
     const cellW = (areaW - gap * (columns - 1)) / columns; const cellH = (areaH - gap * (rows - 1)) / rows
-    const images = await Promise.all(selected.map(card => new Promise<HTMLImageElement | null>(resolve => { if (!card.image_url) return resolve(null); const image = new Image(); image.onload = () => resolve(image); image.onerror = () => resolve(null); image.src = `/api/makers/${slug}/card-image?id=${card.id}` })))
+    const images = await Promise.all(selected.map(card => new Promise<HTMLImageElement | null>(resolve => { if (!card.imageUrl) return resolve(null); const image = new Image(); image.onload = () => resolve(image); image.onerror = () => resolve(null); image.src = `/api/makers/${slug}/card-image?id=${card.id}` })))
     images.forEach((image, index) => { const col = index % columns; const row = Math.floor(index / columns); const x = 80 + col * (cellW + gap); const y = 135 + row * (cellH + gap); ctx.fillStyle = '#e2e8f0'; ctx.fillRect(x, y, cellW, cellH); if (image) { const scale = Math.min(cellW / image.width, cellH / image.height); const w = image.width * scale; const h = image.height * scale; ctx.drawImage(image, x + (cellW - w) / 2, y + (cellH - h) / 2, w, h) } else { ctx.fillStyle = '#64748b'; ctx.font = '24px sans-serif'; ctx.fillText('画像なし', x + cellW / 2, y + cellH / 2) } })
     ctx.fillStyle = '#0f172a'; ctx.font = 'bold 42px sans-serif'; ctx.fillText(title.slice(0, 24), 600, 1350); ctx.font = '28px sans-serif'; ctx.fillText('デュエマ掲示板', 600, 1435)
     return new Promise<Blob>((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('PNG生成に失敗しました')), 'image/png'))
@@ -90,7 +85,7 @@ export default function SelectMaker({ slug, config, initialDraft }: { slug: stri
 
   return <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
     <section className="rounded-2xl border bg-white p-3 sm:p-5"><div className="flex items-center justify-between"><h2 className="font-black">選択済みカード</h2><strong>{selected.length} / {config.maxChoices}枚</strong></div>
-      <div className="mt-3 grid grid-cols-3 gap-2">{Array.from({ length: config.maxChoices }, (_, index) => { const card = selected[index]; return <div key={card?.id ?? index} className="relative aspect-[5/7] overflow-hidden rounded-lg border bg-slate-100">{card ? <><button type="button" onClick={() => setZoom(card)} className="h-full w-full"><img src={card.image_url ?? '/images/card-placeholder.svg'} alt={card.name} className="h-full w-full object-contain" /></button><button onClick={() => remove(index)} className="absolute right-1 top-1 rounded-full bg-black/75 px-2 py-1 text-xs text-white">×</button>{config.reorderable && <div className="absolute bottom-1 left-1 flex gap-1"><button onClick={() => move(index,-1)} className="rounded bg-white/90 px-2">←</button><button onClick={() => move(index,1)} className="rounded bg-white/90 px-2">→</button></div>}</> : <span className="flex h-full items-center justify-center text-sm text-slate-400">{index + 1}</span>}</div> })}</div>
+      <div className="mt-3 grid grid-cols-3 gap-2">{Array.from({ length: config.maxChoices }, (_, index) => { const card = selected[index]; return <div key={card?.id ?? index} className="relative aspect-[5/7] overflow-hidden rounded-lg border bg-slate-100">{card ? <><button type="button" onClick={() => setZoom(card)} className="h-full w-full"><img src={card.imageUrl ?? '/images/card-placeholder.svg'} alt={card.name} className="h-full w-full object-contain" /></button><button type="button" onClick={() => remove(index)} className="absolute right-1 top-1 rounded-full bg-black/75 px-2 py-1 text-xs text-white">×</button>{config.reorderable && <div className="absolute bottom-1 left-1 flex gap-1"><button type="button" onClick={() => move(index,-1)} className="rounded bg-white/90 px-2">←</button><button type="button" onClick={() => move(index,1)} className="rounded bg-white/90 px-2">→</button></div>}</> : <span className="flex h-full items-center justify-center text-sm text-slate-400">{index + 1}</span>}</div> })}</div>
       {!complete && <p className="mt-3 text-sm font-bold text-amber-700">あと{config.maxChoices - selected.length}枚選んでください</p>}
       {config.showTitle && <label className="mt-4 block text-sm font-bold">投稿タイトル<input value={title} maxLength={40} onChange={e => setTitle(e.target.value)} className="mt-1 w-full rounded-lg border px-3 py-2" /></label>}
       {config.showComment && <label className="mt-3 block text-sm font-bold">一言コメント<textarea value={comment} maxLength={200} onChange={e => setComment(e.target.value)} className="mt-1 w-full rounded-lg border px-3 py-2" /></label>}
@@ -98,7 +93,7 @@ export default function SelectMaker({ slug, config, initialDraft }: { slug: stri
       {message && <p role="status" className="mt-3 rounded-lg bg-slate-100 p-3 text-sm">{message}</p>}
       <div className="mt-4 grid grid-cols-2 gap-2"><button disabled={!complete || busy} onClick={() => void saveImage()} className="rounded-xl bg-blue-700 px-3 py-3 font-bold text-white disabled:bg-gray-300">画像保存</button><button disabled={!complete} onClick={() => void share()} className="rounded-xl bg-black px-3 py-3 font-bold text-white disabled:bg-gray-300">X共有</button><button onClick={reset} className="rounded-xl border px-3 py-3 font-bold">新しく作る</button><Link href={`/makers/${slug}/submissions`} className="rounded-xl border px-3 py-3 text-center font-bold">みんなの{config.maxChoices}選を見る</Link></div>
     </section>
-    <aside className="rounded-2xl border bg-white p-3 sm:p-4"><h2 className="font-black">カード検索</h2><input value={query} onChange={e => setQuery(e.target.value)} placeholder="カード名" className="mt-3 w-full rounded-lg border px-3 py-2" /><div className="mt-2 grid grid-cols-3 gap-2"><select value={civilization} onChange={e => setCivilization(e.target.value)} className="rounded border px-1 py-2"><option value="">文明</option>{['光','水','闇','火','自然','無色'].map(v=><option key={v}>{v}</option>)}</select><input value={cost} onChange={e => setCost(e.target.value)} placeholder="コスト" inputMode="numeric" className="rounded border px-2 py-2"/><input value={cardType} onChange={e => setCardType(e.target.value)} placeholder="種類" className="rounded border px-2 py-2"/></div><button onClick={() => { setQuery(''); setCivilization(''); setCost(''); setCardType('') }} className="mt-2 text-sm font-bold text-blue-700">リセット</button><div className="mt-3 grid grid-cols-3 gap-2">{results.map(card => <button key={card.id} onClick={() => add(card)} className="rounded border p-1 text-left"><div className="aspect-[5/7] bg-slate-100"><img src={card.image_url ?? '/images/card-placeholder.svg'} alt="" className="h-full w-full object-contain" loading="lazy"/></div><span className="mt-1 line-clamp-2 text-xs font-bold">{card.name}</span></button>)}</div></aside>
-    {zoom && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setZoom(null)}><img src={zoom.image_url ?? '/images/card-placeholder.svg'} alt={zoom.name} className="max-h-[90vh] max-w-[90vw] object-contain"/></div>}
+    <aside className="min-w-0 overflow-hidden rounded-2xl border bg-white lg:sticky lg:top-3"><div className="border-b border-slate-200 p-3"><h2 className="sr-only">カード検索</h2><div className="flex gap-2"><div className="relative min-w-0 flex-1"><span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true">⌕</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="カード名で検索" aria-label="カード名検索" className="h-11 w-full rounded-xl border border-slate-300 bg-slate-50 pl-9 pr-10 text-base outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"/>{query && <button type="button" onClick={() => setQuery('')} aria-label="検索文字をクリア" className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center text-slate-500">×</button>}</div><button type="button" aria-label="絞り込み（準備中）" title="絞り込みは今後対応予定" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 text-slate-500">☷</button></div></div><CardCatalogGrid cards={results} total={resultTotal} query={query} loading={resultsLoading} hasMore={hasMore} onLoadMore={loadMore} onSelect={add} selectedCount={card => selected.filter(item => item.id === card.id).length}/></aside>
+    {zoom && <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setZoom(null)}><img src={zoom.imageUrl ?? '/images/card-placeholder.svg'} alt={zoom.name} className="max-h-[90vh] max-w-[90vw] object-contain"/></div>}
   </div>
 }
