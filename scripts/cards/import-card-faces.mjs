@@ -96,7 +96,7 @@ if (environment === 'local') {
   const databaseUrlObject = new URL(databaseUrl)
   const databaseRef = databaseHost.startsWith('db.')
     ? databaseHost.split('.')[1]
-    : decodeURIComponent(databaseUrlObject.username).match(/^postgres\.([a-z0-9]{20})$/)?.[1]
+    : decodeURIComponent(databaseUrlObject.username).match(/^(?:postgres|cli_login_postgres)\.([a-z0-9]{20})$/)?.[1]
   if (!databaseRef) throw new Error('DB接続先project refを取得できません')
   if (publicRef !== expectedRef || databaseRef !== expectedRef) throw new Error(`${environment}指定と接続先project refが一致しません`)
   if (environment === 'preview' && (publicRef === PRODUCTION_PROJECT_REF || databaseRef === PRODUCTION_PROJECT_REF)) {
@@ -111,6 +111,7 @@ const resultSummary = { ...summaryBase, inserted: 0, updated: 0, unchanged: 0, f
 await client.connect()
 try {
   await client.query('begin')
+  if (environment === 'production') await client.query('set local role postgres')
   await client.query('set local lock_timeout = \'15s\'')
   await client.query('set local statement_timeout = \'10min\'')
   await client.query(`
