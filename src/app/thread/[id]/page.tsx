@@ -14,6 +14,7 @@ import { createPublicClient } from '@/lib/supabase-public'
 import { NextReadNav } from '@/components/NextReadNav'
 import { ThreadFloatingActions } from '@/components/ThreadFloatingActions'
 import { AdBanner } from '@/components/AdBanner'
+import { GamAd } from '@/components/GamAd'
 import { getDisplayCategory } from '@/lib/categories'
 import { isThinThreadForAdSenseReview, isPrNoticeForAdSenseReview } from '@/lib/adsense-review-mode'
 import { getThreadCommentClosedMessage } from '@/lib/thread-auto-close'
@@ -397,6 +398,8 @@ export async function renderThreadPage(threadId: number, page: number) {
           </Suspense>
         }
       />
+
+      <GamAd slot="thread_detail" />
 
       {/* SNS フォロー導線 — 最終ページのみ表示（読み終えた直後が最もコンバージョン高い） */}
       {page >= totalPages && (
