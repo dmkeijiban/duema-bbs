@@ -1,68 +1,54 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { isMakerProjectArchived, isMakerProjectVisible, MAKER_CATEGORIES, MAKER_CATEGORY_LABELS, parseMakerCatalogConfig, STATIC_MAKER_ENTRIES, type MakerCategory } from '@/lib/maker-catalog'
 
 export const dynamic = 'force-dynamic'
 export const metadata = {
-  title: 'カードメーカー・参加型企画｜デュエマ掲示板',
-  description: 'デッキメーカー、Tier表、カード選択などのデュエマ参加型企画一覧です。',
+  title: 'デュエマあそびば｜デュエマ掲示板',
+  description: 'デッキ作り、カード選び、投票や予想を楽しめるデュエマ企画の一覧です。',
 }
 
 type MakerProject = {
   slug: string
   title: string
   type: string
+  status: string
+  is_public: boolean
   config: Record<string, unknown> | null
 }
-
-function description(project: MakerProject) {
-  const value = project.config?.description
-  return typeof value === 'string' ? value : ''
-}
+type CatalogEntry = { id: string; title: string; href: string; category: MakerCategory; sortOrder: number; description: string; featured?: boolean; isNew?: boolean; isLimited?: boolean; thumbnailUrl?: string }
 
 export default async function MakersPage() {
   const { data } = await createAdminClient()
     .from('maker_projects')
-    .select('slug,title,type,config')
-    .eq('status', 'published')
-    .eq('is_public', true)
+    .select('slug,title,type,status,is_public,config')
     .order('created_at', { ascending: false })
 
   const projects = (data ?? []) as MakerProject[]
-  const selectProjects = projects.filter(project => project.type === 'select')
-  const otherProjects = projects.filter(project => project.type !== 'select')
+  const entries: CatalogEntry[] = [
+    ...(STATIC_MAKER_ENTRIES as readonly CatalogEntry[]),
+    ...projects.filter(project => isMakerProjectVisible(project)).map((project): CatalogEntry => {
+      const config = parseMakerCatalogConfig(project)
+      const ended = isMakerProjectArchived(project)
+      return { id: project.slug, title: project.title, href: `/makers/${project.slug}`, category: ended ? 'archive' as const : config.category, sortOrder: config.sortOrder, description: config.shortDescription, featured: config.featured, isNew: config.isNew, isLimited: config.isLimited, thumbnailUrl: config.thumbnailUrl }
+    }),
+  ].sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)) || a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'ja'))
 
-  const ProjectCard = ({ project }: { project: MakerProject }) => (
-    <Link href={`/makers/${project.slug}`} className="block rounded-xl border bg-white p-4 transition hover:border-blue-400 hover:shadow-sm">
-      <h3 className="font-black text-blue-800">{project.title}</h3>
-      {description(project) && <p className="mt-1 text-sm leading-6 text-gray-600">{description(project)}</p>}
+  const ProjectCard = ({ entry }: { entry: typeof entries[number] }) => (
+    <Link href={entry.href} className="block overflow-hidden rounded-xl border bg-white transition hover:border-blue-400 hover:shadow-sm">
+      {'thumbnailUrl' in entry && entry.thumbnailUrl && <img src={entry.thumbnailUrl} alt="" className="aspect-[16/7] w-full object-cover" />}
+      <div className="p-4"><div className="flex flex-wrap gap-1">{'featured' in entry && entry.featured && <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">おすすめ</span>}{'isNew' in entry && entry.isNew && <span className="rounded bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-800">NEW</span>}{'isLimited' in entry && entry.isLimited && <span className="rounded bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-800">期間限定</span>}</div>
+      <h3 className="mt-1 font-black text-blue-800">{entry.title}</h3>
+      {entry.description && <p className="mt-1 text-sm leading-6 text-gray-600">{entry.description}</p>}</div>
     </Link>
   )
 
   return (
     <main className="min-h-screen bg-slate-50 px-3 py-6">
       <div className="mx-auto max-w-5xl">
-        <h1 className="text-2xl font-black sm:text-3xl">カードメーカー・参加型企画</h1>
-        <p className="mt-2 text-sm text-gray-600">カードを選んで画像を作り、みんなの結果も見られます。</p>
-
-        <section className="mt-6">
-          <h2 className="text-lg font-black">カードメーカー</h2>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <Link href="/makers/deck-maker" className="block rounded-xl border bg-white p-4 transition hover:border-emerald-500 hover:shadow-sm">
-              <h3 className="font-black text-emerald-800">デッキメーカー</h3>
-              <p className="mt-1 text-sm text-gray-600">カードを検索してデッキ画像を作成できます。</p>
-            </Link>
-          </div>
-        </section>
-
-        {selectProjects.length > 0 && <section className="mt-7">
-          <h2 className="text-lg font-black">参加型カード選択企画</h2>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">{selectProjects.map(project => <ProjectCard key={project.slug} project={project} />)}</div>
-        </section>}
-
-        {otherProjects.length > 0 && <section className="mt-7">
-          <h2 className="text-lg font-black">その他の参加型企画</h2>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">{otherProjects.map(project => <ProjectCard key={project.slug} project={project} />)}</div>
-        </section>}
+        <h1 className="text-2xl font-black sm:text-3xl">デュエマあそびば</h1>
+        <p className="mt-2 text-sm leading-6 text-gray-600">デッキを作る、好きなカードを選ぶ、みんなで投票する。デュエマをもっと楽しむための企画を集めました。</p>
+        {MAKER_CATEGORIES.map(category => { const categoryEntries = entries.filter(entry => entry.category === category); return categoryEntries.length > 0 && <section key={category} className="mt-7"><h2 className="text-lg font-black">{MAKER_CATEGORY_LABELS[category as MakerCategory]}</h2><div className="mt-3 grid gap-3 sm:grid-cols-2">{categoryEntries.map(entry => <ProjectCard key={entry.id} entry={entry} />)}</div></section> })}
       </div>
     </main>
   )
