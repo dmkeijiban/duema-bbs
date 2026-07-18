@@ -5,7 +5,7 @@ import { isMakerProjectArchived, isMakerProjectVisible, MAKER_CATEGORIES, MAKER_
 export const dynamic = 'force-dynamic'
 export const metadata = {
   title: 'デュエマあそびば｜デュエマ掲示板',
-  description: 'デッキ作り、カード選び、投票や予想を楽しめるデュエマ企画の一覧です。',
+  description: 'カードを選んだり、診断したり、投票したり、みんなで遊べるデュエマコンテンツ集。',
 }
 
 type MakerProject = {
@@ -32,7 +32,8 @@ export default async function MakersPage() {
       const ended = isMakerProjectArchived(project)
       return { id: project.slug, title: project.title, href: `/makers/${project.slug}`, category: ended ? 'archive' as const : config.category, sortOrder: config.sortOrder, description: config.shortDescription, featured: config.featured, isNew: config.isNew, isLimited: config.isLimited, thumbnailUrl: config.thumbnailUrl }
     }),
-  ].sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)) || a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'ja'))
+  ].sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'ja'))
+  const featuredEntries = entries.filter(entry => entry.featured && entry.category !== 'archive')
 
   const ProjectCard = ({ entry }: { entry: typeof entries[number] }) => (
     <Link href={entry.href} className="block overflow-hidden rounded-xl border bg-white transition hover:border-blue-400 hover:shadow-sm">
@@ -47,8 +48,9 @@ export default async function MakersPage() {
     <main className="min-h-screen bg-slate-50 px-3 py-6">
       <div className="mx-auto max-w-5xl">
         <h1 className="text-2xl font-black sm:text-3xl">デュエマあそびば</h1>
-        <p className="mt-2 text-sm leading-6 text-gray-600">デッキを作る、好きなカードを選ぶ、みんなで投票する。デュエマをもっと楽しむための企画を集めました。</p>
-        {MAKER_CATEGORIES.map(category => { const categoryEntries = entries.filter(entry => entry.category === category); return categoryEntries.length > 0 && <section key={category} className="mt-7"><h2 className="text-lg font-black">{MAKER_CATEGORY_LABELS[category as MakerCategory]}</h2><div className="mt-3 grid gap-3 sm:grid-cols-2">{categoryEntries.map(entry => <ProjectCard key={entry.id} entry={entry} />)}</div></section> })}
+        <p className="mt-2 text-sm leading-6 text-gray-600">カードを選んだり、診断したり、投票したり、<br className="sm:hidden" />みんなで遊べるデュエマコンテンツ集。</p>
+        {featuredEntries.length > 0 && <section data-testid="featured-makers" className="mt-7 rounded-2xl border border-amber-200 bg-amber-50/60 p-3 sm:p-4"><h2 className="text-lg font-black">おすすめ</h2><div className="mt-3 grid gap-3 sm:grid-cols-2">{featuredEntries.map(entry => <ProjectCard key={entry.id} entry={entry} />)}</div></section>}
+        {MAKER_CATEGORIES.map(category => { const categoryEntries = entries.filter(entry => entry.category === category && !entry.featured); return categoryEntries.length > 0 && <section data-category={category} key={category} className="mt-7"><h2 className="text-lg font-black">{MAKER_CATEGORY_LABELS[category as MakerCategory]}</h2><div className="mt-3 grid gap-3 sm:grid-cols-2">{categoryEntries.map(entry => <ProjectCard key={entry.id} entry={entry} />)}</div></section> })}
       </div>
     </main>
   )

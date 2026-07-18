@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { ADMIN_COOKIE, verifyAdminCookie } from '@/lib/admin-auth'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { parseSelectMakerConfig } from '@/lib/maker'
-import { MAKER_CATEGORIES } from '@/lib/maker-catalog'
+import { MAKER_CATEGORIES, MAKER_PUBLICATION_STATUSES } from '@/lib/maker-catalog'
 
 export async function saveSelectProject(formData: FormData) {
   if (!verifyAdminCookie((await cookies()).get(ADMIN_COOKIE)?.value)) return
@@ -38,14 +38,16 @@ export async function saveMakerCatalogSettings(formData: FormData) {
   const value = (name: string) => String(formData.get(name) ?? '').trim()
   const category = value('category')
   if (!MAKER_CATEGORIES.includes(category as typeof MAKER_CATEGORIES[number])) throw new Error('カテゴリが不正です')
+  const publicationStatus = value('publicationStatus')
+  if (!MAKER_PUBLICATION_STATUSES.includes(publicationStatus as typeof MAKER_PUBLICATION_STATUSES[number])) throw new Error('公開状態が不正です')
   const config = project.config && typeof project.config === 'object' && !Array.isArray(project.config) ? project.config as Record<string, unknown> : {}
   const catalog = {
     showInCatalog: formData.get('showInCatalog') === 'on', featured: formData.get('featured') === 'on', category,
     sortOrder: Number(value('sortOrder')) || 100, isNew: formData.get('isNew') === 'on', isLimited: formData.get('isLimited') === 'on',
-    showInArchive: formData.get('showInArchive') === 'on', adminOnly: formData.get('adminOnly') === 'on',
+    showInArchive: formData.get('showInArchive') === 'on', adminOnly: publicationStatus === 'admin_only',
     startsAt: value('startsAt'), endsAt: value('endsAt'), shortDescription: value('shortDescription'), thumbnailUrl: value('thumbnailUrl'),
   }
-  const { error } = await admin.from('maker_projects').update({ config: { ...config, catalog }, updated_at: new Date().toISOString() }).eq('slug', slug)
+  const { error } = await admin.from('maker_projects').update({ status: publicationStatus, is_public: publicationStatus === 'published' || publicationStatus === 'scheduled' || publicationStatus === 'ended', config: { ...config, catalog }, updated_at: new Date().toISOString() }).eq('slug', slug)
   if (error) throw new Error(error.message)
   revalidatePath('/admin/makers/select'); revalidatePath('/makers')
 }
