@@ -6,14 +6,15 @@ import { createClient } from '@/lib/supabase-server'
 import { ADMIN_COOKIE, verifyAdminCookie } from '@/lib/admin-auth'
 import { cookies } from 'next/headers'
 import SelectMaker from './SelectMaker'
+import { isMakerProjectPageAccessible } from '@/lib/maker-catalog'
 
 export const dynamic = 'force-dynamic'
 export default async function GenericMakerPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ edit?: string }> }) {
   const { slug } = await params
   const { edit } = await searchParams
   const admin = createAdminClient()
-  const { data: project } = await admin.from('maker_projects').select('id,title,type,config').eq('slug', slug).eq('status', 'published').eq('is_public', true).maybeSingle()
-  if (!project || project.type !== 'select') notFound()
+  const { data: project } = await admin.from('maker_projects').select('id,slug,title,type,status,is_public,config').eq('slug', slug).maybeSingle()
+  if (!project || project.type !== 'select' || !isMakerProjectPageAccessible(project)) notFound()
   const config = parseSelectMakerConfig(project.config)
   let initialDraft: Parameters<typeof SelectMaker>[0]['initialDraft']
   if (edit && /^[0-9a-f-]{36}$/i.test(edit)) {
