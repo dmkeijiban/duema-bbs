@@ -1,6 +1,6 @@
 import { getJstTodayCutoffUtcIso } from '@/lib/campaign-ranking'
 import { createAdminClient } from '@/lib/supabase-admin'
-import type { MakerEventType } from '@/lib/maker-events-shared'
+import { MAKER_EVENT_TYPES, type MakerEventType } from '@/lib/maker-events-shared'
 
 export type MakerEventCounter = {
   total: number
@@ -60,16 +60,7 @@ export async function fetchMakerUsageStats(projectId: string): Promise<MakerUsag
     if (!lastSubmissionAt || row.updated_at > lastSubmissionAt) lastSubmissionAt = row.updated_at
   }
 
-  const events: Record<MakerEventType, MakerEventCounter> = {
-    tier_created: emptyCounter(),
-    image_saved: emptyCounter(),
-    x_shared: emptyCounter(),
-    aggregate_viewed: emptyCounter(),
-    page_viewed: emptyCounter(),
-    auth_cta_clicked: emptyCounter(),
-    signup_completed: emptyCounter(),
-    submission_after_signup: emptyCounter(),
-  }
+  const events = Object.fromEntries(MAKER_EVENT_TYPES.map(type => [type, emptyCounter()])) as Record<MakerEventType, MakerEventCounter>
   for (const row of (eventStatsResult.data ?? []) as EventStatsRow[]) {
     if (row.event_type in events) {
       events[row.event_type as MakerEventType] = {

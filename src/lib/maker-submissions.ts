@@ -60,5 +60,5 @@ export async function getPublicSubmission(projectId: string, id: string) {
 }
 
 export function makerSubmissionView(project: PublicMakerProject) {
-  return { config: parseMakerProjectConfig(project.config), communityLabel: makerCommunityLabel(project.type) }
+  return { config: project.type === 'select' ? { groups: [{ key: 'selected', label: '選択カード', color: 'border-slate-300 bg-white text-slate-900' }], unrated: false, allowDuplicates: false, ordered: true, overwrite: false, maxChoices: null } : parseMakerProjectConfig(project.config), communityLabel: makerCommunityLabel(project.type) }
 }

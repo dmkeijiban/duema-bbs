@@ -39,6 +39,6 @@ export async function deleteMakerSubmission(slug: string, submissionId: string) 
     error = result.error
   }
 
-  const label = project.type === 'prediction' ? '予想' : 'Tier表'
+  const label = project.type === 'prediction' ? '予想' : project.type === 'select' ? '作品' : 'Tier表'
   return error ? { ok: false, message: '削除に失敗しました' } : { ok: true, message: `${label}を削除しました` }
 }

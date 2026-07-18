@@ -26,6 +26,49 @@ export type MakerProjectConfig = {
   maxChoices: number | null
 }
 
+export type SelectMakerConfig = {
+  description: string
+  minChoices: number
+  maxChoices: number
+  exactChoices: boolean
+  reorderable: boolean
+  duplicateRule: 'card_id' | 'card_name'
+  cardPool: 'all' | 'manual'
+  resultTitle: string
+  showTitle: boolean
+  showComment: boolean
+  defaultTitle: string
+  defaultComment: string
+  showSubmissions: boolean
+  showAggregates: boolean
+  showZeroVotes: boolean
+  autoRegisterOnImageSave: boolean
+  defaultListPublic: boolean
+  shareText: string
+  hashtag: string
+}
+
+export function parseSelectMakerConfig(value: unknown): SelectMakerConfig {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('企画configが不正です')
+  const raw = value as Record<string, unknown>
+  const minChoices = Number(raw.minChoices)
+  const maxChoices = Number(raw.maxChoices)
+  if (!Number.isInteger(minChoices) || !Number.isInteger(maxChoices) || minChoices < 1 || maxChoices < minChoices || maxChoices > 12) {
+    throw new Error('SELECT型の選択枚数が不正です')
+  }
+  const text = (key: string, fallback = '') => typeof raw[key] === 'string' ? String(raw[key]).trim() : fallback
+  return {
+    description: text('description'), minChoices, maxChoices, exactChoices: raw.exactChoices !== false,
+    reorderable: raw.reorderable !== false, duplicateRule: raw.duplicateRule === 'card_id' ? 'card_id' : 'card_name',
+    cardPool: raw.cardPool === 'manual' ? 'manual' : 'all', resultTitle: text('resultTitle', 'カード選択結果'),
+    showTitle: raw.showTitle !== false, showComment: raw.showComment !== false,
+    defaultTitle: text('defaultTitle', '私のカード選択'), defaultComment: text('defaultComment'),
+    showSubmissions: raw.showSubmissions !== false, showAggregates: raw.showAggregates !== false,
+    showZeroVotes: raw.showZeroVotes === true, autoRegisterOnImageSave: raw.autoRegisterOnImageSave !== false,
+    defaultListPublic: raw.defaultListPublic !== false, shareText: text('shareText'), hashtag: text('hashtag'),
+  }
+}
+
 const DEFAULT_GROUP_COLORS: Record<string, string> = {
   s: 'border-red-300 bg-red-50 text-red-800',
   a: 'border-orange-300 bg-orange-50 text-orange-800',
@@ -100,6 +143,7 @@ export function makerCommunityLabel(type: string) {
   if (type === 'tier') return 'みんなのTier表'
   if (type === 'selection' || type === 'prediction') return 'みんなの予想'
   if (type === 'ranking') return 'みんなのランキング'
+  if (type === 'select') return 'みんなのカード選択'
   return 'みんなの作品'
 }
 

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 import { emptyMakerDraft, parseMakerProjectConfig, type MakerCard } from '@/lib/maker'
@@ -30,7 +30,9 @@ export default async function EditMakerSubmissionPage({ params }: { params: Prom
   const isAdmin = verifyAdminCookie((await cookies()).get(ADMIN_COOKIE)?.value)
   const admin = createAdminClient()
   const { data: project } = await admin.from('maker_projects').select('id,type,config').eq('slug', slug).eq('is_public', true).eq('status', 'published').maybeSingle()
-  if (!project || !['tier', 'prediction'].includes(project.type)) notFound()
+  if (!project) notFound()
+  if (project.type === 'select') redirect(`/makers/${slug}?edit=${submissionId}`)
+  if (!['tier', 'prediction'].includes(project.type)) notFound()
 
   const { data: submission } = await admin
     .from('maker_submissions')
