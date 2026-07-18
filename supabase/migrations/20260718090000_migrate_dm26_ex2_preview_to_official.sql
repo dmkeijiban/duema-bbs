@@ -223,6 +223,19 @@ do $$ begin
     execute 'update public.zukan_cards x set card_id=m.canonical_card_id from dm26_ex2_card_merge m where x.card_id=m.old_card_id';
   end if;
 end $$;
+-- A canonical logical card may already have its own representative printing.
+-- Preserve that choice and demote only the preview-side representative before
+-- moving its printings, so the one-representative-per-card index remains valid.
+update public.card_printings old_printing
+set is_representative=false, updated_at=now()
+from dm26_ex2_card_merge m
+where old_printing.card_id=m.old_card_id
+  and old_printing.is_representative=true
+  and exists (
+    select 1 from public.card_printings canonical_printing
+    where canonical_printing.card_id=m.canonical_card_id
+      and canonical_printing.is_representative=true
+  );
 update public.card_printings x set card_id=m.canonical_card_id from dm26_ex2_card_merge m where x.card_id=m.old_card_id;
 update public.cards x set is_active=false from dm26_ex2_card_merge m where x.id=m.old_card_id;
 
