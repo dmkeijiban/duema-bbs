@@ -31,7 +31,14 @@ export async function POST(request: NextRequest) {
       ? await admin.from('card_printings').select('source_key,official_page_url,image_url,is_representative,is_search_visible,card_id').in('source_key', officialKeys)
       : { data: [], error: null }
     if (printingResult.error) throw printingResult.error
-    const rowById = new Map(((rows ?? []) as Row[]).map((row) => [row.id, row]))
+    const aliasCardIds = [...new Set((printingResult.data ?? []).map((printing) => printing.card_id))]
+    const aliasRowsResult = aliasCardIds.length
+      ? await admin.from('cards').select('id,name,name_kana,image_url,card_printings(source_key,official_page_url,image_url,is_representative,is_search_visible)').in('id', aliasCardIds).eq('is_active', true)
+      : { data: [], error: null }
+    if (aliasRowsResult.error) throw aliasRowsResult.error
+    const rowById = new Map(
+      ([...((rows ?? []) as Row[]), ...((aliasRowsResult.data ?? []) as Row[])]).map((row) => [row.id, row]),
+    )
     const printingByKey = new Map((printingResult.data ?? []).map((printing) => [printing.source_key, printing]))
     const resolvedAliases = (aliases ?? []).flatMap((alias) => {
       const printing = printingByKey.get(alias.official_source_key)
