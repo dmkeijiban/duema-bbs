@@ -22,6 +22,7 @@ const CHARISMA_BEST_DEFAULT_SOURCE_KEYS = [
   'dm26ex2-MC011', 'dm26ex2-MC012', 'dm26ex2-MC013', 'dm26ex2-MC014', 'dm26ex2-MC015',
   'dm26ex2-MC016', 'dm26ex2-MC017',
 ] as const
+const BROWSER_CACHE_HEADER = 'private, max-age=60, stale-while-revalidate=300'
 
 type Printing = {
   id: string
@@ -194,6 +195,31 @@ async function getCatalog(supabase: ReturnType<typeof createAdminClient>, column
   return rows
 }
 
+async function getFastInitialCatalog(supabase: ReturnType<typeof createAdminClient>, columns: string, makerCardPool: Set<string> | null) {
+  const innerColumns = columns.replace('card_printings(', 'card_printings!inner(')
+  const result = await supabase
+    .from('cards')
+    .select(innerColumns)
+    .eq('is_active', true)
+    .in('card_printings.source_key', [...CHARISMA_BEST_DEFAULT_SOURCE_KEYS])
+    .limit(CHARISMA_BEST_DEFAULT_SOURCE_KEYS.length)
+  if (result.error) throw result.error
+
+  const rows = (result.data ?? []) as unknown as Row[]
+  const bySourceKey = new Map(rows.flatMap((row) => (row.card_printings ?? [])
+    .filter((printing) => printing.is_search_visible)
+    .map((printing) => [printing.source_key, { row, printing }] as const)))
+  const cards: DeckCard[] = []
+  const seen = new Set<string>()
+  for (const sourceKey of CHARISMA_BEST_DEFAULT_SOURCE_KEYS) {
+    const selected = bySourceKey.get(sourceKey)
+    if (!selected || seen.has(selected.row.id) || (makerCardPool && !makerCardPool.has(selected.row.id))) continue
+    seen.add(selected.row.id)
+    cards.push(mapCard(selected.row, selected.printing))
+  }
+  return cards
+}
+
 async function getMakerCardPool(supabase: ReturnType<typeof createAdminClient>, makerSlug: string) {
   if (!makerSlug) return null
   if (!/^[a-z0-9-]{1,80}$/.test(makerSlug)) throw new Error('invalid_maker')
@@ -210,6 +236,7 @@ export async function GET(request: NextRequest) {
 
   const rawQuery = request.nextUrl.searchParams.get('q')?.trim() ?? ''
   const makerSlug = request.nextUrl.searchParams.get('makerSlug')?.trim() ?? ''
+  const fastInitial = request.nextUrl.searchParams.get('fastInitial') === '1'
   if (rawQuery.length > MAX_QUERY_LENGTH || /[\u0000-\u001f\u007f]/.test(rawQuery)) return NextResponse.json({ error: 'Invalid query' }, { status: 400 })
   const normalizedQuery = normalizeCardName(rawQuery)
   const kanaQuery = rawQuery.normalize('NFKC')
@@ -220,9 +247,15 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createAdminClient()
     const makerCardPool = await getMakerCardPool(supabase, makerSlug)
+    const columns = 'id,name,normalized_name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,is_representative,is_search_visible)'
+    if (!rawQuery && fastInitial && offset === 0) {
+      const cards = await getFastInitialCatalog(supabase, columns, makerCardPool)
+      if (cards.length > 0) {
+        return NextResponse.json({ cards, hasMore: true, nextOffset: cards.length }, { headers: { 'Cache-Control': BROWSER_CACHE_HEADER } })
+      }
+    }
     const faceProbe = await supabase.from('card_faces').select('id', { head: true, count: 'exact' }).limit(1)
     const facesAvailable = !faceProbe.error
-    const columns = 'id,name,normalized_name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,is_representative,is_search_visible)'
     if (!rawQuery) {
       const fullCatalog = await getCatalog(supabase, columns)
       const catalog = makerCardPool ? fullCatalog.filter(row => makerCardPool.has(row.id)) : fullCatalog
@@ -245,7 +278,7 @@ export async function GET(request: NextRequest) {
       const cards = [...(offset === 0 ? featuredCards : []), ...regularRows.map((row) => mapCard(row))]
       const total = featuredCount + regularCatalog.length
       const nextOffset = offset + cards.length
-      return NextResponse.json({ cards, total, hasMore: nextOffset < total, nextOffset }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
+      return NextResponse.json({ cards, total, hasMore: nextOffset < total, nextOffset }, { headers: { 'Cache-Control': BROWSER_CACHE_HEADER } })
     }
 
     const allMatches = await getMatches(supabase, columns, normalizedQuery, kanaQuery, facesAvailable)
@@ -253,7 +286,7 @@ export async function GET(request: NextRequest) {
     const rows = matches.slice(offset, offset + limit)
     const cards = rows.map((row) => mapCard(row))
     const nextOffset = offset + cards.length
-    return NextResponse.json({ cards, total: matches.length, hasMore: nextOffset < matches.length, nextOffset }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
+    return NextResponse.json({ cards, total: matches.length, hasMore: nextOffset < matches.length, nextOffset }, { headers: { 'Cache-Control': BROWSER_CACHE_HEADER } })
   } catch {
     if (makerSlug) return NextResponse.json({ error: 'maker_not_found' }, { status: 404 })
     const allCards = rawQuery ? LOCAL_DECK_CARDS.filter((card) => matchesCard(card, rawQuery)) : LOCAL_DECK_CARDS

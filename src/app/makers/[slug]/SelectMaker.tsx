@@ -15,7 +15,7 @@ type Draft = { cards: DeckCard[]; title: string; comment: string; listPublic: bo
 export default function SelectMaker({ slug, config, initialDraft }: { slug: string; config: SelectMakerConfig; initialDraft?: Draft }) {
   const storageKey = `select-maker:${slug}:v1`
   const [selected, setSelected] = useState<DeckCard[]>([])
-  const { query, setQuery, cards: results, total: resultTotal, loading: resultsLoading, hasMore, loadMore } = useCardCatalogSearch({ makerSlug: slug })
+  const { query, setQuery, cards: results, loading: resultsLoading, hasMore, loadMore } = useCardCatalogSearch({ makerSlug: slug })
   const [title, setTitle] = useState(config.defaultTitle)
   const [comment, setComment] = useState(config.defaultComment)
   const [listPublic, setListPublic] = useState(config.defaultListPublic)
@@ -110,7 +110,7 @@ export default function SelectMaker({ slug, config, initialDraft }: { slug: stri
       {selected.length === 0 ? <div className="mt-3 flex min-h-[150px] items-center justify-center rounded-xl bg-slate-100 px-5 text-center text-sm text-slate-500"><div><p className="font-bold text-slate-700">カードが選択されていません</p><p className="mt-1">右のカード検索から追加してください</p></div></div> : <div data-testid="selected-card-list" className="mt-3 grid grid-cols-3 gap-2">{selected.map((card, index) => <div key={`${card.id}-${index}`} className="relative aspect-[5/7] overflow-hidden rounded-lg border border-slate-200 bg-slate-100"><button type="button" onClick={() => setZoom(card)} className="h-full w-full"><img src={card.imageUrl ?? '/images/card-placeholder.svg'} alt={card.name} className="h-full w-full object-contain" /></button><button type="button" onClick={() => remove(index)} aria-label={`${card.name}を削除`} className="absolute right-1 top-1 rounded-full bg-black/75 px-2 py-1 text-xs text-white">×</button>{config.reorderable && selected.length > 1 && <div className="absolute bottom-1 left-1 flex gap-1"><button type="button" onClick={() => move(index,-1)} disabled={index === 0} aria-label={`${card.name}を前へ移動`} className="rounded bg-white/90 px-2 disabled:opacity-40">←</button><button type="button" onClick={() => move(index,1)} disabled={index === selected.length - 1} aria-label={`${card.name}を後ろへ移動`} className="rounded bg-white/90 px-2 disabled:opacity-40">→</button></div>}</div>)}</div>}
       {!complete && <p className="mt-3 text-sm font-bold text-amber-700">あと{config.maxChoices - selected.length}枚選んでください</p>}
     </section>
-    <CardCatalogSearchPanel cards={results} total={resultTotal} query={query} loading={resultsLoading} hasMore={hasMore} onLoadMore={loadMore} onSelect={add} onQueryChange={setQuery} selectedCount={card => selected.filter(item => item.id === card.id).length}/>
+    <CardCatalogSearchPanel cards={results} query={query} loading={resultsLoading} hasMore={hasMore} onLoadMore={loadMore} onSelect={add} onQueryChange={setQuery} selectedCount={card => selected.filter(item => item.id === card.id).length}/>
     {zoom && <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setZoom(null)}><img src={zoom.imageUrl ?? '/images/card-placeholder.svg'} alt={zoom.name} className="max-h-[90vh] max-w-[90vw] object-contain"/></div>}
     </div>
   </>
