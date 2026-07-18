@@ -8,7 +8,7 @@ import EmbeddedPostgres from 'embedded-postgres'
 
 const root = resolve(import.meta.dirname, '../..')
 const payload = JSON.parse(await readFile(resolve(root, 'data/cards/card-faces.json'), 'utf8'))
-const migration = await readFile(resolve(root, 'supabase/migrations/20260718100000_card_faces.sql'), 'utf8')
+const migration = await readFile(resolve(root, 'supabase/migrations/20260718143000_card_faces.sql'), 'utf8')
 const temp = await mkdtemp(join(tmpdir(), 'duema-card-faces-'))
 const port = 56000 + Math.floor(Math.random() * 3000)
 const password = 'local-card-face-test'
