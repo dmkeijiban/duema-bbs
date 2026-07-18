@@ -8,6 +8,7 @@ const inputPath = arg('--input', 'data/cards/card-faces.json')
 const printingsPath = arg('--printings', 'data/cards/card-printings.json')
 const checkpointPath = arg('--checkpoint', 'data/cards/card-faces.checkpoint.json')
 const cacheDir = arg('--cache-dir', 'data/cards/official-html-cache')
+const officialArtifactPath = arg('--official-artifact', 'data/cards/dm26-ex2-official.json')
 const reportPath = arg('--report', 'data/cards/card-faces.validation.json')
 const payload = JSON.parse(await readFile(inputPath, 'utf8'))
 const printings = JSON.parse(await readFile(printingsPath, 'utf8'))
@@ -18,6 +19,7 @@ const successPages = pages.filter((page) => ['success', 'not_modified'].includes
 const printingIds = new Set(printings.map((row) => row.id))
 const cardIds = new Set(printings.map((row) => row.card_id))
 const uniqueUrls = new Set(printings.map((row) => row.official_page_url).filter(Boolean))
+const checkpointUrls = new Set(pages.map((page) => page.official_page_url).filter(Boolean))
 const grouped = new Map()
 for (const face of faces) grouped.set(face.card_printing_id, [...(grouped.get(face.card_printing_id) ?? []), face])
 
@@ -36,7 +38,16 @@ for (const [printingId, items] of grouped) {
 const cacheHashMismatches = []
 const parserCountMismatches = []
 const missingCache = []
+const extractedJsonHashMismatches = []
+let officialArtifact = []
+try { officialArtifact = JSON.parse(await readFile(officialArtifactPath, 'utf8')) } catch {}
+const officialArtifactByUrl = new Map(officialArtifact.map((row) => [row.official_page_url, row]))
 for (const page of successPages) {
+  if (page.cache_kind === 'extracted_json') {
+    const row = officialArtifactByUrl.get(page.official_page_url)
+    if (!row || contentHash(JSON.stringify(row)) !== page.content_hash) extractedJsonHashMismatches.push(page.source_key)
+    continue
+  }
   const path = resolve(cacheDir, `${page.source_key.replace(/[^a-z0-9_-]/gi, '_')}.html`)
   try {
     const html = await readFile(path, 'utf8')
@@ -53,7 +64,7 @@ const faceDistribution = [...grouped.values()].reduce((counts, items) => ({ ...c
 const maxFaceCount = Math.max(0, ...[...grouped.values()].map((items) => items.length))
 const statusCounts = pages.reduce((counts, page) => ({ ...counts, [page.status]: (counts[page.status] ?? 0) + 1 }), {})
 const errors = {
-  target_checkpoint_mismatch: pages.length === uniqueUrls.size ? 0 : Math.abs(pages.length - uniqueUrls.size),
+  target_checkpoint_mismatch: [...uniqueUrls].filter((url) => !checkpointUrls.has(url)).length + [...checkpointUrls].filter((url) => !uniqueUrls.has(url)).length,
   checkpoint_artifact_page_mismatch: payload.pages?.length === successPages.length ? 0 : Math.abs((payload.pages?.length ?? 0) - successPages.length),
   checkpoint_artifact_face_mismatch: faces.length === expectedArtifactFaces ? 0 : Math.abs(faces.length - expectedArtifactFaces),
   old_parser_results: successPages.filter((page) => page.parser_version !== PARSER_VERSION).length,
@@ -72,6 +83,9 @@ const errors = {
   cache_hash_mismatch: cacheHashMismatches.length,
   parser_face_count_mismatch: parserCountMismatches.length,
   missing_html_cache: missingCache.length,
+  extracted_json_hash_mismatch: extractedJsonHashMismatches.length,
+  duplicate_source_key: pages.length - new Set(pages.map((page) => page.source_key)).size,
+  preview_source_key_remaining: pages.filter((page) => /^DM26EX2-PREVIEW-/i.test(page.source_key ?? '') || (page.printings ?? []).some((printing) => /^DM26EX2-PREVIEW-/i.test(printing.source_key ?? ''))).length,
 }
 const report = {
   generated_at: new Date().toISOString(), parser_version: PARSER_VERSION,
