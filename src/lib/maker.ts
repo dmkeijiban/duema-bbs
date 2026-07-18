@@ -46,6 +46,8 @@ export type SelectMakerConfig = {
   defaultListPublic: boolean
   shareText: string
   hashtag: string
+  submissionsLabel: string
+  submissionsUrl: string
 }
 
 export function parseSelectMakerConfig(value: unknown): SelectMakerConfig {
@@ -66,6 +68,7 @@ export function parseSelectMakerConfig(value: unknown): SelectMakerConfig {
     showSubmissions: raw.showSubmissions !== false, showAggregates: raw.showAggregates !== false,
     showZeroVotes: raw.showZeroVotes === true, autoRegisterOnImageSave: raw.autoRegisterOnImageSave !== false,
     defaultListPublic: raw.defaultListPublic !== false, shareText: text('shareText'), hashtag: text('hashtag'),
+    submissionsLabel: text('submissionsLabel'), submissionsUrl: text('submissionsUrl'),
   }
 }
 

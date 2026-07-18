@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import type { SelectMakerConfig } from '@/lib/maker'
 import type { DeckCard } from '@/lib/deck-maker'
@@ -9,10 +8,11 @@ import { useCardCatalogSearch } from '@/hooks/use-card-catalog-search'
 import { getMakerAnonymousId } from '@/lib/maker-events-shared'
 import { recordMakerEvent, recordMakerPageView } from '@/lib/maker-events'
 import { saveSelectSubmission } from './actions'
+import { SelectMakerToolbar } from '@/components/SelectMakerToolbar'
 
 type Draft = { cards: DeckCard[]; title: string; comment: string; listPublic: boolean; sessionId: string; submissionId: string | null; completedEventSent: boolean }
 
-export default function SelectMaker({ slug, config, initialDraft }: { slug: string; title: string; config: SelectMakerConfig; initialDraft?: Draft }) {
+export default function SelectMaker({ slug, config, initialDraft }: { slug: string; config: SelectMakerConfig; initialDraft?: Draft }) {
   const storageKey = `select-maker:${slug}:v1`
   const [selected, setSelected] = useState<DeckCard[]>([])
   const { query, setQuery, cards: results, total: resultTotal, loading: resultsLoading, hasMore, loadMore } = useCardCatalogSearch({ makerSlug: slug })
@@ -83,17 +83,35 @@ export default function SelectMaker({ slug, config, initialDraft }: { slug: stri
   async function share() { if (!complete) return; const registeredId = await register(); void recordMakerEvent({ slug, eventType: 'x_shared', anonymousId: getMakerAnonymousId() }); const detail = registeredId ? `https://www.duema-bbs.com/makers/${slug}/submissions/${registeredId}` : `https://www.duema-bbs.com/makers/${slug}`; window.open(`https://twitter.com/intent/tweet?${new URLSearchParams({ text: `${config.shareText}${config.hashtag ? `\n${config.hashtag}` : ''}`, url: detail })}`, '_blank', 'noopener,noreferrer') }
   function reset() { setSelected([]); setTitle(config.defaultTitle); setComment(config.defaultComment); setListPublic(config.defaultListPublic); setSessionId(crypto.randomUUID()); setSubmissionId(null); setCompletedEventSent(false); setMessage('新しい作品を始めました'); void recordMakerEvent({ slug, eventType: 'new_draft_started', anonymousId: getMakerAnonymousId() }) }
 
-  return <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.85fr)_minmax(320px,1fr)] lg:items-start">
+  const submissionsUrl = config.submissionsUrl || `/makers/${slug}/submissions`
+  const submissionsLabel = config.submissionsLabel || `みんなの${config.maxChoices}選を見る`
+
+  return <>
+    <SelectMakerToolbar
+      title={title}
+      comment={comment}
+      showTitle={config.showTitle}
+      showComment={config.showComment}
+      listPublic={listPublic}
+      listLabel={submissionsLabel}
+      listUrl={submissionsUrl}
+      complete={complete}
+      busy={busy}
+      message={message}
+      onTitleChange={setTitle}
+      onCommentChange={setComment}
+      onListPublicChange={(value) => { setListPublic(value); void recordMakerEvent({ slug, eventType: value ? 'listing_enabled' : 'listing_disabled', anonymousId: getMakerAnonymousId() }) }}
+      onSaveImage={() => void saveImage()}
+      onShare={() => void share()}
+      onReset={reset}
+    />
+    <div className="grid gap-3 lg:grid-cols-[minmax(0,1.85fr)_minmax(320px,1fr)] lg:items-start">
     <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5"><div className="flex items-center justify-between"><h2 className="font-black">選択済みカード <span className="sr-only">枚数</span></h2><strong>{selected.length} / {config.maxChoices}枚</strong></div>
       {selected.length === 0 ? <div className="mt-3 flex min-h-[150px] items-center justify-center rounded-xl bg-slate-100 px-5 text-center text-sm text-slate-500"><div><p className="font-bold text-slate-700">カードが選択されていません</p><p className="mt-1">右のカード検索から追加してください</p></div></div> : <div data-testid="selected-card-list" className="mt-3 grid grid-cols-3 gap-2">{selected.map((card, index) => <div key={`${card.id}-${index}`} className="relative aspect-[5/7] overflow-hidden rounded-lg border border-slate-200 bg-slate-100"><button type="button" onClick={() => setZoom(card)} className="h-full w-full"><img src={card.imageUrl ?? '/images/card-placeholder.svg'} alt={card.name} className="h-full w-full object-contain" /></button><button type="button" onClick={() => remove(index)} aria-label={`${card.name}を削除`} className="absolute right-1 top-1 rounded-full bg-black/75 px-2 py-1 text-xs text-white">×</button>{config.reorderable && selected.length > 1 && <div className="absolute bottom-1 left-1 flex gap-1"><button type="button" onClick={() => move(index,-1)} disabled={index === 0} aria-label={`${card.name}を前へ移動`} className="rounded bg-white/90 px-2 disabled:opacity-40">←</button><button type="button" onClick={() => move(index,1)} disabled={index === selected.length - 1} aria-label={`${card.name}を後ろへ移動`} className="rounded bg-white/90 px-2 disabled:opacity-40">→</button></div>}</div>)}</div>}
       {!complete && <p className="mt-3 text-sm font-bold text-amber-700">あと{config.maxChoices - selected.length}枚選んでください</p>}
-      {config.showTitle && <label className="mt-4 block text-sm font-bold">投稿タイトル<input value={title} maxLength={40} onChange={e => setTitle(e.target.value)} className="mt-1 w-full rounded-lg border px-3 py-2" /></label>}
-      {config.showComment && <label className="mt-3 block text-sm font-bold">一言コメント<textarea value={comment} maxLength={200} onChange={e => setComment(e.target.value)} className="mt-1 w-full rounded-lg border px-3 py-2" /></label>}
-      <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" checked={listPublic} onChange={e => { setListPublic(e.target.checked); void recordMakerEvent({ slug, eventType: e.target.checked ? 'listing_enabled' : 'listing_disabled', anonymousId: getMakerAnonymousId() }) }} /><span>画像保存時に、みんなの{config.maxChoices}選にも掲載する<br/><small className="text-gray-500">掲載後も同じブラウザから編集・削除できます</small></span></label>
-      {message && <p role="status" className="mt-3 rounded-lg bg-slate-100 p-3 text-sm">{message}</p>}
-      <div className="mt-4 grid grid-cols-2 gap-2"><button disabled={!complete || busy} onClick={() => void saveImage()} className="rounded-xl bg-blue-700 px-3 py-3 font-bold text-white disabled:bg-gray-300">画像保存</button><button disabled={!complete} onClick={() => void share()} className="rounded-xl bg-black px-3 py-3 font-bold text-white disabled:bg-gray-300">X共有</button><button onClick={reset} className="rounded-xl border px-3 py-3 font-bold">新しく作る</button><Link href={`/makers/${slug}/submissions`} className="rounded-xl border px-3 py-3 text-center font-bold">みんなの{config.maxChoices}選を見る</Link></div>
     </section>
     <CardCatalogSearchPanel cards={results} total={resultTotal} query={query} loading={resultsLoading} hasMore={hasMore} onLoadMore={loadMore} onSelect={add} onQueryChange={setQuery} selectedCount={card => selected.filter(item => item.id === card.id).length}/>
     {zoom && <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setZoom(null)}><img src={zoom.imageUrl ?? '/images/card-placeholder.svg'} alt={zoom.name} className="max-h-[90vh] max-w-[90vw] object-contain"/></div>}
-  </div>
+    </div>
+  </>
 }

@@ -30,5 +30,5 @@ export default async function GenericMakerPage({ params, searchParams }: { param
     type Item = { cards: { id: string; name: string; image_url: string | null } }
     initialDraft = { cards: ((items ?? []) as unknown as Item[]).map(item => ({ id: item.cards.id, name: item.cards.name, nameKana: null, imageUrl: item.cards.image_url, officialPageUrl: null, sourceKey: null })), title: submission.title, comment: submission.comment ?? '', listPublic: submission.is_public, sessionId: submission.creation_session_id, submissionId: submission.id, completedEventSent: true }
   }
-  return <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4"><div className="mx-auto max-w-[1440px] overflow-x-hidden"><p className="text-xs font-bold text-blue-700">参加型カード選択企画</p><h1 className="mt-2 text-2xl font-black sm:text-3xl">{project.title}</h1>{config.description && <p className="mt-2 text-sm leading-6 text-gray-600">{config.description}</p>}<SelectMaker slug={slug} title={project.title} config={config} initialDraft={initialDraft}/></div></main>
+  return <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4"><div className="mx-auto max-w-[1440px] overflow-x-hidden"><SelectMaker slug={slug} config={config} initialDraft={initialDraft}/></div></main>
 }
