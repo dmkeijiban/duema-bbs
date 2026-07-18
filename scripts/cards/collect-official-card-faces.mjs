@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { classifyFailure, contentHash, extractOfficialCardFaces, OFFICIAL_DETAIL_URL, PARSER_VERSION } from './card-face-extraction.mjs'
 
@@ -19,7 +19,12 @@ let currentIntervalMs = MIN_INTERVAL_MS
 let consecutive429 = 0
 
 const readJson = async (path, fallback) => { try { return JSON.parse(await readFile(path, 'utf8')) } catch { return fallback } }
-const saveJson = async (path, value) => { await mkdir(dirname(path), { recursive: true }); await writeFile(path, `${JSON.stringify(value, null, 2)}\n`) }
+const saveJson = async (path, value) => {
+  await mkdir(dirname(path), { recursive: true })
+  const temporaryPath = `${path}.tmp-${process.pid}`
+  await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`)
+  await rename(temporaryPath, path)
+}
 const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms))
 const cachePath = (sourceKey) => resolve(cacheDir, `${sourceKey.replace(/[^a-z0-9_-]/gi, '_')}.html`)
 

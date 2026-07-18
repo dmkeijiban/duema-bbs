@@ -26,6 +26,7 @@ const report = {
   one_face: successes.filter((page) => page.extracted_face_count === 1).length,
   two_faces: successes.filter((page) => page.extracted_face_count === 2).length,
   three_plus_faces: successes.filter((page) => page.extracted_face_count >= 3).length,
+  max_face_count: Math.max(0, ...successes.map((page) => page.extracted_face_count ?? 0)),
   nonstandard_url: statusCount('nonstandard_url'),
   needs_review: successes.filter((page) => (page.faces ?? []).some((face) => face.extraction_status === 'needs_review')).length,
   http_404: statusCount('http_404'),
