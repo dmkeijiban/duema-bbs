@@ -6,7 +6,6 @@ import { CardCatalogGrid } from '@/components/CardCatalogGrid'
 
 export function CardCatalogSearchPanel({
   cards,
-  total,
   query,
   loading,
   hasMore,
@@ -22,7 +21,6 @@ export function CardCatalogSearchPanel({
   inputRef,
 }: {
   cards: DeckCard[]
-  total: number
   query: string
   loading: boolean
   hasMore: boolean
@@ -66,7 +64,6 @@ export function CardCatalogSearchPanel({
       </div>
       <CardCatalogGrid
         cards={cards}
-        total={total}
         query={query}
         loading={loading}
         hasMore={hasMore}

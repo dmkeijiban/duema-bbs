@@ -15,10 +15,9 @@ type SearchResponse = {
 export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {}) {
   const [query, setQueryState] = useState('')
   const [cards, setCards] = useState<DeckCard[]>([])
-  const [total, setTotal] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [nextOffset, setNextOffset] = useState(0)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const requestId = useRef(0)
   const abort = useRef<AbortController | null>(null)
   const cache = useRef(new Map<string, SearchResponse>())
@@ -38,7 +37,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
     const cached = cache.current.get(cacheKey)
     abort.current?.abort()
     if (cached) {
-      setCards(cached.cards); setTotal(cached.total); setHasMore(cached.hasMore); setNextOffset(cached.nextOffset); setLoading(false)
+      setCards(cached.cards); setHasMore(cached.hasMore); setNextOffset(cached.nextOffset); setLoading(false)
       return
     }
     setHasMore(false); setNextOffset(0)
@@ -48,6 +47,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
       setLoading(true)
       const params = new URLSearchParams({ q: query.trim(), offset: '0', limit: String(CARD_SEARCH_PAGE_SIZE) })
       if (makerSlug) params.set('makerSlug', makerSlug)
+      if (!query.trim()) params.set('fastInitial', '1')
       fetch(`/api/cards/search?${params}`, { signal: controller.signal })
         .then(response => response.ok ? response.json() : Promise.reject(new Error('search_failed')))
         .then(data => {
@@ -60,11 +60,11 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
           }
           if (cache.current.size >= 40) cache.current.delete(cache.current.keys().next().value ?? '')
           cache.current.set(cacheKey, response)
-          setCards(response.cards); setTotal(response.total); setHasMore(response.hasMore); setNextOffset(response.nextOffset)
+          setCards(response.cards); setHasMore(response.hasMore); setNextOffset(response.nextOffset)
         })
         .catch(error => {
           if (error instanceof DOMException && error.name === 'AbortError') return
-          if (id === requestId.current) { setCards([]); setTotal(0); setHasMore(false); setNextOffset(0) }
+          if (id === requestId.current) { setCards([]); setHasMore(false); setNextOffset(0) }
         })
         .finally(() => { if (id === requestId.current) setLoading(false) })
     }, query.trim() ? 70 : 0)
@@ -88,16 +88,15 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
           const unique = new Map(current.map(card => [card.id, card]))
           for (const card of incoming) unique.set(card.id, card)
           const merged = [...unique.values()]
-          cache.current.set(cacheKey, { cards: merged, total: Number.isInteger(data.total) ? data.total : total, hasMore: data.hasMore === true, nextOffset: Number.isInteger(data.nextOffset) ? data.nextOffset : nextOffset + incoming.length })
+          cache.current.set(cacheKey, { cards: merged, total: Number.isInteger(data.total) ? data.total : merged.length, hasMore: data.hasMore === true, nextOffset: Number.isInteger(data.nextOffset) ? data.nextOffset : nextOffset + incoming.length })
           return merged
         })
-        setTotal(Number.isInteger(data.total) ? data.total : total)
         setHasMore(data.hasMore === true)
         setNextOffset(Number.isInteger(data.nextOffset) ? data.nextOffset : nextOffset + incoming.length)
       })
       .catch(error => { if (!(error instanceof DOMException && error.name === 'AbortError')) setHasMore(false) })
       .finally(() => { if (id === requestId.current && !controller.signal.aborted) setLoading(false) })
-  }, [cacheKey, hasMore, loading, makerSlug, nextOffset, query, total])
+  }, [cacheKey, hasMore, loading, makerSlug, nextOffset, query])
 
-  return { query, setQuery, cards, total, hasMore, loading, loadMore }
+  return { query, setQuery, cards, hasMore, loading, loadMore }
 }

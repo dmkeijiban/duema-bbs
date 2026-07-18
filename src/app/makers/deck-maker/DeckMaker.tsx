@@ -196,7 +196,7 @@ async function loadImage(card: DeckCard) {
 }
 
 export default function DeckMaker() {
-  const { query, setQuery, cards: results, total: resultTotal, loading: resultsLoading, hasMore: hasMoreResults, loadMore } = useCardCatalogSearch()
+  const { query, setQuery, cards: results, loading: resultsLoading, hasMore: hasMoreResults, loadMore } = useCardCatalogSearch()
   const [entries, setEntries] = useState<DeckEntry[]>([])
   const [deckName, setDeckName] = useState(DEFAULT_DECK_NAME)
   const [savedDecks, setSavedDecks] = useState<SavedDeck[]>([])
@@ -531,7 +531,7 @@ export default function DeckMaker() {
           </div>
         </section>
 
-        <CardCatalogSearchPanel cards={results} total={resultTotal} query={query} loading={resultsLoading} hasMore={hasMoreResults} onLoadMore={loadMore} onSelect={openCard} onQueryChange={setQuery} onClear={() => { setQuery(''); searchInput.current?.focus() }} inputRef={searchInput} clearIcon={<Icon name="close" />} filterIcon={<Icon name="filter" />} selectedCount={card => countsByCard.get(card.id) ?? 0} selectedBadge={count => `${count}/4`} renderCardArt={(card, index) => <CardArt card={card} eager={index < 4} />} />
+        <CardCatalogSearchPanel cards={results} query={query} loading={resultsLoading} hasMore={hasMoreResults} onLoadMore={loadMore} onSelect={openCard} onQueryChange={setQuery} onClear={() => { setQuery(''); searchInput.current?.focus() }} inputRef={searchInput} clearIcon={<Icon name="close" />} filterIcon={<Icon name="filter" />} selectedCount={card => countsByCard.get(card.id) ?? 0} selectedBadge={count => `${count}/4`} renderCardArt={(card, index) => <CardArt card={card} eager={index < 4} />} />
       </div>
 
       {libraryOpen && (
