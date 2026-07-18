@@ -1,6 +1,6 @@
 # SELECT Phase 1 migration履歴整合監査
 
-実施日: 2026-07-18 JST  
+実施日: 2026-07-18 JST
 対象project: `nodgfukqvuwvgfnlzvnh`
 
 ## 結論
