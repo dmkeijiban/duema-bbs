@@ -128,9 +128,10 @@ async function main() {
   }
 
   const adminPassword = process.env.ADMIN_PASSWORD
+  const adminSecret = process.env.ADMIN_COOKIE_SECRET
   const baseUrl = process.env.SITE_URL || 'https://www.duema-bbs.com'
   if (!adminPassword) throw new Error('ADMIN_PASSWORD or Supabase service role is missing')
-  const adminSecret = process.env.ADMIN_COOKIE_SECRET || process.env.NEXTAUTH_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'duema-bbs-admin-cookie-v1'
+  if (!adminSecret) throw new Error('ADMIN_COOKIE_SECRET is missing')
   const adminCookie = process.env.ADMIN_AUTH_COOKIE || createHash('sha256').update(`${adminPassword}:${adminSecret}`).digest('hex')
   let response = await fetch(`${baseUrl}/api/admin/summary/update`, {
     method: 'POST',
