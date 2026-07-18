@@ -25,3 +25,22 @@
 - ツインパクトの2つ目の`cardDetail`は画像srcが空で、カード面ではなく呪文側メタデータ。同ブロックから後続SNSアイコンを画像として拾う誤検出を修正し、空画像detailを除外した。
 - `dmex08-111`の2面目は公式HTML自体が`{...} Bottom`形式のプレースホルダー名。面・画像構造は正しいが検索名へ投入せず`needs_review`へ自動隔離する。
 - parser更新時は取得成功状態とHTMLキャッシュを維持し、古いparser_versionだけを再解析する。公式ページ再取得は0件。
+
+## parser v4 最終監査（カリスマBEST正式移行後）
+
+- 正式入力: 22,922 URL / 22,922成功。
+- 面数: 23,403（1面22,465、2面434、3面22、4面1）。
+- DM26EX2: `DM26EX2-PREVIEW-*`残存0、正式URL・正式`card_printing_id` 154件。
+- 旧商品ページの非標準URL1件は正式154ページへの移行により対象外化。
+- 公式HTMLの`{撃墜王ガイアール・キラードラゴン} Bottom`は画像と公式メタデータを個別確認し、監査可能なoverride JSONで正式名へ補正。
+- needs_review 0、HTMLフラグメント末尾欠損0、3面・4面70画像のHTTP確認失敗0。
+- URL集合、checkpoint、成果物、content hash、parser面数、親ID、収録版ID、side index、画像重複、SNS画像誤検出はすべて不整合0。
+- 正式移行確認中に別のcollectorプロセスが起動していることを検知し即時停止。正式154ページは既存正式成果物で再構成可能だったが、このプロセスが154ページを取得済みだったため、最終集計は新規取得21,311（従来21,157から+154）、キャッシュ再解析1,611。以後collectorは停止済み。
+- 本番DB変更0。Preview DB変更0。
+
+## legacy API keysによる停止
+
+- `ADMIN_COOKIE_SECRET`分離はPR #639でmainへ反映済み。
+- Vercel Production / Previewには新publishable / secret用の環境変数がなく、アプリも旧`NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`名を参照中。
+- legacy keys無効化、新キーでの本番read/write、401/403回帰なしを確認できないため、本番投入・PR Ready化・mergeは停止。
+- card face側はPreview投入前の準備まで実施。migrationはtransaction/additive/restrict FK/RLS、importはproject ref強制照合・DB transaction・rollback・冪等差分集計へ強化。
