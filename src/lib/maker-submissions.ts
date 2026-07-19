@@ -1,6 +1,6 @@
 import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { makerCommunityLabel, parseMakerProjectConfig } from '@/lib/maker'
+import { makerCommunityLabel, parseMakerProjectConfig, parseSelectMakerConfig } from '@/lib/maker'
 
 export type PublicMakerProject = { id: string; slug: string; title: string; type: string; config: unknown }
 export type PublicSubmission = {
@@ -60,5 +60,13 @@ export async function getPublicSubmission(projectId: string, id: string) {
 }
 
 export function makerSubmissionView(project: PublicMakerProject) {
-  return { config: project.type === 'select' ? { groups: [{ key: 'selected', label: '選択カード', color: 'border-slate-300 bg-white text-slate-900' }], unrated: false, allowDuplicates: false, ordered: true, overwrite: false, maxChoices: null } : parseMakerProjectConfig(project.config), communityLabel: makerCommunityLabel(project.type) }
+  if (project.type === 'select') {
+    const selectConfig = parseSelectMakerConfig(project.config)
+    return {
+      config: { groups: [{ key: 'selected', label: '選択カード', color: 'border-slate-300 bg-white text-slate-900' }], unrated: false, allowDuplicates: false, ordered: true, overwrite: false, maxChoices: null },
+      communityLabel: makerCommunityLabel(project.type),
+      resultTitle: selectConfig.resultTitle,
+    }
+  }
+  return { config: parseMakerProjectConfig(project.config), communityLabel: makerCommunityLabel(project.type), resultTitle: project.title }
 }

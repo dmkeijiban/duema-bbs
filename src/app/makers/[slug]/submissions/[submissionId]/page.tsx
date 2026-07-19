@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import MakerSubmissionBoard from '@/components/MakerSubmissionBoard'
+import SelectSubmissionBoard from '@/components/SelectSubmissionBoard'
 import { getPublicMakerProject, getPublicSubmission, makerSubmissionView } from '@/lib/maker-submissions'
 import { createClient } from '@/lib/supabase-server'
 import SubmissionActions from '../SubmissionActions'
@@ -16,7 +17,8 @@ export default async function MakerSubmissionDetailPage({ params }: { params: Pr
   if (!project) notFound()
   const submission = await getPublicSubmission(project.id, submissionId)
   if (!submission) notFound()
-  const { config, communityLabel } = makerSubmissionView(project)
+  const { config, communityLabel, resultTitle } = makerSubmissionView(project)
+  const isSelect = project.type === 'select'
   const url = `https://www.duema-bbs.com/makers/${slug}/submissions/${submissionId}`
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -30,7 +32,11 @@ export default async function MakerSubmissionDetailPage({ params }: { params: Pr
     <p className="mt-2 text-sm text-gray-600">{prediction ? '表示名' : '制作者'}: {submission.authorName}</p>
     <time className="mt-1 block text-xs text-gray-400">{new Date(submission.created_at).toLocaleString('ja-JP')}</time>
     {submission.comment && <p className="mt-4 whitespace-pre-wrap break-words rounded-xl border bg-white p-4 leading-7">{submission.comment}</p>}
-    <div className="mt-5"><MakerSubmissionBoard submission={submission} groups={config.groups} enableActions exportTitle={prediction ? '2026年7月27日 殿堂解除選手権' : submission.title} showExportAuthor={false} exportLayout={prediction ? 'prediction' : 'tier'} shareUrl={shareUrl} /></div>
+    <div className="mt-5">
+      {isSelect
+        ? <SelectSubmissionBoard slug={slug} cards={submission.items.map(item => ({ id: item.card_id, name: item.card.name, imageUrl: item.card.image_url }))} enableActions exportTitle={resultTitle} shareUrl={shareUrl} />
+        : <MakerSubmissionBoard submission={submission} groups={config.groups} enableActions exportTitle={prediction ? '2026年7月27日 殿堂解除選手権' : submission.title} showExportAuthor={false} exportLayout={prediction ? 'prediction' : 'tier'} shareUrl={shareUrl} />}
+    </div>
     <SubmissionActions slug={slug} submissionId={submissionId} canEdit={isAdmin || ownedSubmissionIds.has(submissionId)} />
   </article></main>
 }
