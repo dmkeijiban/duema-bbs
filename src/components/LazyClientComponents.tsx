@@ -8,6 +8,7 @@
 
 import dynamic from 'next/dynamic'
 import type { SnsUrls } from '@/lib/sns'
+import { GlobalInteractionFeedback } from './GlobalInteractionFeedback'
 
 // スクロールリスナーを持つ SnsFloatingBar を初期バンドルから除外
 const SnsFloatingBarInner = dynamic(
@@ -31,7 +32,12 @@ export function LazyFloatingBar({ snsUrls }: { snsUrls: SnsUrls }) {
 }
 
 export function LazyPostHogBridge() {
-  return <PostHogEventBridgeInner />
+  return (
+    <>
+      <GlobalInteractionFeedback />
+      <PostHogEventBridgeInner />
+    </>
+  )
 }
 
 export function LazyDesktopFloatingActions() {
