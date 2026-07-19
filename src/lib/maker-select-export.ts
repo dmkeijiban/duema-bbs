@@ -1,6 +1,6 @@
 // あそびばの「カード〇選」系（3×3などのカード選択企画）が保存画像・X共有画像として出力する
-// PNGを1箇所で描画する。企画タイトルは呼び出し側から渡し、ここには特定企画の文言や
-// ユーザー入力（投稿タイトル・コメント）、サイト名などのフッターは一切描かない。
+// PNGを1箇所で描画する。企画タイトルは呼び出し側から渡し、投稿タイトルが入力されている場合は
+// そのタイトルを優先する。コメントやサイト名などのフッターは描画しない。
 
 export type SelectExportOptions<TCard> = {
   title: string
@@ -21,6 +21,11 @@ function computeColumns(count: number) {
   if (count <= 3) return Math.max(1, count)
   if (count <= 9) return 3
   return 4
+}
+
+function resolveExportTitle(fallbackTitle: string) {
+  const input = document.querySelector<HTMLInputElement>('[data-select-maker-title]')
+  return input?.value.trim() || fallbackTitle
 }
 
 export async function renderSelectExportImage<TCard>({ title, cards, hasImage, loadImage }: SelectExportOptions<TCard>): Promise<Blob> {
@@ -55,7 +60,7 @@ export async function renderSelectExportImage<TCard>({ title, cards, hasImage, l
   context.textAlign = 'center'
   context.textBaseline = 'top'
   context.font = 'bold 52px sans-serif'
-  context.fillText(title.slice(0, 28), canvas.width / 2, TOP_MARGIN)
+  context.fillText(resolveExportTitle(title).slice(0, 28), canvas.width / 2, TOP_MARGIN)
 
   images.forEach((image, index) => {
     const column = index % columns
