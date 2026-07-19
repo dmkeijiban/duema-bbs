@@ -32,9 +32,18 @@ async function allRows(table, columns) {
 
 const beforeCards = await allRows('cards', 'id,name,normalized_name,name_kana,image_url,civilization,cost,card_type,is_catalog_complete,catalog_review_status')
 const beforePrintings = await allRows('card_printings', 'source_key,card_id,is_representative')
+
+// card_printing_source_aliases に旧キーとして記録された source_key は、公式収録版へ
+// 移行済みの superseded な識別子。古い入力ファイルに残っていても投入対象から除外し、
+// 「同じ絵・別URL」の収録版が復活しないようにする。alias表が無い環境では空扱い。
+const aliasRows = await supabase.from('card_printing_source_aliases').select('old_source_key').limit(5000)
+const supersededKeys = new Set((aliasRows.error ? [] : aliasRows.data ?? []).map((row) => row.old_source_key))
+const supersededInputs = catalog.filter((printing) => supersededKeys.has(printing.source_key))
+const activeCatalog = catalog.filter((printing) => !supersededKeys.has(printing.source_key))
+
 const byName = new Map(beforeCards.map((row) => [row.normalized_name, row]))
 const grouped = new Map()
-for (const printing of catalog) {
+for (const printing of activeCatalog) {
   const normalized = normalize(printing.name)
   if (!grouped.has(normalized)) grouped.set(normalized, [])
   grouped.get(normalized).push(printing)
@@ -55,7 +64,7 @@ for (const [normalizedName, printings] of grouped) {
   }
 }
 
-const summary = { mode: execute ? 'execute' : 'dry-run', input: catalog.length, uniqueNames: grouped.size, cardsBefore: beforeCards.length, printingsBefore: beforePrintings.length, newCards: newCards.length, nullOnlyUpdates: nullOnlyUpdates.length, existingValuesOverwritten: 0 }
+const summary = { mode: execute ? 'execute' : 'dry-run', input: catalog.length, skippedSupersededPrintings: supersededInputs.length, skippedSupersededKeys: supersededInputs.map((printing) => printing.source_key).slice(0, 20), uniqueNames: grouped.size, cardsBefore: beforeCards.length, printingsBefore: beforePrintings.length, newCards: newCards.length, nullOnlyUpdates: nullOnlyUpdates.length, existingValuesOverwritten: 0 }
 if (!execute) { console.log(JSON.stringify(summary, null, 2)); process.exit(0) }
 
 for (const batch of chunks(newCards)) { const { error } = await supabase.from('cards').insert(batch); if (error) throw error }
