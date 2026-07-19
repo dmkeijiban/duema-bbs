@@ -29,6 +29,7 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
   if (!project) notFound()
   const { config, communityLabel, resultTitle } = makerSubmissionView(project)
   const isSelect = project.type === 'select'
+  const selectDefaultTitle = 'defaultTitle' in config ? config.defaultTitle : ''
   const pageSize = 12
   const { submissions, total } = await getPublicSubmissions(project.id, page, pageSize)
   const supabase = await createClient()
@@ -79,7 +80,7 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
       {created === submission.id && <p className="mb-2 text-sm font-bold text-emerald-700">登録しました</p>}
       <Link href={`/makers/${slug}/submissions/${submission.id}`} className="block transition hover:opacity-90">
         {isSelect
-          ? <SelectSubmissionBoard slug={slug} cards={submission.items.map(item => ({ id: item.card_id, name: item.card.name, imageUrl: item.card.image_url }))} compact exportTitle={selectExportTitle(submission.title, config.defaultTitle, resultTitle)} />
+          ? <SelectSubmissionBoard slug={slug} cards={submission.items.map(item => ({ id: item.card_id, name: item.card.name, imageUrl: item.card.image_url }))} compact exportTitle={selectExportTitle(submission.title, selectDefaultTitle, resultTitle)} />
           : <MakerSubmissionBoard submission={submission} groups={config.groups} compact showRegulationBadges={!prediction} />}
         <h2 className="mt-3 line-clamp-2 font-black">{submission.title}</h2>
         <p className="mt-1 text-sm text-gray-600">{submission.authorName}</p>
