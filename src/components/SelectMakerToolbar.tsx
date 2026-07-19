@@ -1,6 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect } from 'react'
+import { useMakerDefaultTitle } from '@/components/MakerDefaultTitleContext'
 
 export function SelectMakerToolbar({
   title,
@@ -35,6 +37,12 @@ export function SelectMakerToolbar({
   onShare: () => void
   onReset: () => void
 }) {
+  const defaultTitle = useMakerDefaultTitle()
+
+  useEffect(() => {
+    if (showTitle && !title.trim() && defaultTitle.trim()) onTitleChange(defaultTitle)
+  }, [defaultTitle, onTitleChange, showTitle, title])
+
   function isIosDevice() {
     return /iPad|iPhone|iPod/.test(navigator.userAgent)
       || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
