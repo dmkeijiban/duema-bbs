@@ -40,7 +40,9 @@ export function SelectMakerToolbar({
   const defaultTitle = useMakerDefaultTitle()
 
   useEffect(() => {
-    if (showTitle && !title.trim() && defaultTitle.trim()) onTitleChange(defaultTitle)
+    if (!showTitle || title.trim() || !defaultTitle.trim()) return
+    const timer = window.setTimeout(() => onTitleChange(defaultTitle), 0)
+    return () => window.clearTimeout(timer)
   }, [defaultTitle, onTitleChange, showTitle, title])
 
   function isIosDevice() {
