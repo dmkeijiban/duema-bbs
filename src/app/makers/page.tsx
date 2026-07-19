@@ -18,6 +18,11 @@ type MakerProject = {
 }
 type CatalogEntry = { id: string; title: string; href: string; category: MakerCategory; sortOrder: number; description: string; featured?: boolean; isNew?: boolean; isLimited?: boolean; thumbnailUrl?: string }
 
+const MAKER_DESCRIPTION_FALLBACKS: Record<string, string> = {
+  'dm26-ex2-charisma-best-tier': '全カードをS〜Dに分けて、自分だけのTier表を作れます。',
+  'hall-of-fame-release': '殿堂・プレミアム殿堂カードから、次に解除されそうなカードを選べます。',
+}
+
 export default async function MakersPage() {
   const { data } = await createAdminClient()
     .from('maker_projects')
@@ -30,7 +35,7 @@ export default async function MakersPage() {
     ...projects.filter(project => isMakerProjectVisible(project)).map((project): CatalogEntry => {
       const config = parseMakerCatalogConfig(project)
       const ended = isMakerProjectArchived(project)
-      return { id: project.slug, title: project.title, href: `/makers/${project.slug}`, category: ended ? 'archive' as const : config.category, sortOrder: config.sortOrder, description: config.shortDescription, featured: config.featured, isNew: config.isNew, isLimited: config.isLimited, thumbnailUrl: config.thumbnailUrl }
+      return { id: project.slug, title: project.title, href: `/makers/${project.slug}`, category: ended ? 'archive' as const : config.category, sortOrder: config.sortOrder, description: config.shortDescription || MAKER_DESCRIPTION_FALLBACKS[project.slug] || '', featured: config.featured, isNew: config.isNew, isLimited: config.isLimited, thumbnailUrl: config.thumbnailUrl }
     }),
   ].sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'ja'))
   const featuredEntries = entries.filter(entry => entry.featured && entry.category !== 'archive')
