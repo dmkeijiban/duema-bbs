@@ -15,7 +15,12 @@ export default async function GenericMakerPage({ params, searchParams }: { param
   const admin = createAdminClient()
   const { data: project } = await admin.from('maker_projects').select('id,slug,title,type,status,is_public,config').eq('slug', slug).maybeSingle()
   if (!project || project.type !== 'select' || !isMakerProjectPageAccessible(project)) notFound()
-  const config = parseSelectMakerConfig(project.config)
+  const parsedConfig = parseSelectMakerConfig(project.config)
+  // Production DB migrations are applied separately from Vercel deploys. Keep the
+  // public/export title correct even while an older DB value is still present.
+  const config = slug === 'my-duema-9'
+    ? { ...parsedConfig, resultTitle: '私を象徴するデュエマカード9選' }
+    : parsedConfig
   let initialDraft: Parameters<typeof SelectMaker>[0]['initialDraft']
   if (edit && /^[0-9a-f-]{36}$/i.test(edit)) {
     const supabase = await createClient(); const { data: { user } } = await supabase.auth.getUser()
