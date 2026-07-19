@@ -62,10 +62,21 @@ export async function getPublicSubmission(projectId: string, id: string) {
 export function makerSubmissionView(project: PublicMakerProject) {
   if (project.type === 'select') {
     const selectConfig = parseSelectMakerConfig(project.config)
+    const resultTitle = project.slug === 'my-duema-9'
+      ? '私を象徴するデュエマカード9選'
+      : selectConfig.resultTitle
     return {
-      config: { groups: [{ key: 'selected', label: '選択カード', color: 'border-slate-300 bg-white text-slate-900' }], unrated: false, allowDuplicates: false, ordered: true, overwrite: false, maxChoices: null },
+      config: {
+        groups: [{ key: 'selected', label: '選択カード', color: 'border-slate-300 bg-white text-slate-900' }],
+        unrated: false,
+        allowDuplicates: false,
+        ordered: true,
+        overwrite: false,
+        maxChoices: null,
+        defaultTitle: selectConfig.defaultTitle,
+      },
       communityLabel: makerCommunityLabel(project.type),
-      resultTitle: selectConfig.resultTitle,
+      resultTitle,
     }
   }
   return { config: parseMakerProjectConfig(project.config), communityLabel: makerCommunityLabel(project.type), resultTitle: project.title }
