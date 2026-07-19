@@ -126,6 +126,5 @@ export function isMakerProjectPageAccessible(project: MakerProjectLike, now = ne
 export const STATIC_MAKER_ENTRIES = [
   { id: 'deck-maker', title: 'デッキメーカー', href: '/makers/deck-maker', category: 'create' as const, sortOrder: 10, description: 'カードを検索してデッキ画像を作成できます。' },
   { id: 'memory-zukan', title: '思い出図鑑', href: '/zukan?tab=memories', category: 'view' as const, sortOrder: 10, description: '思い出のカードを選んで、みんなの記憶を見られます。' },
-  { id: 'hall-of-fame-zukan', title: '殿堂図鑑', href: '/zukan?tab=hall-of-fame', category: 'view' as const, sortOrder: 20, description: '歴代の殿堂カードを発表日ごとに見られます。' },
-  { id: 'premium-hall-zukan', title: 'プレミアム殿堂図鑑', href: '/zukan?tab=hall-of-fame', category: 'view' as const, sortOrder: 30, description: '歴代のプレミアム殿堂カードを確認できます。' },
+  { id: 'hall-of-fame-zukan', title: '殿堂・プレミアム殿堂図鑑', href: '/zukan?tab=hall-of-fame', category: 'view' as const, sortOrder: 20, description: '歴代の殿堂・プレミアム殿堂カードを発表日ごとに見られます。' },
 ] as const
