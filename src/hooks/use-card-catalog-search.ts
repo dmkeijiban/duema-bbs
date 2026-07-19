@@ -4,8 +4,16 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DeckCard } from '@/lib/deck-maker'
 
 export const CARD_SEARCH_PAGE_SIZE = 48
-const CARD_SEARCH_CACHE_VERSION = 'official-order-v2'
-const resultKey = (card: DeckCard) => `${card.id}:${card.printingId ?? card.sourceKey ?? 'representative'}`
+const CARD_SEARCH_CACHE_VERSION = 'official-order-v3-logical-card'
+const resultKey = (card: DeckCard) => card.id
+
+function dedupeCards(cards: DeckCard[]) {
+  const unique = new Map<string, DeckCard>()
+  for (const card of cards) {
+    if (!unique.has(resultKey(card))) unique.set(resultKey(card), card)
+  }
+  return [...unique.values()]
+}
 
 type SearchResponse = {
   cards: DeckCard[]
@@ -56,7 +64,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
         .then(data => {
           if (id !== requestId.current) return
           const response: SearchResponse = {
-            cards: Array.isArray(data.cards) ? data.cards : [],
+            cards: dedupeCards(Array.isArray(data.cards) ? data.cards as DeckCard[] : []),
             total: Number.isInteger(data.total) ? data.total : 0,
             hasMore: data.hasMore === true,
             nextOffset: Number.isInteger(data.nextOffset) ? data.nextOffset : 0,
@@ -90,7 +98,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
         const incoming = Array.isArray(data.cards) ? data.cards as DeckCard[] : []
         setCards(current => {
           const unique = new Map(current.map(card => [resultKey(card), card]))
-          for (const card of incoming) unique.set(resultKey(card), card)
+          for (const card of incoming) if (!unique.has(resultKey(card))) unique.set(resultKey(card), card)
           const merged = [...unique.values()]
           cache.current.set(cacheKey, { cards: merged, total: Number.isInteger(data.total) ? data.total : merged.length, hasMore: data.hasMore === true, nextOffset: Number.isInteger(data.nextOffset) ? data.nextOffset : nextOffset + incoming.length })
           return merged
