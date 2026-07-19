@@ -86,11 +86,16 @@ function mapCard(row: Row, selectedPrinting?: Printing, matchedFace = row.matche
   }
 }
 
-function flattenRows(rows: Row[]) {
-  return rows.flatMap((row) => (row.card_printings ?? [])
-    .filter((printing) => printing.is_search_visible)
-    .map((printing) => ({ row, printing, matchedFace: row.matched_face?.card_printing_id === printing.id ? row.matched_face : null })))
-    .sort(compareCatalogItems)
+// One catalog entry per logical card (never per printing), so a card with
+// several official/foil printings still shows up exactly once in the browse list.
+function toCatalog(rows: Row[]): CatalogItem[] {
+  const items: CatalogItem[] = []
+  for (const row of rows) {
+    const printing = newestPrinting(row)
+    if (!printing) continue
+    items.push({ row, printing, matchedFace: null })
+  }
+  return items.sort(compareCatalogItems)
 }
 
 async function loadFaceMatches(supabase: ReturnType<typeof createAdminClient>, field: 'normalized_name' | 'name_kana', query: string) {
@@ -163,9 +168,25 @@ async function getMatches(supabase: ReturnType<typeof createAdminClient>, column
   const unique = new Map<string, Row>()
   for (const row of [...nameRows, ...kanaRows]) unique.set(row.id, { ...row, matched_face: null })
   for (const row of faceRows) unique.set(row.id, row)
-  const rows = flattenRows([...unique.values()])
-    .filter((item) => frontMatchedCardIds.has(item.row.id) || faceByPrinting.has(item.printing.id))
-    .map((item) => ({ ...item, matchedFace: faceByPrinting.get(item.printing.id) ?? null }))
+
+  // A card appears once per genuine hit: once for its own name/kana match (its
+  // default printing), plus once per distinct printing whose *face* matched the
+  // query (e.g. a twinpact back side). It never appears once per unrelated printing.
+  const items: CatalogItem[] = []
+  for (const row of unique.values()) {
+    let matchedAnyFace = false
+    for (const printing of (row.card_printings ?? []).filter((p) => p.is_search_visible)) {
+      const face = faceByPrinting.get(printing.id)
+      if (!face) continue
+      matchedAnyFace = true
+      items.push({ row, printing, matchedFace: face })
+    }
+    if (frontMatchedCardIds.has(row.id) && !matchedAnyFace) {
+      const printing = newestPrinting(row)
+      if (printing) items.push({ row, printing, matchedFace: null })
+    }
+  }
+  const rows = items.sort(compareCatalogItems)
   if (searchCache.size >= 100) searchCache.delete(searchCache.keys().next().value ?? '')
   searchCache.set(cacheKey, { rows, expiresAt: Date.now() + CATALOG_CACHE_MS })
   return rows
@@ -186,24 +207,31 @@ async function getCatalog(supabase: ReturnType<typeof createAdminClient>, column
     sourceRows.push(...batch)
     if (batch.length < CATALOG_BATCH_SIZE) break
   }
-  const rows = flattenRows(sourceRows)
+  const rows = toCatalog(sourceRows)
   catalogCache = { rows, expiresAt: Date.now() + CATALOG_CACHE_MS }
   return rows
 }
 
 async function getFastInitialCatalog(supabase: ReturnType<typeof createAdminClient>, makerCardPool: Set<string> | null) {
+  // Over-fetch printings (several per card are common now) so that after
+  // collapsing to one row per card we still have enough to fill the page.
   const result = await supabase.from('card_printings')
     .select('id,source_key,official_page_url,image_url,set_name,card_number,release_date,official_sort_position,is_representative,is_search_visible,cards!inner(id,name,normalized_name,name_kana,image_url,is_active)')
     .eq('cards.is_active', true)
     .eq('is_search_visible', true)
     .order('official_sort_position', { ascending: true, nullsFirst: false })
-    .limit(makerCardPool ? 2000 : DEFAULT_RESULTS)
+    .limit(makerCardPool ? 2000 : DEFAULT_RESULTS * 8)
   if (result.error) throw result.error
-  return (result.data ?? []).flatMap((printing) => {
+  const seen = new Set<string>()
+  const cards: DeckCard[] = []
+  for (const printing of result.data ?? []) {
     const card = Array.isArray(printing.cards) ? printing.cards[0] : printing.cards
-    if (!card || (makerCardPool && !makerCardPool.has(card.id))) return []
-    return mapCard(card as Row, printing as unknown as Printing)
-  }).slice(0, DEFAULT_RESULTS)
+    if (!card || seen.has(card.id) || (makerCardPool && !makerCardPool.has(card.id))) continue
+    seen.add(card.id)
+    cards.push(mapCard(card as Row, printing as unknown as Printing))
+    if (!makerCardPool && cards.length >= DEFAULT_RESULTS) break
+  }
+  return cards.slice(0, DEFAULT_RESULTS)
 }
 
 async function getMakerCardPool(supabase: ReturnType<typeof createAdminClient>, makerSlug: string) {
