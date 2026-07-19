@@ -35,6 +35,43 @@ export function SelectMakerToolbar({
   onShare: () => void
   onReset: () => void
 }) {
+  function isIosDevice() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  }
+
+  function handleSaveImage() {
+    if (isIosDevice()) {
+      onSaveImage()
+      return
+    }
+
+    const downloadPreview = () => {
+      const dialog = document.querySelector('[aria-labelledby="select-png-preview-title"]')
+      const image = dialog?.querySelector('img[alt$="の保存用画像"]') as HTMLImageElement | null
+      if (!image?.src) return false
+
+      const safeName = (title.trim() || 'duema-card-selection').replace(/[\\/:*?"<>|]/g, '_')
+      const link = document.createElement('a')
+      link.href = image.src
+      link.download = `${safeName}.png`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+
+      const closeButton = dialog?.querySelector('button[aria-label="画像プレビューを閉じる"]') as HTMLButtonElement | null
+      closeButton?.click()
+      return true
+    }
+
+    const observer = new MutationObserver(() => {
+      if (downloadPreview()) observer.disconnect()
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+    onSaveImage()
+    window.setTimeout(() => observer.disconnect(), 15000)
+  }
+
   return (
     <header className="mb-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
@@ -53,7 +90,7 @@ export function SelectMakerToolbar({
           )}
         </div>
         <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4 xl:w-auto xl:min-w-[500px]">
-          <button type="button" disabled={!complete || isSavingImage} onClick={onSaveImage} className="min-h-10 rounded-lg bg-blue-700 px-3 text-sm font-bold text-white hover:bg-blue-800 disabled:bg-slate-300">{isSavingImage ? '画像生成中...' : '画像保存'}</button>
+          <button type="button" disabled={!complete || isSavingImage} onClick={handleSaveImage} className="min-h-10 rounded-lg bg-blue-700 px-3 text-sm font-bold text-white hover:bg-blue-800 disabled:bg-slate-300">{isSavingImage ? '画像生成中...' : '画像保存'}</button>
           <button type="button" disabled={!complete || isSharing} onClick={onShare} className="min-h-10 rounded-lg bg-black px-3 text-sm font-bold text-white hover:bg-slate-800 disabled:bg-slate-300">{isSharing ? '共有準備中...' : 'X共有'}</button>
           <button type="button" onClick={onReset} className="min-h-10 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50">新しく作る</button>
           <Link href={listUrl} className="flex min-h-10 items-center justify-center rounded-lg border border-slate-300 px-3 text-center text-sm font-bold text-slate-700 hover:bg-slate-50">{listLabel}</Link>
