@@ -140,7 +140,20 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
       .filter((printing) => !supersededKeys.has(normalizeKey(printing.source_key)))
       .flatMap((printing): DeckCard[] => {
         const faces = (row.card_faces ?? []).filter((face) => face.card_printing_id === printing.id).sort((a, b) => a.side_index - b.side_index)
-        if (!faces.length) return [{ id: row.id, name: row.name, nameKana: row.name_kana, imageUrl: printing.image_url ?? row.image_url, officialPageUrl: printing.official_page_url ?? `https://dm.takaratomy.co.jp/card/detail/?id=${encodeURIComponent(printing.source_key)}`, sourceKey: printing.source_key }]
+        const singleFrontFace = faces.length === 1
+          && faces[0].side_index === 0
+          && (faces[0].side_kind === null || faces[0].side_kind === 'front')
+        if (!faces.length || singleFrontFace) {
+          const front = faces[0]
+          return [{
+            id: row.id,
+            name: front?.name ?? row.name,
+            nameKana: front?.name_kana ?? row.name_kana,
+            imageUrl: front?.image_url ?? printing.image_url ?? row.image_url,
+            officialPageUrl: front?.official_page_url ?? printing.official_page_url ?? `https://dm.takaratomy.co.jp/card/detail/?id=${encodeURIComponent(printing.source_key)}`,
+            sourceKey: printing.source_key,
+          }]
+        }
         return faces.map((face) => ({
           id: row.id,
           name: face.name,
