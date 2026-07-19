@@ -7,14 +7,17 @@ import { createClient } from '@/lib/supabase-server'
 import { hashMakerAnonymousOwner, MAKER_ANONYMOUS_COOKIE } from '@/lib/maker-anonymous-owner'
 import { parseSelectMakerConfig } from '@/lib/maker'
 
-export async function saveSelectSubmission(input: { slug: string; cardIds: string[]; title: string; comment: string; sessionId: string; submissionId?: string | null }) {
+const SOURCE_KEY_PATTERN = /^[a-zA-Z0-9._-]{1,100}$/
+
+export async function saveSelectSubmission(input: { slug: string; cards: { cardId: string; sourceKey?: string | null; faceSideIndex?: number | null }[]; title: string; comment: string; sessionId: string; submissionId?: string | null }) {
   try {
     if (!/^[a-z0-9][a-z0-9-]{1,80}$/.test(input.slug) || !/^[0-9a-f-]{36}$/i.test(input.sessionId)) return { ok: false, message: '作成セッションが不正です' }
+    if (input.cards.some(card => card.sourceKey != null && !SOURCE_KEY_PATTERN.test(card.sourceKey))) return { ok: false, message: '選択したカードの情報が不正です' }
     const admin = createAdminClient()
     const { data: project } = await admin.from('maker_projects').select('id,type,config').eq('slug', input.slug).eq('is_public', true).eq('status', 'published').maybeSingle()
     if (!project || project.type !== 'select') return { ok: false, message: 'この企画は現在公開されていません' }
     const config = parseSelectMakerConfig(project.config)
-    if ((config.exactChoices && input.cardIds.length !== config.maxChoices) || input.cardIds.length < config.minChoices || input.cardIds.length > config.maxChoices) return { ok: false, message: `${config.maxChoices}枚選んでください` }
+    if ((config.exactChoices && input.cards.length !== config.maxChoices) || input.cards.length < config.minChoices || input.cards.length > config.maxChoices) return { ok: false, message: `${config.maxChoices}枚選んでください` }
     const title = (input.title.trim() || config.defaultTitle).slice(0, 40)
     const comment = input.comment.trim().slice(0, 200)
     const supabase = await createClient()
@@ -28,7 +31,9 @@ export async function saveSelectSubmission(input: { slug: string; cardIds: strin
       p_actor_hash: user ? null : hashMakerAnonymousOwner(anonymousId!, 'actor'),
       p_session_id: input.sessionId, p_submission_id: input.submissionId ?? null,
       p_title: title, p_comment: comment || null,
-      p_card_ids: input.cardIds,
+      p_card_ids: input.cards.map(card => card.cardId),
+      p_source_keys: input.cards.map(card => card.sourceKey ?? null),
+      p_face_side_indexes: input.cards.map(card => card.faceSideIndex ?? null),
     })
     if (result.error || !result.data) return { ok: false, message: '一覧登録に失敗しました。画像は保存できます' }
     if (!user) cookieStore.set(MAKER_ANONYMOUS_COOKIE, anonymousId!, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 31536000 })

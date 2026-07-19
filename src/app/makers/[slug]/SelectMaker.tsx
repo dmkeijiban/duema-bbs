@@ -10,19 +10,12 @@ import { recordMakerEvent, recordMakerPageView } from '@/lib/maker-events'
 import { saveSelectSubmission } from './actions'
 import { SelectMakerToolbar } from '@/components/SelectMakerToolbar'
 import { renderSelectExportImage } from '@/lib/maker-select-export'
+import { cardPrintingKey, exactCardImageUrl } from '@/lib/card-catalog-shared'
 
 type Draft = { cards: DeckCard[]; title: string; comment: string; listPublic?: boolean; sessionId: string; submissionId: string | null; completedEventSent: boolean }
 type PngPreview = { src: string; title: string; fileName: string; file: File }
 
-function printingKey(card: DeckCard) {
-  return `${card.id}:${card.printingId ?? card.sourceKey ?? 'representative'}:${card.matchedFace?.sideIndex ?? 'front'}`
-}
-
-function exactCardImageUrl(card: DeckCard, slug: string) {
-  return card.imageUrl
-    ? `/api/card-image?url=${encodeURIComponent(card.imageUrl)}`
-    : `/api/makers/${slug}/card-image?id=${encodeURIComponent(card.id)}`
-}
+const printingKey = cardPrintingKey
 
 export default function SelectMaker({ slug, config, initialDraft }: { slug: string; config: SelectMakerConfig; initialDraft?: Draft }) {
   const storageKey = `select-maker:${slug}:v2`
@@ -172,7 +165,7 @@ export default function SelectMaker({ slug, config, initialDraft }: { slug: stri
   async function register(): Promise<string | null> {
     const activeSessionId = /^[0-9a-f-]{36}$/i.test(sessionId) ? sessionId : crypto.randomUUID()
     if (activeSessionId !== sessionId) setSessionId(activeSessionId)
-    const result = await saveSelectSubmission({ slug, cardIds: selected.map(card => card.id), title, comment, sessionId: activeSessionId, submissionId })
+    const result = await saveSelectSubmission({ slug, cards: selected.map(card => ({ cardId: card.id, sourceKey: card.sourceKey ?? null, faceSideIndex: card.matchedFace?.sideIndex ?? null })), title, comment, sessionId: activeSessionId, submissionId })
     setMessage(result.message)
     if (result.ok && result.submissionId) {
       setSubmissionId(result.submissionId)
