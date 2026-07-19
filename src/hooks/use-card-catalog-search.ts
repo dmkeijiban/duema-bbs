@@ -2,18 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DeckCard } from '@/lib/deck-maker'
+import { CARD_CATALOG_CACHE_VERSION, dedupeLogicalCards } from '@/lib/card-catalog-shared'
 
 export const CARD_SEARCH_PAGE_SIZE = 48
-const CARD_SEARCH_CACHE_VERSION = 'official-order-v3-logical-card'
-const resultKey = (card: DeckCard) => card.id
-
-function dedupeCards(cards: DeckCard[]) {
-  const unique = new Map<string, DeckCard>()
-  for (const card of cards) {
-    if (!unique.has(resultKey(card))) unique.set(resultKey(card), card)
-  }
-  return [...unique.values()]
-}
 
 type SearchResponse = {
   cards: DeckCard[]
@@ -32,7 +23,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
   const abort = useRef<AbortController | null>(null)
   const cache = useRef(new Map<string, SearchResponse>())
 
-  const cacheKey = `${CARD_SEARCH_CACHE_VERSION}:${makerSlug ?? ''}:${query.trim()}`
+  const cacheKey = `${CARD_CATALOG_CACHE_VERSION}:${makerSlug ?? ''}:${query.trim()}`
 
   const setQuery = useCallback((value: string) => {
     requestId.current += 1
@@ -56,7 +47,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
       abort.current = controller
       setLoading(true)
       const params = new URLSearchParams({ q: query.trim(), offset: '0', limit: String(CARD_SEARCH_PAGE_SIZE) })
-      params.set('order', CARD_SEARCH_CACHE_VERSION)
+      params.set('order', CARD_CATALOG_CACHE_VERSION)
       if (makerSlug) params.set('makerSlug', makerSlug)
       if (!query.trim()) params.set('fastInitial', '1')
       fetch(`/api/cards/search?${params}`, { signal: controller.signal })
@@ -64,7 +55,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
         .then(data => {
           if (id !== requestId.current) return
           const response: SearchResponse = {
-            cards: dedupeCards(Array.isArray(data.cards) ? data.cards as DeckCard[] : []),
+            cards: dedupeLogicalCards(Array.isArray(data.cards) ? data.cards as DeckCard[] : []),
             total: Number.isInteger(data.total) ? data.total : 0,
             hasMore: data.hasMore === true,
             nextOffset: Number.isInteger(data.nextOffset) ? data.nextOffset : 0,
@@ -89,7 +80,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
     abort.current = controller
     setLoading(true)
     const params = new URLSearchParams({ q: query.trim(), offset: String(nextOffset), limit: String(CARD_SEARCH_PAGE_SIZE) })
-    params.set('order', CARD_SEARCH_CACHE_VERSION)
+    params.set('order', CARD_CATALOG_CACHE_VERSION)
     if (makerSlug) params.set('makerSlug', makerSlug)
     fetch(`/api/cards/search?${params}`, { signal: controller.signal })
       .then(response => response.ok ? response.json() : Promise.reject(new Error('search_failed')))
@@ -97,9 +88,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
         if (id !== requestId.current || controller.signal.aborted) return
         const incoming = Array.isArray(data.cards) ? data.cards as DeckCard[] : []
         setCards(current => {
-          const unique = new Map(current.map(card => [resultKey(card), card]))
-          for (const card of incoming) if (!unique.has(resultKey(card))) unique.set(resultKey(card), card)
-          const merged = [...unique.values()]
+          const merged = dedupeLogicalCards([...current, ...incoming])
           cache.current.set(cacheKey, { cards: merged, total: Number.isInteger(data.total) ? data.total : merged.length, hasMore: data.hasMore === true, nextOffset: Number.isInteger(data.nextOffset) ? data.nextOffset : nextOffset + incoming.length })
           return merged
         })
