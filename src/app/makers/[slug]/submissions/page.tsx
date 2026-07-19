@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import MakerSubmissionBoard from '@/components/MakerSubmissionBoard'
+import SelectSubmissionBoard from '@/components/SelectSubmissionBoard'
 import MakerCommunityTier, { type MakerAggregate } from '@/components/MakerCommunityTier'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
@@ -21,7 +22,8 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
   const page = Math.max(1, Number.parseInt(pageValue ?? '1', 10) || 1)
   const project = await getPublicMakerProject(slug)
   if (!project) notFound()
-  const { config, communityLabel } = makerSubmissionView(project)
+  const { config, communityLabel, resultTitle } = makerSubmissionView(project)
+  const isSelect = project.type === 'select'
   const pageSize = 12
   const { submissions, total } = await getPublicSubmissions(project.id, page, pageSize)
   const supabase = await createClient()
@@ -71,7 +73,9 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
       <article key={submission.id} className={`min-w-0 rounded-xl border bg-white p-3 shadow-sm ${created === submission.id ? 'border-emerald-500 ring-2 ring-emerald-200' : ''}`}>
       {created === submission.id && <p className="mb-2 text-sm font-bold text-emerald-700">登録しました</p>}
       <Link href={`/makers/${slug}/submissions/${submission.id}`} className="block transition hover:opacity-90">
-        <MakerSubmissionBoard submission={submission} groups={config.groups} compact showRegulationBadges={!prediction} />
+        {isSelect
+          ? <SelectSubmissionBoard slug={slug} cards={submission.items.map(item => ({ id: item.card_id, name: item.card.name, imageUrl: item.card.image_url }))} compact exportTitle={resultTitle} />
+          : <MakerSubmissionBoard submission={submission} groups={config.groups} compact showRegulationBadges={!prediction} />}
         <h2 className="mt-3 line-clamp-2 font-black">{submission.title}</h2>
         <p className="mt-1 text-sm text-gray-600">{submission.authorName}</p>
         {submission.comment && <p className="mt-2 line-clamp-2 break-words text-sm text-gray-600">{submission.comment}</p>}

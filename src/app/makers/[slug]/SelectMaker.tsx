@@ -9,6 +9,7 @@ import { getMakerAnonymousId } from '@/lib/maker-events-shared'
 import { recordMakerEvent, recordMakerPageView } from '@/lib/maker-events'
 import { saveSelectSubmission } from './actions'
 import { SelectMakerToolbar } from '@/components/SelectMakerToolbar'
+import { renderSelectExportImage } from '@/lib/maker-select-export'
 
 type Draft = { cards: DeckCard[]; title: string; comment: string; listPublic?: boolean; sessionId: string; submissionId: string | null; completedEventSent: boolean }
 
@@ -75,16 +76,17 @@ export default function SelectMaker({ slug, config, initialDraft }: { slug: stri
   const complete = config.exactChoices ? selected.length === config.maxChoices : selected.length >= config.minChoices
 
   async function drawImage() {
-    const canvas = document.createElement('canvas'); canvas.width = 1200; canvas.height = 1500
-    const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.fillStyle = '#0f172a'; ctx.textAlign = 'center'; ctx.font = 'bold 52px sans-serif'; ctx.fillText(config.resultTitle.slice(0, 28), 600, 82)
-    const columns = selected.length <= 3 ? selected.length : selected.length <= 9 ? 3 : 4
-    const rows = Math.ceil(selected.length / columns); const gap = 18; const areaW = 1040; const areaH = 1150
-    const cellW = (areaW - gap * (columns - 1)) / columns; const cellH = (areaH - gap * (rows - 1)) / rows
-    const images = await Promise.all(selected.map(card => new Promise<HTMLImageElement | null>(resolve => { if (!card.imageUrl) return resolve(null); const image = new Image(); image.onload = () => resolve(image); image.onerror = () => resolve(null); image.src = `/api/makers/${slug}/card-image?id=${card.id}` })))
-    images.forEach((image, index) => { const col = index % columns; const row = Math.floor(index / columns); const x = 80 + col * (cellW + gap); const y = 135 + row * (cellH + gap); ctx.fillStyle = '#e2e8f0'; ctx.fillRect(x, y, cellW, cellH); if (image) { const scale = Math.min(cellW / image.width, cellH / image.height); const w = image.width * scale; const h = image.height * scale; ctx.drawImage(image, x + (cellW - w) / 2, y + (cellH - h) / 2, w, h) } else { ctx.fillStyle = '#64748b'; ctx.font = '24px sans-serif'; ctx.fillText('画像なし', x + cellW / 2, y + cellH / 2) } })
-    ctx.fillStyle = '#0f172a'; ctx.font = 'bold 42px sans-serif'; ctx.fillText(title.slice(0, 24), 600, 1350); ctx.font = '28px sans-serif'; ctx.fillText('デュエマ掲示板', 600, 1435)
-    return new Promise<Blob>((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('PNG生成に失敗しました')), 'image/png'))
+    return renderSelectExportImage({
+      title: config.resultTitle,
+      cards: selected,
+      hasImage: card => Boolean(card.imageUrl),
+      loadImage: card => new Promise<HTMLImageElement | null>(resolve => {
+        const image = new Image()
+        image.onload = () => resolve(image)
+        image.onerror = () => resolve(null)
+        image.src = `/api/makers/${slug}/card-image?id=${card.id}`
+      }),
+    })
   }
   async function register(): Promise<string | null> { const activeSessionId = /^[0-9a-f-]{36}$/i.test(sessionId) ? sessionId : crypto.randomUUID(); if (activeSessionId !== sessionId) setSessionId(activeSessionId); const result = await saveSelectSubmission({ slug, cardIds: selected.map(card => card.id), title, comment, sessionId: activeSessionId, submissionId }); setMessage(result.message); if (result.ok && result.submissionId) { setSubmissionId(result.submissionId); void recordMakerEvent({ slug, eventType: submissionId ? 'submission_updated' : 'submission_registered', anonymousId: getMakerAnonymousId() }); return result.submissionId } return null }
   async function saveImage() { if (!complete || isSavingImage) return; setIsSavingImage(true); void recordMakerEvent({ slug, eventType: 'image_save_started', anonymousId: getMakerAnonymousId() }); try { const blob = await drawImage(); const src = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsDataURL(blob) }); setPngPreview({ src, title: title.trim() || config.resultTitle, fileName: `${slug}.png` }); void recordMakerEvent({ slug, eventType: 'image_saved', anonymousId: getMakerAnonymousId() }) } catch { setMessage('画像保存に失敗しました'); setIsSavingImage(false); return } try { await register() } catch { setMessage('一覧登録に失敗しました。画像は保存できます') } finally { setIsSavingImage(false) } }
