@@ -4,13 +4,12 @@ import { useEffect, useState } from 'react'
 import type { MakerGroup } from '@/lib/maker'
 import type { PublicSubmission } from '@/lib/maker-submissions'
 import HallReleaseLabel from '@/components/HallReleaseLabel'
-import { HALL_RELEASE_DESIGN, HALL_RELEASE_LABEL_LINES } from '@/lib/hall-release-design'
+import { HALL_RELEASE_DESIGN } from '@/lib/hall-release-design'
+import { renderTierExportImage, type TierExportBadge } from '@/lib/maker-tier-export'
 
 type ZoomedCard = { name: string; imageUrl: string }
 
 const IMAGE_PROXY_PATH = '/api/makers/dm26-ex2-card-image'
-const CARDS_PER_LINE = 6
-const CARD_WIDTH = 138
 
 function isIOSDevice() {
   return /iPhone|iPad|iPod/i.test(navigator.userAgent)
@@ -31,12 +30,6 @@ async function loadExportImage(url: string): Promise<HTMLImageElement> {
     await loaded
   }
   return image
-}
-
-async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
-  const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'))
-  if (!blob) throw new Error('PNGの生成に失敗しました')
-  return blob
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -62,6 +55,12 @@ function makerThumbnailUrl(url: string, width: number) {
 
 function regulationLabel(value: string | null) {
   return value === 'premium_hall' ? 'プレミアム殿堂' : value === 'hall' ? '殿堂' : null
+}
+
+function regulationBadge(value: string | null): TierExportBadge | null {
+  const label = regulationLabel(value)
+  if (!label) return null
+  return { label, value: value === 'premium_hall' ? 'premium' : 'hall' }
 }
 
 export default function MakerSubmissionBoard({
@@ -110,122 +109,25 @@ export default function MakerSubmissionBoard({
   }, [previewUrl])
 
   async function createPng() {
-    const canvas = document.createElement('canvas')
-    canvas.width = 1080
-    const context = canvas.getContext('2d')
-    if (!context) throw new Error('画像生成を利用できません')
-
-    const left = 30
-    const totalWidth = canvas.width - left * 2
     // 殿堂解除予想は呼び出し元の指定が欠けても、releaseグループから専用レイアウトを判定する。
     const isPredictionExport = exportLayout === 'prediction' || groups.some(group => group.key === 'release')
-    // メーカー本体の保存画像と同じカード配置を使う。
-    const cardsPerLine = CARDS_PER_LINE
-    const labelWidth = HALL_RELEASE_DESIGN.labelWidth.canvas
-    const horizontalPadding = 12
-    const gap = 10
-    const cardWidth = CARD_WIDTH
-    const cardHeight = Math.round(cardWidth * 88 / 63)
-    const rowGap = 10
-    const top = isPredictionExport || showExportAuthor ? 120 : 90
-    const bottomPadding = 28
-    const palette: Record<string, { background: string; border: string; label: string; labelBackground: string }> = {
-      s: { background: '#fff1f2', border: '#fca5a5', label: '#be123c', labelBackground: '#fca5a5' },
-      a: { background: '#fff7ed', border: '#fdba74', label: '#c2410c', labelBackground: '#fdba74' },
-      b: { background: '#fffbeb', border: '#fcd34d', label: '#a16207', labelBackground: '#fcd34d' },
-      c: { background: '#ecfdf5', border: '#6ee7b7', label: '#047857', labelBackground: '#6ee7b7' },
-      d: { background: '#eff6ff', border: '#93c5fd', label: '#1d4ed8', labelBackground: '#93c5fd' },
-      release: HALL_RELEASE_DESIGN.canvas,
-    }
-
-    const rows = groups.map(group => {
-      const items = submission.items.filter(item => item.group_key === group.key)
-      const lineCount = items.length ? Math.ceil(items.length / cardsPerLine) : 0
-      const rowHeight = items.length
-        ? lineCount * cardHeight + Math.max(0, lineCount - 1) * rowGap + 20
-        : 76
-      return { group, items, rowHeight }
+    return renderTierExportImage({
+      header: {
+        title: exportTitle ?? submission.title,
+        subtitle: showExportAuthor ? `制作者: ${submission.authorName}` : undefined,
+        subtitleAlign: 'left',
+      },
+      layout: isPredictionExport ? 'release' : 'standard',
+      rows: groups.map(group => ({
+        key: group.key,
+        labelLines: [group.label],
+        cards: submission.items.filter(item => item.group_key === group.key).map(item => ({
+          imageUrl: item.card.image_url,
+          badge: showRegulationBadges ? regulationBadge(item.card.regulation) : null,
+        })),
+      })),
+      loadImage: loadExportImage,
     })
-    canvas.height = top + rows.reduce((sum, row) => sum + row.rowHeight + 5, 0) + bottomPadding
-
-    const imageUrls = [...new Set(rows.flatMap(row => row.items.map(item => item.card.image_url).filter((url): url is string => Boolean(url))))]
-    const loadedImages = new Map<string, HTMLImageElement>()
-    await Promise.all(imageUrls.map(async url => {
-      try {
-        loadedImages.set(url, await loadExportImage(url))
-      } catch {
-        // 読み込めなかったカードだけプレースホルダーで出力する
-      }
-    }))
-
-    context.fillStyle = '#f8fafc'
-    context.fillRect(0, 0, canvas.width, canvas.height)
-    context.fillStyle = '#0f172a'
-    context.font = 'bold 38px sans-serif'
-    context.fillText(exportTitle ?? submission.title, 40, 58)
-    if (showExportAuthor) {
-      context.font = 'bold 22px sans-serif'
-      context.fillStyle = '#475569'
-      context.fillText(`制作者: ${submission.authorName}`, 40, 91)
-    }
-
-    let y = top
-    for (const row of rows) {
-      const colors = palette[row.group.key.toLowerCase()] ?? {
-        background: '#f8fafc',
-        border: '#cbd5e1',
-        label: '#111827',
-        labelBackground: '#cbd5e1',
-      }
-      context.fillStyle = colors.background
-      context.fillRect(left, y, totalWidth, row.rowHeight)
-      context.fillStyle = colors.labelBackground
-      context.fillRect(left, y, labelWidth, row.rowHeight)
-      context.strokeStyle = colors.border
-      context.lineWidth = 1.5
-      context.strokeRect(left, y, totalWidth, row.rowHeight)
-      const labelLines = isPredictionExport && row.group.key === 'release'
-        ? HALL_RELEASE_LABEL_LINES
-        : [row.group.label]
-      const labelFontSize = isPredictionExport && row.group.key === 'release' ? HALL_RELEASE_DESIGN.canvas.labelFontSize : 42
-      const labelLineHeight = labelFontSize * (isPredictionExport && row.group.key === 'release' ? HALL_RELEASE_DESIGN.canvas.labelLineHeight : 1.25)
-      const labelStartY = y + row.rowHeight / 2 - ((labelLines.length - 1) * labelLineHeight) / 2
-      context.fillStyle = colors.label
-      context.font = `bold ${labelFontSize}px sans-serif`
-      context.textAlign = 'center'
-      context.textBaseline = 'middle'
-      for (const [lineIndex, lineText] of labelLines.entries()) {
-        context.fillText(lineText, left + labelWidth / 2, labelStartY + lineIndex * labelLineHeight)
-      }
-
-      for (const [index, item] of row.items.entries()) {
-        const column = index % cardsPerLine
-        const line = Math.floor(index / cardsPerLine)
-        const x = left + labelWidth + horizontalPadding + column * (cardWidth + gap)
-        const cardY = y + 10 + line * (cardHeight + rowGap)
-        const image = item.card.image_url ? loadedImages.get(item.card.image_url) : null
-        if (image) {
-          context.drawImage(image, x, cardY, cardWidth, cardHeight)
-        } else {
-          context.fillStyle = '#e2e8f0'
-          context.fillRect(x, cardY, cardWidth, cardHeight)
-        }
-        const badge = regulationLabel(item.card.regulation)
-        if (!isPredictionExport && badge) {
-          context.font = 'bold 15px sans-serif'
-          const badgeWidth = context.measureText(badge).width + 14
-          context.fillStyle = item.card.regulation === 'premium_hall' ? '#991b1b' : '#facc15'
-          context.fillRect(x + cardWidth - badgeWidth - 4, cardY + cardHeight - 25, badgeWidth, 21)
-          context.fillStyle = item.card.regulation === 'premium_hall' ? '#ffffff' : '#422006'
-          context.textAlign = 'center'
-          context.textBaseline = 'middle'
-          context.fillText(badge, x + cardWidth - badgeWidth / 2 - 4, cardY + cardHeight - 14.5)
-        }
-      }
-      y += row.rowHeight + 5
-    }
-
-    return canvasToPngBlob(canvas)
   }
 
   async function saveImage() {

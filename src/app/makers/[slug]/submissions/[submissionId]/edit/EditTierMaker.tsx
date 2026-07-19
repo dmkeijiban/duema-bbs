@@ -38,10 +38,11 @@ export default function EditTierMaker({
     communityHref={`/makers/${slug}/submissions`}
     registrationHeading={prediction ? '殿堂解除予想を編集' : 'Tier表を編集'}
     storageSlug={`${slug}:edit:${submissionId}`}
+    imageProxyPath="/api/makers/dm26-ex2-card-image"
+    exportTitle={prediction ? '2026年7月27日 殿堂解除選手権' : title}
+    exportFilename={prediction ? 'hall-of-fame-release.png' : `${slug}-tier.png`}
+    shareText={prediction ? '殿堂解除選手権｜みんなで予想しよう！' : title}
     {...(prediction ? {
-      imageProxyPath: '/api/makers/dm26-ex2-card-image',
-      exportTitle: '2026年7月27日 殿堂解除選手権',
-      exportFilename: 'hall-of-fame-release.png',
       poolFilters: [{ value: 'hall', label: '殿堂' }, { value: 'premium', label: 'プレ殿' }],
       aggregateMode: 'selection' as const,
       responseLabel: '殿堂解除予想',
