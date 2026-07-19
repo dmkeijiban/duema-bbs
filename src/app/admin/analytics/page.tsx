@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { AnalyticsRefresh } from '@/components/admin/AnalyticsRefresh'
+import MakerPublishToggle from '@/components/admin/MakerPublishToggle'
 import { TotalPvChart } from '@/components/admin/TotalPvChart'
 import {
   getGa4DashboardData,
@@ -167,9 +168,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
       <table className="w-full min-w-[1080px] text-xs">
         <thead className="sticky top-0 z-10 bg-gray-100 text-left text-[11px] text-gray-500">
           <tr>
-            <th className="w-[24%] p-3 font-bold">企画</th>
+            <th className="w-[21%] p-3 font-bold">企画</th>
             <th className="w-[12%] p-3 font-bold">状況</th>
-            <th className="w-[7%] p-3 font-bold">公開</th>
+            <th className="w-[10%] p-3 font-bold">公開</th>
             <th className="w-[16%] border-l border-gray-200 p-3 text-right font-bold">閲覧（PV・利用者）</th>
             <th className="w-[13%] border-l border-gray-200 p-3 text-right font-bold">参加（回答）</th>
             <th className="w-[13%] border-l border-gray-200 p-3 text-right font-bold">定着（開始→保存）</th>
@@ -184,7 +185,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
               <div className="mt-0.5 text-[10px] text-gray-400">{p.slug}</div>
             </td>
             <td className="p-3"><StatusChip project={p}/></td>
-            <td className="p-3"><span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-bold ${p.isPublic && p.status === 'published' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{p.isPublic && p.status === 'published' ? '公開' : '非公開'}</span></td>
+            <td className="p-3"><MakerPublishToggle slug={p.slug} title={p.title} status={p.status} isPublic={p.isPublic}/></td>
             <td className="border-l border-gray-100 bg-slate-50/30 p-3">
               <div className="flex items-baseline justify-end gap-1.5">
                 {period !== 'today' && p.todayPv > 0 && <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[10px] font-bold text-orange-600">今日+{formatNumber(p.todayPv)}</span>}
@@ -209,6 +210,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
         </tbody>
       </table>
     </div>
-    <div className="space-y-2 md:hidden">{projects.map(p => <Link prefetch={false} key={p.id} href={`/admin/analytics/makers/${p.slug}?period=${period}`} className="block rounded-lg border bg-white p-3"><div className="flex items-start justify-between gap-2"><div><p className="font-bold text-blue-700">{p.title}</p><StatusChip project={p}/></div><span className="text-xs">{p.isPublic ? '公開' : '非公開'}</span></div><div className="mt-2 grid grid-cols-3 gap-2 text-xs"><span>今日PV <b>{p.todayPv}</b></span><span>期間PV <b>{p.pv}</b></span><span>利用者 <b>{p.uniqueActors}</b></span><span>回答 <b>{p.submissions}</b></span><span>保存 <b>{p.events.image_saved}</b></span><span>X共有 <b>{p.events.x_shared}</b></span></div></Link>)}</div>
+    <div className="space-y-2 md:hidden">{projects.map(p => <div key={p.id} className="rounded-lg border bg-white p-3"><div className="flex items-start justify-between gap-2"><Link prefetch={false} href={`/admin/analytics/makers/${p.slug}?period=${period}`} className="block min-w-0"><p className="font-bold text-blue-700">{p.title}</p><StatusChip project={p}/></Link><MakerPublishToggle slug={p.slug} title={p.title} status={p.status} isPublic={p.isPublic}/></div><Link prefetch={false} href={`/admin/analytics/makers/${p.slug}?period=${period}`} className="mt-2 grid grid-cols-3 gap-2 text-xs"><span>今日PV <b>{p.todayPv}</b></span><span>期間PV <b>{p.pv}</b></span><span>利用者 <b>{p.uniqueActors}</b></span><span>回答 <b>{p.submissions}</b></span><span>保存 <b>{p.events.image_saved}</b></span><span>X共有 <b>{p.events.x_shared}</b></span></Link></div>)}</div>
   </>}</>
 }
