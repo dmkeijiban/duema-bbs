@@ -7,15 +7,14 @@ export function SelectMakerToolbar({
   comment,
   showTitle,
   showComment,
-  listPublic,
   listLabel,
   listUrl,
   complete,
-  busy,
+  isSavingImage,
+  isSharing,
   message,
   onTitleChange,
   onCommentChange,
-  onListPublicChange,
   onSaveImage,
   onShare,
   onReset,
@@ -24,15 +23,14 @@ export function SelectMakerToolbar({
   comment: string
   showTitle: boolean
   showComment: boolean
-  listPublic: boolean
   listLabel: string
   listUrl: string
   complete: boolean
-  busy: boolean
+  isSavingImage: boolean
+  isSharing: boolean
   message: string
   onTitleChange: (value: string) => void
   onCommentChange: (value: string) => void
-  onListPublicChange: (value: boolean) => void
   onSaveImage: () => void
   onShare: () => void
   onReset: () => void
@@ -55,16 +53,12 @@ export function SelectMakerToolbar({
           )}
         </div>
         <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4 xl:w-auto xl:min-w-[500px]">
-          <button type="button" disabled={!complete || busy} onClick={onSaveImage} className="min-h-10 rounded-lg bg-blue-700 px-3 text-sm font-bold text-white hover:bg-blue-800 disabled:bg-slate-300">画像保存</button>
-          <button type="button" disabled={!complete || busy} onClick={onShare} className="min-h-10 rounded-lg bg-black px-3 text-sm font-bold text-white hover:bg-slate-800 disabled:bg-slate-300">X共有</button>
+          <button type="button" disabled={!complete || isSavingImage} onClick={onSaveImage} className="min-h-10 rounded-lg bg-blue-700 px-3 text-sm font-bold text-white hover:bg-blue-800 disabled:bg-slate-300">{isSavingImage ? '画像生成中...' : '画像保存'}</button>
+          <button type="button" disabled={!complete || isSharing} onClick={onShare} className="min-h-10 rounded-lg bg-black px-3 text-sm font-bold text-white hover:bg-slate-800 disabled:bg-slate-300">{isSharing ? '共有準備中...' : 'X共有'}</button>
           <button type="button" onClick={onReset} className="min-h-10 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50">新しく作る</button>
           <Link href={listUrl} className="flex min-h-10 items-center justify-center rounded-lg border border-slate-300 px-3 text-center text-sm font-bold text-slate-700 hover:bg-slate-50">{listLabel}</Link>
         </div>
       </div>
-      <label className="mt-3 flex items-start gap-2 text-sm text-slate-700">
-        <input type="checkbox" checked={listPublic} onChange={(event) => onListPublicChange(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>画像保存時に一覧へ掲載する <small className="block text-xs text-slate-500 sm:inline sm:pl-1">掲載後も同じブラウザから編集・削除できます</small></span>
-      </label>
       {message && <p role="status" className="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">{message}</p>}
     </header>
   )
