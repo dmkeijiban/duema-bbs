@@ -109,6 +109,7 @@ export default async function Page() {
     <UsageStatsSection stats={usageStats} errorMessage={usageStatsError} />
     {(!user || usingFallbackCards || process.env.VERCEL_ENV !== 'preview') && <p className="mt-4 rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">現在は確認用モードです。{cards.length}枚の表示・検索・Tier操作・端末内の下書き保存を確認できます。DBへの上書き保存は無効です。</p>}
     {usingFallbackCards && unavailableMessage && <p className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm">本番DBにはまだメーカー用データを入れていないため、公式{cards.length}枚の確認用データを表示しています。</p>}
-    <TierMaker cards={cards} groups={projectConfig.groups} initialDraft={draft} unrated={projectConfig.unrated} canSave={canSave} aggregates={aggregates} />
+    <TierMaker cards={cards} groups={projectConfig.groups} initialDraft={draft} unrated={projectConfig.unrated} canSave={canSave} aggregates={aggregates}
+      imageProxyPath="/api/admin/makers/dm26-ex2-card-image" exportTitle="DM26-EX2 悪感謝祭 カリスマBEST Tier表" exportFilename="dm26-ex2-tier-auto.png" shareText="悪感謝祭カリスマBEST Tier表メーカー" />
   </div></main>
 }

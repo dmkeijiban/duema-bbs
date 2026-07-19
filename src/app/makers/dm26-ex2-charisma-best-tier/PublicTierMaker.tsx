@@ -87,6 +87,9 @@ export default function PublicTierMaker(props: Props) {
         hasSavedSubmission={props.hasSavedSubmission}
         aggregates={props.aggregates}
         imageProxyPath="/api/makers/dm26-ex2-card-image"
+        exportTitle="DM26-EX2 悪感謝祭 カリスマBEST Tier表"
+        exportFilename="dm26-ex2-tier-auto.png"
+        shareText="悪感謝祭カリスマBEST Tier表メーカー"
         eventSlug="dm26-ex2-charisma-best-tier"
         communityHref="/makers/dm26-ex2-charisma-best-tier/submissions"
         registrationLabel="Tier表"

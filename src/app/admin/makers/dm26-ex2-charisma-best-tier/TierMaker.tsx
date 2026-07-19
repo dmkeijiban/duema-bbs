@@ -8,15 +8,12 @@ import { recordMakerEvent } from '@/lib/maker-events'
 import { getMakerAnonymousId, type MakerEventType } from '@/lib/maker-events-shared'
 import MakerCommunityTier, { type MakerAggregate } from '@/components/MakerCommunityTier'
 import HallReleaseLabel from '@/components/HallReleaseLabel'
-import { HALL_RELEASE_DESIGN, HALL_RELEASE_LABEL_LINES } from '@/lib/hall-release-design'
 import { saveTierSubmission } from './actions'
+import { renderTierExportImage } from '@/lib/maker-tier-export'
 
 const SHOW_CARD_DETAIL_FILTERS = false
 
 const EXPORT_FORMAT = 'auto'
-const EXPORT_CARDS_PER_LINE = 6
-const EXPORT_CARD_WIDTH = 140
-const EXPORT_CARD_HEIGHT = EXPORT_CARD_WIDTH * 88 / 63
 
 function normalizeSearchText(value: string) {
   return value.normalize('NFKC').toLowerCase().replace(/[・･\s　\-‐‑‒–—―ー]/g, '')
@@ -31,7 +28,8 @@ type TierMakerProps = {
   unrated: boolean
   canSave: boolean
   aggregates: TierAggregate[]
-  imageProxyPath?: string
+  // カード画像プロキシは企画ごと（管理者限定/公開）で権限が異なるため、共通コンポーネントの既定値に頼らず必ず呼び出し側から渡す
+  imageProxyPath: string
   saveAction?: (payload: Record<string, string[]>, meta?: MakerSubmissionMeta) => Promise<{ ok: boolean; message: string; redirectTo?: string }>
   submissionFields?: { defaultTitle: string; defaultComment?: string }
   saveButtonLabel?: string
@@ -40,9 +38,10 @@ type TierMakerProps = {
   eventSlug?: string
   beforeLogin?: () => Promise<void>
   storageSlug?: string
-  exportTitle?: string
-  exportFilename?: string
-  shareText?: string
+  // 保存画像に書き込む文言・ファイル名・共有テキストは企画固有のため、共通コンポーネント側にデフォルト値を持たせない
+  exportTitle: string
+  exportFilename: string
+  shareText: string
   shareUrl?: string
   communityTitle?: string
   communityButtonLabel?: string
@@ -121,25 +120,6 @@ async function loadExportImage(url: string, imageProxyPath: string): Promise<HTM
   return image
 }
 
-function dataUrlToBlob(dataUrl: string): Blob {
-  const [header, body] = dataUrl.split(',')
-  const mime = header?.match(/data:([^;]+)/)?.[1] ?? 'image/png'
-  const binary = atob(body ?? '')
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
-  return new Blob([bytes], { type: mime })
-}
-
-async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
-  try {
-    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'))
-    if (blob) return blob
-  } catch {
-    // toBlob 自体が例外を投げる環境があるため toDataURL にフォールバック
-  }
-  return dataUrlToBlob(canvas.toDataURL('image/png'))
-}
-
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -163,7 +143,7 @@ function isIOSDevice() {
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
-export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath = '/api/admin/makers/dm26-ex2-card-image', saveAction = saveTierSubmission, submissionFields, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle = 'DM26-EX2 悪感謝祭 カリスマBEST Tier表', exportFilename = 'dm26-ex2-tier-auto.png', shareText = '悪感謝祭カリスマBEST Tier表メーカー', shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表', groupRowClassName, groupGridClassName = 'grid-cols-[52px_1fr]', groupLabelClassName, groupLabelText, hallReleaseLabel = false, cardBadgePositionClassName = 'left-1 top-1', cardBadgeTextClassName = 'text-white', selectionImageZoom = false, communityHref, registrationLabel = '作品', registrationHeading, autoRegisterOnImageSave = false }: TierMakerProps) {
+export default function TierMaker({ cards, groups, initialDraft, unrated, canSave, aggregates, imageProxyPath, saveAction = saveTierSubmission, submissionFields, saveButtonLabel, hasSavedSubmission = false, eventSlug, beforeLogin, storageSlug = 'dm26-ex2-charisma-best-tier', exportTitle, exportFilename, shareText, shareUrl, communityTitle = 'みんなのTier', communityButtonLabel = '📊 みんなのTierを見る', poolFilters = [], aggregateMode = 'tier', exportBrand, responseLabel = 'Tier表', groupRowClassName, groupGridClassName = 'grid-cols-[52px_1fr]', groupLabelClassName, groupLabelText, hallReleaseLabel = false, cardBadgePositionClassName = 'left-1 top-1', cardBadgeTextClassName = 'text-white', selectionImageZoom = false, communityHref, registrationLabel = '作品', registrationHeading, autoRegisterOnImageSave = false }: TierMakerProps) {
   const STORAGE_KEY = `maker-draft:${storageSlug}:v1`
   const DRAFT_CHOICE_KEY = `maker-draft-choice:${storageSlug}:v1`
   const [draft, setDraft] = useState(initialDraft)
@@ -359,126 +339,31 @@ export default function TierMaker({ cards, groups, initialDraft, unrated, canSav
   }
 
   async function createTierPng(): Promise<Blob> {
-    const canvas = document.createElement('canvas')
-    canvas.width = 1080
-    const context = canvas.getContext('2d')
-    if (!context) throw new Error('Canvas is unavailable')
-
-    const left = 30
-    const totalWidth = canvas.width - left * 2
-    const labelWidth = 96
-    const horizontalPadding = 12
-    const gap = 10
-    const rowGap = 10
-    const top = 120
-    const bottomPadding = 28
-    const palette: Record<string, { background: string; border: string; label: string; labelBackground: string }> = {
-      s: { background: '#fff1f2', border: '#fca5a5', label: '#be123c', labelBackground: '#fca5a5' },
-      a: { background: '#fff7ed', border: '#fdba74', label: '#c2410c', labelBackground: '#fdba74' },
-      b: { background: '#fffbeb', border: '#fcd34d', label: '#a16207', labelBackground: '#fcd34d' },
-      c: { background: '#ecfdf5', border: '#6ee7b7', label: '#047857', labelBackground: '#6ee7b7' },
-      d: { background: '#eff6ff', border: '#93c5fd', label: '#1d4ed8', labelBackground: '#93c5fd' },
-      release: HALL_RELEASE_DESIGN.canvas,
-    }
-
-    const rowLayouts = groups.map(group => {
-      const ids = draft[group.key] ?? []
-      const cardsPerLine = EXPORT_CARDS_PER_LINE
-      const cardWidth = ids.length ? EXPORT_CARD_WIDTH : 0
-      const cardHeight = ids.length ? EXPORT_CARD_HEIGHT : 0
-      const lineCount = ids.length ? Math.ceil(ids.length / cardsPerLine) : 0
-      const rowHeight = ids.length
-        ? Math.ceil(lineCount * cardHeight + Math.max(0, lineCount - 1) * rowGap + 20)
-        : 76
-      return { group, ids, cardWidth, cardHeight, cardsPerLine, rowHeight }
-    })
-
-    const contentHeight = top + rowLayouts.reduce((sum, row) => sum + row.rowHeight + 5, 0) + bottomPadding
-    canvas.height = contentHeight
-
-    const imageUrls = [...new Set(
-      rowLayouts.flatMap(row => row.ids.map(cardId => cardsById.get(cardId)?.imageUrl).filter((url): url is string => Boolean(url))),
-    )]
-    const loadedImages = new Map<string, HTMLImageElement>()
-    await Promise.all(imageUrls.map(async url => {
-      try {
+    return renderTierExportImage({
+      header: { title: exportTitle, subtitle: exportBrand, subtitleAlign: 'right' },
+      layout: hallReleaseLabel && groups.some(group => group.key === 'release') ? 'release' : 'standard',
+      rows: groups.map(group => ({
+        key: group.key,
+        labelLines: (groupLabelText?.[group.key] ?? group.label).split('\n'),
+        cards: (draft[group.key] ?? []).map(cardId => {
+          const card = cardsById.get(cardId)
+          return { imageUrl: card?.imageUrl ?? null, badge: card?.badge ? { label: card.badge.label, value: card.badge.value } : null }
+        }),
+      })),
+      loadImage: async url => {
         let imagePromise = exportImageCache.current.get(url)
         if (!imagePromise) {
           imagePromise = loadExportImage(url, imageProxyPath)
           exportImageCache.current.set(url, imagePromise)
         }
-        const image = await imagePromise
-        loadedImages.set(url, image)
-      } catch {
-        exportImageCache.current.delete(url)
-      }
-    }))
-
-    context.fillStyle = '#f8fafc'
-    context.fillRect(0, 0, canvas.width, canvas.height)
-    context.fillStyle = '#0f172a'
-    context.font = 'bold 38px sans-serif'
-    context.fillText(exportTitle, 40, 58)
-    if (exportBrand) {
-      context.font = 'bold 22px sans-serif'
-      context.fillStyle = '#475569'
-      context.textAlign = 'right'
-      context.fillText(exportBrand, canvas.width - 40, 88)
-      context.textAlign = 'left'
-    }
-    let y = top
-
-    for (const row of rowLayouts) {
-      const colors = palette[row.group.key.toLowerCase()] ?? {
-        background: '#f8fafc',
-        border: '#cbd5e1',
-        label: '#111827',
-        labelBackground: '#cbd5e1',
-      }
-      context.fillStyle = colors.background
-      context.fillRect(left, y, totalWidth, row.rowHeight)
-      context.fillStyle = colors.labelBackground
-      context.fillRect(left, y, labelWidth, row.rowHeight)
-      context.strokeStyle = colors.border
-      context.lineWidth = 1.5
-      context.strokeRect(left, y, totalWidth, row.rowHeight)
-      const labelLines = hallReleaseLabel && row.group.key === 'release'
-        ? HALL_RELEASE_LABEL_LINES
-        : (groupLabelText?.[row.group.key] ?? row.group.label).split('\n')
-      const labelFontSize = hallReleaseLabel && row.group.key === 'release' ? HALL_RELEASE_DESIGN.canvas.labelFontSize : labelLines.length > 1 ? 22 : 42
-      const labelLineHeight = labelFontSize * (hallReleaseLabel && row.group.key === 'release' ? HALL_RELEASE_DESIGN.canvas.labelLineHeight : 1.2)
-      const labelCenterY = y + row.rowHeight / 2
-      const labelStartY = labelCenterY - ((labelLines.length - 1) * labelLineHeight) / 2
-      context.fillStyle = colors.label
-      context.font = `bold ${labelFontSize}px sans-serif`
-      context.textAlign = 'center'
-      context.textBaseline = 'middle'
-      for (const [lineIndex, line] of labelLines.entries()) {
-        context.fillText(line, left + labelWidth / 2, labelStartY + lineIndex * labelLineHeight)
-      }
-
-      for (const [index, cardId] of row.ids.entries()) {
-        const card = cardsById.get(cardId)
-        if (!card) continue
-
-        const column = index % row.cardsPerLine
-        const line = Math.floor(index / row.cardsPerLine)
-        const x = left + labelWidth + horizontalPadding + column * (row.cardWidth + gap)
-        const cardY = y + 10 + line * (row.cardHeight + rowGap)
-
-        const image = card.imageUrl ? loadedImages.get(card.imageUrl) : null
-        if (image) {
-          context.drawImage(image, x, cardY, row.cardWidth, row.cardHeight)
-        } else {
-          context.fillStyle = '#e2e8f0'
-          context.fillRect(x, cardY, row.cardWidth, row.cardHeight)
+        try {
+          return await imagePromise
+        } catch (error) {
+          exportImageCache.current.delete(url)
+          throw error
         }
-      }
-
-      y += row.rowHeight + 5
-    }
-
-    return await canvasToPngBlob(canvas)
+      },
+    })
   }
 
   function getTierPng(): Promise<Blob> {
