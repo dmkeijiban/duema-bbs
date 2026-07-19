@@ -52,10 +52,16 @@ function normalizeKey(value: string | null | undefined) {
   return value?.trim().toLowerCase() ?? ''
 }
 
+function isCharismaPreviewKey(value: string | null | undefined) {
+  return /^dm26ex2-preview-/.test(normalizeKey(value))
+}
+
+function isCharismaOfficialKey(value: string | null | undefined) {
+  const key = normalizeKey(value)
+  return /^dm26ex2-(?!preview-)/.test(key)
+}
+
 function printingIdentity(printing: Printing, canonicalAliases: Map<string, string>) {
-  // card_number distinguishes legitimate variants such as PR001 / PR001CHO.
-  // A resurrected preview row and its official replacement share the same number,
-  // even when their source_key and image URL differ.
   const number = normalizeKey(printing.card_number)
   if (number) return `number:${number}`
 
@@ -89,11 +95,6 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
 
     const row = data as unknown as Row
     const printingKeys = (row.card_printings ?? []).map((printing) => normalizeKey(printing.source_key)).filter(Boolean)
-
-    // Load all aliases and compare normalized keys. The previous implementation used
-    // an exact `.in()` match, so case/format differences could leave resurrected rows
-    // visible. Fail open if the alias table is unavailable; the card-number dedupe below
-    // still prevents duplicate tiles.
     const aliasResult = printingKeys.length
       ? await admin.from('card_printing_source_aliases').select('old_source_key,official_source_key').limit(5000)
       : { data: [], error: null }
@@ -108,13 +109,19 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
       canonicalAliases.set(oldKey, officialKey || oldKey)
     }
 
-    const visiblePrintings = (row.card_printings ?? [])
+    const allVisiblePrintings = (row.card_printings ?? [])
       .filter((printing) => Boolean(printing.source_key) && printing.is_search_visible)
       .sort(compareNewest)
 
-    // Collapse duplicate identities before expanding faces. Prefer an official/current
-    // row over an alias-old preview row. This makes the endpoint correct even before
-    // the production cleanup migration is applied.
+    // The DM26-EX2 preview seed used DM26EX2-PREVIEW-* keys. Once an official
+    // DM26EX2-* printing exists for the same logical card, those preview rows must
+    // never be shown. This explicit guard does not depend on aliases, card_number,
+    // image URLs, or a cleanup migration, so it also works against resurrected rows.
+    const hasOfficialCharismaPrinting = allVisiblePrintings.some((printing) => isCharismaOfficialKey(printing.source_key))
+    const visiblePrintings = hasOfficialCharismaPrinting
+      ? allVisiblePrintings.filter((printing) => !isCharismaPreviewKey(printing.source_key))
+      : allVisiblePrintings
+
     const uniquePrintings = new Map<string, Printing>()
     for (const printing of visiblePrintings) {
       const identity = printingIdentity(printing, canonicalAliases)
