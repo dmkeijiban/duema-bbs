@@ -68,8 +68,20 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     if (!data) return NextResponse.json({ cards: [] }, { status: 404 })
 
     const row = data as unknown as Row
+
+    // A printing whose source_key matches an alias old_source_key is a superseded
+    // preview identity of an official printing this card already has (the alias table
+    // records old key -> official key). Re-imports can resurrect such rows with the
+    // same picture under a different image URL, so exclude them by key, not by URL.
+    // Fail open: if the alias table is missing or the query errors, hide nothing.
+    const printingKeys = (row.card_printings ?? []).map((printing) => printing.source_key).filter(Boolean)
+    const aliasResult = printingKeys.length
+      ? await admin.from('card_printing_source_aliases').select('old_source_key').in('old_source_key', printingKeys)
+      : { data: [], error: null }
+    const supersededKeys = new Set((aliasResult.error ? [] : aliasResult.data ?? []).map((alias) => alias.old_source_key))
+
     const cards: DeckCard[] = (row.card_printings ?? [])
-      .filter((printing) => Boolean(printing.source_key) && printing.is_search_visible)
+      .filter((printing) => Boolean(printing.source_key) && printing.is_search_visible && !supersededKeys.has(printing.source_key))
       .sort(compareNewest)
       .flatMap((printing): DeckCard[] => {
         const faces = (row.card_faces ?? []).filter((face) => face.card_printing_id === printing.id).sort((a, b) => a.side_index - b.side_index)
