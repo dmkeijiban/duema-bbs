@@ -20,11 +20,12 @@ type CatalogEntry = { id: string; title: string; href: string; category: MakerCa
 
 const MAKER_DESCRIPTION_OVERRIDES: Record<string, string> = {
   'my-duema-9': '自分を象徴するカード9枚で、3×3画像を作れます。',
+  'dm26-ex2-charisma-best-tier': '全カードをS〜Dで評価してTier表を作れます。',
   'hall-of-fame-release': '殿堂・プレミアム殿堂から、解除予想カードを選べます。',
 }
 
 const MAKER_DESCRIPTION_FALLBACKS: Record<string, string> = {
-  'dm26-ex2-charisma-best-tier': '全カードをS〜Dに分けて、自分だけのTier表を作れます。',
+  'dm26-ex2-charisma-best-tier': '全カードをS〜Dで評価してTier表を作れます。',
   'hall-of-fame-release': '殿堂・プレミアム殿堂から、解除予想カードを選べます。',
 }
 
