@@ -24,6 +24,7 @@ export default async function MakerSubmissionDetailPage({ params }: { params: Pr
   if (!submission) notFound()
   const { config, communityLabel, resultTitle } = makerSubmissionView(project)
   const isSelect = project.type === 'select'
+  const selectDefaultTitle = 'defaultTitle' in config ? config.defaultTitle : ''
   const url = `https://www.duema-bbs.com/makers/${slug}/submissions/${submissionId}`
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -39,7 +40,7 @@ export default async function MakerSubmissionDetailPage({ params }: { params: Pr
     {submission.comment && <p className="mt-4 whitespace-pre-wrap break-words rounded-xl border bg-white p-4 leading-7">{submission.comment}</p>}
     <div className="mt-5">
       {isSelect
-        ? <SelectSubmissionBoard slug={slug} cards={submission.items.map(item => ({ id: item.card_id, name: item.card.name, imageUrl: item.card.image_url }))} enableActions exportTitle={selectExportTitle(submission.title, config.defaultTitle, resultTitle)} shareUrl={shareUrl} />
+        ? <SelectSubmissionBoard slug={slug} cards={submission.items.map(item => ({ id: item.card_id, name: item.card.name, imageUrl: item.card.image_url }))} enableActions exportTitle={selectExportTitle(submission.title, selectDefaultTitle, resultTitle)} shareUrl={shareUrl} />
         : <MakerSubmissionBoard submission={submission} groups={config.groups} enableActions exportTitle={prediction ? '2026年7月27日 殿堂解除選手権' : submission.title} showExportAuthor={false} exportLayout={prediction ? 'prediction' : 'tier'} shareUrl={shareUrl} />}
     </div>
     <SubmissionActions slug={slug} submissionId={submissionId} canEdit={isAdmin || ownedSubmissionIds.has(submissionId)} />
