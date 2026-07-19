@@ -3,11 +3,14 @@ import { notFound } from 'next/navigation'
 import MakerSubmissionBoard from '@/components/MakerSubmissionBoard'
 import SelectSubmissionBoard from '@/components/SelectSubmissionBoard'
 import MakerCommunityTier, { type MakerAggregate } from '@/components/MakerCommunityTier'
+import SelectMakerSubmissionTabs, { parseSelectSubmissionTab, type SelectSubmissionTab } from '@/components/SelectMakerSubmissionTabs'
+import SelectMakerAggregateGrid from '@/components/SelectMakerAggregateGrid'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 import type { MakerCard } from '@/lib/maker'
+import { parseSelectMakerConfig } from '@/lib/maker'
 import { getCurrentHallCards, getHallCardOfficialId } from '@/lib/hall-of-fame'
-import { getPublicMakerProject, getPublicSubmissions, makerSubmissionView } from '@/lib/maker-submissions'
+import { getOwnedPublicSubmissions, getPublicMakerProject, getPublicSubmissions, getSelectMakerAggregates, makerSubmissionView, type PublicSubmission } from '@/lib/maker-submissions'
 import { formatJapanDateTime } from '@/lib/date-time'
 import SubmissionActions from './SubmissionActions'
 import SmoothHashLink from '@/components/SmoothHashLink'
@@ -22,24 +25,34 @@ function selectExportTitle(submissionTitle: string, defaultTitle: string, result
   return normalizedTitle && normalizedTitle !== defaultTitle.trim() ? normalizedTitle : resultTitle
 }
 
-export default async function MakerSubmissionsPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ created?: string; page?: string }> }) {
+export default async function MakerSubmissionsPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ created?: string; page?: string; tab?: string }> }) {
   const { slug } = await params
-  const { created, page: pageValue } = await searchParams
+  const { created, page: pageValue, tab: tabValue } = await searchParams
   const page = Math.max(1, Number.parseInt(pageValue ?? '1', 10) || 1)
   const project = await getPublicMakerProject(slug)
   if (!project) notFound()
   const { config, communityLabel, resultTitle } = makerSubmissionView(project)
   const isSelect = project.type === 'select'
+  const selectConfig = isSelect ? parseSelectMakerConfig(project.config) : null
+  // タブ・集計UIはSELECT型企画の共通機能。9選（maxChoices===9）を基本対象とし、slug個別分岐はしない
+  const hasTabs = selectConfig !== null && selectConfig.maxChoices === 9
+  const choiceLabel = selectConfig ? `${selectConfig.maxChoices}選` : ''
+  const tab: SelectSubmissionTab = hasTabs ? parseSelectSubmissionTab(tabValue) : 'all'
+  const backLabel = selectConfig ? (selectConfig.maxChoices === 9 ? `← ${selectConfig.maxChoices}選を作る` : '← この企画を作る') : '← メーカーへ戻る'
   const selectDefaultTitle = 'defaultTitle' in config ? config.defaultTitle : ''
   const pageSize = 12
-  const { submissions, total } = await getPublicSubmissions(project.id, page, pageSize)
+  const { submissions, total } = tab === 'all' ? await getPublicSubmissions(project.id, page, pageSize) : { submissions: [] as PublicSubmission[], total: 0 }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const isAdmin = verifyAdminCookie((await cookies()).get(ADMIN_COOKIE)?.value)
   const admin = createAdminClient()
-  const ownedSubmissionIds = await getOwnedMakerSubmissionIds(project.id, submissions.map(submission => submission.id), user?.id ?? null)
+  const [ownedSubmissionIds, mineSubmissions, selectAggregate] = await Promise.all([
+    tab === 'all' ? getOwnedMakerSubmissionIds(project.id, submissions.map(submission => submission.id), user?.id ?? null) : Promise.resolve(new Set<string>()),
+    tab === 'mine' ? getOwnedPublicSubmissions(project.id, user?.id ?? null) : Promise.resolve([] as PublicSubmission[]),
+    tab === 'ranking' ? getSelectMakerAggregates(project.id) : Promise.resolve(null),
+  ])
   const [{ data: links }, { data: rows }] = await Promise.all([
-    admin.from('maker_project_cards').select('cards!inner(id,name,image_url,civilization,cost,card_type,regulation,source_key,is_active)').eq('project_id', project.id).eq('cards.is_active', true).order('sort_order'),
+    project.type === 'tier' || project.type === 'prediction' ? admin.from('maker_project_cards').select('cards!inner(id,name,image_url,civilization,cost,card_type,regulation,source_key,is_active)').eq('project_id', project.id).eq('cards.is_active', true).order('sort_order') : Promise.resolve({ data: [] }),
     project.type === 'tier' ? admin.from('maker_tier_aggregates').select('card_id,s_count,a_count,b_count,c_count,d_count,rating_count,average_tier').eq('project_id', project.id) : project.type === 'prediction' ? admin.from('maker_selection_aggregates').select('card_id,selection_count,submission_count,selection_rate').eq('project_id', project.id) : Promise.resolve({ data: [] }),
   ])
   type LinkedCard = { id: string; name: string; image_url: string | null; civilization: string[] | null; cost: number | null; card_type: string | null; regulation: string | null; source_key: string | null }
@@ -70,14 +83,15 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
     })
   }
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  return <main className="min-h-screen bg-slate-50 px-3 py-6"><div className="mx-auto max-w-6xl">
-    <Link href={`/makers/${slug}`} className="text-sm font-bold text-blue-700">← メーカーへ戻る</Link>
-    <h1 className="mt-3 text-2xl font-black">{prediction ? 'みんなの殿堂解除予想' : communityLabel}</h1>
-    <p className="mt-1 text-sm text-gray-500">{prediction ? '登録された殿堂解除予想を新着順で表示しています。' : `登録された${project.type === 'tier' ? 'Tier表' : '作品'}を新着順で表示しています。`}</p>
-    {(project.type === 'tier' || prediction) && <SmoothHashLink targetId="community-tier" className="mt-4 inline-flex rounded-lg border border-blue-700 bg-white px-4 py-2 text-sm font-bold text-blue-700">{prediction ? '📊 カード別の解除予想率を見る' : '📊 カード別の評価を見る'}</SmoothHashLink>}
-    <div id="submissions-list" className="scroll-mt-4" />
-    {submissions.length ? <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{submissions.map(submission =>
-      <article key={submission.id} className={`min-w-0 rounded-xl border bg-white p-3 shadow-sm ${created === submission.id ? 'border-emerald-500 ring-2 ring-emerald-200' : ''}`}>
+  const heading = hasTabs
+    ? (tab === 'ranking' ? '集計結果' : tab === 'mine' ? `自分の${choiceLabel}` : `みんなの${choiceLabel}`)
+    : (prediction ? 'みんなの殿堂解除予想' : communityLabel)
+  const description = hasTabs
+    ? (tab === 'ranking' ? `みんなの${choiceLabel}で選ばれたカードをカード単位で集計しています。` : tab === 'mine' ? `あなたが登録した${choiceLabel}を表示しています。` : `登録された${choiceLabel}を新着順で表示しています。`)
+    : (prediction ? '登録された殿堂解除予想を新着順で表示しています。' : `登録された${project.type === 'tier' ? 'Tier表' : '作品'}を新着順で表示しています。`)
+  const pageHref = (targetPage: number) => hasTabs ? `?tab=all&page=${targetPage}#submissions-list` : `?page=${targetPage}#submissions-list`
+  const renderSubmissionCard = (submission: PublicSubmission, canEdit: boolean) =>
+    <article key={submission.id} className={`min-w-0 rounded-xl border bg-white p-3 shadow-sm ${created === submission.id ? 'border-emerald-500 ring-2 ring-emerald-200' : ''}`}>
       {created === submission.id && <p className="mb-2 text-sm font-bold text-emerald-700">登録しました</p>}
       <Link href={`/makers/${slug}/submissions/${submission.id}`} className="block transition hover:opacity-90">
         {isSelect
@@ -87,8 +101,40 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
         <p className="mt-1 text-sm text-gray-600">{submission.authorName}</p>
         {submission.comment && <p className="mt-2 line-clamp-2 break-words text-sm text-gray-600">{submission.comment}</p>}
         <time className="mt-2 block text-xs text-gray-400">{formatJapanDateTime(submission.created_at)}</time>
-      </Link><SubmissionActions slug={slug} submissionId={submission.id} canEdit={isAdmin || ownedSubmissionIds.has(submission.id)} /></article>)}</div> : <p className="mt-6 rounded-xl border bg-white p-8 text-center text-gray-500">まだ{project.type === 'tier' ? 'Tier表' : '作品'}が登録されていません。</p>}
-    {totalPages > 1 && <nav className="mt-6 flex items-center justify-center gap-3 text-sm font-bold"><Link aria-disabled={page <= 1} className={page <= 1 ? 'pointer-events-none text-gray-300' : 'text-blue-700'} href={`?page=${page - 1}#submissions-list`}>← 前へ</Link><span>{page} / {totalPages}</span><Link aria-disabled={page >= totalPages} className={page >= totalPages ? 'pointer-events-none text-gray-300' : 'text-blue-700'} href={`?page=${page + 1}#submissions-list`}>次へ →</Link></nav>}
+      </Link><SubmissionActions slug={slug} submissionId={submission.id} canEdit={canEdit} /></article>
+  return <main className="min-h-screen bg-slate-50 px-3 py-6"><div className="mx-auto max-w-6xl">
+    <Link href={`/makers/${slug}`} className="text-sm font-bold text-blue-700">{backLabel}</Link>
+    <div className="mt-3 sm:flex sm:items-end sm:justify-between sm:gap-4">
+      <div className="min-w-0">
+        <h1 className="text-2xl font-black">{heading}</h1>
+        <p className="mt-1 text-sm text-gray-500">{description}</p>
+      </div>
+      {hasTabs && <SelectMakerSubmissionTabs slug={slug} active={tab} choiceLabel={choiceLabel} className="hidden shrink-0 sm:flex" />}
+    </div>
+    {hasTabs && <div className="-mx-3 mt-3 overflow-x-auto px-3 sm:hidden"><SelectMakerSubmissionTabs slug={slug} active={tab} choiceLabel={choiceLabel} className="flex w-max" /></div>}
+    {(project.type === 'tier' || prediction) && <SmoothHashLink targetId="community-tier" className="mt-4 inline-flex rounded-lg border border-blue-700 bg-white px-4 py-2 text-sm font-bold text-blue-700">{prediction ? '📊 カード別の解除予想率を見る' : '📊 カード別の評価を見る'}</SmoothHashLink>}
+    <div id="submissions-list" className="scroll-mt-4" />
+    {tab === 'ranking' && selectAggregate && <section className="mt-5">
+      {selectAggregate.entries.length
+        ? <>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 rounded-xl border bg-white px-4 py-3 text-sm font-bold text-gray-700">
+            <span>回答 <span className="text-blue-700">{selectAggregate.total}</span>件</span>
+            {selectConfig && <span>選出枠 <span className="text-blue-700">{selectAggregate.total * selectConfig.maxChoices}</span>枠</span>}
+          </div>
+          <div className="mt-4"><SelectMakerAggregateGrid entries={selectAggregate.entries} total={selectAggregate.total} /></div>
+        </>
+        : <p className="mt-6 rounded-xl border bg-white p-8 text-center text-gray-500">まだ集計できる{choiceLabel}がありません。</p>}
+    </section>}
+    {tab === 'mine' && (mineSubmissions.length
+      ? <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{mineSubmissions.map(submission => renderSubmissionCard(submission, true))}</div>
+      : <div className="mt-6 rounded-xl border bg-white p-8 text-center">
+        <p className="text-gray-500">まだ自分の{choiceLabel}はありません。</p>
+        <Link href={`/makers/${slug}`} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-700 px-6 font-bold text-white">{choiceLabel}を作る</Link>
+      </div>)}
+    {tab === 'all' && (submissions.length
+      ? <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{submissions.map(submission => renderSubmissionCard(submission, isAdmin || ownedSubmissionIds.has(submission.id)))}</div>
+      : <p className="mt-6 rounded-xl border bg-white p-8 text-center text-gray-500">まだ{hasTabs ? choiceLabel : project.type === 'tier' ? 'Tier表' : '作品'}が登録されていません。</p>)}
+    {tab === 'all' && totalPages > 1 && <nav className="mt-6 flex items-center justify-center gap-3 text-sm font-bold"><Link aria-disabled={page <= 1} className={page <= 1 ? 'pointer-events-none text-gray-300' : 'text-blue-700'} href={pageHref(page - 1)}>← 前へ</Link><span>{page} / {totalPages}</span><Link aria-disabled={page >= totalPages} className={page >= totalPages ? 'pointer-events-none text-gray-300' : 'text-blue-700'} href={pageHref(page + 1)}>次へ →</Link></nav>}
     {(project.type === 'tier' || prediction) && <div className="mt-8"><MakerCommunityTier cards={cards} groups={config.groups} aggregates={aggregates} title={prediction ? 'カード別のみんなの解除予想率' : undefined} mode={prediction ? 'selection' : 'tier'} showAllCards /><SmoothHashLink targetId="submissions-list" className="mt-3 inline-flex text-sm font-bold text-blue-700">↑ {prediction ? '予想一覧へ戻る' : 'Tier表一覧へ戻る'}</SmoothHashLink></div>}
   </div></main>
 }

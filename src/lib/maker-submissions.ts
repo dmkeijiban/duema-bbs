@@ -1,6 +1,7 @@
 import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { makerCommunityLabel, parseMakerProjectConfig, parseSelectMakerConfig } from '@/lib/maker'
+import { getMakerAnonymousEditHash } from '@/lib/maker-anonymous-owner'
 import { resolveSelectPrintingImages, selectPrintingRefKey } from '@/lib/maker-select-printing'
 
 export type PublicMakerProject = { id: string; slug: string; title: string; type: string; config: unknown }
@@ -55,6 +56,59 @@ export async function getPublicSubmissions(projectId: string, page = 1, pageSize
   const from = (Math.max(1, page) - 1) * pageSize
   const { data, count } = await admin.from('maker_submissions').select('id,user_id,title,comment,thumbnail_url,created_at', { count: 'exact' }).eq('project_id', projectId).eq('is_valid', true).eq('is_public', true).order('created_at', { ascending: false }).range(from, from + pageSize - 1)
   return { submissions: await hydrate(projectId, (data ?? []) as Record<string, unknown>[]), total: count ?? 0 }
+}
+
+// 現在の利用者（ログインユーザー or 匿名Cookie所有者）が登録した公開投稿を新着順で返す
+export async function getOwnedPublicSubmissions(projectId: string, userId: string | null) {
+  const editHash = await getMakerAnonymousEditHash()
+  if (!userId && !editHash) return []
+  const ownerConditions: string[] = []
+  if (userId) ownerConditions.push(`user_id.eq.${userId}`)
+  if (editHash) ownerConditions.push(`and(user_id.is.null,anonymous_edit_token_hash.eq.${editHash})`)
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('maker_submissions')
+    .select('id,user_id,title,comment,thumbnail_url,created_at')
+    .eq('project_id', projectId)
+    .eq('is_valid', true)
+    .eq('is_public', true)
+    .or(ownerConditions.join(','))
+    .order('created_at', { ascending: false })
+  return hydrate(projectId, (data ?? []) as Record<string, unknown>[])
+}
+
+export type SelectMakerAggregateEntry = {
+  cardId: string
+  name: string
+  imageUrl: string | null
+  selectionCount: number
+  rank: number
+}
+
+// SELECT型の集計。maker_select_aggregatesビュー（card_id単位・1投稿1票でDB側集計）を利用する
+export async function getSelectMakerAggregates(projectId: string): Promise<{ total: number; entries: SelectMakerAggregateEntry[] }> {
+  const admin = createAdminClient()
+  const [{ data: rows }, { count }] = await Promise.all([
+    admin.from('maker_select_aggregates').select('card_id,name,selection_count').eq('project_id', projectId)
+      .order('selection_count', { ascending: false }).order('name').order('card_id'),
+    admin.from('maker_submissions').select('id', { count: 'exact', head: true }).eq('project_id', projectId).eq('is_valid', true).eq('is_public', true),
+  ])
+  const typedRows = (rows ?? []) as { card_id: string; name: string; selection_count: number }[]
+  const cardIds = typedRows.map(row => row.card_id)
+  const { data: cards } = cardIds.length
+    ? await admin.from('cards').select('id,image_url').in('id', cardIds)
+    : { data: [] as { id: string; image_url: string | null }[] }
+  const imageByCardId = new Map((cards ?? []).map(card => [card.id, card.image_url]))
+  let rank = 0
+  let previousCount = Number.NEGATIVE_INFINITY
+  const entries = typedRows.map((row, index) => {
+    if (row.selection_count !== previousCount) {
+      rank = index + 1
+      previousCount = row.selection_count
+    }
+    return { cardId: row.card_id, name: row.name, imageUrl: imageByCardId.get(row.card_id) ?? null, selectionCount: row.selection_count, rank }
+  })
+  return { total: count ?? 0, entries }
 }
 
 export async function getPublicSubmission(projectId: string, id: string) {
