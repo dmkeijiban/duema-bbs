@@ -30,13 +30,33 @@ function Periods({ period }: { period: string }) {
   return <div className="flex flex-wrap gap-1">{[['today', '今日'], ['7d', '過去7日'], ['30d', '過去30日'], ['all', '全期間']].map(([key, label]) => <Link prefetch={false} key={key} href={`/admin/analytics?tab=makers&period=${key}`} className={`rounded border px-3 py-1.5 text-xs font-bold ${period === key ? 'border-blue-500 bg-blue-50 text-blue-700' : 'bg-white text-gray-600'}`}>{label}</Link>)}</div>
 }
 
-function CompactMetric({ label, value }: { label: string; value: number }) {
+function StatCell({ value, label, size = 'lg', accent, align = 'right' }: { value: number; label: string; size?: 'lg' | 'md'; accent?: boolean; align?: 'left' | 'right' }) {
+  const isZero = value === 0
+  const valueClass = isZero
+    ? `${size === 'lg' ? 'text-lg' : 'text-sm'} font-bold text-gray-300`
+    : accent
+      ? `${size === 'lg' ? 'text-xl' : 'text-sm'} font-black text-blue-700`
+      : `${size === 'lg' ? 'text-xl' : 'text-sm'} font-black text-gray-900`
   return (
-    <div className="min-w-0 rounded-md bg-gray-50 px-2 py-2 text-center">
-      <p className="whitespace-nowrap text-[10px] font-bold text-gray-500">{label}</p>
-      <p className={`mt-0.5 text-base font-black tabular-nums ${value === 0 ? 'text-gray-300' : 'text-gray-900'}`}>{formatNumber(value)}</p>
+    <div className={align === 'right' ? 'text-right' : 'text-left'}>
+      <p className={`tabular-nums leading-tight ${valueClass}`}>{formatNumber(value)}</p>
+      <p className="text-[10px] font-bold text-gray-400">{label}</p>
     </div>
   )
+}
+
+function computeStatus(p: ProjectSummary): { label: string; dotClass: string; textClass: string } {
+  const { pv, uniqueActors, submissions } = p
+  if (pv === 0 && uniqueActors === 0 && submissions === 0) return { label: 'ほぼ動きなし', dotClass: 'bg-gray-300', textClass: 'text-gray-400' }
+  if (submissions === 0) return { label: 'PVはあるが未参加', dotClass: 'bg-amber-400', textClass: 'text-amber-700' }
+  const conversion = uniqueActors > 0 ? submissions / uniqueActors : 0
+  if (conversion >= 0.15) return { label: '好調', dotClass: 'bg-green-500', textClass: 'text-green-700' }
+  return { label: '参加あり', dotClass: 'bg-blue-400', textClass: 'text-blue-700' }
+}
+
+function StatusChip({ project }: { project: ProjectSummary }) {
+  const status = computeStatus(project)
+  return <span className={`inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-bold ${status.textClass}`}><span className={`h-2 w-2 shrink-0 rounded-full ${status.dotClass}`}/>{status.label}</span>
 }
 
 type DisplayGa4PageRow = Ga4PageRow & {
@@ -142,5 +162,53 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
   let error = ''
   try { projects = await fetchProjectSummaries(period) } catch (e) { error = e instanceof Error ? e.message : '企画一覧を取得できませんでした' }
 
-  return <><Tabs active="makers"/><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><Periods period={period}/><AnalyticsRefresh updatedAt={updatedAt}/></div>{error ? <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error} ページを再読み込みして再試行してください。</div> : projects.length === 0 ? <div className="rounded border bg-white p-6 text-center text-sm text-gray-500">表示できる企画は0件です。</div> : <><div className="hidden overflow-hidden rounded border bg-white md:block"><table className="w-full table-fixed text-xs"><thead className="bg-gray-100 text-left"><tr><th className="w-[30%] p-3">企画</th><th className="w-[7%] p-3">公開</th><th className="w-[22%] p-3">PV / 利用者</th><th className="w-[12%] p-3">回答</th><th className="w-[12%] p-3">操作</th><th className="w-[12%] p-3">共有・閲覧</th><th className="w-[5%] p-3 text-center">登録</th></tr></thead><tbody>{projects.map(p => <tr key={p.id} className="border-t align-middle transition-colors hover:bg-gray-50"><td className="p-3"><Link prefetch={false} href={`/admin/analytics/makers/${p.slug}?period=${period}`} className="font-bold text-blue-700 hover:underline">{p.title}</Link><div className="text-[10px] text-gray-400">{p.slug}</div></td><td className="p-3"><span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-bold ${p.isPublic && p.status === 'published' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{p.isPublic && p.status === 'published' ? '公開' : '非公開'}</span></td><td className="p-3"><div className="grid grid-cols-3 gap-1.5"><CompactMetric label="今日PV" value={p.todayPv}/><CompactMetric label="期間PV" value={p.pv}/><CompactMetric label="利用者" value={p.uniqueActors}/></div></td><td className="p-3"><div className="grid grid-cols-2 gap-1.5"><CompactMetric label="回答者" value={p.registrants}/><CompactMetric label="回答数" value={p.submissions}/></div></td><td className="p-3"><div className="grid grid-cols-2 gap-1.5"><CompactMetric label="開始" value={p.events.tier_created}/><CompactMetric label="保存" value={p.events.image_saved}/></div></td><td className="p-3"><div className="grid grid-cols-2 gap-1.5"><CompactMetric label="X共有" value={p.events.x_shared}/><CompactMetric label="集計閲覧" value={p.events.aggregate_viewed}/></div></td><td className="p-3 text-center text-base font-black tabular-nums">{formatNumber(p.events.signup_completed)}</td></tr>)}</tbody></table></div><div className="space-y-2 md:hidden">{projects.map(p => <Link prefetch={false} key={p.id} href={`/admin/analytics/makers/${p.slug}?period=${period}`} className="block rounded-lg border bg-white p-3"><div className="flex justify-between gap-2"><p className="font-bold text-blue-700">{p.title}</p><span className="text-xs">{p.isPublic ? '公開' : '非公開'}</span></div><div className="mt-2 grid grid-cols-3 gap-2 text-xs"><span>今日PV <b>{p.todayPv}</b></span><span>期間PV <b>{p.pv}</b></span><span>利用者 <b>{p.uniqueActors}</b></span><span>回答 <b>{p.submissions}</b></span><span>保存 <b>{p.events.image_saved}</b></span><span>X共有 <b>{p.events.x_shared}</b></span></div></Link>)}</div></>}</>
+  return <><Tabs active="makers"/><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><Periods period={period}/><AnalyticsRefresh updatedAt={updatedAt}/></div>{error ? <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error} ページを再読み込みして再試行してください。</div> : projects.length === 0 ? <div className="rounded border bg-white p-6 text-center text-sm text-gray-500">表示できる企画は0件です。</div> : <>
+    <div className="hidden overflow-x-auto rounded border bg-white md:block">
+      <table className="w-full min-w-[1080px] text-xs">
+        <thead className="sticky top-0 z-10 bg-gray-100 text-left text-[11px] text-gray-500">
+          <tr>
+            <th className="w-[24%] p-3 font-bold">企画</th>
+            <th className="w-[12%] p-3 font-bold">状況</th>
+            <th className="w-[7%] p-3 font-bold">公開</th>
+            <th className="w-[16%] border-l border-gray-200 p-3 text-right font-bold">閲覧（PV・利用者）</th>
+            <th className="w-[13%] border-l border-gray-200 p-3 text-right font-bold">参加（回答）</th>
+            <th className="w-[13%] border-l border-gray-200 p-3 text-right font-bold">定着（開始→保存）</th>
+            <th className="w-[13%] border-l border-gray-200 p-3 text-right font-bold">拡散（共有・集計閲覧）</th>
+            <th className="w-[7%] border-l border-gray-200 p-3 text-right font-bold">登録</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {projects.map((p, i) => <tr key={p.id} className={`align-middle transition-colors hover:bg-blue-50/40 ${i % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
+            <td className="p-3">
+              <Link prefetch={false} href={`/admin/analytics/makers/${p.slug}?period=${period}`} className="font-bold text-blue-700 hover:underline">{p.title}</Link>
+              <div className="mt-0.5 text-[10px] text-gray-400">{p.slug}</div>
+            </td>
+            <td className="p-3"><StatusChip project={p}/></td>
+            <td className="p-3"><span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-bold ${p.isPublic && p.status === 'published' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{p.isPublic && p.status === 'published' ? '公開' : '非公開'}</span></td>
+            <td className="border-l border-gray-100 bg-slate-50/30 p-3">
+              <div className="flex items-baseline justify-end gap-1.5">
+                {period !== 'today' && p.todayPv > 0 && <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[10px] font-bold text-orange-600">今日+{formatNumber(p.todayPv)}</span>}
+                <StatCell value={p.pv} label="期間PV"/>
+              </div>
+              <div className="mt-1 text-right text-[11px] text-gray-400">利用者 <span className="font-bold tabular-nums text-gray-600">{formatNumber(p.uniqueActors)}</span></div>
+            </td>
+            <td className="border-l border-gray-100 p-3">
+              <StatCell value={p.submissions} label="回答数"/>
+              <div className="mt-1 text-right text-[11px] text-gray-400">回答者 <span className="font-bold tabular-nums text-gray-600">{formatNumber(p.registrants)}</span></div>
+            </td>
+            <td className="border-l border-gray-100 bg-slate-50/30 p-3">
+              <StatCell value={p.events.image_saved} label="保存" accent={p.events.image_saved > 0}/>
+              <div className="mt-1 text-right text-[11px] text-gray-400">開始 <span className="font-bold tabular-nums text-gray-600">{formatNumber(p.events.tier_created)}</span>{p.events.tier_created > 0 && <span className="ml-1 text-gray-300">({Math.round(p.events.image_saved / p.events.tier_created * 100)}%)</span>}</div>
+            </td>
+            <td className="border-l border-gray-100 p-3">
+              <StatCell value={p.events.x_shared} label="X共有" accent={p.events.x_shared > 0}/>
+              <div className="mt-1 text-right text-[11px] text-gray-400">集計閲覧 <span className="font-bold tabular-nums text-gray-600">{formatNumber(p.events.aggregate_viewed)}</span></div>
+            </td>
+            <td className="border-l border-gray-100 p-3 text-right text-base font-black tabular-nums text-gray-900">{formatNumber(p.events.signup_completed)}</td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+    <div className="space-y-2 md:hidden">{projects.map(p => <Link prefetch={false} key={p.id} href={`/admin/analytics/makers/${p.slug}?period=${period}`} className="block rounded-lg border bg-white p-3"><div className="flex items-start justify-between gap-2"><div><p className="font-bold text-blue-700">{p.title}</p><StatusChip project={p}/></div><span className="text-xs">{p.isPublic ? '公開' : '非公開'}</span></div><div className="mt-2 grid grid-cols-3 gap-2 text-xs"><span>今日PV <b>{p.todayPv}</b></span><span>期間PV <b>{p.pv}</b></span><span>利用者 <b>{p.uniqueActors}</b></span><span>回答 <b>{p.submissions}</b></span><span>保存 <b>{p.events.image_saved}</b></span><span>X共有 <b>{p.events.x_shared}</b></span></div></Link>)}</div>
+  </>}</>
 }
