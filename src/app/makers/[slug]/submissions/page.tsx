@@ -16,6 +16,11 @@ import { cookies } from 'next/headers'
 
 export const dynamic = 'force-dynamic'
 
+function selectExportTitle(submissionTitle: string, defaultTitle: string, resultTitle: string) {
+  const normalizedTitle = submissionTitle.trim()
+  return normalizedTitle && normalizedTitle !== defaultTitle.trim() ? normalizedTitle : resultTitle
+}
+
 export default async function MakerSubmissionsPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ created?: string; page?: string }> }) {
   const { slug } = await params
   const { created, page: pageValue } = await searchParams
@@ -74,7 +79,7 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
       {created === submission.id && <p className="mb-2 text-sm font-bold text-emerald-700">登録しました</p>}
       <Link href={`/makers/${slug}/submissions/${submission.id}`} className="block transition hover:opacity-90">
         {isSelect
-          ? <SelectSubmissionBoard slug={slug} cards={submission.items.map(item => ({ id: item.card_id, name: item.card.name, imageUrl: item.card.image_url }))} compact exportTitle={resultTitle} />
+          ? <SelectSubmissionBoard slug={slug} cards={submission.items.map(item => ({ id: item.card_id, name: item.card.name, imageUrl: item.card.image_url }))} compact exportTitle={selectExportTitle(submission.title, config.defaultTitle, resultTitle)} />
           : <MakerSubmissionBoard submission={submission} groups={config.groups} compact showRegulationBadges={!prediction} />}
         <h2 className="mt-3 line-clamp-2 font-black">{submission.title}</h2>
         <p className="mt-1 text-sm text-gray-600">{submission.authorName}</p>
