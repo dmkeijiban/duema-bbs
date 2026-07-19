@@ -25,11 +25,12 @@ function exactCardImageUrl(card: DeckCard, slug: string) {
 }
 
 export default function SelectMaker({ slug, config, initialDraft }: { slug: string; config: SelectMakerConfig; initialDraft?: Draft }) {
-  const storageKey = `select-maker:${slug}:v1`
+  const storageKey = `select-maker:${slug}:v2`
+  const legacyStorageKey = `select-maker:${slug}:v1`
   const [selected, setSelected] = useState<DeckCard[]>([])
   const { query, setQuery, cards: results, loading: resultsLoading, hasMore, loadMore } = useCardCatalogSearch({ makerSlug: slug })
-  const [title, setTitle] = useState(config.defaultTitle)
-  const [comment, setComment] = useState(config.defaultComment)
+  const [title, setTitle] = useState('')
+  const [comment, setComment] = useState('')
   const [sessionId, setSessionId] = useState('')
   const [submissionId, setSubmissionId] = useState<string | null>(null)
   const [completedEventSent, setCompletedEventSent] = useState(false)
@@ -48,18 +49,36 @@ export default function SelectMaker({ slug, config, initialDraft }: { slug: stri
     const viewId = crypto.randomUUID()
     void recordMakerPageView({ slug, viewId, anonymousId: getMakerAnonymousId() })
     try {
+      localStorage.removeItem(legacyStorageKey)
       const raw = localStorage.getItem(storageKey)
       if (initialDraft || raw) {
         const draft = initialDraft ?? JSON.parse(raw!) as Draft
         setSelected(Array.isArray(draft.cards) ? draft.cards.slice(0, config.maxChoices) : [])
-        setTitle(draft.title ?? config.defaultTitle); setComment(draft.comment ?? config.defaultComment)
+        setTitle(typeof draft.title === 'string' ? draft.title : '')
+        setComment(typeof draft.comment === 'string' ? draft.comment : '')
         setSessionId(draft.sessionId || crypto.randomUUID())
-        setSubmissionId(draft.submissionId ?? null); setCompletedEventSent(Boolean(draft.completedEventSent))
+        setSubmissionId(draft.submissionId ?? null)
+        setCompletedEventSent(Boolean(draft.completedEventSent))
         void recordMakerEvent({ slug, eventType: 'draft_restored', anonymousId: getMakerAnonymousId() })
-      } else setSessionId(crypto.randomUUID())
-    } catch { setSessionId(crypto.randomUUID()) }
+      } else {
+        setSelected([])
+        setTitle('')
+        setComment('')
+        setSessionId(crypto.randomUUID())
+        setSubmissionId(null)
+        setCompletedEventSent(false)
+      }
+    } catch {
+      localStorage.removeItem(storageKey)
+      setSelected([])
+      setTitle('')
+      setComment('')
+      setSessionId(crypto.randomUUID())
+      setSubmissionId(null)
+      setCompletedEventSent(false)
+    }
     hydrated.current = true
-  }, [config, initialDraft, slug, storageKey])
+  }, [config.maxChoices, initialDraft, legacyStorageKey, slug, storageKey])
 
   useEffect(() => {
     if (!hydrated.current || !sessionId) return
@@ -84,9 +103,14 @@ export default function SelectMaker({ slug, config, initialDraft }: { slug: stri
   function add(card: DeckCard) {
     if (selected.length >= config.maxChoices) return setMessage(`選べるのは最大${config.maxChoices}枚です`)
     if (selected.some(item => config.duplicateRule === 'card_name' ? item.name === card.name : item.id === card.id)) return setMessage('同じカード名は重複して選べません')
-    const next = [...selected, card]; setSelected(next); setMessage('')
+    const next = [...selected, card]
+    setSelected(next)
+    setMessage('')
     void recordMakerEvent({ slug, eventType: selected.length ? 'card_added' : 'creation_started', anonymousId: getMakerAnonymousId() })
-    if (next.length === config.maxChoices && !completedEventSent) { setCompletedEventSent(true); void recordMakerEvent({ slug, eventType: 'selection_completed', anonymousId: getMakerAnonymousId() }) }
+    if (next.length === config.maxChoices && !completedEventSent) {
+      setCompletedEventSent(true)
+      void recordMakerEvent({ slug, eventType: 'selection_completed', anonymousId: getMakerAnonymousId() })
+    }
   }
 
   async function openVersionPicker(card: DeckCard) {
@@ -101,8 +125,7 @@ export default function SelectMaker({ slug, config, initialDraft }: { slug: stri
       if (!response.ok) throw new Error('収録版を取得できませんでした')
       const payload = await response.json() as { cards?: DeckCard[] }
       const options = payload.cards?.length ? payload.cards : [card]
-      const unique = [...new Map(options.map(option => [printingKey(option), option])).values()]
-      setVersionOptions(unique)
+      setVersionOptions([...new Map(options.map(option => [printingKey(option), option])).values()])
     } catch (error) {
       if (!(error instanceof DOMException && error.name === 'AbortError')) setMessage('収録版の取得に失敗しました。表示中の版は選択できます')
     } finally {
@@ -116,8 +139,20 @@ export default function SelectMaker({ slug, config, initialDraft }: { slug: stri
     setVersionOptions([])
   }
 
-  function remove(index: number) { setSelected(items => items.filter((_, i) => i !== index)); void recordMakerEvent({ slug, eventType: 'card_removed', anonymousId: getMakerAnonymousId() }) }
-  function move(index: number, delta: number) { const target = index + delta; if (target < 0 || target >= selected.length) return; const next = [...selected]; [next[index], next[target]] = [next[target], next[index]]; setSelected(next); void recordMakerEvent({ slug, eventType: 'card_reordered', anonymousId: getMakerAnonymousId() }) }
+  function remove(index: number) {
+    setSelected(items => items.filter((_, i) => i !== index))
+    void recordMakerEvent({ slug, eventType: 'card_removed', anonymousId: getMakerAnonymousId() })
+  }
+
+  function move(index: number, delta: number) {
+    const target = index + delta
+    if (target < 0 || target >= selected.length) return
+    const next = [...selected]
+    ;[next[index], next[target]] = [next[target], next[index]]
+    setSelected(next)
+    void recordMakerEvent({ slug, eventType: 'card_reordered', anonymousId: getMakerAnonymousId() })
+  }
+
   const complete = config.exactChoices ? selected.length === config.maxChoices : selected.length >= config.minChoices
 
   async function drawImage() {
@@ -134,7 +169,18 @@ export default function SelectMaker({ slug, config, initialDraft }: { slug: stri
     })
   }
 
-  async function register(): Promise<string | null> { const activeSessionId = /^[0-9a-f-]{36}$/i.test(sessionId) ? sessionId : crypto.randomUUID(); if (activeSessionId !== sessionId) setSessionId(activeSessionId); const result = await saveSelectSubmission({ slug, cardIds: selected.map(card => card.id), title, comment, sessionId: activeSessionId, submissionId }); setMessage(result.message); if (result.ok && result.submissionId) { setSubmissionId(result.submissionId); void recordMakerEvent({ slug, eventType: submissionId ? 'submission_updated' : 'submission_registered', anonymousId: getMakerAnonymousId() }); return result.submissionId } return null }
+  async function register(): Promise<string | null> {
+    const activeSessionId = /^[0-9a-f-]{36}$/i.test(sessionId) ? sessionId : crypto.randomUUID()
+    if (activeSessionId !== sessionId) setSessionId(activeSessionId)
+    const result = await saveSelectSubmission({ slug, cardIds: selected.map(card => card.id), title, comment, sessionId: activeSessionId, submissionId })
+    setMessage(result.message)
+    if (result.ok && result.submissionId) {
+      setSubmissionId(result.submissionId)
+      void recordMakerEvent({ slug, eventType: submissionId ? 'submission_updated' : 'submission_registered', anonymousId: getMakerAnonymousId() })
+      return result.submissionId
+    }
+    return null
+  }
 
   async function saveImage() {
     if (!complete || isSavingImage) return
@@ -180,8 +226,42 @@ export default function SelectMaker({ slug, config, initialDraft }: { slug: stri
     link.remove()
   }
 
-  async function share() { if (!complete || isSharing) return; setIsSharing(true); const shareWindow = window.open('', '_blank'); try { const registeredId = await register(); void recordMakerEvent({ slug, eventType: 'x_shared', anonymousId: getMakerAnonymousId() }); const detail = registeredId ? `https://www.duema-bbs.com/makers/${slug}/submissions/${registeredId}` : `https://www.duema-bbs.com/makers/${slug}`; const intent = `https://twitter.com/intent/tweet?${new URLSearchParams({ text: `${config.shareText}${config.hashtag ? `\n${config.hashtag}` : ''}`, url: detail })}`; if (shareWindow) shareWindow.location.href = intent; else window.open(intent, '_blank', 'noopener,noreferrer') } catch { shareWindow?.close(); setMessage('X共有の準備に失敗しました') } finally { setIsSharing(false) } }
-  function reset() { setSelected([]); setTitle(config.defaultTitle); setComment(config.defaultComment); setSessionId(crypto.randomUUID()); setSubmissionId(null); setCompletedEventSent(false); setMessage('新しい作品を始めました'); void recordMakerEvent({ slug, eventType: 'new_draft_started', anonymousId: getMakerAnonymousId() }) }
+  async function share() {
+    if (!complete || isSharing) return
+    setIsSharing(true)
+    const shareWindow = window.open('', '_blank')
+    try {
+      const registeredId = await register()
+      void recordMakerEvent({ slug, eventType: 'x_shared', anonymousId: getMakerAnonymousId() })
+      const detail = registeredId ? `https://www.duema-bbs.com/makers/${slug}/submissions/${registeredId}` : `https://www.duema-bbs.com/makers/${slug}`
+      const intent = `https://twitter.com/intent/tweet?${new URLSearchParams({ text: `${config.shareText}${config.hashtag ? `\n${config.hashtag}` : ''}`, url: detail })}`
+      if (shareWindow) shareWindow.location.href = intent
+      else window.open(intent, '_blank', 'noopener,noreferrer')
+    } catch {
+      shareWindow?.close()
+      setMessage('X共有の準備に失敗しました')
+    } finally {
+      setIsSharing(false)
+    }
+  }
+
+  function reset() {
+    versionAbort.current?.abort()
+    localStorage.removeItem(storageKey)
+    setSelected([])
+    setTitle('')
+    setComment('')
+    setSessionId(crypto.randomUUID())
+    setSubmissionId(null)
+    setCompletedEventSent(false)
+    setMessage('新しい作品を始めました')
+    setZoom(null)
+    setVersionCard(null)
+    setVersionOptions([])
+    setVersionsLoading(false)
+    setPngPreview(null)
+    void recordMakerEvent({ slug, eventType: 'new_draft_started', anonymousId: getMakerAnonymousId() })
+  }
 
   const submissionsUrl = config.submissionsUrl || `/makers/${slug}/submissions`
   const submissionsLabel = config.submissionsLabel || `みんなの${config.maxChoices}選を見る`
