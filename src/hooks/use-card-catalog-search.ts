@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DeckCard } from '@/lib/deck-maker'
 
 export const CARD_SEARCH_PAGE_SIZE = 48
+const CARD_SEARCH_CACHE_VERSION = 'official-order-v2'
+const resultKey = (card: DeckCard) => `${card.id}:${card.printingId ?? card.sourceKey ?? 'representative'}`
 
 type SearchResponse = {
   cards: DeckCard[]
@@ -22,7 +24,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
   const abort = useRef<AbortController | null>(null)
   const cache = useRef(new Map<string, SearchResponse>())
 
-  const cacheKey = `${makerSlug ?? ''}:${query.trim()}`
+  const cacheKey = `${CARD_SEARCH_CACHE_VERSION}:${makerSlug ?? ''}:${query.trim()}`
 
   const setQuery = useCallback((value: string) => {
     requestId.current += 1
@@ -46,6 +48,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
       abort.current = controller
       setLoading(true)
       const params = new URLSearchParams({ q: query.trim(), offset: '0', limit: String(CARD_SEARCH_PAGE_SIZE) })
+      params.set('order', CARD_SEARCH_CACHE_VERSION)
       if (makerSlug) params.set('makerSlug', makerSlug)
       if (!query.trim()) params.set('fastInitial', '1')
       fetch(`/api/cards/search?${params}`, { signal: controller.signal })
@@ -78,6 +81,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
     abort.current = controller
     setLoading(true)
     const params = new URLSearchParams({ q: query.trim(), offset: String(nextOffset), limit: String(CARD_SEARCH_PAGE_SIZE) })
+    params.set('order', CARD_SEARCH_CACHE_VERSION)
     if (makerSlug) params.set('makerSlug', makerSlug)
     fetch(`/api/cards/search?${params}`, { signal: controller.signal })
       .then(response => response.ok ? response.json() : Promise.reject(new Error('search_failed')))
@@ -85,8 +89,8 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
         if (id !== requestId.current || controller.signal.aborted) return
         const incoming = Array.isArray(data.cards) ? data.cards as DeckCard[] : []
         setCards(current => {
-          const unique = new Map(current.map(card => [card.id, card]))
-          for (const card of incoming) unique.set(card.id, card)
+          const unique = new Map(current.map(card => [resultKey(card), card]))
+          for (const card of incoming) unique.set(resultKey(card), card)
           const merged = [...unique.values()]
           cache.current.set(cacheKey, { cards: merged, total: Number.isInteger(data.total) ? data.total : merged.length, hasMore: data.hasMore === true, nextOffset: Number.isInteger(data.nextOffset) ? data.nextOffset : nextOffset + incoming.length })
           return merged

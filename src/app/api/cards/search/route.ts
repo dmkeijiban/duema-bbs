@@ -4,6 +4,7 @@ import { normalizeCardName } from '@/lib/card-name'
 import { canAccessDeckMaker } from '@/lib/deck-maker-access'
 import { LOCAL_DECK_CARDS, matchesCard, type DeckCard } from '@/lib/deck-maker'
 import { parseSelectMakerConfig } from '@/lib/maker'
+import { compareCardPrintingsOfficial } from '@/lib/card-printing-order'
 
 export const dynamic = 'force-dynamic'
 const MAX_QUERY_LENGTH = 80
@@ -13,15 +14,6 @@ const CATALOG_CACHE_MS = 15 * 60 * 1000
 const DEFAULT_RESULTS = 32
 const DEFAULT_PAGE_SIZE = 48
 const MAX_PAGE_SIZE = 100
-const CHARISMA_BEST_DEFAULT_SOURCE_KEYS = [
-  'dm26ex2-SPR001', 'dm26ex2-SPR002', 'dm26ex2-SPR003', 'dm26ex2-SPR004', 'dm26ex2-SPR005',
-  'dm26ex2-PR001', 'dm26ex2-PR002', 'dm26ex2-PR003', 'dm26ex2-PR004', 'dm26ex2-PR005',
-  'dm26ex2-PR006', 'dm26ex2-PR007', 'dm26ex2-PR008', 'dm26ex2-PR009', 'dm26ex2-PR010',
-  'dm26ex2-MC001', 'dm26ex2-MC002', 'dm26ex2-MC003', 'dm26ex2-MC004', 'dm26ex2-MC005',
-  'dm26ex2-MC006', 'dm26ex2-MC007', 'dm26ex2-MC008', 'dm26ex2-MC009', 'dm26ex2-MC010',
-  'dm26ex2-MC011', 'dm26ex2-MC012', 'dm26ex2-MC013', 'dm26ex2-MC014', 'dm26ex2-MC015',
-  'dm26ex2-MC016', 'dm26ex2-MC017',
-] as const
 const BROWSER_CACHE_HEADER = 'private, max-age=60, stale-while-revalidate=300'
 
 type Printing = {
@@ -30,6 +22,9 @@ type Printing = {
   official_page_url: string | null
   image_url: string | null
   set_name: string | null
+  card_number: string | null
+  release_date: string | null
+  official_sort_position: number | null
   is_representative: boolean
   is_search_visible: boolean
 }
@@ -57,34 +52,20 @@ type Face = {
   card_printing_id: string | null
 }
 
-const searchCache = new Map<string, { rows: Row[]; expiresAt: number }>()
-let catalogCache: { rows: Row[]; expiresAt: number } | null = null
+type CatalogItem = { row: Row; printing: Printing; matchedFace: Face | null }
 
-const releaseCollator = new Intl.Collator('ja', { numeric: true, sensitivity: 'base' })
-
-function setCode(printing: Printing | undefined) {
-  return printing?.source_key.split('-')[0]?.toUpperCase() ?? ''
-}
-
-function comparePrintingsNewest(first: Printing, second: Printing) {
-  return releaseCollator.compare(setCode(second), setCode(first))
-    || releaseCollator.compare(second.source_key, first.source_key)
-}
+const searchCache = new Map<string, { rows: CatalogItem[]; expiresAt: number }>()
+let catalogCache: { rows: CatalogItem[]; expiresAt: number } | null = null
 
 function newestPrinting(row: Row) {
-  return row.card_printings?.filter((printing) => printing.is_search_visible).sort(comparePrintingsNewest)[0]
+  return row.card_printings?.filter((printing) => printing.is_search_visible).sort(compareCardPrintingsOfficial)[0]
 }
 
-function compareRowsNewest(first: Row, second: Row) {
-  const firstPrinting = newestPrinting(first)
-  const secondPrinting = newestPrinting(second)
-  return releaseCollator.compare(setCode(secondPrinting), setCode(firstPrinting))
-    || releaseCollator.compare(secondPrinting?.source_key ?? '', firstPrinting?.source_key ?? '')
-    || first.name.localeCompare(second.name, 'ja')
-    || first.id.localeCompare(second.id)
+function compareCatalogItems(first: CatalogItem, second: CatalogItem) {
+  return compareCardPrintingsOfficial(first.printing, second.printing)
 }
 
-function mapCard(row: Row, selectedPrinting?: Printing): DeckCard {
+function mapCard(row: Row, selectedPrinting?: Printing, matchedFace = row.matched_face ?? null): DeckCard {
   const printing = selectedPrinting
     ?? (row.matched_face?.card_printing_id
       ? row.card_printings?.find((item) => item.id === row.matched_face?.card_printing_id && item.is_search_visible)
@@ -92,9 +73,10 @@ function mapCard(row: Row, selectedPrinting?: Printing): DeckCard {
     ?? newestPrinting(row)
     ?? row.card_printings?.find((item) => item.is_search_visible && item.is_representative)
     ?? row.card_printings?.find((item) => item.is_search_visible)
-  const face = row.matched_face
+  const face = matchedFace?.card_printing_id === printing?.id ? matchedFace : null
   return {
     id: row.id,
+    printingId: printing?.id ?? null,
     name: face?.name ?? row.name,
     nameKana: face?.name_kana ?? row.name_kana,
     imageUrl: face?.image_url ?? printing?.image_url ?? row.image_url,
@@ -102,6 +84,13 @@ function mapCard(row: Row, selectedPrinting?: Printing): DeckCard {
     sourceKey: printing?.source_key ?? null,
     matchedFace: face ? { name: face.name, imageUrl: face.image_url, sideIndex: face.side_index, sideKind: face.side_kind } : null,
   }
+}
+
+function flattenRows(rows: Row[]) {
+  return rows.flatMap((row) => (row.card_printings ?? [])
+    .filter((printing) => printing.is_search_visible)
+    .map((printing) => ({ row, printing, matchedFace: row.matched_face?.card_printing_id === printing.id ? row.matched_face : null })))
+    .sort(compareCatalogItems)
 }
 
 async function loadFaceMatches(supabase: ReturnType<typeof createAdminClient>, field: 'normalized_name' | 'name_kana', query: string) {
@@ -157,19 +146,26 @@ async function getMatches(supabase: ReturnType<typeof createAdminClient>, column
     facesAvailable ? loadFaceMatches(supabase, 'name_kana', kanaQuery) : Promise.resolve([]),
   ])
   const faces = [...faceNameRows, ...faceKanaRows]
-  const faceByCard = new Map<string, Face>()
-  for (const face of faces) if (face.card_id && !faceByCard.has(face.card_id)) faceByCard.set(face.card_id, face)
-  const faceCardIds = [...faceByCard.keys()]
+  const frontMatchedCardIds = new Set([...nameRows, ...kanaRows].map((row) => row.id))
+  const faceByPrinting = new Map<string, Face>()
+  const faceCardIds = new Set<string>()
+  for (const face of faces) {
+    if (face.card_id) faceCardIds.add(face.card_id)
+    if (face.card_printing_id && !faceByPrinting.has(face.card_printing_id)) faceByPrinting.set(face.card_printing_id, face)
+  }
   const faceRows: Row[] = []
-  for (let index = 0; index < faceCardIds.length; index += 500) {
-    const result = await supabase.from('cards').select(columns).eq('is_active', true).in('id', faceCardIds.slice(index, index + 500))
+  const faceIds = [...faceCardIds]
+  for (let index = 0; index < faceIds.length; index += 500) {
+    const result = await supabase.from('cards').select(columns).eq('is_active', true).in('id', faceIds.slice(index, index + 500))
     if (result.error) throw result.error
     faceRows.push(...(result.data ?? []) as unknown as Row[])
   }
   const unique = new Map<string, Row>()
   for (const row of [...nameRows, ...kanaRows]) unique.set(row.id, { ...row, matched_face: null })
-  for (const row of faceRows) unique.set(row.id, { ...row, matched_face: faceByCard.get(row.id) ?? null })
-  const rows = [...unique.values()].sort(compareRowsNewest)
+  for (const row of faceRows) unique.set(row.id, row)
+  const rows = flattenRows([...unique.values()])
+    .filter((item) => frontMatchedCardIds.has(item.row.id) || faceByPrinting.has(item.printing.id))
+    .map((item) => ({ ...item, matchedFace: faceByPrinting.get(item.printing.id) ?? null }))
   if (searchCache.size >= 100) searchCache.delete(searchCache.keys().next().value ?? '')
   searchCache.set(cacheKey, { rows, expiresAt: Date.now() + CATALOG_CACHE_MS })
   return rows
@@ -177,7 +173,7 @@ async function getMatches(supabase: ReturnType<typeof createAdminClient>, column
 
 async function getCatalog(supabase: ReturnType<typeof createAdminClient>, columns: string) {
   if (catalogCache && catalogCache.expiresAt > Date.now()) return catalogCache.rows
-  const rows: Row[] = []
+  const sourceRows: Row[] = []
   for (let offset = 0; ; offset += CATALOG_BATCH_SIZE) {
     const result = await supabase
       .from('cards')
@@ -187,37 +183,27 @@ async function getCatalog(supabase: ReturnType<typeof createAdminClient>, column
       .range(offset, offset + CATALOG_BATCH_SIZE - 1)
     if (result.error) throw result.error
     const batch = (result.data ?? []) as unknown as Row[]
-    rows.push(...batch)
+    sourceRows.push(...batch)
     if (batch.length < CATALOG_BATCH_SIZE) break
   }
-  rows.sort(compareRowsNewest)
+  const rows = flattenRows(sourceRows)
   catalogCache = { rows, expiresAt: Date.now() + CATALOG_CACHE_MS }
   return rows
 }
 
-async function getFastInitialCatalog(supabase: ReturnType<typeof createAdminClient>, columns: string, makerCardPool: Set<string> | null) {
-  const innerColumns = columns.replace('card_printings(', 'card_printings!inner(')
-  const result = await supabase
-    .from('cards')
-    .select(innerColumns)
-    .eq('is_active', true)
-    .in('card_printings.source_key', [...CHARISMA_BEST_DEFAULT_SOURCE_KEYS])
-    .limit(CHARISMA_BEST_DEFAULT_SOURCE_KEYS.length)
+async function getFastInitialCatalog(supabase: ReturnType<typeof createAdminClient>, makerCardPool: Set<string> | null) {
+  const result = await supabase.from('card_printings')
+    .select('id,source_key,official_page_url,image_url,set_name,card_number,release_date,official_sort_position,is_representative,is_search_visible,cards!inner(id,name,normalized_name,name_kana,image_url,is_active)')
+    .eq('cards.is_active', true)
+    .eq('is_search_visible', true)
+    .order('official_sort_position', { ascending: true, nullsFirst: false })
+    .limit(makerCardPool ? 2000 : DEFAULT_RESULTS)
   if (result.error) throw result.error
-
-  const rows = (result.data ?? []) as unknown as Row[]
-  const bySourceKey = new Map(rows.flatMap((row) => (row.card_printings ?? [])
-    .filter((printing) => printing.is_search_visible)
-    .map((printing) => [printing.source_key, { row, printing }] as const)))
-  const cards: DeckCard[] = []
-  const seen = new Set<string>()
-  for (const sourceKey of CHARISMA_BEST_DEFAULT_SOURCE_KEYS) {
-    const selected = bySourceKey.get(sourceKey)
-    if (!selected || seen.has(selected.row.id) || (makerCardPool && !makerCardPool.has(selected.row.id))) continue
-    seen.add(selected.row.id)
-    cards.push(mapCard(selected.row, selected.printing))
-  }
-  return cards
+  return (result.data ?? []).flatMap((printing) => {
+    const card = Array.isArray(printing.cards) ? printing.cards[0] : printing.cards
+    if (!card || (makerCardPool && !makerCardPool.has(card.id))) return []
+    return mapCard(card as Row, printing as unknown as Printing)
+  }).slice(0, DEFAULT_RESULTS)
 }
 
 async function getMakerCardPool(supabase: ReturnType<typeof createAdminClient>, makerSlug: string) {
@@ -247,9 +233,9 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createAdminClient()
     const makerCardPool = await getMakerCardPool(supabase, makerSlug)
-    const columns = 'id,name,normalized_name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,is_representative,is_search_visible)'
+    const columns = 'id,name,normalized_name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,card_number,release_date,official_sort_position,is_representative,is_search_visible)'
     if (!rawQuery && fastInitial && offset === 0) {
-      const cards = await getFastInitialCatalog(supabase, columns, makerCardPool)
+      const cards = await getFastInitialCatalog(supabase, makerCardPool)
       if (cards.length > 0) {
         return NextResponse.json({ cards, hasMore: true, nextOffset: cards.length }, { headers: { 'Cache-Control': BROWSER_CACHE_HEADER } })
       }
@@ -258,33 +244,18 @@ export async function GET(request: NextRequest) {
     const facesAvailable = !faceProbe.error
     if (!rawQuery) {
       const fullCatalog = await getCatalog(supabase, columns)
-      const catalog = makerCardPool ? fullCatalog.filter(row => makerCardPool.has(row.id)) : fullCatalog
-      const featured = new Map<string, DeckCard>()
-      const bySourceKey = new Map(catalog.flatMap((row) => (row.card_printings ?? []).filter((printing) => printing.is_search_visible).map((printing) => [printing.source_key, { row, printing }] as const)))
-      for (const sourceKey of CHARISMA_BEST_DEFAULT_SOURCE_KEYS) {
-        const selected = bySourceKey.get(sourceKey)
-        if (!selected) continue
-        const card = mapCard(selected.row, selected.printing)
-        featured.set(card.id, card)
-      }
-
-      const featuredCards = [...featured.values()]
-      const featuredCount = featuredCards.length
-      const regularOffset = Math.max(0, offset - featuredCount)
-      const regularLimit = offset === 0 ? Math.max(0, limit - featuredCount) : limit
-      const regularCatalog = catalog.filter((row) => !featured.has(row.id))
-      const regularRows = regularCatalog.slice(regularOffset, regularOffset + regularLimit)
-
-      const cards = [...(offset === 0 ? featuredCards : []), ...regularRows.map((row) => mapCard(row))]
-      const total = featuredCount + regularCatalog.length
+      const catalog = makerCardPool ? fullCatalog.filter(item => makerCardPool.has(item.row.id)) : fullCatalog
+      const items = catalog.slice(offset, offset + limit)
+      const cards = items.map((item) => mapCard(item.row, item.printing, item.matchedFace))
+      const total = catalog.length
       const nextOffset = offset + cards.length
       return NextResponse.json({ cards, total, hasMore: nextOffset < total, nextOffset }, { headers: { 'Cache-Control': BROWSER_CACHE_HEADER } })
     }
 
     const allMatches = await getMatches(supabase, columns, normalizedQuery, kanaQuery, facesAvailable)
-    const matches = makerCardPool ? allMatches.filter(row => makerCardPool.has(row.id)) : allMatches
+    const matches = makerCardPool ? allMatches.filter(item => makerCardPool.has(item.row.id)) : allMatches
     const rows = matches.slice(offset, offset + limit)
-    const cards = rows.map((row) => mapCard(row))
+    const cards = rows.map((item) => mapCard(item.row, item.printing, item.matchedFace))
     const nextOffset = offset + cards.length
     return NextResponse.json({ cards, total: matches.length, hasMore: nextOffset < matches.length, nextOffset }, { headers: { 'Cache-Control': BROWSER_CACHE_HEADER } })
   } catch {

@@ -38,7 +38,7 @@ export function CardCatalogGrid({ cards, query, loading, hasMore, onLoadMore, on
     {!loading && cards.length === 0 && <p className="col-span-4 py-8 text-center text-sm text-slate-500">該当カードがありません</p>}
     {cards.map((card, index) => {
       const count = selectedCount?.(card) ?? 0
-      return <article key={card.id} className="group relative min-w-0 overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200 [content-visibility:auto] [contain-intrinsic-size:auto_210px]">
+      return <article key={`${card.id}:${card.printingId ?? card.sourceKey ?? 'representative'}`} className="group relative min-w-0 overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200 [content-visibility:auto] [contain-intrinsic-size:auto_210px]">
         <button type="button" onClick={() => onSelect(card)} aria-label={`${card.name}を選択`} className="block w-full">
           {renderCardArt ? renderCardArt(card, index) : <div className="relative aspect-[5/7] overflow-hidden bg-slate-800">
             {card.imageUrl ? <img src={card.imageUrl} alt={card.name} className="h-full w-full object-contain" loading={index < 4 ? 'eager' : 'lazy'} fetchPriority={index < 4 ? 'high' : 'auto'} decoding="async" /> : <div className="flex h-full items-center justify-center p-1 text-center text-[8px] font-bold text-white sm:text-xs">{card.name}</div>}
