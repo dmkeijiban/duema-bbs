@@ -88,7 +88,19 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     if (!cards.length) {
       cards.push({ id: row.id, name: row.name, nameKana: row.name_kana, imageUrl: row.image_url, officialPageUrl: null, sourceKey: null })
     }
-    return NextResponse.json({ cards }, { headers: { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=3600' } })
+
+    // Defensive dedupe: if data re-import ever produces two printings that render the
+    // exact same face image for this card, only surface it once. Genuinely different
+    // printings (different images) are always kept, however many there are.
+    const seenImage = new Set<string>()
+    const dedupedCards = cards.filter((card) => {
+      const key = card.imageUrl ?? `no-image:${card.sourceKey ?? card.name}`
+      if (seenImage.has(key)) return false
+      seenImage.add(key)
+      return true
+    })
+
+    return NextResponse.json({ cards: dedupedCards }, { headers: { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=3600' } })
   } catch {
     return NextResponse.json({ error: '収録版の取得に失敗しました' }, { status: 500 })
   }
