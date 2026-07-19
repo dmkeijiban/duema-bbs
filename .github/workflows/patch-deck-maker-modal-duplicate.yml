@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - fix/deck-maker-modal-duplicate
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
