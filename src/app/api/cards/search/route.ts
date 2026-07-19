@@ -56,6 +56,26 @@ type CatalogItem = { row: Row; printing: Printing; matchedFace: Face | null }
 
 const searchCache = new Map<string, { rows: CatalogItem[]; expiresAt: number }>()
 let catalogCache: { rows: CatalogItem[]; expiresAt: number } | null = null
+let supersededKeysCache: { keys: Set<string>; expiresAt: number } | null = null
+
+// source_keys recorded as old_source_key in card_printing_source_aliases are superseded
+// preview identities; re-imports can resurrect them as extra printings of the same card.
+// Fail open: on any error treat the set as empty rather than hiding real printings.
+async function getSupersededKeys(supabase: ReturnType<typeof createAdminClient>) {
+  if (supersededKeysCache && supersededKeysCache.expiresAt > Date.now()) return supersededKeysCache.keys
+  const result = await supabase.from('card_printing_source_aliases').select('old_source_key').limit(5000)
+  const keys = new Set<string>((result.error ? [] : result.data ?? []).map((row) => row.old_source_key))
+  supersededKeysCache = { keys, expiresAt: Date.now() + CATALOG_CACHE_MS }
+  return keys
+}
+
+function stripSupersededPrintings(rows: Row[], supersededKeys: Set<string>) {
+  if (!supersededKeys.size) return rows
+  return rows.map((row) => ({
+    ...row,
+    card_printings: row.card_printings?.filter((printing) => !supersededKeys.has(printing.source_key)),
+  }))
+}
 
 function newestPrinting(row: Row) {
   return row.card_printings?.filter((printing) => printing.is_search_visible).sort(compareCardPrintingsOfficial)[0]
@@ -144,12 +164,15 @@ async function getMatches(supabase: ReturnType<typeof createAdminClient>, column
   const cached = searchCache.get(cacheKey)
   if (cached && cached.expiresAt > Date.now()) return cached.rows
 
-  const [nameRows, kanaRows, faceNameRows, faceKanaRows] = await Promise.all([
+  const [rawNameRows, rawKanaRows, faceNameRows, faceKanaRows, supersededKeys] = await Promise.all([
     loadMatches(supabase, columns, 'normalized_name', normalizedQuery),
     loadMatches(supabase, columns, 'name_kana', kanaQuery),
     facesAvailable ? loadFaceMatches(supabase, 'normalized_name', normalizedQuery) : Promise.resolve([]),
     facesAvailable ? loadFaceMatches(supabase, 'name_kana', kanaQuery) : Promise.resolve([]),
+    getSupersededKeys(supabase),
   ])
+  const nameRows = stripSupersededPrintings(rawNameRows, supersededKeys)
+  const kanaRows = stripSupersededPrintings(rawKanaRows, supersededKeys)
   const faces = [...faceNameRows, ...faceKanaRows]
   const frontMatchedCardIds = new Set([...nameRows, ...kanaRows].map((row) => row.id))
   const faceByPrinting = new Map<string, Face>()
@@ -163,7 +186,7 @@ async function getMatches(supabase: ReturnType<typeof createAdminClient>, column
   for (let index = 0; index < faceIds.length; index += 500) {
     const result = await supabase.from('cards').select(columns).eq('is_active', true).in('id', faceIds.slice(index, index + 500))
     if (result.error) throw result.error
-    faceRows.push(...(result.data ?? []) as unknown as Row[])
+    faceRows.push(...stripSupersededPrintings((result.data ?? []) as unknown as Row[], supersededKeys))
   }
   const unique = new Map<string, Row>()
   for (const row of [...nameRows, ...kanaRows]) unique.set(row.id, { ...row, matched_face: null })
@@ -207,7 +230,8 @@ async function getCatalog(supabase: ReturnType<typeof createAdminClient>, column
     sourceRows.push(...batch)
     if (batch.length < CATALOG_BATCH_SIZE) break
   }
-  const rows = toCatalog(sourceRows)
+  const supersededKeys = await getSupersededKeys(supabase)
+  const rows = toCatalog(stripSupersededPrintings(sourceRows, supersededKeys))
   catalogCache = { rows, expiresAt: Date.now() + CATALOG_CACHE_MS }
   return rows
 }
@@ -215,6 +239,7 @@ async function getCatalog(supabase: ReturnType<typeof createAdminClient>, column
 async function getFastInitialCatalog(supabase: ReturnType<typeof createAdminClient>, makerCardPool: Set<string> | null) {
   // Over-fetch printings (several per card are common now) so that after
   // collapsing to one row per card we still have enough to fill the page.
+  const supersededKeys = await getSupersededKeys(supabase)
   const result = await supabase.from('card_printings')
     .select('id,source_key,official_page_url,image_url,set_name,card_number,release_date,official_sort_position,is_representative,is_search_visible,cards!inner(id,name,normalized_name,name_kana,image_url,is_active)')
     .eq('cards.is_active', true)
@@ -226,7 +251,7 @@ async function getFastInitialCatalog(supabase: ReturnType<typeof createAdminClie
   const cards: DeckCard[] = []
   for (const printing of result.data ?? []) {
     const card = Array.isArray(printing.cards) ? printing.cards[0] : printing.cards
-    if (!card || seen.has(card.id) || (makerCardPool && !makerCardPool.has(card.id))) continue
+    if (!card || seen.has(card.id) || supersededKeys.has(printing.source_key) || (makerCardPool && !makerCardPool.has(card.id))) continue
     seen.add(card.id)
     cards.push(mapCard(card as Row, printing as unknown as Printing))
     if (!makerCardPool && cards.length >= DEFAULT_RESULTS) break
