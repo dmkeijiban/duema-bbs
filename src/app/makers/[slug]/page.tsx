@@ -8,6 +8,7 @@ import { cookies } from 'next/headers'
 import SelectMaker from './SelectMaker'
 import { isMakerProjectPageAccessible } from '@/lib/maker-catalog'
 import { MakerDefaultTitleProvider } from '@/components/MakerDefaultTitleContext'
+import { resolveSelectPrintingImages, selectPrintingRefKey } from '@/lib/maker-select-printing'
 
 export const dynamic = 'force-dynamic'
 export default async function GenericMakerPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ edit?: string }> }) {
@@ -30,11 +31,28 @@ export default async function GenericMakerPage({ params, searchParams }: { param
     if (!isAdmin && !owned.has(edit)) notFound()
     const [{ data: submission }, { data: items }] = await Promise.all([
       admin.from('maker_submissions').select('id,title,comment,creation_session_id,is_public').eq('id', edit).eq('project_id', project.id).eq('is_valid', true).maybeSingle(),
-      admin.from('maker_submission_items').select('card_id,position,cards!inner(id,name,image_url,civilization,cost,card_type)').eq('submission_id', edit).eq('group_key', 'selected').order('position'),
+      admin.from('maker_submission_items').select('card_id,source_key,face_side_index,position,cards!inner(id,name,name_kana,image_url,civilization,cost,card_type)').eq('submission_id', edit).eq('group_key', 'selected').order('position'),
     ])
     if (!submission?.creation_session_id) notFound()
-    type Item = { cards: { id: string; name: string; image_url: string | null } }
-    initialDraft = { cards: ((items ?? []) as unknown as Item[]).map(item => ({ id: item.cards.id, name: item.cards.name, nameKana: null, imageUrl: item.cards.image_url, officialPageUrl: null, sourceKey: null })), title: submission.title, comment: submission.comment ?? '', sessionId: submission.creation_session_id, submissionId: submission.id, completedEventSent: true }
+    type Item = { card_id: string; source_key: string | null; face_side_index: number | null; cards: { id: string; name: string; name_kana: string | null; image_url: string | null } }
+    const typedItems = (items ?? []) as unknown as Item[]
+    const refs = typedItems.map(item => ({ cardId: item.card_id, sourceKey: item.source_key, faceSideIndex: item.face_side_index }))
+    const resolved = await resolveSelectPrintingImages(refs)
+    initialDraft = {
+      cards: typedItems.map(item => {
+        const printing = resolved.get(selectPrintingRefKey({ cardId: item.card_id, sourceKey: item.source_key, faceSideIndex: item.face_side_index }))
+        return {
+          id: item.cards.id,
+          name: printing?.name ?? item.cards.name,
+          nameKana: item.cards.name_kana,
+          imageUrl: printing?.imageUrl ?? item.cards.image_url,
+          officialPageUrl: printing?.officialPageUrl ?? null,
+          sourceKey: item.source_key,
+          matchedFace: item.face_side_index !== null ? { name: printing?.name ?? item.cards.name, imageUrl: printing?.imageUrl ?? null, sideIndex: item.face_side_index, sideKind: null } : null,
+        }
+      }),
+      title: submission.title, comment: submission.comment ?? '', sessionId: submission.creation_session_id, submissionId: submission.id, completedEventSent: true,
+    }
   }
   return <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4"><div className="mx-auto max-w-[1440px] overflow-x-hidden"><MakerDefaultTitleProvider title={config.resultTitle}><SelectMaker slug={slug} config={config} initialDraft={initialDraft}/></MakerDefaultTitleProvider></div></main>
 }

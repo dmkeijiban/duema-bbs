@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { renderSelectExportImage } from '@/lib/maker-select-export'
+import { exactCardImageUrl } from '@/lib/card-catalog-shared'
 
 type SelectCard = { id: string; name: string; imageUrl: string | null }
 
@@ -10,7 +11,7 @@ function loadExportImage(slug: string, card: SelectCard): Promise<HTMLImageEleme
     const image = new Image()
     image.onload = () => resolve(image)
     image.onerror = () => resolve(null)
-    image.src = `/api/makers/${slug}/card-image?id=${card.id}`
+    image.src = exactCardImageUrl(card, slug)
   })
 }
 

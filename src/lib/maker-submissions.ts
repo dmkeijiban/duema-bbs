@@ -1,6 +1,7 @@
 import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { makerCommunityLabel, parseMakerProjectConfig, parseSelectMakerConfig } from '@/lib/maker'
+import { resolveSelectPrintingImages, selectPrintingRefKey } from '@/lib/maker-select-printing'
 
 export type PublicMakerProject = { id: string; slug: string; title: string; type: string; config: unknown }
 export type PublicSubmission = {
@@ -24,17 +25,21 @@ async function hydrate(projectId: string, submissionRows: Record<string, unknown
   const ids = submissionRows.map(row => String(row.id))
   const userIds = [...new Set(submissionRows.map(row => row.user_id).filter((id): id is string => typeof id === 'string'))]
   const [{ data: items }, { data: profiles }] = await Promise.all([
-    admin.from('maker_submission_items').select('submission_id,card_id,group_key,position,cards(name,image_url,regulation)').in('submission_id', ids).order('position'),
+    admin.from('maker_submission_items').select('submission_id,card_id,group_key,position,source_key,face_side_index,cards(name,image_url,regulation)').in('submission_id', ids).order('position'),
     userIds.length ? admin.from('profiles').select('id,display_name,profile_hidden,account_suspended,withdrawn_at').in('id', userIds) : Promise.resolve({ data: [] }),
   ])
   const profilesById = new Map((profiles ?? []).map(profile => [profile.id, profile as Record<string, unknown>]))
+  const typedItems = (items ?? []) as unknown as { submission_id: string; card_id: string; group_key: string; position: number; source_key: string | null; face_side_index: number | null; cards: { name: string; image_url: string | null; regulation: string | null } | { name: string; image_url: string | null; regulation: string | null }[] | null }[]
+  const resolvedPrintings = await resolveSelectPrintingImages(typedItems.map(item => ({ cardId: item.card_id, sourceKey: item.source_key, faceSideIndex: item.face_side_index })))
   const itemsBySubmission = new Map<string, PublicSubmission['items']>()
-  for (const item of items ?? []) {
-    const cardValue = item.cards as unknown
-    const card = (Array.isArray(cardValue) ? cardValue[0] : cardValue) as { name: string; image_url: string | null; regulation: string | null } | null
+  for (const item of typedItems) {
+    const cardValue = item.cards
+    const card = (Array.isArray(cardValue) ? cardValue[0] : cardValue)
     if (!card) continue
+    const printing = resolvedPrintings.get(selectPrintingRefKey({ cardId: item.card_id, sourceKey: item.source_key, faceSideIndex: item.face_side_index }))
+    const resolvedCard = printing ? { ...card, image_url: printing.imageUrl ?? card.image_url } : card
     const list = itemsBySubmission.get(item.submission_id) ?? []
-    list.push({ card_id: item.card_id, group_key: item.group_key, position: item.position, card })
+    list.push({ card_id: item.card_id, group_key: item.group_key, position: item.position, card: resolvedCard })
     itemsBySubmission.set(item.submission_id, list)
   }
   return submissionRows.flatMap(row => {

@@ -26,3 +26,12 @@ export function dedupeCardPrintings(cards: DeckCard[]) {
   for (const card of cards) unique.set(cardPrintingKey(card), card)
   return [...unique.values()]
 }
+
+// 保存時に選んだ収録版の画像を、作成画面・一覧・詳細・画像出力の全経路で同一に表示するための
+// 共通URL解決。imageUrl（保存済み/取得済みの完全一致画像）があれば公式画像プロキシへ、
+// なければ card_id からの代表画像フォールバック（旧データ用）へ回す。
+export function exactCardImageUrl(card: { id: string; imageUrl: string | null }, slug: string) {
+  return card.imageUrl
+    ? `/api/card-image?url=${encodeURIComponent(card.imageUrl)}`
+    : `/api/makers/${slug}/card-image?id=${encodeURIComponent(card.id)}`
+}
