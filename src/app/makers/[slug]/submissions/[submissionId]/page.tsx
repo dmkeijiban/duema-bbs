@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import MakerSubmissionBoard from '@/components/MakerSubmissionBoard'
 import SelectSubmissionBoard from '@/components/SelectSubmissionBoard'
 import { getPublicMakerProject, getPublicSubmission, makerSubmissionView } from '@/lib/maker-submissions'
+import { formatJapanDateTime } from '@/lib/date-time'
 import { createClient } from '@/lib/supabase-server'
 import SubmissionActions from '../SubmissionActions'
 import { getOwnedMakerSubmissionIds } from '@/lib/maker-anonymous-owner'
@@ -36,7 +37,7 @@ export default async function MakerSubmissionDetailPage({ params }: { params: Pr
     <div className="flex flex-wrap gap-3 text-sm font-bold text-blue-700"><Link href={`/makers/${slug}/submissions`}>← {communityLabel}へ戻る</Link><Link href={`/makers/${slug}`}>メーカーへ戻る</Link></div>
     <h1 className="mt-5 break-words text-2xl font-black">{submission.title}</h1>
     <p className="mt-2 text-sm text-gray-600">{prediction ? '表示名' : '制作者'}: {submission.authorName}</p>
-    <time className="mt-1 block text-xs text-gray-400">{new Date(submission.created_at).toLocaleString('ja-JP')}</time>
+    <time className="mt-1 block text-xs text-gray-400">{formatJapanDateTime(submission.created_at)}</time>
     {submission.comment && <p className="mt-4 whitespace-pre-wrap break-words rounded-xl border bg-white p-4 leading-7">{submission.comment}</p>}
     <div className="mt-5">
       {isSelect
