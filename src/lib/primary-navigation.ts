@@ -24,6 +24,32 @@ export const primarySystemNavigation = [
   { key: 'zukan-articles', managementSlug: 'nav-zukan-articles', label: '記事一覧', href: '/zukan/articles' },
 ]
 
+const INTERNAL_HOSTS = new Set(['duema-bbs.com', 'www.duema-bbs.com'])
+
+function normalizeNavigationHref(page: FixedNavigationSource) {
+  const fallbackHref = `/${page.slug}`
+  const configuredHref = page.external_url?.trim()
+  if (!configuredHref) return { href: fallbackHref, external: false }
+
+  if (configuredHref.startsWith('/')) {
+    return { href: configuredHref, external: false }
+  }
+
+  try {
+    const url = new URL(configuredHref)
+    if (INTERNAL_HOSTS.has(url.hostname.toLowerCase())) {
+      return {
+        href: `${url.pathname}${url.search}${url.hash}` || '/',
+        external: false,
+      }
+    }
+  } catch {
+    return { href: configuredHref, external: false }
+  }
+
+  return { href: configuredHref, external: true }
+}
+
 function isNewProductPage(page: FixedNavigationSource) {
   const label = page.nav_label || page.title
   const text = `${page.slug} ${label}`.toLowerCase()
@@ -39,12 +65,14 @@ export function buildPrimaryNavigationItems(
   const publicNavPages = fixedPages.filter(page => page.is_published !== false && page.show_in_nav !== false)
   const visiblePages = hideNewProduct ? publicNavPages.filter(page => !isNewProductPage(page)) : publicNavPages
   const [leadingPage, ...remainingPages] = visiblePages
-  const toItem = (page: FixedNavigationSource): PrimaryNavigationItem => ({
-    key: String(page.id),
-    label: page.nav_label || page.title,
-    href: page.external_url || `/${page.slug}`,
-    external: Boolean(page.external_url),
-  })
+  const toItem = (page: FixedNavigationSource): PrimaryNavigationItem => {
+    const destination = normalizeNavigationHref(page)
+    return {
+      key: String(page.id),
+      label: page.nav_label || page.title,
+      ...destination,
+    }
+  }
 
   if (usesManagedSystemPages) {
     const items = visiblePages.map(toItem)
