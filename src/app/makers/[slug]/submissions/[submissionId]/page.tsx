@@ -11,6 +11,11 @@ import { cookies } from 'next/headers'
 
 export const dynamic = 'force-dynamic'
 
+function selectExportTitle(submissionTitle: string, defaultTitle: string, resultTitle: string) {
+  const normalizedTitle = submissionTitle.trim()
+  return normalizedTitle && normalizedTitle !== defaultTitle.trim() ? normalizedTitle : resultTitle
+}
+
 export default async function MakerSubmissionDetailPage({ params }: { params: Promise<{ slug: string; submissionId: string }> }) {
   const { slug, submissionId } = await params
   const project = await getPublicMakerProject(slug)
@@ -34,7 +39,7 @@ export default async function MakerSubmissionDetailPage({ params }: { params: Pr
     {submission.comment && <p className="mt-4 whitespace-pre-wrap break-words rounded-xl border bg-white p-4 leading-7">{submission.comment}</p>}
     <div className="mt-5">
       {isSelect
-        ? <SelectSubmissionBoard slug={slug} cards={submission.items.map(item => ({ id: item.card_id, name: item.card.name, imageUrl: item.card.image_url }))} enableActions exportTitle={resultTitle} shareUrl={shareUrl} />
+        ? <SelectSubmissionBoard slug={slug} cards={submission.items.map(item => ({ id: item.card_id, name: item.card.name, imageUrl: item.card.image_url }))} enableActions exportTitle={selectExportTitle(submission.title, config.defaultTitle, resultTitle)} shareUrl={shareUrl} />
         : <MakerSubmissionBoard submission={submission} groups={config.groups} enableActions exportTitle={prediction ? '2026年7月27日 殿堂解除選手権' : submission.title} showExportAuthor={false} exportLayout={prediction ? 'prediction' : 'tier'} shareUrl={shareUrl} />}
     </div>
     <SubmissionActions slug={slug} submissionId={submissionId} canEdit={isAdmin || ownedSubmissionIds.has(submissionId)} />
