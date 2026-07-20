@@ -231,32 +231,21 @@ function RankingShowcase({ title, users, titleHref }: { title: string; users: Sh
 }
 
 // 管理画面で任意URLを設定できるためドメイン制限のあるnext/imageではなくimg要素を使用
-function CampaignImageArea({
-  campaign,
-  gapClassName,
-  cardRoundedClassName,
-}: {
-  campaign: ResolvedTopFeaturedCampaign
-  gapClassName: string
-  cardRoundedClassName: string
-}) {
+function CampaignImageArea({ campaign }: { campaign: ResolvedTopFeaturedCampaign }) {
   if (campaign.imageMode === 'cards') {
+    // カード3枚モードでは position/scale は使わず、高さ基準・幅autoで元画像の縦横比のまま隙間0で並べる。
+    // 合計幅が枠を超える場合はflex-shrinkにより全カードが同一縮尺で縮小される（トリミングなし）
     return (
-      <div className={`absolute inset-0 flex ${gapClassName}`}>
-        {campaign.cardImages.map((card, i) => {
-          const style = computeFeaturedCampaignImageStyle(card.positionX, card.positionY, card.scale)
-          return (
-            <div key={i} className={`relative h-full min-w-0 flex-1 overflow-hidden ${cardRoundedClassName} bg-stone-900`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={card.imageUrl}
-                alt={`${campaign.title} ${i + 1}`}
-                className="absolute inset-0 h-full w-full object-cover"
-                style={style}
-              />
-            </div>
-          )
-        })}
+      <div className="absolute inset-0 flex items-stretch justify-center overflow-hidden">
+        {campaign.cardImages.map((card, i) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={i}
+            src={card.imageUrl}
+            alt={`${campaign.title} ${i + 1}`}
+            className="h-full w-auto min-w-0 shrink object-contain"
+          />
+        ))}
       </div>
     )
   }
@@ -314,7 +303,7 @@ function FeaturedCampaignShowcase({ campaign }: { campaign: ResolvedTopFeaturedC
           </div>
         </div>
         <Link href={mainHref} prefetch={false} aria-label={mainLabel} className="relative w-24 shrink-0 overflow-hidden border-l border-slate-800 bg-stone-900 sm:w-52">
-          <CampaignImageArea campaign={campaign} gapClassName="gap-px" cardRoundedClassName="" />
+          <CampaignImageArea campaign={campaign} />
           <span className="pointer-events-none absolute inset-y-0 left-0 w-5 bg-gradient-to-r from-slate-950 to-transparent" aria-hidden="true" />
         </Link>
       </div>
@@ -347,7 +336,7 @@ function FeaturedCampaignShowcase({ campaign }: { campaign: ResolvedTopFeaturedC
           </div>
         </div>
         <Link href={mainHref} prefetch={false} aria-label={mainLabel} className="relative block overflow-hidden bg-stone-900">
-          <CampaignImageArea campaign={campaign} gapClassName="gap-0.5" cardRoundedClassName="rounded-sm" />
+          <CampaignImageArea campaign={campaign} />
           <span className="pointer-events-none absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-slate-950 to-transparent" aria-hidden="true" />
         </Link>
       </div>
