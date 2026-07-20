@@ -8,10 +8,6 @@ function ratePercent(selectionCount: number, total: number) {
   return ((selectionCount / total) * 100).toFixed(1)
 }
 
-function proxiedCardImageUrl(imageUrl: string) {
-  return `/api/makers/dm26-ex2-card-image?url=${encodeURIComponent(imageUrl)}`
-}
-
 // SELECT型企画のカード別ランキング表示。上位initialCount件を表示し「全部見る」で全件展開する
 export default function SelectMakerAggregateGrid({
   entries,
@@ -33,7 +29,7 @@ export default function SelectMakerAggregateGrid({
             <div className="relative aspect-[5/7] overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
               <span className="absolute left-1 top-1 z-10 rounded bg-black/75 px-1.5 py-0.5 text-xs font-black text-white">{entry.rank}位</span>
               {entry.imageUrl
-                ? <img src={proxiedCardImageUrl(entry.imageUrl)} alt={entry.name} loading={index < initialCount ? 'eager' : 'lazy'} decoding="async" className="h-full w-full object-contain" />
+                ? <img src={entry.imageUrl} alt={entry.name} loading={index < initialCount ? 'eager' : 'lazy'} decoding="async" className="h-full w-full object-contain" />
                 : <span className="flex h-full items-center justify-center p-1 text-center text-xs text-slate-500">{entry.name}</span>}
             </div>
             <p className="mt-1 line-clamp-2 break-words text-xs font-bold text-slate-900">{entry.name}</p>
