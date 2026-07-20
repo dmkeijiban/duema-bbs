@@ -7,7 +7,7 @@ import {
   type ProfileShowcaseUser,
   type UserRankingRow,
 } from '@/lib/cached-queries'
-import type { ResolvedTopFeaturedCampaign } from '@/lib/top-featured-campaign'
+import { computeFeaturedCampaignImageStyle, type ResolvedTopFeaturedCampaign } from '@/lib/top-featured-campaign'
 import { RecommendSection } from '@/components/RecommendSection'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
@@ -231,7 +231,8 @@ function RankingShowcase({ title, users, titleHref }: { title: string; users: Sh
 }
 
 function FeaturedCampaignShowcase({ campaign }: { campaign: ResolvedTopFeaturedCampaign }) {
-  const { label, subText, title, description, mainHref, mainLabel, subHref, subLabel, imageUrl } = campaign
+  const { label, subText, title, description, mainHref, mainLabel, subHref, subLabel, imageUrl, imagePositionX, imagePositionY, imageScale } = campaign
+  const imageStyle = computeFeaturedCampaignImageStyle(imagePositionX, imagePositionY, imageScale)
 
   return (
     <div className="mb-2 overflow-hidden border border-gray-300 bg-white">
@@ -264,7 +265,8 @@ function FeaturedCampaignShowcase({ campaign }: { campaign: ResolvedTopFeaturedC
           <img
             src={imageUrl}
             alt={title}
-            className="absolute inset-0 h-full w-full object-cover object-center"
+            className="absolute inset-0 h-full w-full object-cover"
+            style={imageStyle}
           />
         </Link>
         <Link href={mainHref} prefetch={false} className="block w-full rounded-md bg-blue-600 px-3 py-2.5 text-center text-[13px] font-black leading-none text-white">
@@ -309,7 +311,8 @@ function FeaturedCampaignShowcase({ campaign }: { campaign: ResolvedTopFeaturedC
           <img
             src={imageUrl}
             alt={title}
-            className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-300 hover:scale-[1.02]"
+            className="absolute inset-0 h-full w-full object-cover"
+            style={imageStyle}
           />
           <span className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-slate-950 to-transparent" aria-hidden="true" />
         </Link>
