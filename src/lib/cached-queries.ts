@@ -754,36 +754,55 @@ export function getCachedTopFeaturedCampaign(): Promise<ResolvedTopFeaturedCampa
   return unstable_cache(
     async (): Promise<ResolvedTopFeaturedCampaign | null> => {
       try {
-        const supabase = createPublicClient()
-        const { data: settingRow } = await supabase
+        const publicClient = createPublicClient()
+        const { data: settingRow, error: settingError } = await publicClient
           .from('site_settings')
           .select('value')
           .eq('key', TOP_FEATURED_CAMPAIGN_SETTINGS_KEY)
           .maybeSingle()
+        if (settingError) {
+          console.warn('top featured campaign settings fetch failed:', settingError)
+          return null
+        }
         const settings = parseTopFeaturedCampaignSettings(settingRow?.value)
         if (!settings.enabled || !settings.projectSlug) return null
 
-        const { data: project } = await supabase
+        // maker_projects はRLSが有効かつanon/authenticated向けのSELECT policyが存在しないため、
+        // 公開ページからの読み取りにも他のmaker_projects参照箇所と同様にservice roleクライアントを使う。
+        // （createPublicClientのままだとRLSに黙って0件フィルタされ、常に「企画が見つからない」扱いになる）
+        const adminClient = createAdminClient()
+        const { data: project, error: projectError } = await adminClient
           .from('maker_projects')
           .select('slug,title,type,status,is_public,config')
           .eq('slug', settings.projectSlug)
           .maybeSingle()
-        if (!project) return resolveTopFeaturedCampaign(settings, null)
+        if (projectError) {
+          console.warn('top featured campaign project fetch failed:', projectError)
+          return null
+        }
+        if (!project) {
+          console.warn(`top featured campaign target project not found: slug=${settings.projectSlug}`)
+          return resolveTopFeaturedCampaign(settings, null)
+        }
 
         const catalog = parseMakerCatalogConfig(project)
+        const visible = isMakerProjectVisible(project)
+        if (!visible) {
+          console.warn(`top featured campaign target project not visible: slug=${settings.projectSlug}`)
+        }
         return resolveTopFeaturedCampaign(settings, {
           slug: project.slug,
           title: project.title,
           description: catalog.shortDescription,
           thumbnailUrl: catalog.thumbnailUrl,
-          visible: isMakerProjectVisible(project),
+          visible,
         })
       } catch (error) {
         console.warn('top featured campaign fetch failed:', error)
         return null
       }
     },
-    ['top-featured-campaign-v1'],
+    ['top-featured-campaign-v2'],
     { revalidate: STANDARD_CACHE_SECONDS, tags: ['site_settings', 'top-featured-campaign'] }
   )()
 }
