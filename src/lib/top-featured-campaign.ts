@@ -1,6 +1,15 @@
 // lib/thumbnail.ts の DEFAULT_THREAD_THUMBNAIL と同一パス（supabase-admin依存を避けるため直接定義）
 const DEFAULT_FEATURED_CAMPAIGN_IMAGE = '/default-thumbnail.jpg'
 
+export const CARD_IMAGE_SLOT_COUNT = 3
+
+export type FeaturedCampaignCardImage = {
+  imageUrl: string
+  positionX: number
+  positionY: number
+  scale: number
+}
+
 export type TopFeaturedCampaignSettings = {
   enabled: boolean
   projectSlug: string
@@ -16,6 +25,7 @@ export type TopFeaturedCampaignSettings = {
   imagePositionX: number
   imagePositionY: number
   imageScale: number
+  cardImages: FeaturedCampaignCardImage[]
 }
 
 export const DEFAULT_IMAGE_POSITION_X = 50
@@ -23,6 +33,13 @@ export const DEFAULT_IMAGE_POSITION_Y = 50
 export const DEFAULT_IMAGE_SCALE = 1
 export const MIN_IMAGE_SCALE = 1
 export const MAX_IMAGE_SCALE = 2
+
+const DEFAULT_CARD_IMAGE: FeaturedCampaignCardImage = {
+  imageUrl: '',
+  positionX: DEFAULT_IMAGE_POSITION_X,
+  positionY: DEFAULT_IMAGE_POSITION_Y,
+  scale: DEFAULT_IMAGE_SCALE,
+}
 
 export const DEFAULT_TOP_FEATURED_CAMPAIGN: TopFeaturedCampaignSettings = {
   enabled: false,
@@ -39,6 +56,7 @@ export const DEFAULT_TOP_FEATURED_CAMPAIGN: TopFeaturedCampaignSettings = {
   imagePositionX: DEFAULT_IMAGE_POSITION_X,
   imagePositionY: DEFAULT_IMAGE_POSITION_Y,
   imageScale: DEFAULT_IMAGE_SCALE,
+  cardImages: Array.from({ length: CARD_IMAGE_SLOT_COUNT }, () => ({ ...DEFAULT_CARD_IMAGE })),
 }
 
 export const TOP_FEATURED_CAMPAIGN_SETTINGS_KEY = 'top_featured_campaign'
@@ -52,6 +70,21 @@ export function clampFeaturedCampaignNumber(value: unknown, min: number, max: nu
   const num = typeof value === 'number' ? value : Number(value)
   if (!Number.isFinite(num)) return fallback
   return Math.min(max, Math.max(min, num))
+}
+
+function parseCardImages(value: unknown): FeaturedCampaignCardImage[] {
+  const source = Array.isArray(value) ? value : []
+  return Array.from({ length: CARD_IMAGE_SLOT_COUNT }, (_, index) => {
+    const raw = source[index]
+    if (!raw || typeof raw !== 'object') return { ...DEFAULT_CARD_IMAGE }
+    const record = raw as Record<string, unknown>
+    return {
+      imageUrl: text(record.imageUrl),
+      positionX: clampFeaturedCampaignNumber(record.positionX, 0, 100, DEFAULT_IMAGE_POSITION_X),
+      positionY: clampFeaturedCampaignNumber(record.positionY, 0, 100, DEFAULT_IMAGE_POSITION_Y),
+      scale: clampFeaturedCampaignNumber(record.scale, MIN_IMAGE_SCALE, MAX_IMAGE_SCALE, DEFAULT_IMAGE_SCALE),
+    }
+  })
 }
 
 export function parseTopFeaturedCampaignSettings(raw: string | null | undefined): TopFeaturedCampaignSettings {
@@ -75,6 +108,7 @@ export function parseTopFeaturedCampaignSettings(raw: string | null | undefined)
       imagePositionX: clampFeaturedCampaignNumber(record.imagePositionX, 0, 100, DEFAULT_IMAGE_POSITION_X),
       imagePositionY: clampFeaturedCampaignNumber(record.imagePositionY, 0, 100, DEFAULT_IMAGE_POSITION_Y),
       imageScale: clampFeaturedCampaignNumber(record.imageScale, MIN_IMAGE_SCALE, MAX_IMAGE_SCALE, DEFAULT_IMAGE_SCALE),
+      cardImages: parseCardImages(record.cardImages),
     }
   } catch {
     return DEFAULT_TOP_FEATURED_CAMPAIGN
@@ -160,6 +194,7 @@ export function resolveTopFeaturedCampaign(
   const subLabelRaw = settings.subButtonLabel
   const hasSub = Boolean(subHrefRaw && subLabelRaw && isSafeTopFeaturedLink(subHrefRaw))
 
+  // カード画像3枚設定は後方互換のため読み取るが、表示は1枚画像方式へ戻す。
   const imageUrl =
     (settings.imageUrl && isSafeTopFeaturedLink(settings.imageUrl) && settings.imageUrl) ||
     (project.thumbnailUrl && isSafeTopFeaturedLink(project.thumbnailUrl) && project.thumbnailUrl) ||
