@@ -1,8 +1,20 @@
 'use client'
 
 import { useState } from 'react'
-import type { TopFeaturedCampaignSettings } from '@/lib/top-featured-campaign'
+import {
+  computeFeaturedCampaignImageStyle,
+  DEFAULT_IMAGE_POSITION_X,
+  DEFAULT_IMAGE_POSITION_Y,
+  DEFAULT_IMAGE_SCALE,
+  MAX_IMAGE_SCALE,
+  MIN_IMAGE_SCALE,
+  type TopFeaturedCampaignSettings,
+} from '@/lib/top-featured-campaign'
 import { updateTopFeaturedCampaignAction, uploadTopFeaturedCampaignImage } from '@/app/admin/actions'
+
+// TOP側のレイアウトに合わせた比率（比率が命で絶対px幅は画面幅により変動する）
+const PC_PREVIEW_ASPECT_RATIO = '556 / 144'
+const SP_PREVIEW_ASPECT_RATIO = '360 / 112'
 
 export type SelectableProject = {
   slug: string
@@ -29,8 +41,12 @@ export function TopFeaturedCampaignForm({
     ? projects
     : [...projects, { slug: fields.projectSlug, title: `${fields.projectSlug}（非公開/未検出）`, description: '', mainHref: '', subHref: '', publicVisible: false }]
 
-  const set = (key: keyof TopFeaturedCampaignSettings, value: string | boolean) =>
+  const set = (key: keyof TopFeaturedCampaignSettings, value: string | boolean | number) =>
     setFields(prev => ({ ...prev, [key]: value }))
+
+  function resetImageTransform() {
+    setFields(prev => ({ ...prev, imagePositionX: DEFAULT_IMAGE_POSITION_X, imagePositionY: DEFAULT_IMAGE_POSITION_Y, imageScale: DEFAULT_IMAGE_SCALE }))
+  }
 
   async function handleImageUpload(file: File) {
     setImageUploading(true)
@@ -41,6 +57,8 @@ export function TopFeaturedCampaignForm({
     const result = await uploadTopFeaturedCampaignImage(fd)
     if (result.url) {
       set('imageUrl', result.url)
+      // 新しい画像に差し替わるため、前の画像に合わせていた位置・拡大率は初期値へ戻す
+      resetImageTransform()
       setImageUploaded(true)
     } else {
       setImageError(result.error ?? '画像のアップロードに失敗しました')
@@ -50,9 +68,13 @@ export function TopFeaturedCampaignForm({
 
   function handleImageRemove() {
     set('imageUrl', '')
+    resetImageTransform()
     setImageError('')
     setImageUploaded(false)
   }
+
+  const imageStyle = computeFeaturedCampaignImageStyle(fields.imagePositionX, fields.imagePositionY, fields.imageScale)
+  const previewImageUrl = fields.imageUrl || '/default-thumbnail.jpg'
 
   function handleProjectChange(slug: string) {
     const project = projects.find(p => p.slug === slug)
@@ -153,6 +175,69 @@ export function TopFeaturedCampaignForm({
           <summary className="cursor-pointer text-xs text-gray-500">詳細設定（画像URLを直接指定）</summary>
           <input name="imageUrl" value={fields.imageUrl} onChange={e => set('imageUrl', e.target.value)} placeholder="https://..." className="mt-1 w-full rounded border p-2 text-xs" />
         </details>
+
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div>
+            <p className="text-xs font-bold text-gray-600">PC表示プレビュー</p>
+            <div className="relative mt-1 w-full overflow-hidden rounded-lg border bg-stone-900" style={{ aspectRatio: PC_PREVIEW_ASPECT_RATIO }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={previewImageUrl} alt="PC表示プレビュー" className="absolute inset-0 h-full w-full object-cover" style={imageStyle} />
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-bold text-gray-600">スマホ表示プレビュー</p>
+            <div className="relative mt-1 w-full max-w-[360px] overflow-hidden rounded-lg border bg-stone-900" style={{ aspectRatio: SP_PREVIEW_ASPECT_RATIO }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={previewImageUrl} alt="スマホ表示プレビュー" className="absolute inset-0 h-full w-full object-cover" style={imageStyle} />
+            </div>
+          </div>
+        </div>
+        <p className="mt-1 text-[11px] text-gray-400">画像未設定時はプレビュー用に既定画像を表示しています（実際はサムネイル→既定画像の順で表示）。実際の表示幅は画面幅により変動します。</p>
+
+        <div className="mt-3 space-y-2">
+          <label className="block text-xs">
+            横位置：{fields.imagePositionX}%
+            <input
+              type="range"
+              name="imagePositionX"
+              min={0}
+              max={100}
+              step={1}
+              value={fields.imagePositionX}
+              onChange={e => set('imagePositionX', Number(e.target.value))}
+              className="mt-1 w-full"
+            />
+          </label>
+          <label className="block text-xs">
+            縦位置：{fields.imagePositionY}%
+            <input
+              type="range"
+              name="imagePositionY"
+              min={0}
+              max={100}
+              step={1}
+              value={fields.imagePositionY}
+              onChange={e => set('imagePositionY', Number(e.target.value))}
+              className="mt-1 w-full"
+            />
+          </label>
+          <label className="block text-xs">
+            拡大率：{fields.imageScale.toFixed(2)}倍
+            <input
+              type="range"
+              name="imageScale"
+              min={MIN_IMAGE_SCALE}
+              max={MAX_IMAGE_SCALE}
+              step={0.01}
+              value={fields.imageScale}
+              onChange={e => set('imageScale', Number(e.target.value))}
+              className="mt-1 w-full"
+            />
+          </label>
+          <button type="button" onClick={resetImageTransform} className="rounded border border-gray-400 bg-white px-3 py-1.5 text-xs font-bold hover:bg-gray-50">
+            位置を初期値に戻す
+          </button>
+        </div>
       </div>
 
       <button className="rounded bg-blue-800 px-4 py-2 text-xs font-bold text-white">保存</button>

@@ -13,7 +13,16 @@ export type TopFeaturedCampaignSettings = {
   subButtonLabel: string
   subButtonLink: string
   imageUrl: string
+  imagePositionX: number
+  imagePositionY: number
+  imageScale: number
 }
+
+export const DEFAULT_IMAGE_POSITION_X = 50
+export const DEFAULT_IMAGE_POSITION_Y = 50
+export const DEFAULT_IMAGE_SCALE = 1
+export const MIN_IMAGE_SCALE = 1
+export const MAX_IMAGE_SCALE = 2
 
 export const DEFAULT_TOP_FEATURED_CAMPAIGN: TopFeaturedCampaignSettings = {
   enabled: false,
@@ -27,12 +36,22 @@ export const DEFAULT_TOP_FEATURED_CAMPAIGN: TopFeaturedCampaignSettings = {
   subButtonLabel: '',
   subButtonLink: '',
   imageUrl: '',
+  imagePositionX: DEFAULT_IMAGE_POSITION_X,
+  imagePositionY: DEFAULT_IMAGE_POSITION_Y,
+  imageScale: DEFAULT_IMAGE_SCALE,
 }
 
 export const TOP_FEATURED_CAMPAIGN_SETTINGS_KEY = 'top_featured_campaign'
 
 function text(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
+}
+
+// NaN・不正文字列はfallbackへ、範囲外はmin〜maxへクランプする（クライアント・サーバー両方の防御に共用）
+export function clampFeaturedCampaignNumber(value: unknown, min: number, max: number, fallback: number): number {
+  const num = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(num)) return fallback
+  return Math.min(max, Math.max(min, num))
 }
 
 export function parseTopFeaturedCampaignSettings(raw: string | null | undefined): TopFeaturedCampaignSettings {
@@ -53,6 +72,9 @@ export function parseTopFeaturedCampaignSettings(raw: string | null | undefined)
       subButtonLabel: text(record.subButtonLabel),
       subButtonLink: text(record.subButtonLink),
       imageUrl: text(record.imageUrl),
+      imagePositionX: clampFeaturedCampaignNumber(record.imagePositionX, 0, 100, DEFAULT_IMAGE_POSITION_X),
+      imagePositionY: clampFeaturedCampaignNumber(record.imagePositionY, 0, 100, DEFAULT_IMAGE_POSITION_Y),
+      imageScale: clampFeaturedCampaignNumber(record.imageScale, MIN_IMAGE_SCALE, MAX_IMAGE_SCALE, DEFAULT_IMAGE_SCALE),
     }
   } catch {
     return DEFAULT_TOP_FEATURED_CAMPAIGN
@@ -90,6 +112,31 @@ export type ResolvedTopFeaturedCampaign = {
   subHref: string | null
   subLabel: string | null
   imageUrl: string
+  imagePositionX: number
+  imagePositionY: number
+  imageScale: number
+}
+
+// TOPの表示とPC/SP管理画面プレビューの両方で使い、見た目の食い違いを防ぐ
+export type FeaturedCampaignImageStyle = {
+  objectPosition: string
+  transform: string
+  transformOrigin: string
+}
+
+export function computeFeaturedCampaignImageStyle(
+  positionX: number,
+  positionY: number,
+  scale: number
+): FeaturedCampaignImageStyle {
+  const x = clampFeaturedCampaignNumber(positionX, 0, 100, DEFAULT_IMAGE_POSITION_X)
+  const y = clampFeaturedCampaignNumber(positionY, 0, 100, DEFAULT_IMAGE_POSITION_Y)
+  const s = clampFeaturedCampaignNumber(scale, MIN_IMAGE_SCALE, MAX_IMAGE_SCALE, DEFAULT_IMAGE_SCALE)
+  return {
+    objectPosition: `${x}% ${y}%`,
+    transform: `scale(${s})`,
+    transformOrigin: 'center',
+  }
 }
 
 const DEFAULT_MAIN_BUTTON_LABEL = '見る'
@@ -129,5 +176,8 @@ export function resolveTopFeaturedCampaign(
     subHref: hasSub ? subHrefRaw : null,
     subLabel: hasSub ? subLabelRaw : null,
     imageUrl,
+    imagePositionX: clampFeaturedCampaignNumber(settings.imagePositionX, 0, 100, DEFAULT_IMAGE_POSITION_X),
+    imagePositionY: clampFeaturedCampaignNumber(settings.imagePositionY, 0, 100, DEFAULT_IMAGE_POSITION_Y),
+    imageScale: clampFeaturedCampaignNumber(settings.imageScale, MIN_IMAGE_SCALE, MAX_IMAGE_SCALE, DEFAULT_IMAGE_SCALE),
   }
 }

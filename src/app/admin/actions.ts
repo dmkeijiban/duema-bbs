@@ -9,7 +9,13 @@ import { NoticeItem } from '@/components/NoticeBlock'
 import { ADMIN_COOKIE_MAX_AGE_SECONDS, createAdminCookieValue, isAdminPassword, verifyAdminCookie } from '@/lib/admin-auth'
 import { normalizeTopShowcaseMode } from '@/lib/top-showcase'
 import {
+  clampFeaturedCampaignNumber,
+  DEFAULT_IMAGE_POSITION_X,
+  DEFAULT_IMAGE_POSITION_Y,
+  DEFAULT_IMAGE_SCALE,
   isSafeTopFeaturedLink,
+  MAX_IMAGE_SCALE,
+  MIN_IMAGE_SCALE,
   TOP_FEATURED_CAMPAIGN_SETTINGS_KEY,
   type TopFeaturedCampaignSettings,
 } from '@/lib/top-featured-campaign'
@@ -832,6 +838,9 @@ export async function updateTopFeaturedCampaignAction(formData: FormData) {
     subButtonLabel: value('subButtonLabel'),
     subButtonLink,
     imageUrl,
+    imagePositionX: clampFeaturedCampaignNumber(value('imagePositionX'), 0, 100, DEFAULT_IMAGE_POSITION_X),
+    imagePositionY: clampFeaturedCampaignNumber(value('imagePositionY'), 0, 100, DEFAULT_IMAGE_POSITION_Y),
+    imageScale: clampFeaturedCampaignNumber(value('imageScale'), MIN_IMAGE_SCALE, MAX_IMAGE_SCALE, DEFAULT_IMAGE_SCALE),
   }
 
   const supabase = createAdminClient()
