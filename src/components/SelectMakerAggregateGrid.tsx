@@ -3,12 +3,14 @@
 import { useState } from 'react'
 import type { SelectMakerAggregateEntry } from '@/lib/maker-submissions'
 
+const RANKING_LIMIT = 100
+
 function ratePercent(selectionCount: number, total: number) {
   if (!total) return '0.0'
   return ((selectionCount / total) * 100).toFixed(1)
 }
 
-// SELECT型企画のカード別ランキング表示。上位initialCount件を表示し「全部見る」で全件展開する
+// SELECT型企画のカード別ランキング表示。初期表示後に展開できる範囲もTOP100までに制限する
 export default function SelectMakerAggregateGrid({
   entries,
   total,
@@ -19,8 +21,9 @@ export default function SelectMakerAggregateGrid({
   initialCount?: number
 }) {
   const [expanded, setExpanded] = useState(false)
-  const visibleEntries = expanded ? entries : entries.slice(0, initialCount)
-  const remaining = entries.length - visibleEntries.length
+  const rankedEntries = entries.slice(0, RANKING_LIMIT)
+  const visibleEntries = expanded ? rankedEntries : rankedEntries.slice(0, initialCount)
+  const remaining = rankedEntries.length - visibleEntries.length
   return (
     <div>
       <div className="grid grid-cols-3 gap-x-2 gap-y-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
@@ -46,7 +49,7 @@ export default function SelectMakerAggregateGrid({
           onClick={() => setExpanded(true)}
           className="mt-5 flex min-h-11 w-full items-center justify-center rounded-lg border border-blue-700 bg-white px-4 font-bold text-blue-700 hover:bg-blue-50"
         >
-          全部見る（残り{remaining}枚）
+          TOP100をすべて見る（残り{remaining}枚）
         </button>
       )}
     </div>
