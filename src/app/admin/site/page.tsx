@@ -28,6 +28,7 @@ export default async function Page() {
     { title: '表示・告知', links: [
       { href: '/admin/notices', title: 'お知らせ', description: `表示中：${noticeResult.count ?? 0}件` },
       { href: '/admin/site/top-showcase', title: 'トップ表示設定', description: `現在：${showcaseLabel}` },
+      { href: '/admin/site/top-featured-campaign', title: 'TOP注目企画', description: 'TOP最上部POPと緑帯3ボタンの内容を設定' },
     ] },
     { title: '収益化', links: [
       { href: '/admin/site/ads', title: '広告設定', description: `Goodlifeインライン広告：${ads.enabled ? '有効' : '無効'}` },

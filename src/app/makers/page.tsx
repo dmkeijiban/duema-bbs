@@ -1,6 +1,9 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { isMakerProjectArchived, isMakerProjectVisible, MAKER_CATEGORIES, MAKER_CATEGORY_LABELS, parseMakerCatalogConfig, STATIC_MAKER_ENTRIES, type MakerCategory } from '@/lib/maker-catalog'
+import { getAllSettings } from '@/lib/settings'
+import { parseTopFeaturedCampaignSettings } from '@/lib/top-featured-campaign'
+import { parsePlaygroundRecommendSettings, resolvePlaygroundRecommendedSlug } from '@/lib/playground-recommend'
 
 export const dynamic = 'force-dynamic'
 export const metadata = {
@@ -30,10 +33,13 @@ const MAKER_DESCRIPTION_FALLBACKS: Record<string, string> = {
 }
 
 export default async function MakersPage() {
-  const { data } = await createAdminClient()
-    .from('maker_projects')
-    .select('slug,title,type,status,is_public,config')
-    .order('created_at', { ascending: false })
+  const [{ data }, settings] = await Promise.all([
+    createAdminClient()
+      .from('maker_projects')
+      .select('slug,title,type,status,is_public,config')
+      .order('created_at', { ascending: false }),
+    getAllSettings(),
+  ])
 
   const projects = (data ?? []) as MakerProject[]
   const entries: CatalogEntry[] = [
@@ -44,7 +50,15 @@ export default async function MakersPage() {
       return { id: project.slug, title: project.title, href: `/makers/${project.slug}`, category: ended ? 'archive' as const : config.category, sortOrder: config.sortOrder, description: MAKER_DESCRIPTION_OVERRIDES[project.slug] || config.shortDescription || MAKER_DESCRIPTION_FALLBACKS[project.slug] || '', featured: config.featured, isNew: config.isNew, isLimited: config.isLimited, thumbnailUrl: config.thumbnailUrl }
     }),
   ].sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'ja'))
-  const featuredEntries = entries.filter(entry => entry.featured && entry.category !== 'archive')
+
+  const topFeaturedProjectSlug = parseTopFeaturedCampaignSettings(settings.top_featured_campaign).projectSlug
+  const playgroundRecommendedSlug = resolvePlaygroundRecommendedSlug(
+    parsePlaygroundRecommendSettings(settings.playground_recommended_campaign),
+    topFeaturedProjectSlug
+  )
+  const featuredEntries = entries.filter(entry =>
+    entry.category !== 'archive' && (entry.featured || entry.id === playgroundRecommendedSlug)
+  )
 
   const ProjectCard = ({ entry }: { entry: typeof entries[number] }) => (
     <Link href={entry.href} className="block overflow-hidden rounded-xl border bg-white transition hover:border-blue-400 hover:shadow-sm">

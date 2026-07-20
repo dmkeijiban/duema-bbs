@@ -8,6 +8,17 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { NoticeItem } from '@/components/NoticeBlock'
 import { ADMIN_COOKIE_MAX_AGE_SECONDS, createAdminCookieValue, isAdminPassword, verifyAdminCookie } from '@/lib/admin-auth'
 import { normalizeTopShowcaseMode } from '@/lib/top-showcase'
+import {
+  isSafeTopFeaturedLink,
+  TOP_FEATURED_CAMPAIGN_SETTINGS_KEY,
+  type TopFeaturedCampaignSettings,
+} from '@/lib/top-featured-campaign'
+import {
+  isSafeHref as isSafeGreenBannerHref,
+  TOP_GREEN_BANNER_SETTINGS_KEY,
+  TOP_GREEN_BANNER_SLOT_COUNT,
+} from '@/lib/top-green-banner'
+import { PLAYGROUND_RECOMMEND_SETTINGS_KEY } from '@/lib/playground-recommend'
 
 const ADMIN_COOKIE = 'admin_auth'
 type AdminClient = ReturnType<typeof createAdminClient>
@@ -768,4 +779,128 @@ export async function updateTopShowcaseModeAction(formData: FormData) {
   revalidateTag('site_settings', { expire: 0 })
   revalidateTag('top-showcase-mode', { expire: 0 })
   redirect('/admin/site/top-showcase?saved=1')
+}
+
+export async function updateTopFeaturedCampaignAction(formData: FormData) {
+  await checkAdmin()
+  const value = (name: string) => String(formData.get(name) ?? '').trim()
+
+  const mainButtonLink = value('mainButtonLink')
+  const subButtonLink = value('subButtonLink')
+  const imageUrl = value('imageUrl')
+  if (mainButtonLink && !isSafeTopFeaturedLink(mainButtonLink)) {
+    redirect('/admin/site/top-featured-campaign?error=invalid_url')
+  }
+  if (subButtonLink && !isSafeTopFeaturedLink(subButtonLink)) {
+    redirect('/admin/site/top-featured-campaign?error=invalid_url')
+  }
+  if (imageUrl && !isSafeTopFeaturedLink(imageUrl)) {
+    redirect('/admin/site/top-featured-campaign?error=invalid_url')
+  }
+
+  const settings: TopFeaturedCampaignSettings = {
+    enabled: formData.get('enabled') === 'on',
+    projectSlug: value('projectSlug'),
+    label: value('label'),
+    subText: value('subText'),
+    title: value('title'),
+    description: value('description'),
+    mainButtonLabel: value('mainButtonLabel'),
+    mainButtonLink,
+    subButtonLabel: value('subButtonLabel'),
+    subButtonLink,
+    imageUrl,
+  }
+
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('site_settings')
+    .upsert(
+      {
+        key: TOP_FEATURED_CAMPAIGN_SETTINGS_KEY,
+        label: 'TOP注目企画',
+        value: JSON.stringify(settings),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'key' }
+    )
+
+  if (error) redirect('/admin/site/top-featured-campaign?error=save_failed')
+
+  revalidatePath('/')
+  revalidatePath('/makers')
+  revalidatePath('/admin/site/top-featured-campaign')
+  revalidateTag('site_settings', { expire: 0 })
+  revalidateTag('top-featured-campaign', { expire: 0 })
+  redirect('/admin/site/top-featured-campaign?saved=1')
+}
+
+export async function updateTopGreenBannerButtonsAction(formData: FormData) {
+  await checkAdmin()
+  const value = (name: string) => String(formData.get(name) ?? '').trim()
+
+  const buttons = Array.from({ length: TOP_GREEN_BANNER_SLOT_COUNT }, (_, i) => {
+    const href = value(`btn${i}_href`)
+    if (href && !isSafeGreenBannerHref(href)) {
+      redirect('/admin/site/top-featured-campaign?error=invalid_url')
+    }
+    return {
+      enabled: formData.get(`btn${i}_enabled`) === 'on',
+      label: value(`btn${i}_label`),
+      href,
+      icon: value(`btn${i}_icon`),
+      openInNewTab: formData.get(`btn${i}_openInNewTab`) === 'on',
+      emphasis: formData.get(`btn${i}_emphasis`) === 'on',
+      order: i,
+    }
+  })
+
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('site_settings')
+    .upsert(
+      {
+        key: TOP_GREEN_BANNER_SETTINGS_KEY,
+        label: 'TOP緑帯ボタン',
+        value: JSON.stringify(buttons),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'key' }
+    )
+
+  if (error) redirect('/admin/site/top-featured-campaign?error=save_failed')
+
+  revalidatePath('/')
+  revalidatePath('/admin/site/top-featured-campaign')
+  revalidateTag('site_settings', { expire: 0 })
+  revalidateTag('top-green-banner', { expire: 0 })
+  redirect('/admin/site/top-featured-campaign?saved=1')
+}
+
+export async function updatePlaygroundRecommendAction(formData: FormData) {
+  await checkAdmin()
+  const settings = {
+    useTopFeatured: formData.get('useTopFeatured') === 'on',
+    projectSlug: String(formData.get('projectSlug') ?? '').trim(),
+  }
+
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('site_settings')
+    .upsert(
+      {
+        key: PLAYGROUND_RECOMMEND_SETTINGS_KEY,
+        label: 'あそびばおすすめ企画',
+        value: JSON.stringify(settings),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'key' }
+    )
+
+  if (error) redirect('/admin/site/top-featured-campaign?error=save_failed')
+
+  revalidatePath('/makers')
+  revalidatePath('/admin/site/top-featured-campaign')
+  revalidateTag('site_settings', { expire: 0 })
+  redirect('/admin/site/top-featured-campaign?saved=1')
 }

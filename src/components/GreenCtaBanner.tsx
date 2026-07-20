@@ -1,19 +1,27 @@
 import Link from 'next/link'
-import type { ReactNode } from 'react'
-import { TopActivityNotice } from '@/components/TopActivityNotice'
+import { getCachedTopGreenBannerButtons } from '@/lib/cached-queries'
+import type { ResolvedTopGreenBannerButton } from '@/lib/top-green-banner'
 
-function CtaButton({ href, children }: { href: string; children: ReactNode }) {
+function CtaButton({ button }: { button: ResolvedTopGreenBannerButton }) {
   return (
     <Link
-      href={href}
-      className="inline-flex min-h-8 min-w-0 items-center justify-center rounded border border-green-700 bg-white px-1.5 py-1 text-center text-[11px] font-bold leading-tight whitespace-nowrap text-green-800 transition-colors hover:bg-green-50 md:min-h-0 md:px-2.5 md:text-xs"
+      href={button.href}
+      target={button.openInNewTab ? '_blank' : undefined}
+      rel={button.openInNewTab ? 'noopener noreferrer' : undefined}
+      className={`inline-flex min-h-8 min-w-0 items-center justify-center rounded border px-1.5 py-1 text-center text-[11px] font-bold leading-tight whitespace-nowrap transition-colors md:min-h-0 md:px-2.5 md:text-xs ${
+        button.emphasis
+          ? 'border-green-700 bg-green-700 text-white hover:bg-green-800'
+          : 'border-green-700 bg-white text-green-800 hover:bg-green-50'
+      }`}
     >
-      {children}
+      {button.icon}{button.label}
     </Link>
   )
 }
 
-export function GreenCtaBanner() {
+export async function GreenCtaBanner() {
+  const buttons = await getCachedTopGreenBannerButtons()
+
   return (
     <div
       className="mb-1.5 flex flex-col gap-1.5 border px-3 py-1.5 text-sm text-green-900 md:flex-row md:items-center md:justify-between"
@@ -26,11 +34,16 @@ export function GreenCtaBanner() {
         </Link>
         をご確認ください。
       </p>
-      <div className="grid w-full shrink-0 grid-cols-3 gap-1 md:flex md:w-auto md:flex-wrap md:gap-1.5">
-        <CtaButton href="/login?mode=signup">アカウント作成</CtaButton>
-        <CtaButton href="/zukan">思い出図鑑を見る</CtaButton>
-        <TopActivityNotice />
-      </div>
+      {buttons.length > 0 && (
+        <div
+          className="grid w-full shrink-0 gap-1 md:flex md:w-auto md:flex-wrap md:gap-1.5"
+          style={{ gridTemplateColumns: `repeat(${buttons.length}, minmax(0, 1fr))` }}
+        >
+          {buttons.map(button => (
+            <CtaButton key={`${button.label}-${button.href}`} button={button} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

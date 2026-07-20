@@ -1,14 +1,15 @@
 import {
   getCachedCampaignRanking,
   getCachedProfileShowcaseUsers,
+  getCachedTopFeaturedCampaign,
   getCachedTopShowcaseMode,
   getCachedUserRankings,
   type ProfileShowcaseUser,
   type UserRankingRow,
 } from '@/lib/cached-queries'
+import type { ResolvedTopFeaturedCampaign } from '@/lib/top-featured-campaign'
 import { RecommendSection } from '@/components/RecommendSection'
 import Link from 'next/link'
-import Image from 'next/image'
 import type { ReactNode } from 'react'
 
 const AVATAR_RING_COLORS = [
@@ -229,78 +230,86 @@ function RankingShowcase({ title, users, titleHref }: { title: string; users: Sh
   )
 }
 
-function TierMakerShowcase() {
-  const makerPath = '/makers/dm26-ex2-charisma-best-tier'
+function FeaturedCampaignShowcase({ campaign }: { campaign: ResolvedTopFeaturedCampaign }) {
+  const { label, subText, title, description, mainHref, mainLabel, subHref, subLabel, imageUrl } = campaign
 
   return (
     <div className="mb-2 overflow-hidden border border-gray-300 bg-white">
-      <div className="relative flex h-[112px] min-w-0 items-stretch overflow-hidden bg-slate-950 md:hidden">
-        <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-center bg-gradient-to-r from-slate-950 via-slate-950 to-slate-900 px-3 py-2 text-white">
-          <div className="mb-0.5 flex items-center gap-1.5">
-            <span className="w-fit rounded bg-amber-300 px-1.5 py-0.5 text-[10px] font-black leading-none text-amber-950">
-              NEW
-            </span>
-            <span className="text-[9px] font-bold tracking-wide text-amber-300">
-              DM26-EX2 悪感謝祭
-            </span>
+      <div className="flex min-w-0 flex-col gap-1.5 overflow-hidden bg-slate-950 px-3 py-2.5 text-white md:hidden">
+        {(label || subText) && (
+          <div className="flex items-center gap-1.5">
+            {label && (
+              <span className="w-fit shrink-0 rounded bg-amber-300 px-1.5 py-0.5 text-[10px] font-black leading-none text-amber-950">
+                {label}
+              </span>
+            )}
+            {subText && (
+              <span className="truncate text-[10px] font-bold tracking-wide text-amber-300">
+                {subText}
+              </span>
+            )}
           </div>
-          <h2 className="w-full whitespace-nowrap text-[16px] font-black leading-tight tracking-[-0.055em] text-white">
-            カリスマBEST Tier表メーカー
-          </h2>
-          <p className="mt-0.5 line-clamp-1 text-[11px] leading-tight text-slate-300">
-            新弾カードを並べて、自分だけのTier表を作ろう！
+        )}
+        <h2 className="w-full break-words text-[16px] font-black leading-tight tracking-[-0.03em] text-white">
+          {title}
+        </h2>
+        {description && (
+          <p className="line-clamp-2 text-[11px] leading-snug text-slate-300">
+            {description}
           </p>
-          <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-            <Link href={makerPath} prefetch={false} className="rounded bg-blue-600 px-2 py-1.5 text-center text-[11px] font-bold leading-none text-white">
-              Tier表を作る
-            </Link>
-            <Link href={`${makerPath}/submissions`} prefetch={false} className="rounded border border-white/70 bg-white/10 px-2 py-1.5 text-center text-[11px] font-bold leading-none text-white">
-              みんなのTierを見る
-            </Link>
-          </div>
-        </div>
-        <Link href={makerPath} prefetch={false} aria-label="Tier表を作る" className="relative w-24 shrink-0 overflow-hidden border-l border-slate-800 bg-stone-900 sm:w-52">
-          <Image
-            src="/images/makers/dm26-ex2-charisma-best-main.webp"
-            alt="DM26-EX2 悪感謝祭 カリスマBEST"
-            fill
-            priority
-            sizes="(max-width: 639px) 96px, 208px"
-            className="object-cover object-center"
+        )}
+        <Link href={mainHref} prefetch={false} aria-label={mainLabel} className="relative block h-28 w-full shrink-0 overflow-hidden rounded-lg bg-stone-900">
+          {/* 管理画面で任意URLを設定できるためドメイン制限のあるnext/imageではなくimg要素を使用 */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl}
+            alt={title}
+            className="absolute inset-0 h-full w-full object-cover object-center"
           />
-          <span className="absolute inset-y-0 left-0 w-5 bg-gradient-to-r from-slate-950 to-transparent" aria-hidden="true" />
         </Link>
+        <Link href={mainHref} prefetch={false} className="block w-full rounded-md bg-blue-600 px-3 py-2.5 text-center text-[13px] font-black leading-none text-white">
+          {mainLabel}
+        </Link>
+        {subHref && subLabel && (
+          <Link href={subHref} prefetch={false} className="block w-full rounded-md border border-white/70 bg-white/10 px-3 py-2.5 text-center text-[13px] font-bold leading-none text-white">
+            {subLabel}
+          </Link>
+        )}
       </div>
 
       <div className="relative hidden h-[144px] overflow-hidden bg-slate-950 md:grid md:grid-cols-[56%_44%]">
         <div className="relative z-10 flex min-w-0 flex-col justify-center bg-gradient-to-r from-slate-950 via-slate-950 to-slate-900 px-7 text-white">
-          <div className="flex items-center gap-2">
-            <span className="rounded bg-amber-300 px-2 py-1 text-[11px] font-black leading-none text-amber-950">NEW</span>
-            <span className="text-xs font-bold tracking-wide text-amber-300">DM26-EX2 悪感謝祭</span>
-          </div>
-          <h2 className="mt-2 text-[25px] font-black leading-none tracking-tight">
-            カリスマBEST Tier表メーカー
+          {(label || subText) && (
+            <div className="flex items-center gap-2">
+              {label && <span className="rounded bg-amber-300 px-2 py-1 text-[11px] font-black leading-none text-amber-950">{label}</span>}
+              {subText && <span className="truncate text-xs font-bold tracking-wide text-amber-300">{subText}</span>}
+            </div>
+          )}
+          <h2 className="mt-2 truncate text-[25px] font-black leading-none tracking-tight">
+            {title}
           </h2>
-          <p className="mt-2 text-sm text-slate-300">
-            新弾カードを自由に並べて、画像保存・X共有。みんなの評価もまとめて確認できます。
-          </p>
+          {description && (
+            <p className="mt-2 line-clamp-2 text-sm text-slate-300">
+              {description}
+            </p>
+          )}
           <div className="mt-3 flex gap-2">
-            <Link href={makerPath} prefetch={false} className="rounded-md bg-blue-600 px-6 py-2 text-sm font-black leading-none text-white transition-colors hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-              Tier表を作る
+            <Link href={mainHref} prefetch={false} className="rounded-md bg-blue-600 px-6 py-2 text-sm font-black leading-none text-white transition-colors hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+              {mainLabel}
             </Link>
-            <Link href={`${makerPath}/submissions`} prefetch={false} className="rounded-md border border-white/70 bg-white/10 px-5 py-2 text-sm font-bold leading-none text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-              みんなのTierを見る
-            </Link>
+            {subHref && subLabel && (
+              <Link href={subHref} prefetch={false} className="rounded-md border border-white/70 bg-white/10 px-5 py-2 text-sm font-bold leading-none text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+                {subLabel}
+              </Link>
+            )}
           </div>
         </div>
-        <Link href={makerPath} prefetch={false} aria-label="Tier表を作る" className="relative block overflow-hidden bg-stone-900">
-          <Image
-            src="/images/makers/dm26-ex2-charisma-best-main.webp"
-            alt="DM26-EX2 悪感謝祭 カリスマBEST"
-            fill
-            priority
-            sizes="44vw"
-            className="object-cover object-top transition-transform duration-300 hover:scale-[1.02]"
+        <Link href={mainHref} prefetch={false} aria-label={mainLabel} className="relative block overflow-hidden bg-stone-900">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl}
+            alt={title}
+            className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-300 hover:scale-[1.02]"
           />
           <span className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-slate-950 to-transparent" aria-hidden="true" />
         </Link>
@@ -327,8 +336,12 @@ export async function TopRankingShowcase() {
     return <RecommendSection />
   }
 
-  if (mode === 'tier_maker') {
-    return <TierMakerShowcase />
+  if (mode === 'featured_campaign') {
+    const campaign = await getCachedTopFeaturedCampaign()
+    if (campaign) return <FeaturedCampaignShowcase campaign={campaign} />
+    // 未設定・非公開化などで表示できない場合はプロフィール枠にフォールバック
+    const users = await getCachedProfileShowcaseUsers()
+    return <ProfileShowcase users={users} />
   }
 
   if (mode === 'monthly_ranking' || mode === 'overall_ranking') {

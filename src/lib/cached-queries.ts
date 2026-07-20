@@ -25,6 +25,19 @@ import {
   type CampaignRankingPublicResult,
 } from './campaign-ranking'
 import { normalizeTopShowcaseMode, type TopShowcaseMode } from './top-showcase'
+import {
+  parseTopFeaturedCampaignSettings,
+  resolveTopFeaturedCampaign,
+  TOP_FEATURED_CAMPAIGN_SETTINGS_KEY,
+  type ResolvedTopFeaturedCampaign,
+} from './top-featured-campaign'
+import {
+  parseTopGreenBannerButtons,
+  resolveVisibleTopGreenBannerButtons,
+  TOP_GREEN_BANNER_SETTINGS_KEY,
+  type ResolvedTopGreenBannerButton,
+} from './top-green-banner'
+import { isMakerProjectVisible, parseMakerCatalogConfig } from './maker-catalog'
 import type { NavPage, FixedPage } from '@/types/fixed-pages'
 import { parseBlocks } from '@/types/fixed-pages'
 import type { PublicAuthorProfile } from '@/types'
@@ -734,6 +747,65 @@ export function getCachedTopShowcaseMode(): Promise<TopShowcaseMode> {
     },
     ['top-showcase-mode-v1'],
     { revalidate: STANDARD_CACHE_SECONDS, tags: ['site_settings', 'top-showcase-mode'] }
+  )()
+}
+
+export function getCachedTopFeaturedCampaign(): Promise<ResolvedTopFeaturedCampaign | null> {
+  return unstable_cache(
+    async (): Promise<ResolvedTopFeaturedCampaign | null> => {
+      try {
+        const supabase = createPublicClient()
+        const { data: settingRow } = await supabase
+          .from('site_settings')
+          .select('value')
+          .eq('key', TOP_FEATURED_CAMPAIGN_SETTINGS_KEY)
+          .maybeSingle()
+        const settings = parseTopFeaturedCampaignSettings(settingRow?.value)
+        if (!settings.enabled || !settings.projectSlug) return null
+
+        const { data: project } = await supabase
+          .from('maker_projects')
+          .select('slug,title,type,status,is_public,config')
+          .eq('slug', settings.projectSlug)
+          .maybeSingle()
+        if (!project) return resolveTopFeaturedCampaign(settings, null)
+
+        const catalog = parseMakerCatalogConfig(project)
+        return resolveTopFeaturedCampaign(settings, {
+          slug: project.slug,
+          title: project.title,
+          description: catalog.shortDescription,
+          thumbnailUrl: catalog.thumbnailUrl,
+          visible: isMakerProjectVisible(project),
+        })
+      } catch (error) {
+        console.warn('top featured campaign fetch failed:', error)
+        return null
+      }
+    },
+    ['top-featured-campaign-v1'],
+    { revalidate: STANDARD_CACHE_SECONDS, tags: ['site_settings', 'top-featured-campaign'] }
+  )()
+}
+
+export function getCachedTopGreenBannerButtons(): Promise<ResolvedTopGreenBannerButton[]> {
+  return unstable_cache(
+    async (): Promise<ResolvedTopGreenBannerButton[]> => {
+      try {
+        const supabase = createPublicClient()
+        const { data } = await supabase
+          .from('site_settings')
+          .select('value')
+          .eq('key', TOP_GREEN_BANNER_SETTINGS_KEY)
+          .maybeSingle()
+        return resolveVisibleTopGreenBannerButtons(parseTopGreenBannerButtons(data?.value))
+      } catch (error) {
+        console.warn('top green banner buttons fetch failed:', error)
+        return resolveVisibleTopGreenBannerButtons(parseTopGreenBannerButtons(null))
+      }
+    },
+    ['top-green-banner-buttons-v1'],
+    { revalidate: STANDARD_CACHE_SECONDS, tags: ['site_settings', 'top-green-banner'] }
   )()
 }
 
