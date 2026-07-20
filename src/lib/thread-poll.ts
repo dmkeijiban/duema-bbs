@@ -1,6 +1,10 @@
 import { unstable_cache } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase-admin'
 
+// 投票・クイズの新規作成を一時的に非公開にするスイッチ。
+// 再公開するときは true に戻すだけで、既存データ・表示機能には影響しない。
+const THREAD_POLL_CREATION_ENABLED = false
+
 export type ThreadPollKind = 'poll' | 'quiz'
 
 export type ThreadPollOption = {
@@ -93,6 +97,8 @@ export function getCachedThreadPoll(threadId: number): Promise<ThreadPoll | null
 }
 
 export function getThreadPollFeatureAvailable(): Promise<boolean> {
+  if (!THREAD_POLL_CREATION_ENABLED) return Promise.resolve(false)
+
   return unstable_cache(
     async () => {
       try {
