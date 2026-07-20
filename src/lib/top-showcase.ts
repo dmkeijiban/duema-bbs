@@ -4,7 +4,7 @@ export const TOP_SHOWCASE_MODE_VALUES = [
   'overall_ranking',
   'campaign_ranking',
   'recommended',
-  'tier_maker',
+  'featured_campaign',
   'hidden',
 ] as const
 
@@ -39,9 +39,9 @@ export const TOP_SHOWCASE_MODE_OPTIONS: Array<{ value: TopShowcaseMode; label: s
     description: 'おすすめスレッドをトップ上部に表示します。',
   },
   {
-    value: 'tier_maker',
-    label: 'Tier表メーカー',
-    description: 'カリスマBEST Tier表メーカーへの導線を表示します。',
+    value: 'featured_campaign',
+    label: 'TOP注目企画',
+    description: '管理画面で設定した企画POP（旧カリスマBEST枠）を表示します。',
   },
   {
     value: 'hidden',
@@ -53,6 +53,8 @@ export const TOP_SHOWCASE_MODE_OPTIONS: Array<{ value: TopShowcaseMode; label: s
 const TOP_SHOWCASE_MODE_SET = new Set<string>(TOP_SHOWCASE_MODE_VALUES)
 
 export function normalizeTopShowcaseMode(value: string | null | undefined): TopShowcaseMode {
+  // 旧カリスマBEST専用モードは汎用の注目企画モードへ読み替える（移行後方互換）
+  if (value === 'tier_maker') return 'featured_campaign'
   if (value && TOP_SHOWCASE_MODE_SET.has(value)) return value as TopShowcaseMode
   return DEFAULT_TOP_SHOWCASE_MODE
 }
