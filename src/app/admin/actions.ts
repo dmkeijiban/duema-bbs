@@ -19,6 +19,8 @@ import {
   TOP_GREEN_BANNER_SLOT_COUNT,
 } from '@/lib/top-green-banner'
 import { PLAYGROUND_RECOMMEND_SETTINGS_KEY } from '@/lib/playground-recommend'
+import { uploadImage, validateImageFile } from '@/lib/upload'
+import { v4 as uuidv4 } from 'uuid'
 
 const ADMIN_COOKIE = 'admin_auth'
 type AdminClient = ReturnType<typeof createAdminClient>
@@ -779,6 +781,26 @@ export async function updateTopShowcaseModeAction(formData: FormData) {
   revalidateTag('site_settings', { expire: 0 })
   revalidateTag('top-showcase-mode', { expire: 0 })
   redirect('/admin/site/top-showcase?saved=1')
+}
+
+// TOP注目企画POPの右側画像アップロード（既存のlib/upload.ts + bbs-imagesバケットを流用）
+export async function uploadTopFeaturedCampaignImage(formData: FormData): Promise<{ url?: string; error?: string }> {
+  await checkAdmin()
+  const file = formData.get('image') as File | null
+  if (!file) return { error: '画像が選択されていません' }
+
+  const validationError = validateImageFile(file)
+  if (validationError) return { error: validationError }
+
+  try {
+    const supabase = createAdminClient()
+    const result = await uploadImage(file, supabase, `top-featured-campaign/${uuidv4()}`, 'banner')
+    if (result.error || !result.data) return { error: result.error ?? '画像のアップロードに失敗しました' }
+    return { url: result.data.url }
+  } catch (error) {
+    console.warn('top featured campaign image upload failed:', error)
+    return { error: '画像のアップロードに失敗しました' }
+  }
 }
 
 export async function updateTopFeaturedCampaignAction(formData: FormData) {
