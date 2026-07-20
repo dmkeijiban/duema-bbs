@@ -95,17 +95,26 @@ export async function getSelectMakerAggregates(projectId: string): Promise<{ tot
   ])
   const typedRows = (rows ?? []) as { card_id: string; name: string; selection_count: number }[]
   const cardIds = typedRows.map(row => row.card_id)
-  const [{ data: cards }, { data: printings }] = cardIds.length
-    ? await Promise.all([
-      admin.from('cards').select('id,image_url').in('id', cardIds),
-      admin.from('card_printings').select('card_id,image_url').in('card_id', cardIds).not('image_url', 'is', null).order('created_at', { ascending: false }),
+  // カードIDが多いプロジェクト（全カードプール等）では.in()を分割しないとクエリが失敗しうるため、
+  // campaign-ranking.tsと同様に500件ずつチャンクして取得する
+  const cards: { id: string; image_url: string | null }[] = []
+  const printings: { card_id: string; image_url: string | null }[] = []
+  for (let i = 0; i < cardIds.length; i += 500) {
+    const chunk = cardIds.slice(i, i + 500)
+    const [{ data: cardRows, error: cardsError }, { data: printingRows, error: printingsError }] = await Promise.all([
+      admin.from('cards').select('id,image_url').in('id', chunk),
+      admin.from('card_printings').select('card_id,image_url').in('card_id', chunk).not('image_url', 'is', null).order('created_at', { ascending: false }),
     ])
-    : [{ data: [] as { id: string; image_url: string | null }[] }, { data: [] as { card_id: string; image_url: string | null }[] }]
+    if (cardsError) console.error('getSelectMakerAggregates: cards fetch failed', cardsError)
+    if (printingsError) console.error('getSelectMakerAggregates: card_printings fetch failed', printingsError)
+    cards.push(...(cardRows ?? []))
+    printings.push(...(printingRows ?? []))
+  }
   const printingImageByCardId = new Map<string, string>()
-  for (const printing of printings ?? []) {
+  for (const printing of printings) {
     if (printing.image_url && !printingImageByCardId.has(printing.card_id)) printingImageByCardId.set(printing.card_id, printing.image_url)
   }
-  const imageByCardId = new Map((cards ?? []).map(card => [card.id, card.image_url ?? printingImageByCardId.get(card.id) ?? null]))
+  const imageByCardId = new Map(cards.map(card => [card.id, card.image_url ?? printingImageByCardId.get(card.id) ?? null]))
   let rank = 0
   let previousCount = Number.NEGATIVE_INFINITY
   const entries = typedRows.map((row, index) => {
