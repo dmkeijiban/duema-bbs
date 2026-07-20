@@ -10,6 +10,8 @@ import { resolveCampaignState } from '@/lib/campaign-ranking'
 import { getHonorTitle, getNextHonorTitle } from '@/lib/honor-title'
 import { HonorTitleCard } from '@/components/HonorTitleCard'
 import { HonorRankUpBanner } from '@/components/HonorRankUpBanner'
+import { ResumeProfileCard } from '@/components/ResumeProfileCard'
+import { getOwnResumeSubmission, getPublicResumeSubmission } from '@/lib/maker-resume-queries'
 import {
   DUEMA_GENERATION_MAP,
   DUEMA_CIVILIZATION_MAP,
@@ -185,6 +187,8 @@ export default async function UserProfilePage({
   if (profile.profile_hidden && !isOwner) {
     notFound()
   }
+
+  const resume = isOwner ? await getOwnResumeSubmission(profile.id) : await getPublicResumeSubmission(profile.id)
 
   const xUrl = safeExternalLink(profile.x_url, ['x.com', 'twitter.com'])
   const youtubeUrl = safeExternalLink(profile.youtube_url, [
@@ -362,6 +366,8 @@ export default async function UserProfilePage({
           <UserProfileShareButtons displayName={profile.display_name} />
         </div>
       </section>
+
+      {resume && <ResumeProfileCard data={resume.data} avatarUrl={profile.avatar_url} isOwner={isOwner} isPublic={resume.isPublic} />}
 
       {!isOwner && (
         <section className="mt-4 rounded-sm border border-blue-200 bg-blue-50 px-4 py-3">
