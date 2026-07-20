@@ -1,6 +1,8 @@
 // lib/thumbnail.ts の DEFAULT_THREAD_THUMBNAIL と同一パス（supabase-admin依存を避けるため直接定義）
 const DEFAULT_FEATURED_CAMPAIGN_IMAGE = '/default-thumbnail.jpg'
 
+export const CARD_IMAGE_SLOT_COUNT = 3
+
 export type FeaturedCampaignCardImage = {
   imageUrl: string
   positionX: number
@@ -19,7 +21,6 @@ export type TopFeaturedCampaignSettings = {
   mainButtonLink: string
   subButtonLabel: string
   subButtonLink: string
-  // 後方互換用の単一画像設定。cardImagesに有効な画像が1枚もない場合のフォールバックとして使う
   imageUrl: string
   imagePositionX: number
   imagePositionY: number
@@ -32,10 +33,12 @@ export const DEFAULT_IMAGE_POSITION_Y = 50
 export const DEFAULT_IMAGE_SCALE = 1
 export const MIN_IMAGE_SCALE = 1
 export const MAX_IMAGE_SCALE = 2
-export const CARD_IMAGE_SLOT_COUNT = 3
 
-function emptyCardImage(): FeaturedCampaignCardImage {
-  return { imageUrl: '', positionX: DEFAULT_IMAGE_POSITION_X, positionY: DEFAULT_IMAGE_POSITION_Y, scale: DEFAULT_IMAGE_SCALE }
+const DEFAULT_CARD_IMAGE: FeaturedCampaignCardImage = {
+  imageUrl: '',
+  positionX: DEFAULT_IMAGE_POSITION_X,
+  positionY: DEFAULT_IMAGE_POSITION_Y,
+  scale: DEFAULT_IMAGE_SCALE,
 }
 
 export const DEFAULT_TOP_FEATURED_CAMPAIGN: TopFeaturedCampaignSettings = {
@@ -53,7 +56,7 @@ export const DEFAULT_TOP_FEATURED_CAMPAIGN: TopFeaturedCampaignSettings = {
   imagePositionX: DEFAULT_IMAGE_POSITION_X,
   imagePositionY: DEFAULT_IMAGE_POSITION_Y,
   imageScale: DEFAULT_IMAGE_SCALE,
-  cardImages: Array.from({ length: CARD_IMAGE_SLOT_COUNT }, emptyCardImage),
+  cardImages: Array.from({ length: CARD_IMAGE_SLOT_COUNT }, () => ({ ...DEFAULT_CARD_IMAGE })),
 }
 
 export const TOP_FEATURED_CAMPAIGN_SETTINGS_KEY = 'top_featured_campaign'
@@ -69,19 +72,19 @@ export function clampFeaturedCampaignNumber(value: unknown, min: number, max: nu
   return Math.min(max, Math.max(min, num))
 }
 
-function parseCardImage(raw: unknown): FeaturedCampaignCardImage {
-  const record = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string, unknown> : {}
-  return {
-    imageUrl: text(record.imageUrl),
-    positionX: clampFeaturedCampaignNumber(record.positionX, 0, 100, DEFAULT_IMAGE_POSITION_X),
-    positionY: clampFeaturedCampaignNumber(record.positionY, 0, 100, DEFAULT_IMAGE_POSITION_Y),
-    scale: clampFeaturedCampaignNumber(record.scale, MIN_IMAGE_SCALE, MAX_IMAGE_SCALE, DEFAULT_IMAGE_SCALE),
-  }
-}
-
-function parseCardImages(raw: unknown): FeaturedCampaignCardImage[] {
-  const list = Array.isArray(raw) ? raw : []
-  return Array.from({ length: CARD_IMAGE_SLOT_COUNT }, (_, i) => parseCardImage(list[i]))
+function parseCardImages(value: unknown): FeaturedCampaignCardImage[] {
+  const source = Array.isArray(value) ? value : []
+  return Array.from({ length: CARD_IMAGE_SLOT_COUNT }, (_, index) => {
+    const raw = source[index]
+    if (!raw || typeof raw !== 'object') return { ...DEFAULT_CARD_IMAGE }
+    const record = raw as Record<string, unknown>
+    return {
+      imageUrl: text(record.imageUrl),
+      positionX: clampFeaturedCampaignNumber(record.positionX, 0, 100, DEFAULT_IMAGE_POSITION_X),
+      positionY: clampFeaturedCampaignNumber(record.positionY, 0, 100, DEFAULT_IMAGE_POSITION_Y),
+      scale: clampFeaturedCampaignNumber(record.scale, MIN_IMAGE_SCALE, MAX_IMAGE_SCALE, DEFAULT_IMAGE_SCALE),
+    }
+  })
 }
 
 export function parseTopFeaturedCampaignSettings(raw: string | null | undefined): TopFeaturedCampaignSettings {
@@ -132,13 +135,6 @@ export type TopFeaturedCampaignProject = {
   visible: boolean
 }
 
-export type ResolvedFeaturedCampaignCardImage = {
-  imageUrl: string
-  positionX: number
-  positionY: number
-  scale: number
-}
-
 export type ResolvedTopFeaturedCampaign = {
   projectSlug: string
   label: string
@@ -149,9 +145,6 @@ export type ResolvedTopFeaturedCampaign = {
   mainLabel: string
   subHref: string | null
   subLabel: string | null
-  // 'cards': cardImagesに有効な画像が1枚以上ある場合。'single': 従来の1枚画像（imageUrl→企画サムネイル→既定画像）
-  imageMode: 'cards' | 'single'
-  cardImages: ResolvedFeaturedCampaignCardImage[]
   imageUrl: string
   imagePositionX: number
   imagePositionY: number
@@ -201,20 +194,11 @@ export function resolveTopFeaturedCampaign(
   const subLabelRaw = settings.subButtonLabel
   const hasSub = Boolean(subHrefRaw && subLabelRaw && isSafeTopFeaturedLink(subHrefRaw))
 
+  // カード画像3枚設定は後方互換のため読み取るが、表示は1枚画像方式へ戻す。
   const imageUrl =
     (settings.imageUrl && isSafeTopFeaturedLink(settings.imageUrl) && settings.imageUrl) ||
     (project.thumbnailUrl && isSafeTopFeaturedLink(project.thumbnailUrl) && project.thumbnailUrl) ||
     DEFAULT_FEATURED_CAMPAIGN_IMAGE
-
-  // cardImagesは「imageUrlが設定されている枠」だけを、順序を保ったまま採用する（1〜2枚のみ登録でも成立させる）
-  const validCardImages: ResolvedFeaturedCampaignCardImage[] = settings.cardImages
-    .filter(card => card.imageUrl && isSafeTopFeaturedLink(card.imageUrl))
-    .map(card => ({
-      imageUrl: card.imageUrl,
-      positionX: clampFeaturedCampaignNumber(card.positionX, 0, 100, DEFAULT_IMAGE_POSITION_X),
-      positionY: clampFeaturedCampaignNumber(card.positionY, 0, 100, DEFAULT_IMAGE_POSITION_Y),
-      scale: clampFeaturedCampaignNumber(card.scale, MIN_IMAGE_SCALE, MAX_IMAGE_SCALE, DEFAULT_IMAGE_SCALE),
-    }))
 
   return {
     projectSlug: settings.projectSlug,
@@ -226,8 +210,6 @@ export function resolveTopFeaturedCampaign(
     mainLabel: settings.mainButtonLabel || DEFAULT_MAIN_BUTTON_LABEL,
     subHref: hasSub ? subHrefRaw : null,
     subLabel: hasSub ? subLabelRaw : null,
-    imageMode: validCardImages.length > 0 ? 'cards' : 'single',
-    cardImages: validCardImages,
     imageUrl,
     imagePositionX: clampFeaturedCampaignNumber(settings.imagePositionX, 0, 100, DEFAULT_IMAGE_POSITION_X),
     imagePositionY: clampFeaturedCampaignNumber(settings.imagePositionY, 0, 100, DEFAULT_IMAGE_POSITION_Y),
