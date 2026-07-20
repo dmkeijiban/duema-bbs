@@ -12,7 +12,7 @@ function ratePercent(selectionCount: number, total: number) {
 export default function SelectMakerAggregateGrid({
   entries,
   total,
-  initialCount = 20,
+  initialCount = 24,
 }: {
   entries: SelectMakerAggregateEntry[]
   total: number
