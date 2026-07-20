@@ -236,30 +236,42 @@ function FeaturedCampaignShowcase({ campaign }: { campaign: ResolvedTopFeaturedC
 
   return (
     <div className="mb-2 overflow-hidden border border-gray-300 bg-white">
-      <div className="flex min-w-0 flex-col gap-1.5 overflow-hidden bg-slate-950 px-3 py-2.5 text-white md:hidden">
-        {(label || subText) && (
-          <div className="flex items-center gap-1.5">
-            {label && (
-              <span className="w-fit shrink-0 rounded bg-amber-300 px-1.5 py-0.5 text-[10px] font-black leading-none text-amber-950">
-                {label}
-              </span>
-            )}
-            {subText && (
-              <span className="truncate text-[10px] font-bold tracking-wide text-amber-300">
-                {subText}
-              </span>
+      <div className="relative flex h-[112px] min-w-0 items-stretch overflow-hidden bg-slate-950 md:hidden">
+        <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-center bg-gradient-to-r from-slate-950 via-slate-950 to-slate-900 px-3 py-2 text-white">
+          {(label || subText) && (
+            <div className="mb-0.5 flex items-center gap-1.5">
+              {label && (
+                <span className="w-fit shrink-0 rounded bg-amber-300 px-1.5 py-0.5 text-[10px] font-black leading-none text-amber-950">
+                  {label}
+                </span>
+              )}
+              {subText && (
+                <span className="truncate text-[9px] font-bold tracking-wide text-amber-300">
+                  {subText}
+                </span>
+              )}
+            </div>
+          )}
+          <h2 className="w-full truncate text-[16px] font-black leading-tight tracking-[-0.055em] text-white">
+            {title}
+          </h2>
+          {description && (
+            <p className="mt-0.5 line-clamp-1 text-[11px] leading-tight text-slate-300">
+              {description}
+            </p>
+          )}
+          <div className={`mt-1.5 grid gap-1.5 ${subHref ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            <Link href={mainHref} prefetch={false} className="rounded bg-blue-600 px-2 py-1.5 text-center text-[11px] font-bold leading-none text-white">
+              {mainLabel}
+            </Link>
+            {subHref && subLabel && (
+              <Link href={subHref} prefetch={false} className="rounded border border-white/70 bg-white/10 px-2 py-1.5 text-center text-[11px] font-bold leading-none text-white">
+                {subLabel}
+              </Link>
             )}
           </div>
-        )}
-        <h2 className="w-full break-words text-[16px] font-black leading-tight tracking-[-0.03em] text-white">
-          {title}
-        </h2>
-        {description && (
-          <p className="line-clamp-2 text-[11px] leading-snug text-slate-300">
-            {description}
-          </p>
-        )}
-        <Link href={mainHref} prefetch={false} aria-label={mainLabel} className="relative block h-28 w-full shrink-0 overflow-hidden rounded-lg bg-stone-900">
+        </div>
+        <Link href={mainHref} prefetch={false} aria-label={mainLabel} className="relative w-24 shrink-0 overflow-hidden border-l border-slate-800 bg-stone-900 sm:w-52">
           {/* 管理画面で任意URLを設定できるためドメイン制限のあるnext/imageではなくimg要素を使用 */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -268,15 +280,8 @@ function FeaturedCampaignShowcase({ campaign }: { campaign: ResolvedTopFeaturedC
             className="absolute inset-0 h-full w-full object-cover"
             style={imageStyle}
           />
+          <span className="absolute inset-y-0 left-0 w-5 bg-gradient-to-r from-slate-950 to-transparent" aria-hidden="true" />
         </Link>
-        <Link href={mainHref} prefetch={false} className="block w-full rounded-md bg-blue-600 px-3 py-2.5 text-center text-[13px] font-black leading-none text-white">
-          {mainLabel}
-        </Link>
-        {subHref && subLabel && (
-          <Link href={subHref} prefetch={false} className="block w-full rounded-md border border-white/70 bg-white/10 px-3 py-2.5 text-center text-[13px] font-bold leading-none text-white">
-            {subLabel}
-          </Link>
-        )}
       </div>
 
       <div className="relative hidden h-[144px] overflow-hidden bg-slate-950 md:grid md:grid-cols-[56%_44%]">
