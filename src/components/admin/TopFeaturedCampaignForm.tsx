@@ -14,7 +14,8 @@ import { updateTopFeaturedCampaignAction, uploadTopFeaturedCampaignImage } from 
 
 // TOP側のレイアウトに合わせた比率（比率が命で絶対px幅は画面幅により変動する）
 const PC_PREVIEW_ASPECT_RATIO = '556 / 144'
-const SP_PREVIEW_ASPECT_RATIO = '360 / 112'
+// スマホは横長バナー右側の画像帯（w-24 × h-28相当=96×112px）と同じ比率
+const SP_PREVIEW_ASPECT_RATIO = '96 / 112'
 
 export type SelectableProject = {
   slug: string
@@ -185,14 +186,14 @@ export function TopFeaturedCampaignForm({
             </div>
           </div>
           <div>
-            <p className="text-xs font-bold text-gray-600">スマホ表示プレビュー</p>
-            <div className="relative mt-1 w-full max-w-[360px] overflow-hidden rounded-lg border bg-stone-900" style={{ aspectRatio: SP_PREVIEW_ASPECT_RATIO }}>
+            <p className="text-xs font-bold text-gray-600">スマホ表示プレビュー（画像帯のみ・横長バナー右側）</p>
+            <div className="relative mt-1 h-28 w-24 overflow-hidden rounded-lg border bg-stone-900" style={{ aspectRatio: SP_PREVIEW_ASPECT_RATIO }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={previewImageUrl} alt="スマホ表示プレビュー" className="absolute inset-0 h-full w-full object-cover" style={imageStyle} />
             </div>
           </div>
         </div>
-        <p className="mt-1 text-[11px] text-gray-400">画像未設定時はプレビュー用に既定画像を表示しています（実際はサムネイル→既定画像の順で表示）。実際の表示幅は画面幅により変動します。</p>
+        <p className="mt-1 text-[11px] text-gray-400">スマホもPCと同じ横長バナー構成です（左：文言＋ボタン、右：画像帯）。画像未設定時はプレビュー用に既定画像を表示しています（実際はサムネイル→既定画像の順で表示）。</p>
 
         <div className="mt-3 space-y-2">
           <label className="block text-xs">
