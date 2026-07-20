@@ -82,10 +82,6 @@ function CardImageSlot({
   uploaded,
   onUpload,
   onRemove,
-  onReset,
-  onChangePositionX,
-  onChangePositionY,
-  onChangeScale,
 }: {
   index: number
   card: FeaturedCampaignCardImage
@@ -94,18 +90,15 @@ function CardImageSlot({
   uploaded: boolean
   onUpload: (file: File) => void
   onRemove: () => void
-  onReset: () => void
-  onChangePositionX: (value: number) => void
-  onChangePositionY: (value: number) => void
-  onChangeScale: (value: number) => void
 }) {
   return (
     <div className="rounded border bg-gray-50 p-3">
       <p className="text-xs font-bold text-gray-700">カード{index + 1}</p>
       <div className="mt-1.5 flex items-center gap-2">
         {card.imageUrl ? (
+          // 一覧サムネイルは形状確認用。実際のTOP表示は縦横比を保ったまま自動配置される（下のプレビュー参照）
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={card.imageUrl} alt={`カード${index + 1}プレビュー`} className="h-16 w-16 rounded border object-cover" />
+          <img src={card.imageUrl} alt={`カード${index + 1}プレビュー`} className="h-16 w-16 rounded border object-contain" />
         ) : (
           <div className="flex h-16 w-16 items-center justify-center rounded border border-dashed text-[10px] text-gray-400">未設定</div>
         )}
@@ -135,24 +128,11 @@ function CardImageSlot({
       {error && <p className="mt-1 text-[11px] font-bold text-red-700">{error}</p>}
       {uploaded && !error && <p className="mt-1 text-[11px] font-bold text-green-700">アップロードしました</p>}
 
-      <div className="mt-2">
-        <ImagePositionSliders
-          positionX={card.positionX}
-          positionY={card.positionY}
-          scale={card.scale}
-          positionXName={`card${index}_positionX`}
-          positionYName={`card${index}_positionY`}
-          scaleName={`card${index}_scale`}
-          onChangePositionX={onChangePositionX}
-          onChangePositionY={onChangePositionY}
-          onChangeScale={onChangeScale}
-        />
-      </div>
+      <p className="mt-2 text-[10px] text-gray-400">カード3枚表示では位置・拡大率は使用されません（縦横比を保ったまま高さ基準で自動配置されます）。</p>
       <input type="hidden" name={`card${index}_imageUrl`} value={card.imageUrl} readOnly />
-
-      <button type="button" onClick={onReset} className="mt-1.5 rounded border border-gray-400 bg-white px-2 py-1 text-[11px] font-bold hover:bg-gray-50">
-        初期位置に戻す
-      </button>
+      <input type="hidden" name={`card${index}_positionX`} value={card.positionX} readOnly />
+      <input type="hidden" name={`card${index}_positionY`} value={card.positionY} readOnly />
+      <input type="hidden" name={`card${index}_scale`} value={card.scale} readOnly />
     </div>
   )
 }
@@ -215,10 +195,6 @@ export function TopFeaturedCampaignForm({
 
   function updateCard(i: number, patch: Partial<FeaturedCampaignCardImage>) {
     setCardImages(prev => prev.map((card, idx) => (idx === i ? { ...card, ...patch } : card)))
-  }
-
-  function resetCardTransform(i: number) {
-    updateCard(i, { positionX: DEFAULT_IMAGE_POSITION_X, positionY: DEFAULT_IMAGE_POSITION_Y, scale: DEFAULT_IMAGE_SCALE })
   }
 
   function setCardFlag(setter: typeof setCardUploading, i: number, value: boolean) {
@@ -327,10 +303,6 @@ export function TopFeaturedCampaignForm({
               uploaded={cardUploaded[i]}
               onUpload={file => handleCardUpload(i, file)}
               onRemove={() => handleCardRemove(i)}
-              onReset={() => resetCardTransform(i)}
-              onChangePositionX={value => updateCard(i, { positionX: value })}
-              onChangePositionY={value => updateCard(i, { positionY: value })}
-              onChangeScale={value => updateCard(i, { scale: value })}
             />
           ))}
         </div>
@@ -340,12 +312,10 @@ export function TopFeaturedCampaignForm({
             <p className="text-xs font-bold text-gray-600">PC表示プレビュー</p>
             <div className="relative mt-1 w-full overflow-hidden rounded-lg border bg-stone-900" style={{ aspectRatio: PC_PREVIEW_ASPECT_RATIO }}>
               {previewMode === 'cards' ? (
-                <div className="absolute inset-0 flex gap-0.5">
+                <div className="absolute inset-0 flex items-stretch justify-center overflow-hidden">
                   {validCards.map((card, i) => (
-                    <div key={i} className="relative h-full min-w-0 flex-1 overflow-hidden rounded-sm bg-stone-900">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={card.imageUrl} alt={`カード${i + 1}プレビュー`} className="absolute inset-0 h-full w-full object-cover" style={computeFeaturedCampaignImageStyle(card.positionX, card.positionY, card.scale)} />
-                    </div>
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={i} src={card.imageUrl} alt={`カード${i + 1}プレビュー`} className="h-full w-auto min-w-0 shrink object-contain" />
                   ))}
                 </div>
               ) : (
@@ -358,12 +328,10 @@ export function TopFeaturedCampaignForm({
             <p className="text-xs font-bold text-gray-600">スマホ表示プレビュー（画像帯のみ・横長バナー右側）</p>
             <div className="relative mt-1 h-28 w-24 overflow-hidden rounded-lg border bg-stone-900" style={{ aspectRatio: SP_PREVIEW_ASPECT_RATIO }}>
               {previewMode === 'cards' ? (
-                <div className="absolute inset-0 flex gap-px">
+                <div className="absolute inset-0 flex items-stretch justify-center overflow-hidden">
                   {validCards.map((card, i) => (
-                    <div key={i} className="relative h-full min-w-0 flex-1 overflow-hidden bg-stone-900">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={card.imageUrl} alt={`カード${i + 1}プレビュー（スマホ）`} className="absolute inset-0 h-full w-full object-cover" style={computeFeaturedCampaignImageStyle(card.positionX, card.positionY, card.scale)} />
-                    </div>
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={i} src={card.imageUrl} alt={`カード${i + 1}プレビュー（スマホ）`} className="h-full w-auto min-w-0 shrink object-contain" />
                   ))}
                 </div>
               ) : (
