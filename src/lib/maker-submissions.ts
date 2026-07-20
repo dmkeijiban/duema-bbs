@@ -95,10 +95,17 @@ export async function getSelectMakerAggregates(projectId: string): Promise<{ tot
   ])
   const typedRows = (rows ?? []) as { card_id: string; name: string; selection_count: number }[]
   const cardIds = typedRows.map(row => row.card_id)
-  const { data: cards } = cardIds.length
-    ? await admin.from('cards').select('id,image_url').in('id', cardIds)
-    : { data: [] as { id: string; image_url: string | null }[] }
-  const imageByCardId = new Map((cards ?? []).map(card => [card.id, card.image_url]))
+  const [{ data: cards }, { data: printings }] = cardIds.length
+    ? await Promise.all([
+      admin.from('cards').select('id,image_url').in('id', cardIds),
+      admin.from('card_printings').select('card_id,image_url').in('card_id', cardIds).not('image_url', 'is', null).order('created_at', { ascending: false }),
+    ])
+    : [{ data: [] as { id: string; image_url: string | null }[] }, { data: [] as { card_id: string; image_url: string | null }[] }]
+  const printingImageByCardId = new Map<string, string>()
+  for (const printing of printings ?? []) {
+    if (printing.image_url && !printingImageByCardId.has(printing.card_id)) printingImageByCardId.set(printing.card_id, printing.image_url)
+  }
+  const imageByCardId = new Map((cards ?? []).map(card => [card.id, card.image_url ?? printingImageByCardId.get(card.id) ?? null]))
   let rank = 0
   let previousCount = Number.NEGATIVE_INFINITY
   const entries = typedRows.map((row, index) => {
