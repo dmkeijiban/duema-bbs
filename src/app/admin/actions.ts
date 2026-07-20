@@ -9,6 +9,7 @@ import { NoticeItem } from '@/components/NoticeBlock'
 import { ADMIN_COOKIE_MAX_AGE_SECONDS, createAdminCookieValue, isAdminPassword, verifyAdminCookie } from '@/lib/admin-auth'
 import { normalizeTopShowcaseMode } from '@/lib/top-showcase'
 import {
+  CARD_IMAGE_SLOT_COUNT,
   clampFeaturedCampaignNumber,
   DEFAULT_IMAGE_POSITION_X,
   DEFAULT_IMAGE_POSITION_Y,
@@ -17,6 +18,7 @@ import {
   MAX_IMAGE_SCALE,
   MIN_IMAGE_SCALE,
   TOP_FEATURED_CAMPAIGN_SETTINGS_KEY,
+  type FeaturedCampaignCardImage,
   type TopFeaturedCampaignSettings,
 } from '@/lib/top-featured-campaign'
 import {
@@ -809,6 +811,29 @@ export async function uploadTopFeaturedCampaignImage(formData: FormData): Promis
   }
 }
 
+// TOP注目企画POPのカード画像1〜3枚目のアップロード（slot: 0〜2）
+export async function uploadTopFeaturedCampaignCardImage(formData: FormData): Promise<{ url?: string; error?: string }> {
+  await checkAdmin()
+  const file = formData.get('image') as File | null
+  if (!file) return { error: '画像が選択されていません' }
+
+  const slot = Number(formData.get('slot'))
+  if (!Number.isInteger(slot) || slot < 0 || slot >= CARD_IMAGE_SLOT_COUNT) return { error: '不正なカード枠です' }
+
+  const validationError = validateImageFile(file)
+  if (validationError) return { error: validationError }
+
+  try {
+    const supabase = createAdminClient()
+    const result = await uploadImage(file, supabase, `top-featured-campaign/card-${slot + 1}/${uuidv4()}`, 'banner')
+    if (result.error || !result.data) return { error: result.error ?? '画像のアップロードに失敗しました' }
+    return { url: result.data.url }
+  } catch (error) {
+    console.warn('top featured campaign card image upload failed:', error)
+    return { error: '画像のアップロードに失敗しました' }
+  }
+}
+
 export async function updateTopFeaturedCampaignAction(formData: FormData) {
   await checkAdmin()
   const value = (name: string) => String(formData.get(name) ?? '').trim()
@@ -826,6 +851,19 @@ export async function updateTopFeaturedCampaignAction(formData: FormData) {
     redirect('/admin/site/top-featured-campaign?error=invalid_url')
   }
 
+  const cardImages: FeaturedCampaignCardImage[] = Array.from({ length: CARD_IMAGE_SLOT_COUNT }, (_, i) => {
+    const cardImageUrl = value(`card${i}_imageUrl`)
+    if (cardImageUrl && !isSafeTopFeaturedLink(cardImageUrl)) {
+      redirect('/admin/site/top-featured-campaign?error=invalid_url')
+    }
+    return {
+      imageUrl: cardImageUrl,
+      positionX: clampFeaturedCampaignNumber(value(`card${i}_positionX`), 0, 100, DEFAULT_IMAGE_POSITION_X),
+      positionY: clampFeaturedCampaignNumber(value(`card${i}_positionY`), 0, 100, DEFAULT_IMAGE_POSITION_Y),
+      scale: clampFeaturedCampaignNumber(value(`card${i}_scale`), MIN_IMAGE_SCALE, MAX_IMAGE_SCALE, DEFAULT_IMAGE_SCALE),
+    }
+  })
+
   const settings: TopFeaturedCampaignSettings = {
     enabled: formData.get('enabled') === 'on',
     projectSlug: value('projectSlug'),
@@ -841,6 +879,7 @@ export async function updateTopFeaturedCampaignAction(formData: FormData) {
     imagePositionX: clampFeaturedCampaignNumber(value('imagePositionX'), 0, 100, DEFAULT_IMAGE_POSITION_X),
     imagePositionY: clampFeaturedCampaignNumber(value('imagePositionY'), 0, 100, DEFAULT_IMAGE_POSITION_Y),
     imageScale: clampFeaturedCampaignNumber(value('imageScale'), MIN_IMAGE_SCALE, MAX_IMAGE_SCALE, DEFAULT_IMAGE_SCALE),
+    cardImages,
   }
 
   const supabase = createAdminClient()

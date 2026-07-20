@@ -230,9 +230,51 @@ function RankingShowcase({ title, users, titleHref }: { title: string; users: Sh
   )
 }
 
+// 管理画面で任意URLを設定できるためドメイン制限のあるnext/imageではなくimg要素を使用
+function CampaignImageArea({
+  campaign,
+  gapClassName,
+  cardRoundedClassName,
+}: {
+  campaign: ResolvedTopFeaturedCampaign
+  gapClassName: string
+  cardRoundedClassName: string
+}) {
+  if (campaign.imageMode === 'cards') {
+    return (
+      <div className={`absolute inset-0 flex ${gapClassName}`}>
+        {campaign.cardImages.map((card, i) => {
+          const style = computeFeaturedCampaignImageStyle(card.positionX, card.positionY, card.scale)
+          return (
+            <div key={i} className={`relative h-full min-w-0 flex-1 overflow-hidden ${cardRoundedClassName} bg-stone-900`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={card.imageUrl}
+                alt={`${campaign.title} ${i + 1}`}
+                className="absolute inset-0 h-full w-full object-cover"
+                style={style}
+              />
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  const style = computeFeaturedCampaignImageStyle(campaign.imagePositionX, campaign.imagePositionY, campaign.imageScale)
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={campaign.imageUrl}
+      alt={campaign.title}
+      className="absolute inset-0 h-full w-full object-cover"
+      style={style}
+    />
+  )
+}
+
 function FeaturedCampaignShowcase({ campaign }: { campaign: ResolvedTopFeaturedCampaign }) {
-  const { label, subText, title, description, mainHref, mainLabel, subHref, subLabel, imageUrl, imagePositionX, imagePositionY, imageScale } = campaign
-  const imageStyle = computeFeaturedCampaignImageStyle(imagePositionX, imagePositionY, imageScale)
+  const { label, subText, title, description, mainHref, mainLabel, subHref, subLabel } = campaign
 
   return (
     <div className="mb-2 overflow-hidden border border-gray-300 bg-white">
@@ -272,15 +314,8 @@ function FeaturedCampaignShowcase({ campaign }: { campaign: ResolvedTopFeaturedC
           </div>
         </div>
         <Link href={mainHref} prefetch={false} aria-label={mainLabel} className="relative w-24 shrink-0 overflow-hidden border-l border-slate-800 bg-stone-900 sm:w-52">
-          {/* 管理画面で任意URLを設定できるためドメイン制限のあるnext/imageではなくimg要素を使用 */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={imageUrl}
-            alt={title}
-            className="absolute inset-0 h-full w-full object-cover"
-            style={imageStyle}
-          />
-          <span className="absolute inset-y-0 left-0 w-5 bg-gradient-to-r from-slate-950 to-transparent" aria-hidden="true" />
+          <CampaignImageArea campaign={campaign} gapClassName="gap-px" cardRoundedClassName="" />
+          <span className="pointer-events-none absolute inset-y-0 left-0 w-5 bg-gradient-to-r from-slate-950 to-transparent" aria-hidden="true" />
         </Link>
       </div>
 
@@ -312,14 +347,8 @@ function FeaturedCampaignShowcase({ campaign }: { campaign: ResolvedTopFeaturedC
           </div>
         </div>
         <Link href={mainHref} prefetch={false} aria-label={mainLabel} className="relative block overflow-hidden bg-stone-900">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={imageUrl}
-            alt={title}
-            className="absolute inset-0 h-full w-full object-cover"
-            style={imageStyle}
-          />
-          <span className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-slate-950 to-transparent" aria-hidden="true" />
+          <CampaignImageArea campaign={campaign} gapClassName="gap-0.5" cardRoundedClassName="rounded-sm" />
+          <span className="pointer-events-none absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-slate-950 to-transparent" aria-hidden="true" />
         </Link>
       </div>
     </div>
