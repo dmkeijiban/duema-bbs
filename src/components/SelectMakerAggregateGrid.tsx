@@ -9,7 +9,7 @@ function ratePercent(selectionCount: number, total: number) {
 }
 
 function proxiedCardImageUrl(imageUrl: string) {
-  return `/api/card-image?url=${encodeURIComponent(imageUrl)}`
+  return `/api/makers/dm26-ex2-card-image?url=${encodeURIComponent(imageUrl)}`
 }
 
 // SELECT型企画のカード別ランキング表示。上位initialCount件を表示し「全部見る」で全件展開する
