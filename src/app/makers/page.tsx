@@ -47,7 +47,8 @@ export default async function MakersPage() {
     ...projects.filter(project => isMakerProjectVisible(project)).map((project): CatalogEntry => {
       const config = parseMakerCatalogConfig(project)
       const ended = isMakerProjectArchived(project)
-      return { id: project.slug, title: project.title, href: `/makers/${project.slug}`, category: ended ? 'archive' as const : config.category, sortOrder: config.sortOrder, description: MAKER_DESCRIPTION_OVERRIDES[project.slug] || config.shortDescription || MAKER_DESCRIPTION_FALLBACKS[project.slug] || '', featured: config.featured, isNew: config.isNew, isLimited: config.isLimited, thumbnailUrl: config.thumbnailUrl }
+      const category = project.slug === 'resume-maker' ? 'create' as const : config.category
+      return { id: project.slug, title: project.title, href: `/makers/${project.slug}`, category: ended ? 'archive' as const : category, sortOrder: config.sortOrder, description: MAKER_DESCRIPTION_OVERRIDES[project.slug] || config.shortDescription || MAKER_DESCRIPTION_FALLBACKS[project.slug] || '', featured: config.featured, isNew: config.isNew, isLimited: config.isLimited, thumbnailUrl: config.thumbnailUrl }
     }),
   ].sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'ja'))
 
