@@ -654,7 +654,7 @@ export default async function MyPage({
             {resume ? (
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
                 <div className="w-28 shrink-0 overflow-hidden rounded border border-gray-200">
-                  <ScaledResumePreview data={resume.data} avatarUrl={profile.avatar_url} photoImageUrl={resume.data.photo?.type === 'card' ? resume.data.photo.imageUrl : null} />
+                  <ScaledResumePreview data={resume.data} avatarUrl={profile.avatar_url} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-gray-900">{resume.isPublic ? '公開中' : '非公開'}</p>

@@ -62,9 +62,6 @@ export const RESUME_ACHIEVEMENT_PRESETS = [
   { key: 'official_win', label: '公認大会優勝' },
   { key: 'national_appearance', label: '全国大会出場' },
   { key: 'judge_license', label: 'ジャッジ資格' },
-  { key: 'first_40_cards', label: '初めて40枚そろえた' },
-  { key: 'strongest_among_friends', label: '友達内最強だった' },
-  { key: 'long_time_favorite', label: '推しカードを長年使っている' },
   { key: 'none', label: '特になし' },
 ] as const
 
