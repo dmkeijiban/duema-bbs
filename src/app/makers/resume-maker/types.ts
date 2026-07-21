@@ -16,5 +16,4 @@ export type ResumeInitialState = {
   isPublic: boolean
   profileDefaults: ResumeProfileDefaults | null
   profileSlug: string | null
-  loggedIn: boolean
 }

@@ -22,11 +22,10 @@ import {
   clampOtherInterestsText,
   emptyResumeData,
   isResumeComplete,
-  sanitizeResumeData,
   type ResumeData,
 } from '@/lib/maker-resume'
 import { ScaledResumePreview } from './ResumePreview'
-import { RESUME_DRAFT_STORAGE_KEY, RESUME_STEPS, RESUME_SHARE_TEXT } from './constants'
+import { RESUME_STEPS, RESUME_SHARE_TEXT } from './constants'
 import type { ResumeInitialState } from './types'
 import { saveResumeSubmission, setResumeVisibility } from './actions'
 
@@ -46,33 +45,12 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   const [isTogglingVisibility, setIsTogglingVisibility] = useState(false)
   const [pngPreview, setPngPreview] = useState<PngPreview | null>(null)
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false)
-  const hydratedRef = useState({ done: false })[0]
 
   useEffect(() => {
     setDeckNameCandidates(getSavedDeckNames())
-    try {
-      if (initial.data) {
-        setData(initial.data)
-      } else {
-        const raw = localStorage.getItem(RESUME_DRAFT_STORAGE_KEY)
-        if (raw) {
-          const parsed = JSON.parse(raw) as { data?: unknown; isPublic?: unknown }
-          setData(sanitizeResumeData(parsed.data))
-          if (typeof parsed.isPublic === 'boolean') setIsPublic(parsed.isPublic)
-        }
-      }
-    } catch {
-      localStorage.removeItem(RESUME_DRAFT_STORAGE_KEY)
-    }
-    hydratedRef.done = true
+    if (initial.data) setData(initial.data)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  useEffect(() => {
-    if (!hydratedRef.done) return
-    try { localStorage.setItem(RESUME_DRAFT_STORAGE_KEY, JSON.stringify({ data, isPublic })) } catch { /* ignore quota errors */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, isPublic])
 
   useEffect(() => {
     if (!mobilePreviewOpen && !pngPreview) return
@@ -82,11 +60,11 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   }, [mobilePreviewOpen, pngPreview])
 
   useEffect(() => {
-    if (saveState !== 'dirty' || !initial.loggedIn) return
+    if (saveState !== 'dirty') return
     const handler = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
-  }, [saveState, initial.loggedIn])
+  }, [saveState])
 
   const complete = isResumeComplete(data)
   const avatarUrl = initial.profileDefaults?.avatarUrl ?? null
@@ -110,7 +88,6 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   }
 
   async function persistToDb(nextIsPublic: boolean): Promise<string | null> {
-    if (!initial.loggedIn) return null
     setSaveState('saving')
     const result = await saveResumeSubmission({ data, isPublic: nextIsPublic })
     setMessage(result.message)
@@ -151,7 +128,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
         reader.readAsDataURL(blob)
       })
       setPngPreview({ src, fileName, file })
-      if (initial.loggedIn) void persistToDb(isPublic)
+      void persistToDb(isPublic)
     } catch {
       setMessage('画像生成に失敗しました')
     } finally {
@@ -179,7 +156,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
     setIsSharing(true)
     const shareWindow = window.open('', '_blank')
     try {
-      if (initial.loggedIn) await persistToDb(isPublic)
+      await persistToDb(isPublic)
       const intent = `https://twitter.com/intent/tweet?${new URLSearchParams({ text: RESUME_SHARE_TEXT, url: 'https://www.duema-bbs.com/makers/resume-maker' })}`
       if (shareWindow) shareWindow.location.href = intent
       else window.open(intent, '_blank', 'noopener,noreferrer')
@@ -198,7 +175,12 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
     <div className="pb-28">
       <header className="mb-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
         <h1 className="text-lg font-black text-slate-900">デュエマ履歴書メーカー</h1>
-        <p className="mt-1 text-xs text-slate-500">あなたのデュエマ自己紹介を、本物の履歴書風にまとめよう。入力内容はこの端末に自動保存されます。</p>
+        <p className="mt-1 text-xs text-slate-500">あなたのデュエマ自己紹介を、本物の履歴書風にまとめよう。</p>
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold text-blue-700">
+          <Link href="/mypage" className="hover:underline">マイページに戻る</Link>
+          <Link href="/makers/resume-maker/submissions" className="hover:underline">みんなの履歴書を見る</Link>
+          {initial.profileSlug && <Link href={`/u/${initial.profileSlug}`} className="hover:underline">投稿者ページで見る</Link>}
+        </div>
         <nav className="mt-3 flex gap-2">
           {RESUME_STEPS.map(item => (
             <button key={item.id} type="button" onClick={() => setStep(item.id)} className={`min-h-9 flex-1 rounded-lg border px-2 text-sm font-bold transition-colors ${step === item.id ? 'border-emerald-700 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'}`}>
@@ -263,7 +245,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
                 </div>
                 <p className="min-w-0 flex-1 text-xs text-slate-600">
                   証明写真にはプロフィールアイコンが使われます。
-                  {initial.loggedIn ? <Link href="/mypage/edit" className="ml-1 font-bold text-blue-700 hover:underline">アイコンを変更する</Link> : '登録するとアイコンを設定できます。'}
+                  <Link href="/mypage/edit" className="ml-1 font-bold text-blue-700 hover:underline">アイコンを変更する</Link>
                 </p>
               </div>
             </section>
@@ -321,13 +303,13 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
                 <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">本名、住所、学校名、勤務先など、個人を特定できる情報は入力しないでください。</p>
               </section>
 
-              {initial.loggedIn && submissionId && (
+              {submissionId && (
                 <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
                   <div className="flex items-center justify-between">
                     <h2 className="font-black text-slate-900">履歴書の公開設定</h2>
                     <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${isPublic ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{isPublic ? '公開中' : '非公開'}</span>
                   </div>
-                  <p className="mt-2 text-xs text-slate-600">公開すると、あなたの投稿者ページにこの履歴書が表示されます。{!isPublic && '非公開中は、あなた以外の投稿者ページには表示されません。'}</p>
+                  <p className="mt-2 text-xs text-slate-600">{isPublic ? 'あなたの投稿者ページと「みんなの履歴書」に表示されています。' : 'あなた以外には表示されません。'}</p>
                   <button type="button" onClick={() => void handleToggleVisibility()} disabled={isTogglingVisibility} className={`mt-3 min-h-10 w-full rounded-lg px-4 text-sm font-bold text-white disabled:opacity-60 ${isPublic ? 'bg-slate-500' : 'bg-emerald-700'}`}>
                     {isTogglingVisibility ? '変更中…' : isPublic ? '非公開にする' : '公開する'}
                   </button>
@@ -339,26 +321,20 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
                 <p className="mt-1 text-xs text-slate-600">入力内容を確認して、履歴書を保存・画像出力できます。</p>
                 <button type="button" onClick={() => setMobilePreviewOpen(true)} className="mt-2 text-xs font-bold text-blue-700 hover:underline lg:hidden">完成プレビューを見る</button>
 
-                {initial.loggedIn ? (
-                  <>
-                    <p className={`mt-3 text-xs font-bold ${saveStatusClass}`}>{saveStatusLabel}</p>
-                    <button type="button" disabled={!complete || saveState === 'saving'} onClick={() => void handleSaveResume()} className="mt-2 min-h-12 w-full rounded-xl bg-emerald-700 text-base font-black text-white disabled:opacity-40">
-                      {saveState === 'saving' ? '保存中…' : submissionId ? '変更を保存する' : '履歴書を保存する'}
-                    </button>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <button type="button" disabled={!complete || isSavingImage} onClick={() => void handleSaveImage()} className="min-h-10 rounded-lg border border-slate-300 text-sm font-bold text-slate-700 disabled:opacity-40">{isSavingImage ? '生成中...' : '画像を保存'}</button>
-                      <button type="button" disabled={!complete || isSharing} onClick={() => void handleShare()} className="min-h-10 rounded-lg border border-slate-300 text-sm font-bold text-slate-700 disabled:opacity-40">{isSharing ? '共有準備中...' : 'Xで共有'}</button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <button type="button" disabled={!complete || isSavingImage} onClick={() => void handleSaveImage()} className="mt-3 min-h-12 w-full rounded-xl bg-blue-700 text-base font-black text-white disabled:opacity-40">{isSavingImage ? '生成中...' : '画像を保存する'}</button>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <button type="button" disabled={!complete || isSharing} onClick={() => void handleShare()} className="min-h-10 rounded-lg border border-slate-300 text-sm font-bold text-slate-700 disabled:opacity-40">{isSharing ? '共有準備中...' : 'Xで共有'}</button>
-                      <Link href="/login?mode=signup" className="flex min-h-10 items-center justify-center rounded-lg border border-emerald-700 text-sm font-bold text-emerald-800">無料登録して保存</Link>
-                    </div>
-                    <p className="mt-2 text-[11px] text-slate-500">無料登録すると、後から編集したり、投稿者ページに公開できます。</p>
-                  </>
+                <p className={`mt-3 text-xs font-bold ${saveStatusClass}`}>{saveStatusLabel}</p>
+                <button type="button" disabled={!complete || saveState === 'saving'} onClick={() => void handleSaveResume()} className="mt-2 min-h-12 w-full rounded-xl bg-emerald-700 text-base font-black text-white disabled:opacity-40">
+                  {saveState === 'saving' ? '保存中…' : submissionId ? '変更を保存する' : '履歴書を保存する'}
+                </button>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <button type="button" disabled={!complete || isSavingImage} onClick={() => void handleSaveImage()} className="min-h-10 rounded-lg border border-slate-300 text-sm font-bold text-slate-700 disabled:opacity-40">{isSavingImage ? '生成中...' : '画像を保存'}</button>
+                  <button type="button" disabled={!complete || isSharing} onClick={() => void handleShare()} className="min-h-10 rounded-lg border border-slate-300 text-sm font-bold text-slate-700 disabled:opacity-40">{isSharing ? '共有準備中...' : 'Xで共有'}</button>
+                </div>
+
+                {saveState === 'saved' && submissionId && (
+                  <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold text-blue-700">
+                    {initial.profileSlug && <Link href={`/u/${initial.profileSlug}`} className="hover:underline">投稿者ページで確認</Link>}
+                    <Link href="/makers/resume-maker/submissions" className="hover:underline">みんなの履歴書を見る</Link>
+                  </div>
                 )}
 
                 {initial.profileSlug && <Link href={`/u/${initial.profileSlug}`} className="mt-3 block text-center text-xs font-bold text-slate-500 hover:underline">投稿者ページを見る</Link>}
@@ -383,21 +359,11 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-2 backdrop-blur">
         <div className="mx-auto flex max-w-[1200px] items-center gap-2">
-          {initial.loggedIn ? (
-            <>
-              <button type="button" disabled={!complete || saveState === 'saving'} onClick={() => void handleSaveResume()} className="min-h-11 flex-[2] rounded-lg bg-emerald-700 px-3 text-sm font-black text-white disabled:bg-slate-300">
-                {saveState === 'saving' ? '保存中…' : submissionId ? '変更を保存する' : '履歴書を保存する'}
-              </button>
-              <button type="button" disabled={!complete || isSavingImage} onClick={() => void handleSaveImage()} className="min-h-11 flex-1 rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 disabled:opacity-40">{isSavingImage ? '生成中...' : '画像保存'}</button>
-              <button type="button" disabled={!complete || isSharing} onClick={() => void handleShare()} className="min-h-11 flex-1 rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 disabled:opacity-40">{isSharing ? '共有中...' : 'X共有'}</button>
-            </>
-          ) : (
-            <>
-              <button type="button" disabled={!complete || isSavingImage} onClick={() => void handleSaveImage()} className="min-h-11 flex-[2] rounded-lg bg-blue-700 px-3 text-sm font-black text-white disabled:bg-slate-300">{isSavingImage ? '生成中...' : '画像を保存する'}</button>
-              <button type="button" disabled={!complete || isSharing} onClick={() => void handleShare()} className="min-h-11 flex-1 rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 disabled:opacity-40">{isSharing ? '共有中...' : 'X共有'}</button>
-              <Link href="/login?mode=signup" className="flex min-h-11 flex-1 items-center justify-center rounded-lg border border-emerald-700 px-2 text-center text-[11px] font-bold text-emerald-800">無料登録</Link>
-            </>
-          )}
+          <button type="button" disabled={!complete || saveState === 'saving'} onClick={() => void handleSaveResume()} className="min-h-11 flex-[2] rounded-lg bg-emerald-700 px-3 text-sm font-black text-white disabled:bg-slate-300">
+            {saveState === 'saving' ? '保存中…' : submissionId ? '変更を保存する' : '履歴書を保存する'}
+          </button>
+          <button type="button" disabled={!complete || isSavingImage} onClick={() => void handleSaveImage()} className="min-h-11 flex-1 rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 disabled:opacity-40">{isSavingImage ? '生成中...' : '画像保存'}</button>
+          <button type="button" disabled={!complete || isSharing} onClick={() => void handleShare()} className="min-h-11 flex-1 rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 disabled:opacity-40">{isSharing ? '共有中...' : 'X共有'}</button>
         </div>
       </div>
 
