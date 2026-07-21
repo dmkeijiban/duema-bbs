@@ -15,6 +15,8 @@ export default async function GenericMakerPage({ params, searchParams }: { param
   const { slug } = await params
   const { edit } = await searchParams
   const admin = createAdminClient()
+  const supabaseForUser = await createClient()
+  const { data: { user: currentUser } } = await supabaseForUser.auth.getUser()
   const { data: project } = await admin.from('maker_projects').select('id,slug,title,type,status,is_public,config').eq('slug', slug).maybeSingle()
   if (!project || project.type !== 'select' || !isMakerProjectPageAccessible(project)) notFound()
   const parsedConfig = parseSelectMakerConfig(project.config)
@@ -25,9 +27,8 @@ export default async function GenericMakerPage({ params, searchParams }: { param
     : parsedConfig
   let initialDraft: Parameters<typeof SelectMaker>[0]['initialDraft']
   if (edit && /^[0-9a-f-]{36}$/i.test(edit)) {
-    const supabase = await createClient(); const { data: { user } } = await supabase.auth.getUser()
     const isAdmin = verifyAdminCookie((await cookies()).get(ADMIN_COOKIE)?.value)
-    const owned = await getOwnedMakerSubmissionIds(project.id, [edit], user?.id ?? null)
+    const owned = await getOwnedMakerSubmissionIds(project.id, [edit], currentUser?.id ?? null)
     if (!isAdmin && !owned.has(edit)) notFound()
     const [{ data: submission }, { data: items }] = await Promise.all([
       admin.from('maker_submissions').select('id,title,comment,creation_session_id,is_public').eq('id', edit).eq('project_id', project.id).eq('is_valid', true).maybeSingle(),
@@ -54,5 +55,5 @@ export default async function GenericMakerPage({ params, searchParams }: { param
       title: submission.title, comment: submission.comment ?? '', sessionId: submission.creation_session_id, submissionId: submission.id, completedEventSent: true,
     }
   }
-  return <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4"><div className="mx-auto max-w-[1440px] overflow-x-hidden"><MakerDefaultTitleProvider title={config.resultTitle}><SelectMaker slug={slug} config={config} initialDraft={initialDraft}/></MakerDefaultTitleProvider></div></main>
+  return <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4"><div className="mx-auto max-w-[1440px] overflow-x-hidden"><MakerDefaultTitleProvider title={config.resultTitle}><SelectMaker slug={slug} config={config} initialDraft={initialDraft} loggedIn={Boolean(currentUser)}/></MakerDefaultTitleProvider></div></main>
 }

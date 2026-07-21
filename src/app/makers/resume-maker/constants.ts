@@ -1,5 +1,3 @@
-export const RESUME_DRAFT_STORAGE_KEY = 'duema-bbs:resume-maker:draft:v1'
-
 export const RESUME_STEPS = [
   { id: 1, label: '基本情報' },
   { id: 2, label: '好きなもの・使用情報' },

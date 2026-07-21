@@ -18,7 +18,7 @@ type PngPreview = { src: string; title: string; fileName: string; file: File }
 
 const printingKey = cardPrintingKey
 
-export default function SelectMaker({ slug, config, initialDraft }: { slug: string; config: SelectMakerConfig; initialDraft?: Draft }) {
+export default function SelectMaker({ slug, config, initialDraft, loggedIn }: { slug: string; config: SelectMakerConfig; initialDraft?: Draft; loggedIn?: boolean }) {
   const storageKey = `select-maker:${slug}:v2`
   const legacyStorageKey = `select-maker:${slug}:v1`
   const [selected, setSelected] = useState<DeckCard[]>([])
@@ -278,7 +278,14 @@ export default function SelectMaker({ slug, config, initialDraft }: { slug: stri
       onShare={() => void share()}
       onReset={reset}
     />
-    {slug === 'my-duema-9' && <Link href="/makers/resume-maker" className="mb-3 block rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-center text-sm font-bold text-indigo-800 hover:bg-indigo-100">デュエマ履歴書を作る</Link>}
+    {slug === 'my-duema-9' && (loggedIn ? (
+      <Link href="/makers/resume-maker" className="mb-3 block rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-center text-sm font-bold text-indigo-800 hover:bg-indigo-100">デュエマ履歴書を作る</Link>
+    ) : (
+      <div className="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-center">
+        <Link href="/login?mode=signup&next=/mypage" className="block text-sm font-bold text-indigo-800 hover:underline">この9選をプロフィールに残す</Link>
+        <p className="mt-1 text-xs text-indigo-700">デュエマ履歴書の作成には無料登録が必要です。</p>
+      </div>
+    ))}
     <div className="grid gap-3 lg:grid-cols-[minmax(0,1.85fr)_minmax(320px,1fr)] lg:items-start">
       <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5"><div className="flex items-center justify-between"><h2 className="font-black">選択済みカード <span className="sr-only">枚数</span></h2><strong>{selected.length} / {config.maxChoices}枚</strong></div>
         {selected.length === 0 ? <div className="mt-3 flex min-h-[150px] items-center justify-center rounded-xl bg-slate-100 px-5 text-center text-sm text-slate-500"><div><p className="font-bold text-slate-700">カードが選択されていません</p><p className="mt-1">右のカード検索から追加してください</p></div></div> : <div data-testid="selected-card-list" className="mt-3 grid grid-cols-3 gap-2">{selected.map((card, index) => <div key={`${printingKey(card)}-${index}`} className="relative aspect-[5/7] overflow-hidden rounded-lg border border-slate-200 bg-slate-100"><button type="button" onClick={() => setZoom(card)} className="h-full w-full"><img src={card.imageUrl ?? '/images/card-placeholder.svg'} alt={card.name} className="h-full w-full object-contain" /></button><button type="button" onClick={() => remove(index)} aria-label={`${card.name}を削除`} className="absolute right-1 top-1 rounded-full bg-black/75 px-2 py-1 text-xs text-white">×</button>{config.reorderable && selected.length > 1 && <div className="absolute bottom-1 left-1 flex gap-1"><button type="button" onClick={() => move(index,-1)} disabled={index === 0} aria-label={`${card.name}を前へ移動`} className="rounded bg-white/90 px-2 disabled:opacity-40">←</button><button type="button" onClick={() => move(index,1)} disabled={index === selected.length - 1} aria-label={`${card.name}を後ろへ移動`} className="rounded bg-white/90 px-2 disabled:opacity-40">→</button></div>}</div>)}</div>}
