@@ -52,7 +52,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   const [versionsLoading, setVersionsLoading] = useState(false)
   const hydrated = useRef(false)
   const versionAbort = useRef<AbortController | null>(null)
-  const { query, setQuery, cards: results, loading: resultsLoading, hasMore, loadMore } = useCardCatalogSearch({ makerSlug: RESUME_MAKER_SLUG })
+  const { query, setQuery, cards: results, loading: resultsLoading, hasMore, loadMore } = useCardCatalogSearch()
 
   useEffect(() => {
     setDeckNameCandidates(getSavedDeckNames())
