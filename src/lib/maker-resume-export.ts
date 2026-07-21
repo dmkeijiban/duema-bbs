@@ -3,8 +3,6 @@
 
 import {
   RESUME_ACHIEVEMENT_PRESETS,
-  RESUME_MAX_DECK_ROWS,
-  RESUME_MAX_HISTORY_ROWS,
   RESUME_SOCIAL_TAG_PRESETS,
   type ResumeData,
 } from '@/lib/maker-resume'
@@ -158,20 +156,34 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
   context.lineTo(contentX + contentWidth, MARGIN + 92)
   context.stroke()
 
+  const infoRows = [
+    { a: '名前', b: data.handleName || '未入力' },
+    { a: 'デュエマ開始時期', b: data.startedAt || '-' },
+    { a: '性別', b: data.gender },
+    { a: '年齢', b: data.ageGroup },
+    { a: '活動地域', b: data.region || '-' },
+    { a: '好きな文明', b: data.favoriteCivilization || '-' },
+    { a: 'プレイスタイル', b: data.playStyle || '-' },
+    { a: 'デュエプレ', b: data.playsDuelMastersPlay },
+  ]
+  const infoRowHeight = 52
+  const infoTableHeight = infoRows.length * infoRowHeight
+
   const photoSize = 230
+  const photoHeight = infoTableHeight
   const photoX = contentX + contentWidth - photoSize
   const photoY = MARGIN + 120
   context.strokeStyle = LINE
   context.lineWidth = 2
-  context.strokeRect(photoX, photoY, photoSize, photoSize * 1.05)
+  context.strokeRect(photoX, photoY, photoSize, photoHeight)
   if (photo?.url) {
     const image = await loadImage(photo.url, photo.kind === 'avatar' ? 'anonymous' : null)
     if (image) {
-      const scale = Math.min(photoSize / image.width, (photoSize * 1.05) / image.height)
+      const scale = Math.min(photoSize / image.width, photoHeight / image.height)
       const w = image.width * scale
       const h = image.height * scale
       try {
-        context.drawImage(image, photoX + (photoSize - w) / 2, photoY + (photoSize * 1.05 - h) / 2, w, h)
+        context.drawImage(image, photoX + (photoSize - w) / 2, photoY + (photoHeight - h) / 2, w, h)
       } catch { /* CORSでの描画失敗時は枠のみ残す */ }
     }
   }
@@ -180,31 +192,21 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
     context.fillStyle = INK
     context.textAlign = 'center'
     context.textBaseline = 'top'
-    context.fillText(photo.caption, photoX + photoSize / 2, photoY + photoSize * 1.05 + 10, photoSize)
+    context.fillText(photo.caption, photoX + photoSize / 2, photoY + photoHeight + 10, photoSize)
   }
 
   const infoWidth = contentWidth - photoSize - 40
-  const infoRows = [
-    { a: 'ハンドルネーム', b: data.handleName || '未入力' },
-    { a: 'デュエマ開始時期', b: data.startedAt || '-' },
-    { a: '活動地域', b: data.region || '-' },
-    { a: '好きな文明', b: data.favoriteCivilization || '-' },
-    { a: 'プレイスタイル', b: data.playStyle || '-' },
+  drawTable(context, contentX, MARGIN + 120, infoWidth, 170, infoRows, infoRowHeight)
+
+  let cursorY = MARGIN + 120 + infoTableHeight + 50
+
+  const usageRows = [
+    { a: '使用デッキ', b: data.currentDecksText || '-' },
+    { a: '好きなYouTuber', b: data.favoriteYouTuber || '-' },
+    { a: 'デュエマ以外で好きな事', b: data.otherInterests || '-' },
   ]
-  drawTable(context, contentX, MARGIN + 120, infoWidth, 170, infoRows, 52)
-
-  let cursorY = MARGIN + 120 + infoRows.length * 52 + 50
-  sectionTitle(context, 'デュエマ歴', contentX, cursorY)
-  cursorY += 56
-  const historyRows = Array.from({ length: RESUME_MAX_HISTORY_ROWS }, (_, index) => data.history[index] ?? { period: '', content: '' })
-  drawTable(context, contentX, cursorY, contentWidth, 200, historyRows.map(row => ({ a: row.period, b: row.content })), 48)
-  cursorY += RESUME_MAX_HISTORY_ROWS * 48 + 40
-
-  sectionTitle(context, '使用デッキ歴', contentX, cursorY)
-  cursorY += 56
-  const deckRows = Array.from({ length: RESUME_MAX_DECK_ROWS }, (_, index) => data.deckHistory[index] ?? { period: '', deckName: '' })
-  drawTable(context, contentX, cursorY, contentWidth, 200, deckRows.map(row => ({ a: row.period, b: row.deckName })), 48)
-  cursorY += RESUME_MAX_DECK_ROWS * 48 + 44
+  drawTable(context, contentX, cursorY, contentWidth, 220, usageRows, 56)
+  cursorY += usageRows.length * 56 + 40
 
   sectionTitle(context, '大会・デュエマ実績', contentX, cursorY)
   cursorY += 56
@@ -220,18 +222,18 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
   }
   cursorY += 30
 
-  sectionTitle(context, '私にとってデュエマとは', contentX, cursorY)
+  sectionTitle(context, 'フリースペース', contentX, cursorY)
   cursorY += 56
-  const aboutBoxHeight = 150
+  const freeSpaceBoxHeight = 180
   context.strokeStyle = '#cbd5e1'
-  context.strokeRect(contentX, cursorY, contentWidth, aboutBoxHeight)
+  context.strokeRect(contentX, cursorY, contentWidth, freeSpaceBoxHeight)
   context.font = '22px sans-serif'
   context.fillStyle = INK
   context.textAlign = 'left'
   context.textBaseline = 'top'
-  const aboutLines = wrapText(context, data.aboutDuema || '（未入力）', contentWidth - 32, 5)
-  aboutLines.forEach((line, index) => context.fillText(line, contentX + 16, cursorY + 16 + index * 28, contentWidth - 32))
-  cursorY += aboutBoxHeight + 40
+  const freeSpaceLines = wrapText(context, data.freeSpace || '（未入力）', contentWidth - 32, 6)
+  freeSpaceLines.forEach((line, index) => context.fillText(line, contentX + 16, cursorY + 16 + index * 28, contentWidth - 32))
+  cursorY += freeSpaceBoxHeight + 40
 
   sectionTitle(context, '対戦・交流について', contentX, cursorY)
   cursorY += 56
@@ -255,6 +257,6 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
 }
 
 export function resumePngFileName(handleName: string) {
-  const safe = (handleName || 'デュエマ履歴書').replace(/[\\/:*?"<>| -]/g, '_').trim().slice(0, 40)
+  const safe = (handleName || 'デュエマ履歴書').replace(/[\\/:*?"<>| -]/g, '_').trim().slice(0, 40)
   return `${safe || 'デュエマ履歴書'}.png`
 }

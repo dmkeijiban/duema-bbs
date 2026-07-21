@@ -10,15 +10,21 @@ import { cardPrintingKey, exactCardImageUrl } from '@/lib/card-catalog-shared'
 import { renderResumeExportImage, resumePngFileName } from '@/lib/maker-resume-export'
 import {
   RESUME_ACHIEVEMENT_PRESETS,
+  RESUME_AGE_GROUPS,
+  RESUME_DUEL_MASTERS_PLAY_OPTIONS,
+  RESUME_FAVORITE_CARD_LABEL,
   RESUME_FAVORITE_CIVILIZATIONS,
-  RESUME_HISTORY_PRESETS,
-  RESUME_MAX_DECK_ROWS,
-  RESUME_MAX_HISTORY_ROWS,
-  RESUME_PHOTO_CAPTION_LABELS,
+  RESUME_GENDERS,
+  RESUME_MAX_CURRENT_DECKS_TEXT,
+  RESUME_MAX_FAVORITE_YOUTUBER,
+  RESUME_MAX_FREE_SPACE,
+  RESUME_MAX_OTHER_INTERESTS,
   RESUME_PLAY_STYLES,
   RESUME_REGIONS,
   RESUME_SOCIAL_TAG_PRESETS,
-  clampAboutText,
+  clampCurrentDecksText,
+  clampFreeSpaceText,
+  clampOtherInterestsText,
   emptyResumeData,
   isResumeComplete,
   sanitizeResumeData,
@@ -96,40 +102,17 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
     setData(current => ({ ...current, [key]: value }))
   }
 
-  function addHistoryRow() {
-    if (data.history.length >= RESUME_MAX_HISTORY_ROWS) return
-    update('history', [...data.history, { id: crypto.randomUUID(), period: '', content: '' }])
-  }
-  function updateHistoryRow(id: string, patch: Partial<{ period: string; content: string }>) {
-    update('history', data.history.map(row => row.id === id ? { ...row, ...patch } : row))
-  }
-  function removeHistoryRow(id: string) {
-    update('history', data.history.filter(row => row.id !== id))
-  }
-  function moveHistoryRow(index: number, delta: number) {
-    const target = index + delta
-    if (target < 0 || target >= data.history.length) return
-    const next = [...data.history]
-    ;[next[index], next[target]] = [next[target], next[index]]
-    update('history', next)
-  }
-
-  function addDeckRow() {
-    if (data.deckHistory.length >= RESUME_MAX_DECK_ROWS) return
-    update('deckHistory', [...data.deckHistory, { id: crypto.randomUUID(), period: '', deckName: '' }])
-  }
-  function updateDeckRow(id: string, patch: Partial<{ period: string; deckName: string }>) {
-    update('deckHistory', data.deckHistory.map(row => row.id === id ? { ...row, ...patch } : row))
-  }
-  function removeDeckRow(id: string) {
-    update('deckHistory', data.deckHistory.filter(row => row.id !== id))
-  }
-
   function toggleAchievement(key: string) {
     update('achievements', data.achievements.includes(key) ? data.achievements.filter(item => item !== key) : [...data.achievements, key])
   }
   function toggleSocialTag(key: string) {
     update('socialTags', data.socialTags.includes(key) ? data.socialTags.filter(item => item !== key) : [...data.socialTags, key])
+  }
+
+  function appendDeckCandidate(name: string) {
+    const current = data.currentDecksText
+    const next = current ? `${current}、${name}` : name
+    update('currentDecksText', clampCurrentDecksText(next))
   }
 
   async function openVersionPicker(card: DeckCard) {
@@ -153,17 +136,11 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   }
 
   function selectPhotoCard(card: DeckCard) {
-    const caption = data.photo?.type === 'card' ? data.photo.caption : 'favorite'
-    const photo: ResumePhotoCard = { type: 'card', cardId: card.id, sourceKey: card.sourceKey ?? null, faceSideIndex: card.matchedFace?.sideIndex ?? null, name: card.name, imageUrl: card.imageUrl, caption }
+    const photo: ResumePhotoCard = { type: 'card', cardId: card.id, sourceKey: card.sourceKey ?? null, faceSideIndex: card.matchedFace?.sideIndex ?? null, name: card.name, imageUrl: card.imageUrl }
     update('photo', photo)
     setVersionCard(null)
     setVersionOptions([])
     setPhotoPickerOpen(false)
-  }
-
-  function setPhotoCaption(caption: ResumePhotoCard['caption']) {
-    if (data.photo?.type !== 'card') return
-    update('photo', { ...data.photo, caption })
   }
 
   async function persistToDb(nextIsPublic: boolean): Promise<string | null> {
@@ -175,7 +152,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   }
 
   async function handleSaveResume() {
-    if (isSavingResume || !complete) { if (!complete) setMessage('ハンドルネームを入力してください'); return }
+    if (isSavingResume || !complete) { if (!complete) setMessage('名前を入力してください'); return }
     setIsSavingResume(true)
     try { await persistToDb(isPublic) } finally { setIsSavingResume(false) }
   }
@@ -194,13 +171,13 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   }
 
   async function handleSaveImage() {
-    if (isSavingImage || !complete) { if (!complete) setMessage('ハンドルネームを入力してください'); return }
+    if (isSavingImage || !complete) { if (!complete) setMessage('名前を入力してください'); return }
     setIsSavingImage(true)
     try {
       const photo = data.photo?.type === 'avatar'
         ? { kind: 'avatar' as const, url: initial.profileDefaults?.avatarUrl ?? null, caption: null }
         : data.photo?.type === 'card'
-          ? { kind: 'card' as const, url: data.photo.imageUrl ? exactCardImageUrl({ id: data.photo.cardId, imageUrl: data.photo.imageUrl }, RESUME_MAKER_SLUG) : null, caption: RESUME_PHOTO_CAPTION_LABELS[data.photo.caption] }
+          ? { kind: 'card' as const, url: data.photo.imageUrl ? exactCardImageUrl({ id: data.photo.cardId, imageUrl: data.photo.imageUrl }, RESUME_MAKER_SLUG) : null, caption: RESUME_FAVORITE_CARD_LABEL }
           : null
       const blob = await renderResumeExportImage(data, photo)
       const fileName = resumePngFileName(data.handleName)
@@ -236,7 +213,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   }
 
   async function handleShare() {
-    if (isSharing || !complete) { if (!complete) setMessage('ハンドルネームを入力してください'); return }
+    if (isSharing || !complete) { if (!complete) setMessage('名前を入力してください'); return }
     setIsSharing(true)
     const shareWindow = window.open('', '_blank')
     try {
@@ -259,7 +236,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
     <div className="pb-24">
       <header className="mb-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
         <h1 className="text-lg font-black text-slate-900">デュエマ履歴書メーカー</h1>
-        <p className="mt-1 text-xs text-slate-500">あなたのデュエマ歴を、本物の履歴書風にまとめよう。入力内容はこの端末に自動保存されます。</p>
+        <p className="mt-1 text-xs text-slate-500">あなたのデュエマ自己紹介を、本物の履歴書風にまとめよう。入力内容はこの端末に自動保存されます。</p>
         <nav className="mt-3 flex gap-2">
           {RESUME_STEPS.map(item => (
             <button key={item.id} type="button" onClick={() => setStep(item.id)} className={`min-h-9 flex-1 rounded-lg border px-2 text-sm font-bold transition-colors ${step === item.id ? 'border-emerald-700 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'}`}>
@@ -277,11 +254,21 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
             <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
               <h2 className="font-black text-slate-900">基本情報</h2>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <label className="text-xs font-bold text-slate-700">ハンドルネーム（必須）
+                <label className="text-xs font-bold text-slate-700">名前（必須）
                   <input value={data.handleName} onChange={e => update('handleName', e.target.value.slice(0, 30))} maxLength={30} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base font-bold text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" placeholder="デュエマ太郎" />
                 </label>
                 <label className="text-xs font-bold text-slate-700">デュエマを始めた時期
-                  <input value={data.startedAt} onChange={e => update('startedAt', e.target.value.slice(0, 20))} maxLength={20} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" placeholder="例: 2023年" />
+                  <input value={data.startedAt} onChange={e => update('startedAt', e.target.value.slice(0, 20))} maxLength={20} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" placeholder="例: 小学生の頃" />
+                </label>
+                <label className="text-xs font-bold text-slate-700">性別
+                  <select value={data.gender} onChange={e => update('gender', e.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100">
+                    {RESUME_GENDERS.map(option => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </label>
+                <label className="text-xs font-bold text-slate-700">年齢
+                  <select value={data.ageGroup} onChange={e => update('ageGroup', e.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100">
+                    {RESUME_AGE_GROUPS.map(option => <option key={option} value={option}>{option}</option>)}
+                  </select>
                 </label>
                 <label className="text-xs font-bold text-slate-700">活動地域
                   <select value={data.region} onChange={e => update('region', e.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100">
@@ -303,23 +290,16 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
                 </label>
               </div>
 
-              <h2 className="mt-5 font-black text-slate-900">証明写真</h2>
+              <h2 className="mt-5 font-black text-slate-900">好きなカード</h2>
               <div className="mt-2 flex gap-2">
-                <button type="button" onClick={() => update('photo', { type: 'avatar' })} className={`min-h-10 flex-1 rounded-lg border px-3 text-sm font-bold ${data.photo?.type === 'avatar' ? 'border-emerald-700 bg-emerald-50 text-emerald-800' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}>プロフィールアイコンを使う</button>
                 <button type="button" onClick={() => setPhotoPickerOpen(true)} className={`min-h-10 flex-1 rounded-lg border px-3 text-sm font-bold ${data.photo?.type === 'card' ? 'border-emerald-700 bg-emerald-50 text-emerald-800' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}>カードを選ぶ</button>
+                <button type="button" onClick={() => update('photo', { type: 'avatar' })} className={`min-h-10 flex-1 rounded-lg border px-3 text-sm font-bold ${data.photo?.type === 'avatar' ? 'border-emerald-700 bg-emerald-50 text-emerald-800' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}>プロフィールアイコンを使う</button>
               </div>
-              {data.photo?.type === 'avatar' && <div className="mt-3 flex items-center gap-3"><div className="h-16 w-16 overflow-hidden rounded-full border border-slate-300 bg-slate-100">{avatarUrl ? <img src={avatarUrl} alt="プロフィールアイコン" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-[10px] text-slate-400">未設定</div>}</div><p className="text-xs text-slate-500">プロフィールのアイコンを証明写真として使います。</p></div>}
+              {data.photo?.type === 'avatar' && <div className="mt-3 flex items-center gap-3"><div className="h-16 w-16 overflow-hidden rounded-full border border-slate-300 bg-slate-100">{avatarUrl ? <img src={avatarUrl} alt="プロフィールアイコン" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-[10px] text-slate-400">未設定</div>}</div><p className="text-xs text-slate-500">プロフィールのアイコンを好きなカードの代わりに使います。</p></div>}
               {data.photo?.type === 'card' && (
                 <div className="mt-3 flex items-start gap-3">
                   <div className="h-24 w-20 overflow-hidden rounded-lg border border-slate-300 bg-slate-100">{data.photo.imageUrl ? <img src={data.photo.imageUrl} alt={data.photo.name} className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-[10px] text-slate-400">画像なし</div>}</div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold text-slate-800">{data.photo.name}</p>
-                    <div className="mt-2 grid grid-cols-2 gap-1.5">
-                      {(Object.keys(RESUME_PHOTO_CAPTION_LABELS) as ResumePhotoCard['caption'][]).map(caption => (
-                        <button key={caption} type="button" onClick={() => setPhotoCaption(caption)} className={`min-h-8 rounded-md border px-2 text-xs font-bold ${data.photo?.type === 'card' && data.photo.caption === caption ? 'border-emerald-700 bg-emerald-50 text-emerald-800' : 'border-slate-300 text-slate-600'}`}>{RESUME_PHOTO_CAPTION_LABELS[caption]}</button>
-                      ))}
-                    </div>
-                  </div>
+                  <p className="min-w-0 flex-1 truncate text-sm font-bold text-slate-800">{data.photo.name}</p>
                 </div>
               )}
             </section>
@@ -327,38 +307,28 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
 
           {step === 2 && (
             <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
-              <div className="flex items-center justify-between"><h2 className="font-black text-slate-900">デュエマ歴</h2><span className="text-xs text-slate-500">{data.history.length} / {RESUME_MAX_HISTORY_ROWS}行</span></div>
-              <div className="mt-3 space-y-2">
-                {data.history.map((row, index) => (
-                  <div key={row.id} className="rounded-xl border border-slate-200 p-2">
-                    <div className="flex gap-2">
-                      <input value={row.period} onChange={e => updateHistoryRow(row.id, { period: e.target.value.slice(0, 20) })} maxLength={20} placeholder="時期（例: 2023年4月）" className="h-9 w-32 shrink-0 rounded-lg border border-slate-300 bg-slate-50 px-2 text-sm outline-none focus:border-emerald-700" />
-                      <input value={row.content} onChange={e => updateHistoryRow(row.id, { content: e.target.value.slice(0, 40) })} maxLength={40} placeholder="内容" list="resume-history-presets" className="h-9 min-w-0 flex-1 rounded-lg border border-slate-300 bg-slate-50 px-2 text-sm outline-none focus:border-emerald-700" />
-                    </div>
-                    <div className="mt-1.5 flex justify-end gap-1">
-                      <button type="button" onClick={() => moveHistoryRow(index, -1)} disabled={index === 0} aria-label="上へ移動" className="min-h-7 rounded border border-slate-300 px-2 text-xs disabled:opacity-30">↑</button>
-                      <button type="button" onClick={() => moveHistoryRow(index, 1)} disabled={index === data.history.length - 1} aria-label="下へ移動" className="min-h-7 rounded border border-slate-300 px-2 text-xs disabled:opacity-30">↓</button>
-                      <button type="button" onClick={() => removeHistoryRow(row.id)} className="min-h-7 rounded border border-red-300 px-2 text-xs text-red-700">削除</button>
-                    </div>
-                  </div>
-                ))}
-                <datalist id="resume-history-presets">{RESUME_HISTORY_PRESETS.map(preset => <option key={preset.key} value={preset.label} />)}</datalist>
-                <button type="button" onClick={addHistoryRow} disabled={data.history.length >= RESUME_MAX_HISTORY_ROWS} className="min-h-10 w-full rounded-lg border border-dashed border-slate-300 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40">+ 行を追加</button>
-              </div>
+              <h2 className="font-black text-slate-900">使用デッキ</h2>
+              <textarea value={data.currentDecksText} onChange={e => update('currentDecksText', clampCurrentDecksText(e.target.value))} maxLength={RESUME_MAX_CURRENT_DECKS_TEXT} rows={3} placeholder="例: 赤単我我我、青魔導具、昔は連ドラを使用" className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-slate-50 p-2 text-sm outline-none focus:border-emerald-700" />
+              <p className="mt-1 text-right text-[11px] text-slate-400">{data.currentDecksText.length} / {RESUME_MAX_CURRENT_DECKS_TEXT}</p>
+              {deckNameCandidates.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {deckNameCandidates.map(name => (
+                    <button key={name} type="button" onClick={() => appendDeckCandidate(name)} className="min-h-7 rounded-full border border-slate-300 px-2.5 text-xs text-slate-600 hover:bg-slate-50">+ {name}</button>
+                  ))}
+                </div>
+              )}
 
-              <div className="mt-5 flex items-center justify-between"><h2 className="font-black text-slate-900">使用デッキ歴</h2><span className="text-xs text-slate-500">{data.deckHistory.length} / {RESUME_MAX_DECK_ROWS}行</span></div>
-              <div className="mt-3 space-y-2">
-                {data.deckHistory.map(row => (
-                  <div key={row.id} className="flex gap-2">
-                    <input value={row.period} onChange={e => updateDeckRow(row.id, { period: e.target.value.slice(0, 20) })} maxLength={20} placeholder="時期" className="h-9 w-24 shrink-0 rounded-lg border border-slate-300 bg-slate-50 px-2 text-sm outline-none focus:border-emerald-700" />
-                    <input value={row.deckName} onChange={e => updateDeckRow(row.id, { deckName: e.target.value.slice(0, 60) })} maxLength={60} placeholder="デッキ名（候補から選択・手入力可）" list="resume-deck-name-candidates" className="h-9 min-w-0 flex-1 rounded-lg border border-slate-300 bg-slate-50 px-2 text-sm outline-none focus:border-emerald-700" />
-                    <button type="button" onClick={() => removeDeckRow(row.id)} className="min-h-9 shrink-0 rounded-lg border border-red-300 px-2 text-xs text-red-700">削除</button>
-                  </div>
-                ))}
-                <datalist id="resume-deck-name-candidates">{deckNameCandidates.map(name => <option key={name} value={name} />)}</datalist>
-                {deckNameCandidates.length === 0 && <p className="text-xs text-slate-400">デッキメーカーで保存したデッキがあると、名前を候補から選べます。</p>}
-                <button type="button" onClick={addDeckRow} disabled={data.deckHistory.length >= RESUME_MAX_DECK_ROWS} className="min-h-10 w-full rounded-lg border border-dashed border-slate-300 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40">+ 行を追加</button>
-              </div>
+              <h2 className="mt-5 font-black text-slate-900">好きなYouTuber</h2>
+              <input value={data.favoriteYouTuber} onChange={e => update('favoriteYouTuber', e.target.value.slice(0, RESUME_MAX_FAVORITE_YOUTUBER))} maxLength={RESUME_MAX_FAVORITE_YOUTUBER} placeholder="自由記述（任意）" className="mt-2 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm outline-none focus:border-emerald-700" />
+
+              <h2 className="mt-4 font-black text-slate-900">デュエマ以外で好きな事</h2>
+              <textarea value={data.otherInterests} onChange={e => update('otherInterests', clampOtherInterestsText(e.target.value))} maxLength={RESUME_MAX_OTHER_INTERESTS} rows={2} placeholder="自由記述（任意）" className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-slate-50 p-2 text-sm outline-none focus:border-emerald-700" />
+              <p className="mt-1 text-right text-[11px] text-slate-400">{data.otherInterests.length} / {RESUME_MAX_OTHER_INTERESTS}</p>
+
+              <h2 className="mt-4 font-black text-slate-900">デュエプレ</h2>
+              <select value={data.playsDuelMastersPlay} onChange={e => update('playsDuelMastersPlay', e.target.value)} className="mt-2 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100">
+                {RESUME_DUEL_MASTERS_PLAY_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+              </select>
             </section>
           )}
 
@@ -372,9 +342,9 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
               </div>
               <input value={data.achievementNote} onChange={e => update('achievementNote', e.target.value.slice(0, 40))} maxLength={40} placeholder="自由記述（任意）" className="mt-2 h-9 w-full rounded-lg border border-slate-300 bg-slate-50 px-2 text-sm outline-none focus:border-emerald-700" />
 
-              <h2 className="mt-5 font-black text-slate-900">私にとってデュエマとは</h2>
-              <textarea value={data.aboutDuema} onChange={e => update('aboutDuema', clampAboutText(e.target.value))} maxLength={120} rows={4} placeholder="自由に書いてみましょう（最大120文字）" className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-slate-50 p-2 text-sm outline-none focus:border-emerald-700" />
-              <p className="mt-1 text-right text-[11px] text-slate-400">{data.aboutDuema.length} / 120</p>
+              <h2 className="mt-5 font-black text-slate-900">フリースペース</h2>
+              <textarea value={data.freeSpace} onChange={e => update('freeSpace', clampFreeSpaceText(e.target.value))} maxLength={RESUME_MAX_FREE_SPACE} rows={4} placeholder="自由に書いてみましょう" className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-slate-50 p-2 text-sm outline-none focus:border-emerald-700" />
+              <p className="mt-1 text-right text-[11px] text-slate-400">{data.freeSpace.length} / {RESUME_MAX_FREE_SPACE}</p>
 
               <h2 className="mt-4 font-black text-slate-900">対戦・交流について</h2>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -427,7 +397,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
       {photoPickerOpen && (
         <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3" onMouseDown={event => { if (event.currentTarget === event.target) setPhotoPickerOpen(false) }}>
           <section role="dialog" aria-modal="true" aria-labelledby="resume-photo-picker-title" className="flex max-h-[calc(100dvh-24px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b px-4 py-3"><h2 id="resume-photo-picker-title" className="font-black">証明写真にするカードを選ぶ</h2><button type="button" onClick={() => setPhotoPickerOpen(false)} aria-label="閉じる" className="flex h-11 w-11 items-center justify-center rounded-full text-2xl hover:bg-slate-100">×</button></div>
+            <div className="flex items-center justify-between border-b px-4 py-3"><h2 id="resume-photo-picker-title" className="font-black">好きなカードを選ぶ</h2><button type="button" onClick={() => setPhotoPickerOpen(false)} aria-label="閉じる" className="flex h-11 w-11 items-center justify-center rounded-full text-2xl hover:bg-slate-100">×</button></div>
             <div className="min-h-0 flex-1 overflow-auto p-2">
               <CardCatalogSearchPanel cards={results} query={query} loading={resultsLoading} hasMore={hasMore} onLoadMore={loadMore} onSelect={card => void openVersionPicker(card)} onQueryChange={setQuery} />
             </div>
