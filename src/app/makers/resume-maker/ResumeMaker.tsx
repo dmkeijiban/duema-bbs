@@ -71,7 +71,6 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   useEffect(() => {
     if (!hydratedRef.done) return
     try { localStorage.setItem(RESUME_DRAFT_STORAGE_KEY, JSON.stringify({ data, isPublic })) } catch { /* ignore quota errors */ }
-    setSaveState(current => (current === 'saving' ? current : 'dirty'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, isPublic])
 
@@ -94,6 +93,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
 
   function update<K extends keyof ResumeData>(key: K, value: ResumeData[K]) {
     setData(current => ({ ...current, [key]: value }))
+    setSaveState(current => (current === 'saving' ? current : 'dirty'))
   }
 
   function toggleAchievement(key: string) {
