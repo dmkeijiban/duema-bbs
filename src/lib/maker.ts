@@ -147,6 +147,7 @@ export function makerCommunityLabel(type: string) {
   if (type === 'selection' || type === 'prediction') return 'みんなの予想'
   if (type === 'ranking') return 'みんなのランキング'
   if (type === 'select') return 'みんなのカード選択'
+  if (type === 'resume') return 'みんなの履歴書'
   return 'みんなの作品'
 }
 

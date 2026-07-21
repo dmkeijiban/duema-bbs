@@ -8,6 +8,8 @@ import { getActivityNotifications, type ActivityNotification } from '@/lib/activ
 import { getCachedUserRankings } from '@/lib/cached-queries'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
+import { getOwnResumeSubmission } from '@/lib/maker-resume-queries'
+import { ScaledResumePreview } from '@/app/makers/resume-maker/ResumePreview'
 
 type Profile = {
   display_name: string
@@ -554,12 +556,13 @@ export default async function MyPage({
     redirect('/account/reactivate')
   }
 
-  const [myThreads, myPosts, rankings, activityCounts, notifications] = await Promise.all([
+  const [myThreads, myPosts, rankings, activityCounts, notifications, resume] = await Promise.all([
     getMyThreads(user.id),
     getMyPosts(user.id),
     getCachedUserRankings(),
     getMyActivityCounts(user.id),
     getActivityNotifications({ userId: user.id, sessionId: null }),
+    getOwnResumeSubmission(user.id),
   ])
 
   const emptySuggestion = notifications.length === 0
@@ -643,6 +646,32 @@ export default async function MyPage({
           ) : emptySuggestion ? (
             <EmptyNotificationSuggestion suggestion={emptySuggestion} />
           ) : null}
+
+          <section className="rounded border border-gray-200 bg-white">
+            <div className="border-b border-blue-100 bg-blue-50 px-4 py-3">
+              <h2 className="text-sm font-bold text-blue-900">デュエマ履歴書</h2>
+            </div>
+            {resume ? (
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+                <div className="w-28 shrink-0 overflow-hidden rounded border border-gray-200">
+                  <ScaledResumePreview data={resume.data} avatarUrl={profile.avatar_url} photoImageUrl={resume.data.photo?.type === 'card' ? resume.data.photo.imageUrl : null} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-gray-900">{resume.isPublic ? '公開中' : '非公開'}</p>
+                  <p className="mt-1 text-xs text-gray-600">画像の保存やX共有は編集画面から行えます。</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Link href="/makers/resume-maker" className="inline-flex items-center justify-center rounded border border-blue-300 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50">履歴書を編集</Link>
+                    <Link href={`/u/${profile.profile_slug}`} className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">投稿者ページで見る</Link>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4">
+                <p className="text-sm text-gray-600">あなたのデュエマ歴を、本物の履歴書風にまとめよう。</p>
+                <Link href="/makers/resume-maker" className="mt-3 inline-flex items-center justify-center rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">履歴書を作る</Link>
+              </div>
+            )}
+          </section>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="rounded border border-gray-200 bg-white">
