@@ -12,9 +12,12 @@ export const RESUME_MAX_DECK_ROWS = 5
 export const RESUME_MAX_DECK_PERIOD = 20
 export const RESUME_MAX_DECK_NAME = 60
 export const RESUME_MAX_ACHIEVEMENT_NOTE = 40
-export const RESUME_MAX_ABOUT = 120
-export const RESUME_MAX_ABOUT_LINES = 4
 export const RESUME_MAX_SOCIAL_NOTE = 40
+export const RESUME_MAX_CURRENT_DECKS_TEXT = 150
+export const RESUME_MAX_FAVORITE_YOUTUBER = 60
+export const RESUME_MAX_OTHER_INTERESTS = 100
+export const RESUME_MAX_FREE_SPACE = 200
+export const RESUME_MAX_FREE_SPACE_LINES = 8
 
 export type ResumeHistoryEntry = { id: string; period: string; content: string }
 export type ResumeDeckEntry = { id: string; period: string; deckName: string }
@@ -25,7 +28,6 @@ export type ResumePhotoCard = {
   faceSideIndex: number | null
   name: string
   imageUrl: string | null
-  caption: 'favorite' | 'partner' | 'first' | 'ace'
 }
 export type ResumePhoto = { type: 'avatar' } | ResumePhotoCard | null
 
@@ -36,26 +38,23 @@ export type ResumeData = {
   region: string
   favoriteCivilization: string
   playStyle: string
+  gender: string
+  ageGroup: string
   photo: ResumePhoto
-  history: ResumeHistoryEntry[]
-  deckHistory: ResumeDeckEntry[]
+  currentDecksText: string
+  favoriteYouTuber: string
+  otherInterests: string
+  playsDuelMastersPlay: string
   achievements: string[]
   achievementNote: string
-  aboutDuema: string
+  freeSpace: string
   socialTags: string[]
   socialNote: string
+  /** 旧デュエマ歴。新画面には表示欄がないため編集はできないが、既存データを壊さないよう保持する。 */
+  history: ResumeHistoryEntry[]
+  /** 旧使用デッキ歴。新規保存時は currentDecksText を正本とし、この配列は追記しない。 */
+  deckHistory: ResumeDeckEntry[]
 }
-
-export const RESUME_HISTORY_PRESETS = [
-  { key: 'start', label: 'デュエマを始めた' },
-  { key: 'first_deck', label: '初めてデッキを作った' },
-  { key: 'first_tournament', label: '初めて大会に参加' },
-  { key: 'first_win', label: '初優勝' },
-  { key: 'cs_debut', label: 'CS初参加' },
-  { key: 'retired', label: '引退' },
-  { key: 'comeback', label: '復帰' },
-  { key: 'other', label: 'その他' },
-] as const
 
 export const RESUME_ACHIEVEMENT_PRESETS = [
   { key: 'cs_win', label: 'CS優勝' },
@@ -79,13 +78,6 @@ export const RESUME_SOCIAL_TAG_PRESETS = [
   { key: 'x_casual', label: 'Xで気軽に絡んでください' },
 ] as const
 
-export const RESUME_PHOTO_CAPTION_LABELS: Record<ResumePhotoCard['caption'], string> = {
-  favorite: '一番好きなカード',
-  partner: '相棒',
-  first: '最初に手に入れた切札',
-  ace: '俺の切札',
-}
-
 export const RESUME_REGIONS = [
   '北海道', '東北', '関東', '甲信越', '北陸', '東海', '関西', '中国', '四国', '九州・沖縄', '海外', '無回答',
 ] as const
@@ -93,18 +85,39 @@ export const RESUME_REGIONS = [
 export const RESUME_FAVORITE_CIVILIZATIONS = DUEMA_CIVILIZATIONS
 export const RESUME_PLAY_STYLES = DUEMA_PLAY_STYLES
 
+export const RESUME_UNANSWERED = '未回答'
+
+export const RESUME_GENDERS = ['男', '女', 'その他', RESUME_UNANSWERED] as const
+export const RESUME_AGE_GROUPS = ['10代', '20代', '30代', '40代', '50代', '60代', 'その他', RESUME_UNANSWERED] as const
+export const RESUME_DUEL_MASTERS_PLAY_OPTIONS = ['やってる', 'やってない', RESUME_UNANSWERED] as const
+
+export const RESUME_FAVORITE_CARD_LABEL = '好きなカード'
+
 function clampText(value: unknown, max: number): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : ''
 }
 
-export function clampAboutText(value: string): string {
-  const text = value.slice(0, RESUME_MAX_ABOUT)
-  const lines = text.split('\n').slice(0, RESUME_MAX_ABOUT_LINES)
+function clampMultilineText(value: unknown, maxChars: number, maxLines: number): string {
+  const text = (typeof value === 'string' ? value : '').slice(0, maxChars)
+  const lines = text.split('\n').slice(0, maxLines)
   return lines.join('\n')
 }
 
-function clampAbout(value: unknown): string {
-  return clampAboutText(typeof value === 'string' ? value : '')
+/** @deprecated フリースペースの旧名。互換のため残置。 */
+export function clampAboutText(value: string): string {
+  return clampMultilineText(value, RESUME_MAX_FREE_SPACE, RESUME_MAX_FREE_SPACE_LINES)
+}
+
+export function clampFreeSpaceText(value: string): string {
+  return clampMultilineText(value, RESUME_MAX_FREE_SPACE, RESUME_MAX_FREE_SPACE_LINES)
+}
+
+export function clampCurrentDecksText(value: string): string {
+  return clampMultilineText(value, RESUME_MAX_CURRENT_DECKS_TEXT, 6)
+}
+
+export function clampOtherInterestsText(value: string): string {
+  return clampMultilineText(value, RESUME_MAX_OTHER_INTERESTS, 4)
 }
 
 function sanitizePresetKeys(value: unknown, allowed: readonly { key: string }[], max: number): string[] {
@@ -121,6 +134,12 @@ function sanitizePresetKeys(value: unknown, allowed: readonly { key: string }[],
   return result
 }
 
+/** 単純な選択肢配列（region/gender/ageGroup/duelMastersPlay等）を検証し、未該当なら fallback を返す。 */
+function sanitizeChoice(value: unknown, allowed: readonly string[], max: number, fallback: string): string {
+  const text = clampText(value, max)
+  return (allowed as readonly string[]).includes(text) ? text : fallback
+}
+
 function sanitizePhoto(value: unknown): ResumePhoto {
   if (!value || typeof value !== 'object') return null
   const raw = value as Record<string, unknown>
@@ -128,7 +147,6 @@ function sanitizePhoto(value: unknown): ResumePhoto {
   if (raw.type === 'card') {
     const cardId = typeof raw.cardId === 'string' ? raw.cardId : ''
     if (!cardId) return null
-    const caption = ['favorite', 'partner', 'first', 'ace'].includes(String(raw.caption)) ? raw.caption as ResumePhotoCard['caption'] : 'favorite'
     return {
       type: 'card',
       cardId,
@@ -136,7 +154,6 @@ function sanitizePhoto(value: unknown): ResumePhoto {
       faceSideIndex: Number.isInteger(raw.faceSideIndex) ? Number(raw.faceSideIndex) : null,
       name: clampText(raw.name, 100),
       imageUrl: typeof raw.imageUrl === 'string' ? raw.imageUrl : null,
-      caption,
     }
   }
   return null
@@ -166,11 +183,28 @@ function sanitizeDeckHistory(value: unknown): ResumeDeckEntry[] {
   })
 }
 
+/** 新項目「使用デッキ」が未入力の場合のみ、旧・使用デッキ歴のデッキ名を結合して初期値にする（一度きりの移行目的）。 */
+function deriveCurrentDecksText(raw: Record<string, unknown>, legacyDeckHistory: ResumeDeckEntry[]): string {
+  const direct = clampCurrentDecksText(typeof raw.currentDecksText === 'string' ? raw.currentDecksText : '')
+  if (direct) return direct
+  if (legacyDeckHistory.length === 0) return ''
+  const joined = legacyDeckHistory.map(entry => entry.deckName).filter(Boolean).join('、')
+  return clampCurrentDecksText(joined)
+}
+
+/** 新項目「フリースペース」が未入力の場合のみ、旧「私にとってデュエマとは」(aboutDuema) を引き継ぐ。 */
+function deriveFreeSpace(raw: Record<string, unknown>): string {
+  const direct = clampFreeSpaceText(typeof raw.freeSpace === 'string' ? raw.freeSpace : '')
+  if (direct) return direct
+  return clampFreeSpaceText(typeof raw.aboutDuema === 'string' ? raw.aboutDuema : '')
+}
+
 /** 未検証の入力（localStorage・フォーム）を安全なResumeDataへ正規化する。壊れたデータは空値へフォールバックする。 */
 export function sanitizeResumeData(value: unknown): ResumeData {
   const raw = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>
   const civilizationValue = clampText(raw.favoriteCivilization, 20)
   const playStyleValue = clampText(raw.playStyle, 20)
+  const legacyDeckHistory = sanitizeDeckHistory(raw.deckHistory)
   return {
     version: 1,
     handleName: clampText(raw.handleName, RESUME_MAX_HANDLE_NAME),
@@ -178,14 +212,20 @@ export function sanitizeResumeData(value: unknown): ResumeData {
     region: RESUME_REGIONS.includes(clampText(raw.region, RESUME_MAX_REGION) as typeof RESUME_REGIONS[number]) ? clampText(raw.region, RESUME_MAX_REGION) : '',
     favoriteCivilization: RESUME_FAVORITE_CIVILIZATIONS.some(o => o.label === civilizationValue) ? civilizationValue : '',
     playStyle: RESUME_PLAY_STYLES.some(o => o.label === playStyleValue) ? playStyleValue : '',
+    gender: sanitizeChoice(raw.gender, RESUME_GENDERS, 10, RESUME_UNANSWERED),
+    ageGroup: sanitizeChoice(raw.ageGroup, RESUME_AGE_GROUPS, 10, RESUME_UNANSWERED),
     photo: sanitizePhoto(raw.photo),
-    history: sanitizeHistory(raw.history),
-    deckHistory: sanitizeDeckHistory(raw.deckHistory),
+    currentDecksText: deriveCurrentDecksText(raw, legacyDeckHistory),
+    favoriteYouTuber: clampText(raw.favoriteYouTuber, RESUME_MAX_FAVORITE_YOUTUBER),
+    otherInterests: clampOtherInterestsText(typeof raw.otherInterests === 'string' ? raw.otherInterests : ''),
+    playsDuelMastersPlay: sanitizeChoice(raw.playsDuelMastersPlay, RESUME_DUEL_MASTERS_PLAY_OPTIONS, 10, RESUME_UNANSWERED),
     achievements: sanitizePresetKeys(raw.achievements, RESUME_ACHIEVEMENT_PRESETS, RESUME_ACHIEVEMENT_PRESETS.length),
     achievementNote: clampText(raw.achievementNote, RESUME_MAX_ACHIEVEMENT_NOTE),
-    aboutDuema: clampAbout(raw.aboutDuema),
+    freeSpace: deriveFreeSpace(raw),
     socialTags: sanitizePresetKeys(raw.socialTags, RESUME_SOCIAL_TAG_PRESETS, RESUME_SOCIAL_TAG_PRESETS.length),
     socialNote: clampText(raw.socialNote, RESUME_MAX_SOCIAL_NOTE),
+    history: sanitizeHistory(raw.history),
+    deckHistory: legacyDeckHistory,
   }
 }
 
