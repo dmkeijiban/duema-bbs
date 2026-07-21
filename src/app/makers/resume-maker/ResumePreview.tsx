@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   RESUME_ACHIEVEMENT_PRESETS,
-  RESUME_FAVORITE_CARD_LABEL,
   RESUME_SOCIAL_TAG_PRESETS,
   type ResumeData,
 } from '@/lib/maker-resume'
@@ -15,27 +14,31 @@ function Chip({ children }: { children: React.ReactNode }) {
   return <span className="inline-block rounded-full border border-slate-400 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-800">{children}</span>
 }
 
-function InfoTable({ rows }: { rows: [string, string][] }) {
+function DefaultAvatarGlyph() {
   return (
-    <table className="w-full border-collapse text-sm">
-      <tbody>
-        {rows.map(([label, value]) => (
-          <tr key={label} className="border border-slate-400">
-            <th className="w-32 border-r border-slate-400 bg-slate-50 px-2 py-2 text-left text-xs font-bold text-slate-600">{label}</th>
-            <td className="whitespace-pre-wrap break-words px-3 py-2 font-bold">{value}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <svg className="h-1/2 w-1/2 text-slate-400" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+    </svg>
   )
 }
 
-export function ResumePreview({ data, avatarUrl, photoImageUrl }: { data: ResumeData; avatarUrl: string | null; photoImageUrl: string | null }) {
+function FieldRow({ cells }: { cells: [string, string][] }) {
+  return (
+    <div className="grid divide-x divide-slate-400 border-b border-slate-400 last:border-b-0" style={{ gridTemplateColumns: `repeat(${cells.length}, 1fr)` }}>
+      {cells.map(([label, value]) => (
+        <div key={label} className="flex min-w-0">
+          <div className="w-[86px] shrink-0 border-r border-slate-400 bg-slate-50 px-2 py-2 text-xs font-bold text-slate-600">{label}</div>
+          <div className="min-w-0 flex-1 truncate px-2 py-2 text-sm font-bold">{value}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function ResumePreview({ data, avatarUrl }: { data: ResumeData; avatarUrl: string | null }) {
   const createdAtLabel = new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Tokyo' }).format(new Date())
   const achievementLabels = data.achievements.map(key => RESUME_ACHIEVEMENT_PRESETS.find(preset => preset.key === key)?.label).filter((v): v is Exclude<typeof v, undefined> => v !== undefined)
   const socialLabels = data.socialTags.map(key => RESUME_SOCIAL_TAG_PRESETS.find(preset => preset.key === key)?.label).filter((v): v is Exclude<typeof v, undefined> => v !== undefined)
-  const photoUrl = data.photo?.type === 'avatar' ? avatarUrl : data.photo?.type === 'card' ? photoImageUrl : null
-  const hasPhoto = data.photo?.type === 'avatar' || data.photo?.type === 'card'
 
   return (
     <div style={{ width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT }} className="shrink-0 border-2 border-slate-800 bg-[#fdfdfb] p-8 font-serif text-slate-900">
@@ -45,32 +48,22 @@ export function ResumePreview({ data, avatarUrl, photoImageUrl }: { data: Resume
       </div>
 
       <div className="mt-4 flex gap-4">
-        <div className="flex-1">
-          <InfoTable rows={[
-            ['名前', data.handleName || '未入力'],
-            ['デュエマ開始時期', data.startedAt || '-'],
-            ['性別', data.gender],
-            ['年齢', data.ageGroup],
-            ['活動地域', data.region || '-'],
-            ['好きな文明', data.favoriteCivilization || '-'],
-            ['プレイスタイル', data.playStyle || '-'],
-            ['デュエプレ', data.playsDuelMastersPlay],
-          ]} />
+        <div className="flex-1 border border-slate-400">
+          <FieldRow cells={[['名前', data.handleName || '未入力']]} />
+          <FieldRow cells={[['開始時期', data.startedAt || '-'], ['活動地域', data.region || '-']]} />
+          <FieldRow cells={[['性別', data.gender], ['年齢', data.ageGroup], ['デュエプレ', data.playsDuelMastersPlay]]} />
+          <FieldRow cells={[['好きな文明', data.favoriteCivilization || '-'], ['プレイスタイル', data.playStyle || '-']]} />
         </div>
-        <div className="w-[150px] shrink-0">
-          <div className="flex h-[270px] w-[150px] items-center justify-center border-2 border-slate-800 bg-slate-100">
-            {photoUrl ? <img src={photoUrl} alt="好きなカード" className="h-full w-full object-cover" /> : <span className="text-[11px] text-slate-400">好きなカード</span>}
-          </div>
-          {hasPhoto && <p className="mt-1 text-center text-[10px] font-bold text-slate-700">{RESUME_FAVORITE_CARD_LABEL}</p>}
+        <div className="h-[150px] w-[150px] shrink-0 overflow-hidden border-2 border-slate-800 bg-slate-100">
+          {avatarUrl ? <img src={avatarUrl} alt="プロフィールアイコン" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center"><DefaultAvatarGlyph /></div>}
         </div>
       </div>
 
       <section className="mt-4">
-        <InfoTable rows={[
-          ['使用デッキ', data.currentDecksText || '-'],
-          ['好きなYouTuber', data.favoriteYouTuber || '-'],
-          ['デュエマ以外で好きな事', data.otherInterests || '-'],
-        ]} />
+        <FieldRow cells={[['使用デッキ', data.currentDecksText || '-']]} />
+        <div className="border-x border-b border-slate-400">
+          <FieldRow cells={[['好きなYouTuber', data.favoriteYouTuber || '-'], ['好きな事', data.otherInterests || '-']]} />
+        </div>
       </section>
 
       <section className="mt-4">
@@ -95,7 +88,7 @@ export function ResumePreview({ data, avatarUrl, photoImageUrl }: { data: Resume
   )
 }
 
-export function ScaledResumePreview({ data, avatarUrl, photoImageUrl, className }: { data: ResumeData; avatarUrl: string | null; photoImageUrl: string | null; className?: string }) {
+export function ScaledResumePreview({ data, avatarUrl, className }: { data: ResumeData; avatarUrl: string | null; className?: string }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [scale, setScale] = useState(1)
 
@@ -112,7 +105,7 @@ export function ScaledResumePreview({ data, avatarUrl, photoImageUrl, className 
   return (
     <div ref={containerRef} className={className} style={{ height: PREVIEW_HEIGHT * scale }}>
       <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT }}>
-        <ResumePreview data={data} avatarUrl={avatarUrl} photoImageUrl={photoImageUrl} />
+        <ResumePreview data={data} avatarUrl={avatarUrl} />
       </div>
     </div>
   )

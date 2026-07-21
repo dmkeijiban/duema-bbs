@@ -7,7 +7,7 @@ import {
   type ResumeData,
 } from '@/lib/maker-resume'
 
-export type ResumeExportPhoto = { kind: 'avatar' | 'card'; url: string | null; caption: string | null }
+export type ResumeExportPhoto = { url: string | null }
 
 const CANVAS_WIDTH = 1240
 const CANVAS_HEIGHT = 1754
@@ -17,10 +17,10 @@ const SUB_INK = '#52606d'
 const LINE = '#334155'
 const PAPER = '#fdfdfb'
 
-function loadImage(url: string, crossOrigin: 'anonymous' | null): Promise<HTMLImageElement | null> {
+function loadImage(url: string): Promise<HTMLImageElement | null> {
   return new Promise(resolve => {
     const image = new Image()
-    if (crossOrigin) image.crossOrigin = crossOrigin
+    image.crossOrigin = 'anonymous'
     image.onload = () => resolve(image)
     image.onerror = () => resolve(null)
     image.src = url
@@ -64,31 +64,40 @@ function sectionTitle(context: CanvasRenderingContext2D, text: string, x: number
   context.stroke()
 }
 
-function drawTable(context: CanvasRenderingContext2D, x: number, y: number, width: number, colAWidth: number, rows: { a: string; b: string }[], rowHeight: number) {
-  context.strokeStyle = '#cbd5e1'
-  context.fillStyle = INK
-  rows.forEach((row, index) => {
-    const rowY = y + index * rowHeight
-    context.strokeRect(x, rowY, width, rowHeight)
+/** 1行に複数セル（ラベル+値）を等幅で並べる罫線付きグリッド行を描画する。 */
+function drawFieldGridRow(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, cells: { label: string; value: string }[], labelWidth: number) {
+  const cellWidth = width / cells.length
+  context.strokeStyle = LINE
+  context.lineWidth = 1.5
+  context.strokeRect(x, y, width, height)
+  cells.forEach((cell, index) => {
+    const cellX = x + index * cellWidth
+    if (index > 0) {
+      context.beginPath()
+      context.moveTo(cellX, y)
+      context.lineTo(cellX, y + height)
+      context.stroke()
+    }
+    context.strokeStyle = '#94a3b8'
     context.beginPath()
-    context.moveTo(x + colAWidth, rowY)
-    context.lineTo(x + colAWidth, rowY + rowHeight)
+    context.moveTo(cellX + labelWidth, y)
+    context.lineTo(cellX + labelWidth, y + height)
     context.stroke()
-    context.font = '20px sans-serif'
+    context.strokeStyle = LINE
+
+    context.fillStyle = '#f1f5f9'
+    context.fillRect(cellX, y, labelWidth, height)
+    context.fillStyle = SUB_INK
+    context.font = 'bold 18px sans-serif'
     context.textAlign = 'left'
     context.textBaseline = 'middle'
-    context.fillStyle = SUB_INK
-    context.fillText(row.a, x + 16, rowY + rowHeight / 2, colAWidth - 24)
+    context.fillText(cell.label, cellX + 12, y + height / 2, labelWidth - 16)
+
     context.fillStyle = INK
     context.font = '22px sans-serif'
-    const lines = wrapText(context, row.b, width - colAWidth - 32, 2)
-    if (lines.length <= 1) {
-      context.fillText(row.b, x + colAWidth + 16, rowY + rowHeight / 2, width - colAWidth - 32)
-    } else {
-      const lineHeight = 26
-      const startY = rowY + rowHeight / 2 - ((lines.length - 1) * lineHeight) / 2
-      lines.forEach((line, lineIndex) => context.fillText(line, x + colAWidth + 16, startY + lineIndex * lineHeight, width - colAWidth - 32))
-    }
+    const valueMaxWidth = cellWidth - labelWidth - 24
+    const lines = wrapText(context, cell.value, valueMaxWidth, 1)
+    context.fillText(lines[0] ?? '', cellX + labelWidth + 12, y + height / 2, valueMaxWidth)
   })
 }
 
@@ -119,6 +128,22 @@ function drawChips(context: CanvasRenderingContext2D, labels: string[], x: numbe
     cursorX += chipWidth + gap
   }
   return cursorY + chipHeight
+}
+
+/** アイコン未設定時の簡易な人型プレースホルダーを描画する。 */
+function drawDefaultAvatarGlyph(context: CanvasRenderingContext2D, x: number, y: number, size: number) {
+  context.fillStyle = '#f1f5f9'
+  context.fillRect(x, y, size, size)
+  context.fillStyle = '#94a3b8'
+  const cx = x + size / 2
+  const cy = y + size / 2
+  const headRadius = size * 0.16
+  context.beginPath()
+  context.arc(cx, cy - size * 0.08, headRadius, 0, Math.PI * 2)
+  context.fill()
+  context.beginPath()
+  context.arc(cx, cy + size * 0.34, size * 0.28, Math.PI, 0)
+  context.fill()
 }
 
 export async function renderResumeExportImage(data: ResumeData, photo: ResumeExportPhoto | null): Promise<Blob> {
@@ -156,57 +181,64 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
   context.lineTo(contentX + contentWidth, MARGIN + 92)
   context.stroke()
 
-  const infoRows = [
-    { a: '名前', b: data.handleName || '未入力' },
-    { a: 'デュエマ開始時期', b: data.startedAt || '-' },
-    { a: '性別', b: data.gender },
-    { a: '年齢', b: data.ageGroup },
-    { a: '活動地域', b: data.region || '-' },
-    { a: '好きな文明', b: data.favoriteCivilization || '-' },
-    { a: 'プレイスタイル', b: data.playStyle || '-' },
-    { a: 'デュエプレ', b: data.playsDuelMastersPlay },
-  ]
-  const infoRowHeight = 52
-  const infoTableHeight = infoRows.length * infoRowHeight
-
-  const photoSize = 230
-  const photoHeight = infoTableHeight
+  // 正方形プロフィールアイコン（右上）
+  const photoSize = 190
   const photoX = contentX + contentWidth - photoSize
   const photoY = MARGIN + 120
-  context.strokeStyle = LINE
-  context.lineWidth = 2
-  context.strokeRect(photoX, photoY, photoSize, photoHeight)
   if (photo?.url) {
-    const image = await loadImage(photo.url, photo.kind === 'avatar' ? 'anonymous' : null)
+    const image = await loadImage(photo.url)
     if (image) {
-      const scale = Math.min(photoSize / image.width, photoHeight / image.height)
+      context.save()
+      context.beginPath()
+      context.rect(photoX, photoY, photoSize, photoSize)
+      context.clip()
+      const scale = Math.max(photoSize / image.width, photoSize / image.height)
       const w = image.width * scale
       const h = image.height * scale
-      try {
-        context.drawImage(image, photoX + (photoSize - w) / 2, photoY + (photoHeight - h) / 2, w, h)
-      } catch { /* CORSでの描画失敗時は枠のみ残す */ }
+      context.drawImage(image, photoX + (photoSize - w) / 2, photoY + (photoSize - h) / 2, w, h)
+      context.restore()
+    } else {
+      drawDefaultAvatarGlyph(context, photoX, photoY, photoSize)
     }
+  } else {
+    drawDefaultAvatarGlyph(context, photoX, photoY, photoSize)
   }
-  if (photo?.caption) {
-    context.font = 'bold 18px sans-serif'
-    context.fillStyle = INK
-    context.textAlign = 'center'
-    context.textBaseline = 'top'
-    context.fillText(photo.caption, photoX + photoSize / 2, photoY + photoHeight + 10, photoSize)
-  }
+  context.strokeStyle = LINE
+  context.lineWidth = 2
+  context.strokeRect(photoX, photoY, photoSize, photoSize)
 
+  // 基本情報：複数列フィールドグリッド
   const infoWidth = contentWidth - photoSize - 40
-  drawTable(context, contentX, MARGIN + 120, infoWidth, 170, infoRows, infoRowHeight)
+  const rowHeight = 52
+  let cursorY = MARGIN + 120
+  drawFieldGridRow(context, contentX, cursorY, infoWidth, rowHeight, [{ label: '名前', value: data.handleName || '未入力' }], 110)
+  cursorY += rowHeight
+  drawFieldGridRow(context, contentX, cursorY, infoWidth, rowHeight, [
+    { label: '開始時期', value: data.startedAt || '-' },
+    { label: '活動地域', value: data.region || '-' },
+  ], 110)
+  cursorY += rowHeight
+  drawFieldGridRow(context, contentX, cursorY, infoWidth, rowHeight, [
+    { label: '性別', value: data.gender },
+    { label: '年齢', value: data.ageGroup },
+    { label: 'デュエプレ', value: data.playsDuelMastersPlay },
+  ], 90)
+  cursorY += rowHeight
+  drawFieldGridRow(context, contentX, cursorY, infoWidth, rowHeight, [
+    { label: '好きな文明', value: data.favoriteCivilization || '-' },
+    { label: 'プレイスタイル', value: data.playStyle || '-' },
+  ], 110)
+  cursorY += rowHeight
 
-  let cursorY = MARGIN + 120 + infoTableHeight + 50
+  cursorY = Math.max(cursorY, photoY + photoSize) + 40
 
-  const usageRows = [
-    { a: '使用デッキ', b: data.currentDecksText || '-' },
-    { a: '好きなYouTuber', b: data.favoriteYouTuber || '-' },
-    { a: 'デュエマ以外で好きな事', b: data.otherInterests || '-' },
-  ]
-  drawTable(context, contentX, cursorY, contentWidth, 220, usageRows, 56)
-  cursorY += usageRows.length * 56 + 40
+  drawFieldGridRow(context, contentX, cursorY, contentWidth, rowHeight, [{ label: '使用デッキ', value: data.currentDecksText || '-' }], 150)
+  cursorY += rowHeight
+  drawFieldGridRow(context, contentX, cursorY, contentWidth, rowHeight, [
+    { label: '好きなYouTuber', value: data.favoriteYouTuber || '-' },
+    { label: '好きな事', value: data.otherInterests || '-' },
+  ], 150)
+  cursorY += rowHeight + 40
 
   sectionTitle(context, '大会・デュエマ実績', contentX, cursorY)
   cursorY += 56
