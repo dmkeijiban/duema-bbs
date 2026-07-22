@@ -54,7 +54,7 @@ export function ResumePreview({ data, avatarUrl, resumeDate }: { data: ResumeDat
       {data.achievementNote && <p className="box-border h-10 pt-[10px] font-sans" style={{ fontSize: L.font.body, lineHeight: '20px' }}>{data.achievementNote}</p>}
     </section>
     <section style={{ marginTop: 30 }}><SectionTitle>フリースペース</SectionTitle>
-      <div className="whitespace-pre-wrap break-words border p-4 font-sans" style={{ marginTop: L.sectionContentGap, height: L.freeSpaceHeight, borderColor: '#cbd5e1', fontSize: L.font.freeSpace, lineHeight: '28px' }}>{data.freeSpace || '（未入力）'}</div>
+      <div className="overflow-hidden whitespace-pre-wrap break-words border p-4 font-sans" style={{ marginTop: L.sectionContentGap, height: L.freeSpaceHeight, borderColor: '#cbd5e1', fontSize: L.font.freeSpace, lineHeight: '28px' }}>{data.freeSpace || '（未入力）'}</div>
     </section>
     <section style={{ marginTop: L.sectionGap }}><SectionTitle>対戦・交流について</SectionTitle>
       <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{socialTags.length ? socialTags.map(label => <Chip key={label}>{label}</Chip>) : <span style={{ color: L.colors.muted, fontSize: L.font.body }}>（未選択）</span>}</div>
