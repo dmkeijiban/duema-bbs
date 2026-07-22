@@ -25,6 +25,16 @@ function FieldRow({ cells, labelWidth = L.defaultLabelWidth, columnFractions, he
   </div>
 }
 
+function PairedExpandableFieldRow({ cells, expanded }: { cells: [FieldCell, FieldCell]; expanded: boolean }) {
+  const height = expanded ? L.rowHeight * 2 : L.rowHeight
+  return <div className="grid grid-cols-2 border-2" style={{ minHeight: height, borderColor: L.colors.line }}>
+    {cells.map(([label, value]) => <div key={label} className="grid min-w-0 border-r-2 last:border-r-0" style={{ minHeight: height, gridTemplateColumns: `${L.fullLabelWidth}px minmax(0, 1fr)`, borderColor: L.colors.line }}>
+      <div className="flex items-center justify-center whitespace-nowrap border-r-2 px-2 text-center font-sans font-bold" style={{ borderColor: L.colors.line, background: L.colors.label, color: L.colors.subInk, fontSize: L.font.label }}>{label}</div>
+      <div className={`flex min-w-0 items-center justify-center overflow-hidden px-2 text-center font-sans ${expanded ? 'whitespace-pre-wrap break-words' : 'whitespace-nowrap'}`} style={{ color: L.colors.ink, fontSize: L.font.value, lineHeight: expanded ? '28px' : undefined }}>{value}</div>
+    </div>)}
+  </div>
+}
+
 function shouldUseTwoLines(value: string, threshold: number) {
   return value.includes('\n') || Array.from(value.trim()).length > threshold
 }
@@ -88,7 +98,7 @@ export function ResumePreview({ data, avatarUrl, resumeDate, exportRef }: { data
     <section style={{ marginTop: L.sectionGap }}>
       <FieldRow labelWidth={L.fullLabelWidth} height={currentDecksWrap ? L.rowHeight * 2 : L.rowHeight} wrapValues={currentDecksWrap} cells={[["使用デッキ", data.currentDecksText || '-']]} />
       <FieldRow labelWidth={L.fullLabelWidth} height={duelMastersPlayDeckWrap ? L.rowHeight * 2 : L.rowHeight} wrapValues={duelMastersPlayDeckWrap} cells={[["デュエプレの使用デッキ", data.duelMastersPlayMainDeck || '-']]} />
-      <FieldRow labelWidth={L.fullLabelWidth} height={interestsWrap ? L.rowHeight * 2 : L.rowHeight} wrapValues={interestsWrap} cells={[["好きなYouTuber", data.favoriteYouTuber || '-'], ['好きな事', data.otherInterests || '-']]} />
+      <PairedExpandableFieldRow expanded={interestsWrap} cells={[["好きなYouTuber", data.favoriteYouTuber || '-'], ['好きな事', data.otherInterests || '-']]} />
     </section>
     {RESUME_SECTION_ORDER.map(renderSection)}
     <p className="absolute left-0 text-center font-sans" style={{ top: L.height - L.margin / 2 - 28, width: L.width, color: L.colors.muted, fontSize: L.font.footer }}>デュエマ掲示板　https://www.duema-bbs.com　#デュエマ履歴書</p>
@@ -111,7 +121,6 @@ export function ScaledResumePreview({ data, avatarUrl, resumeDate, className }: 
     <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: L.width, height: L.height }}><ResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} /></div>
   </div>
 }
-
 
 export function FullscreenResumePreview({ data, avatarUrl, resumeDate, className }: { data: ResumeData; avatarUrl: string | null; resumeDate?: string | null; className?: string }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
