@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { printingKey, type DeckCard } from '@/lib/deck-maker'
 import type { CardSearchFilter } from '@/hooks/use-card-catalog-search'
 
-export function CardDetailModal({ card, versions, loading = false, count, maxReached = false, onClose, onSelectVersion, onAdd, onRemove, onMove, onAddFilter, renderCardArt }: {
+export function CardDetailModal({ card, versions, loading = false, count, maxReached = false, onClose, onSelectVersion, onChoose, chooseLabel = 'このカードを選ぶ', onAdd, onRemove, onMove, onAddFilter, renderCardArt }: {
   card: DeckCard | null
   versions: DeckCard[]
   loading?: boolean
@@ -12,6 +12,8 @@ export function CardDetailModal({ card, versions, loading = false, count, maxRea
   maxReached?: boolean
   onClose: () => void
   onSelectVersion: (card: DeckCard) => void
+  onChoose?: (card: DeckCard) => void
+  chooseLabel?: string
   onAdd?: (card: DeckCard) => void
   onRemove?: (card: DeckCard) => void
   onMove?: (offset: -1 | 1) => void
@@ -26,6 +28,7 @@ export function CardDetailModal({ card, versions, loading = false, count, maxRea
       <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
         <h2 id="shared-card-dialog-title" className="mb-3 pr-12 text-center text-base font-black text-slate-900">{card.name}</h2>
         <div className="mx-auto w-full max-w-[min(330px,calc((100dvh-360px)*5/7))]">{renderCardArt(card, true)}</div>
+        {onChoose && <button type="button" onClick={() => onChoose(card)} className="mt-3 min-h-11 w-full rounded-xl bg-emerald-700 px-4 font-black text-white">{chooseLabel}</button>}
         {(onAdd || onRemove) && <div className="mt-3 flex items-center justify-center gap-5">
           <button type="button" onClick={() => onRemove?.(card)} disabled={!count} aria-label={`${card.name}を1枚減らす`} className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 text-2xl font-bold disabled:text-slate-300">−</button>
           <div className="min-w-20 text-center"><span className="text-3xl font-black">{count ?? 0}</span></div>

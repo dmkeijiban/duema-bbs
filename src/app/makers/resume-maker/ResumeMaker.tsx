@@ -2,8 +2,10 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
+import { CardDetailModal } from '@/components/CardDetailModal'
 import { CardCatalogSearchPanel } from '@/components/CardCatalogSearchPanel'
 import { useCardCatalogSearch } from '@/hooks/use-card-catalog-search'
+import { useCardPrintingSelector } from '@/hooks/use-card-printing-selector'
 import type { DeckCard } from '@/lib/deck-maker'
 import { renderResumeExportImage, resumePngFileName } from '@/lib/maker-resume-export'
 import {
@@ -63,7 +65,9 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false)
   const [resumeDate, setResumeDate] = useState<string | null>(initial.resumeDate)
   const exportPreviewRef = useRef<HTMLDivElement | null>(null)
-  const cardSearch = useCardCatalogSearch({ makerSlug: 'resume-maker' })
+  const cardSearch = useCardCatalogSearch()
+  const cardSelector = useCardPrintingSelector()
+  const searchInput = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (initial.data) setData(initial.data)
@@ -209,6 +213,7 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
   }
 
   return <div className="pb-28">
+    <CardDetailModal card={cardSelector.selectedCard} versions={cardSelector.printingOptions} loading={cardSelector.loading} onClose={cardSelector.closeCard} onSelectVersion={cardSelector.selectPrinting} onChoose={card => { update('photo', favoritePhoto(card)); cardSelector.closeCard() }} onAddFilter={filter => { cardSearch.addFilter(filter); cardSelector.closeCard() }} renderCardArt={card => card.imageUrl ? <img src={card.imageUrl} alt={card.name} className="aspect-[5/7] w-full object-contain" /> : <div className="flex aspect-[5/7] items-center justify-center rounded-xl bg-slate-800 p-3 text-center text-sm font-bold text-white">{card.name}</div>} />
     <div aria-hidden="true" className="pointer-events-none fixed left-[-10000px] top-0"><ResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} exportRef={exportPreviewRef} /></div>
 
     <header className="mb-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
@@ -261,7 +266,7 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
           <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
             <div className="flex items-center justify-between gap-3"><div><h2 className="font-black text-slate-900">好きなカード</h2><p className="mt-1 text-xs text-slate-500">選んだカードをフリースペースの右側に表示します。</p></div>{favoriteCard && <button type="button" onClick={() => update('photo', null)} className="min-h-9 rounded-lg border border-red-300 px-3 text-xs font-bold text-red-700">選択を解除</button>}</div>
             {favoriteCard && <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3"><img src={favoriteCard.imageUrl ?? ''} alt={favoriteCard.name} className="h-28 w-20 object-contain" /><p className="font-bold text-slate-900">{favoriteCard.name}</p></div>}
-            <div className="mt-4"><CardCatalogSearchPanel cards={cardSearch.cards} query={cardSearch.query} loading={cardSearch.loading} hasMore={cardSearch.hasMore} onLoadMore={cardSearch.loadMore} onSelect={card => update('photo', favoritePhoto(card))} onQueryChange={cardSearch.setQuery} onClear={() => cardSearch.setQuery('')} selectedCount={card => favoriteCard?.cardId === card.id ? 1 : 0} selectedBadge={() => '選択中'} renderCardArt={card => <img src={card.matchedFace?.imageUrl ?? card.imageUrl ?? ''} alt={card.matchedFace?.name ?? card.name} className="aspect-[5/7] w-full object-cover" />} /></div>
+            <div className="mt-4"><CardCatalogSearchPanel cards={cardSearch.cards} query={cardSearch.query} loading={cardSearch.loading} hasMore={cardSearch.hasMore} onLoadMore={cardSearch.loadMore} onSelect={cardSelector.openCard} onQueryChange={cardSearch.setQuery} onClear={() => { cardSearch.setQuery(''); searchInput.current?.focus() }} inputRef={searchInput} selectedCount={card => favoriteCard?.cardId === card.id ? 1 : 0} selectedBadge={() => '選択中'} filters={cardSearch.filters} onRemoveFilter={cardSearch.removeFilter} onClearFilters={cardSearch.clearFilters} /></div>
           </section>
 
           {submissionId && <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5"><div className="flex items-center justify-between"><h2 className="font-black text-slate-900">履歴書の公開設定</h2><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${isPublic ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{isPublic ? '公開中' : '非公開'}</span></div><p className="mt-2 text-xs text-slate-600">{isPublic ? 'あなたの公開プロフィールと「みんなの履歴書」に表示されています。' : 'あなた以外には表示されません。'}</p><button type="button" onClick={() => void handleToggleVisibility()} disabled={isTogglingVisibility} className={`mt-3 min-h-10 w-full rounded-lg px-4 text-sm font-bold text-white disabled:opacity-60 ${isPublic ? 'bg-slate-500' : 'bg-emerald-700'}`}>{isTogglingVisibility ? '変更中…' : isPublic ? '非公開にする' : '公開する'}</button></section>}
