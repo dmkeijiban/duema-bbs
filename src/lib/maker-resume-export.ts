@@ -54,22 +54,32 @@ function sectionTitle(context: CanvasRenderingContext2D, text: string, x: number
   context.textAlign = 'left'
   context.textBaseline = 'top'
   context.fillText(text, x, y)
-  context.strokeStyle = LINE
-  context.lineWidth = 2
-  context.beginPath()
-  context.moveTo(x, y + 40)
-  context.lineTo(x + 6, y + 40)
-  context.stroke()
 }
 
-/** 1行に複数セル（ラベル+値）を等幅で並べる罫線付きグリッド行を描画する。 */
-function drawFieldGridRow(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, cells: { label: string; value: string }[], labelWidth: number) {
-  const cellWidth = width / cells.length
+/** 1行に複数セル（ラベル+値）を並べる罫線付きグリッド行を描画する。 */
+function drawFieldGridRow(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  cells: { label: string; value: string }[],
+  labelWidth: number,
+  columnFractions?: number[],
+) {
+  const fractions = columnFractions?.length === cells.length ? columnFractions : cells.map(() => 1)
+  const totalFractions = fractions.reduce((sum, value) => sum + value, 0)
+  let consumedWidth = 0
+
   context.strokeStyle = LINE
   context.lineWidth = 1.5
   context.strokeRect(x, y, width, height)
+
   cells.forEach((cell, index) => {
-    const cellX = x + index * cellWidth
+    const cellWidth = index === cells.length - 1 ? width - consumedWidth : width * fractions[index] / totalFractions
+    const cellX = x + consumedWidth
+    consumedWidth += cellWidth
+
     if (index > 0) {
       context.beginPath()
       context.moveTo(cellX, y)
@@ -87,15 +97,15 @@ function drawFieldGridRow(context: CanvasRenderingContext2D, x: number, y: numbe
     context.fillRect(cellX, y, labelWidth, height)
     context.fillStyle = SUB_INK
     context.font = `bold ${L.font.label}px sans-serif`
-    context.textAlign = 'left'
+    context.textAlign = 'center'
     context.textBaseline = 'middle'
-    context.fillText(cell.label, cellX + 12, y + height / 2, labelWidth - 16)
+    context.fillText(cell.label, cellX + labelWidth / 2, y + height / 2, labelWidth - 16)
 
     context.fillStyle = INK
     context.font = `${L.font.value}px sans-serif`
     const valueMaxWidth = cellWidth - labelWidth - 24
     const lines = wrapText(context, cell.value, valueMaxWidth, 1)
-    context.fillText(lines[0] ?? '', cellX + labelWidth + 12, y + height / 2, valueMaxWidth)
+    context.fillText(lines[0] ?? '', cellX + labelWidth + (cellWidth - labelWidth) / 2, y + height / 2, valueMaxWidth)
   })
 }
 
@@ -214,9 +224,8 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
   ], L.defaultLabelWidth)
   cursorY += rowHeight
   drawFieldGridRow(context, contentX, cursorY, infoWidth, rowHeight, [
-    { label: '性別', value: data.gender },
-    { label: '年齢', value: data.ageGroup },
-    { label: 'デュエプレ', value: data.playsDuelMastersPlay },
+    { label: '性別', value: data.gender || '-' },
+    { label: '年齢', value: data.ageGroup || '-' },
   ], L.compactLabelWidth)
   cursorY += rowHeight
   drawFieldGridRow(context, contentX, cursorY, infoWidth, rowHeight, [
@@ -227,7 +236,10 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
 
   cursorY = Math.max(cursorY, photoY + photoSize) + L.sectionGap
 
-  drawFieldGridRow(context, contentX, cursorY, contentWidth, rowHeight, [{ label: '使用デッキ', value: data.currentDecksText || '-' }], L.fullLabelWidth)
+  drawFieldGridRow(context, contentX, cursorY, contentWidth, rowHeight, [
+    { label: '使用デッキ', value: data.currentDecksText || '-' },
+    { label: 'デュエプレ', value: data.playsDuelMastersPlay || '-' },
+  ], L.fullLabelWidth, [2, 1])
   cursorY += rowHeight
   drawFieldGridRow(context, contentX, cursorY, contentWidth, rowHeight, [
     { label: '好きなYouTuber', value: data.favoriteYouTuber || '-' },
