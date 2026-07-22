@@ -346,8 +346,17 @@ export async function GET(request: NextRequest) {
     const cards = rows.map((item) => mapCard(item.row, item.printing, item.matchedFace))
     const nextOffset = offset + cards.length
     return NextResponse.json({ cards, total: matches.length, hasMore: nextOffset < matches.length, nextOffset }, { headers: { 'Cache-Control': BROWSER_CACHE_HEADER } })
-  } catch {
-    if (makerSlug) return NextResponse.json({ error: 'maker_not_found' }, { status: 404 })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (makerSlug && (message === 'maker_not_found' || message === 'invalid_maker')) {
+      return NextResponse.json({ error: message }, { status: message === 'invalid_maker' ? 400 : 404 })
+    }
+    console.error('[cards/search] catalog fetch failed, serving local fallback', {
+      makerSlug: makerSlug || undefined,
+      hasQuery: Boolean(rawQuery),
+      fastInitial,
+      message,
+    })
     const allCards = rawQuery ? LOCAL_DECK_CARDS.filter((card) => matchesCard(card, rawQuery)) : LOCAL_DECK_CARDS
     const cards = rawQuery ? allCards : allCards.slice(0, DEFAULT_RESULTS)
     return NextResponse.json({ cards, total: allCards.length, hasMore: false, nextOffset: cards.length, fallback: true }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
