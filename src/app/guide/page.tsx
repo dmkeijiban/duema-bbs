@@ -216,11 +216,11 @@ export default async function GuidePage() {
 
         {/* Section 7 */}
         <section id="mypage" className="mb-6">
-          <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">7. マイページ・投稿者ページ</h2>
+          <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">7. マイページ・公開プロフィール</h2>
           <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
             <li>マイページでは自分のスレッド・レス一覧を確認できます</li>
             <li>プロフィールページ（/u/ユーザー名）を公開でき、アイコン・表示名・自己紹介・X/YouTubeリンクを設定できます</li>
-            <li>SNSリンクを設定すると投稿者ページからあなたのSNSへ誘導できます</li>
+            <li>SNSリンクを設定すると公開プロフィールからあなたのSNSへ誘導できます</li>
           </ul>
         </section>
 
@@ -299,7 +299,7 @@ export default async function GuidePage() {
           <h2 className="text-sm font-bold text-gray-800 border-l-4 border-blue-500 pl-2 mb-3">13. プロフィール非公開・ランキング辞退</h2>
           <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
             <li>マイページの設定からプロフィールを非公開にできます</li>
-            <li>非公開にすると、投稿者ページやランキングなどの一般ページで投稿者情報が表示されなくなります</li>
+            <li>非公開にすると、公開プロフィールやランキングなどの一般ページで投稿者情報が表示されなくなります</li>
             <li>ランキング辞退の設定をするとランキングページに表示されなくなります</li>
           </ul>
         </section>

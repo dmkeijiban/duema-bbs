@@ -591,7 +591,7 @@ export default async function MyPage({
         <div className="border-b border-gray-300 bg-gray-100 px-3 py-2 sm:px-4 sm:py-3">
           <h1 className="text-lg font-bold text-gray-900">マイページ</h1>
           <p className="mt-1 text-sm leading-relaxed text-gray-600">
-            ログイン中の投稿者ページ情報を確認できます。
+            ログイン中の公開プロフィール情報を確認できます。
           </p>
         </div>
 
@@ -608,7 +608,7 @@ export default async function MyPage({
 
           {params.profile_hidden === '1' && (
             <div className="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
-              プロフィールを非公開にしました。公開投稿者ページは本人にのみ表示されます。
+              プロフィールを非公開にしました。公開プロフィールは本人にのみ表示されます。
             </div>
           )}
 
@@ -629,7 +629,7 @@ export default async function MyPage({
             actions={
               <div className="flex flex-col gap-2 sm:flex-row">
                 <ProfileHeaderActionLink href={profilePath} variant="primary">
-                  投稿者ページを見る
+                  公開プロフィールを見る
                 </ProfileHeaderActionLink>
                 <ProfileHeaderActionLink href="/mypage/edit">
                   プロフィールを編集

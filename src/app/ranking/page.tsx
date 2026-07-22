@@ -249,7 +249,7 @@ async function CampaignRankingSection() {
                     <span className="mt-1 block text-[10px] leading-none text-gray-500">{entry.rank}位</span>
                   )}
                 </div>
-                <Link href={`/u/${entry.profileSlug}`} aria-label={`${entry.displayName}の投稿者ページ`}>
+                <Link href={`/u/${entry.profileSlug}`} aria-label={`${entry.displayName}の公開プロフィール`}>
                   {entry.avatarUrl ? (
                     <ProfileAvatar src={entry.avatarUrl} alt={`${entry.displayName}のアイコン`} size="md" />
                   ) : (
@@ -340,7 +340,7 @@ function UserRankingList({
                   </span>
                 )}
               </div>
-              <Link href={`/u/${row.profile_slug}`} aria-label={`${row.display_name}の投稿者ページ`}>
+              <Link href={`/u/${row.profile_slug}`} aria-label={`${row.display_name}の公開プロフィール`}>
                 <RankingAvatar row={row} rank={index + 1} />
               </Link>
               <RankingUserMeta

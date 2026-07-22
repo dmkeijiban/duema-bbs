@@ -53,7 +53,7 @@ export function ResumeSubmissionsList({ submissions, viewerLoggedIn }: { submiss
                   {openSubmission.avatarUrl && <img src={openSubmission.avatarUrl} alt="" className="h-full w-full object-cover" />}
                 </div>
                 <p className="min-w-0 truncate font-black text-slate-900">{openSubmission.displayName}</p>
-                <Link href={`/u/${openSubmission.profileSlug}`} className="ml-auto shrink-0 text-xs font-bold text-blue-700 hover:underline">投稿者ページを見る</Link>
+                <Link href={`/u/${openSubmission.profileSlug}`} className="ml-auto shrink-0 text-xs font-bold text-blue-700 hover:underline">公開プロフィールを見る</Link>
               </div>
               <ResumeProfileCard data={openSubmission.data} avatarUrl={openSubmission.avatarUrl} isOwner={false} isPublic={true} viewerLoggedIn={viewerLoggedIn} />
             </div>

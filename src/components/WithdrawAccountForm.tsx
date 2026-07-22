@@ -36,7 +36,7 @@ export function WithdrawAccountForm() {
     <section className="rounded border border-red-200 bg-red-50 p-4">
       <h2 className="text-sm font-bold text-red-800">危険操作</h2>
       <p className="mt-2 text-sm leading-relaxed text-red-700">
-        退会すると公開投稿者ページは非公開になり、ランキングから除外されます。過去のスレッドやコメント本文は残ります。
+        退会すると公開プロフィールは非公開になり、ランキングから除外されます。過去のスレッドやコメント本文は残ります。
       </p>
       <div className="mt-3 space-y-3">
         <label className="flex items-start gap-2 text-sm text-red-800">
