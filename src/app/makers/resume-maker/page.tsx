@@ -70,19 +70,7 @@ export default async function ResumeMakerPage() {
 
   return (
     <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4">
-      <style>{`
-        .resume-maker-shell:has(nav > button:nth-child(3).border-emerald-700) > div {
-          padding-bottom: 1.5rem;
-        }
-        .resume-maker-shell:has(nav > button:nth-child(3).border-emerald-700) .fixed.inset-x-0.bottom-0 {
-          display: none;
-        }
-        .resume-maker-shell:has(nav > button:nth-child(3).border-emerald-700) .min-w-0.space-y-3 > .flex.gap-2 > button:nth-child(2),
-        .resume-maker-shell:has(nav > button:nth-child(3).border-emerald-700) .min-w-0.space-y-3 > .flex.gap-2 > button:nth-child(3) {
-          display: none;
-        }
-      `}</style>
-      <div className="resume-maker-shell mx-auto max-w-[1200px] overflow-x-hidden">
+      <div className="mx-auto max-w-[1200px] overflow-x-hidden">
         <ResumeMaker initial={initial} />
       </div>
     </main>
