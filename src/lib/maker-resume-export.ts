@@ -6,7 +6,7 @@ import {
   RESUME_SOCIAL_TAG_PRESETS,
   type ResumeData,
 } from '@/lib/maker-resume'
-import { formatResumeDate, RESUME_LAYOUT as L } from '@/lib/maker-resume-layout'
+import { formatResumeDate, RESUME_LAYOUT as L, RESUME_SECTION_ORDER } from '@/lib/maker-resume-layout'
 
 export type ResumeExportPhoto = { url: string | null }
 
@@ -241,57 +241,63 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
   ], L.fullLabelWidth)
   cursorY += rowHeight + L.sectionGap
 
-  sectionTitle(context, '大会・デュエマ実績', contentX, cursorY)
-  cursorY += 56
   const achievementLabels = data.achievements.map(key => RESUME_ACHIEVEMENT_PRESETS.find(preset => preset.key === key)?.label).filter((v): v is Exclude<typeof v, undefined> => v !== undefined)
-  if (achievementLabels.length) cursorY = drawChips(context, achievementLabels, contentX, cursorY, contentWidth)
-  else {
-    context.font = `${L.font.body}px sans-serif`
-    context.fillStyle = L.colors.muted
-    context.textAlign = 'left'
-    context.textBaseline = 'top'
-    context.fillText('（未選択）', contentX, cursorY)
-    cursorY += 24
-  }
-  if (data.achievementNote) {
-    context.font = '20px sans-serif'
-    context.fillStyle = INK
-    context.textAlign = 'left'
-    context.textBaseline = 'top'
-    context.fillText(data.achievementNote, contentX, cursorY + 10, contentWidth)
-    cursorY += 40
-  }
-  cursorY += 30
-
-  sectionTitle(context, 'フリースペース', contentX, cursorY)
-  cursorY += 56
-  const freeSpaceBoxHeight = L.freeSpaceHeight
-  context.strokeStyle = '#cbd5e1'
-  context.strokeRect(contentX, cursorY, contentWidth, freeSpaceBoxHeight)
-  context.font = `${L.font.freeSpace}px sans-serif`
-  context.fillStyle = INK
-  context.textAlign = 'left'
-  context.textBaseline = 'top'
-  const freeSpaceLines = wrapText(context, data.freeSpace || '（未入力）', contentWidth - 32, 6)
-  freeSpaceLines.forEach((line, index) => context.fillText(line, contentX + 16, cursorY + 16 + index * 28, contentWidth - 32))
-  cursorY += freeSpaceBoxHeight + 40
-
-  sectionTitle(context, '対戦・交流について', contentX, cursorY)
-  cursorY += 56
   const socialLabels = data.socialTags.map(key => RESUME_SOCIAL_TAG_PRESETS.find(preset => preset.key === key)?.label).filter((v): v is Exclude<typeof v, undefined> => v !== undefined)
-  if (socialLabels.length) cursorY = drawChips(context, socialLabels, contentX, cursorY, contentWidth)
-  else {
-    context.font = `${L.font.body}px sans-serif`
-    context.fillStyle = L.colors.muted
-    context.textAlign = 'left'
-    context.textBaseline = 'top'
-    context.fillText('（未選択）', contentX, cursorY)
-    cursorY += 24
-  }
-  if (data.socialNote) {
-    context.font = '20px sans-serif'
-    context.fillStyle = INK
-    context.fillText(data.socialNote, contentX, cursorY + 10, contentWidth)
+  for (const section of RESUME_SECTION_ORDER) {
+    if (section === 'interaction') {
+      sectionTitle(context, '対戦・交流について', contentX, cursorY)
+      cursorY += 56
+      if (socialLabels.length) cursorY = drawChips(context, socialLabels, contentX, cursorY, contentWidth)
+      else {
+        context.font = `${L.font.body}px sans-serif`
+        context.fillStyle = L.colors.muted
+        context.textAlign = 'left'
+        context.textBaseline = 'top'
+        context.fillText('（未選択）', contentX, cursorY)
+        cursorY += 24
+      }
+      if (data.socialNote) {
+        context.font = '20px sans-serif'
+        context.fillStyle = INK
+        context.fillText(data.socialNote, contentX, cursorY + 10, contentWidth)
+        cursorY += 40
+      }
+      cursorY += 40
+    } else if (section === 'achievements') {
+      sectionTitle(context, '大会・デュエマ実績', contentX, cursorY)
+      cursorY += 56
+      if (achievementLabels.length) cursorY = drawChips(context, achievementLabels, contentX, cursorY, contentWidth)
+      else {
+        context.font = `${L.font.body}px sans-serif`
+        context.fillStyle = L.colors.muted
+        context.textAlign = 'left'
+        context.textBaseline = 'top'
+        context.fillText('（未選択）', contentX, cursorY)
+        cursorY += 24
+      }
+      if (data.achievementNote) {
+        context.font = '20px sans-serif'
+        context.fillStyle = INK
+        context.textAlign = 'left'
+        context.textBaseline = 'top'
+        context.fillText(data.achievementNote, contentX, cursorY + 10, contentWidth)
+        cursorY += 40
+      }
+      cursorY += 30
+    } else {
+      sectionTitle(context, 'フリースペース', contentX, cursorY)
+      cursorY += 56
+      const freeSpaceBoxHeight = L.freeSpaceHeight
+      context.strokeStyle = '#cbd5e1'
+      context.strokeRect(contentX, cursorY, contentWidth, freeSpaceBoxHeight)
+      context.font = `${L.font.freeSpace}px sans-serif`
+      context.fillStyle = INK
+      context.textAlign = 'left'
+      context.textBaseline = 'top'
+      const freeSpaceLines = wrapText(context, data.freeSpace || '（未入力）', contentWidth - 32, 6)
+      freeSpaceLines.forEach((line, index) => context.fillText(line, contentX + 16, cursorY + 16 + index * 28, contentWidth - 32))
+      cursorY += freeSpaceBoxHeight
+    }
   }
 
   context.font = `${L.font.footer}px sans-serif`

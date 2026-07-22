@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { RESUME_ACHIEVEMENT_PRESETS, RESUME_SOCIAL_TAG_PRESETS, type ResumeData } from '@/lib/maker-resume'
-import { formatResumeDate, RESUME_LAYOUT as L } from '@/lib/maker-resume-layout'
+import { formatResumeDate, RESUME_LAYOUT as L, RESUME_SECTION_ORDER, type ResumeSection } from '@/lib/maker-resume-layout'
 
 function Chip({ children }: { children: React.ReactNode }) {
   return <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border font-sans font-bold" style={{ height: L.chipHeight, paddingInline: L.chipPaddingX, borderColor: L.colors.lightLine, background: L.colors.chip, fontSize: L.font.chip }}>{children}</span>
@@ -28,6 +28,24 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 export function ResumePreview({ data, avatarUrl, resumeDate }: { data: ResumeData; avatarUrl: string | null; resumeDate?: string | null }) {
   const achievements = data.achievements.map(key => RESUME_ACHIEVEMENT_PRESETS.find(item => item.key === key)?.label).filter((value): value is Exclude<typeof value, undefined> => value !== undefined)
   const socialTags = data.socialTags.map(key => RESUME_SOCIAL_TAG_PRESETS.find(item => item.key === key)?.label).filter((value): value is Exclude<typeof value, undefined> => value !== undefined)
+  const renderSection = (section: ResumeSection) => {
+    switch (section) {
+      case 'interaction':
+        return <section key={section} style={{ marginTop: L.sectionGap }}><SectionTitle>対戦・交流について</SectionTitle>
+          <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{socialTags.length ? socialTags.map(label => <Chip key={label}>{label}</Chip>) : <span style={{ color: L.colors.muted, fontSize: L.font.body }}>（未選択）</span>}</div>
+          {data.socialNote && <p className="box-border h-10 pt-[10px] font-sans" style={{ fontSize: L.font.body, lineHeight: '20px' }}>{data.socialNote}</p>}
+        </section>
+      case 'achievements':
+        return <section key={section} style={{ marginTop: L.sectionGap }}><SectionTitle>大会・デュエマ実績</SectionTitle>
+          <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{achievements.length ? achievements.map(label => <Chip key={label}>{label}</Chip>) : <span style={{ color: L.colors.muted, fontSize: L.font.body }}>（未選択）</span>}</div>
+          {data.achievementNote && <p className="box-border h-10 pt-[10px] font-sans" style={{ fontSize: L.font.body, lineHeight: '20px' }}>{data.achievementNote}</p>}
+        </section>
+      case 'freeSpace':
+        return <section key={section} style={{ marginTop: 30 }}><SectionTitle>フリースペース</SectionTitle>
+          <div className="overflow-hidden whitespace-pre-wrap break-words border p-4 font-sans" style={{ marginTop: L.sectionContentGap, height: L.freeSpaceHeight, borderColor: '#cbd5e1', fontSize: L.font.freeSpace, lineHeight: '28px' }}>{data.freeSpace || '（未入力）'}</div>
+        </section>
+    }
+  }
   return <div className="relative box-border shrink-0 font-serif" style={{ width: L.width, height: L.height, padding: L.margin, background: L.colors.paper, color: L.colors.ink }}>
     <div className="pointer-events-none absolute border-[3px]" style={{ inset: L.outerBorderInset, borderColor: L.colors.line }} />
     <header className="flex items-start justify-between border-b-2" style={{ height: L.headerRuleY - L.margin, borderColor: L.colors.line }}>
@@ -49,17 +67,7 @@ export function ResumePreview({ data, avatarUrl, resumeDate }: { data: ResumeDat
       <FieldRow labelWidth={L.fullLabelWidth} cells={[["使用デッキ", data.currentDecksText || '-']]} />
       <FieldRow labelWidth={L.fullLabelWidth} cells={[["好きなYouTuber", data.favoriteYouTuber || '-'], ['好きな事', data.otherInterests || '-']]} />
     </section>
-    <section style={{ marginTop: L.sectionGap }}><SectionTitle>大会・デュエマ実績</SectionTitle>
-      <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{achievements.length ? achievements.map(label => <Chip key={label}>{label}</Chip>) : <span style={{ color: L.colors.muted, fontSize: L.font.body }}>（未選択）</span>}</div>
-      {data.achievementNote && <p className="box-border h-10 pt-[10px] font-sans" style={{ fontSize: L.font.body, lineHeight: '20px' }}>{data.achievementNote}</p>}
-    </section>
-    <section style={{ marginTop: 30 }}><SectionTitle>フリースペース</SectionTitle>
-      <div className="overflow-hidden whitespace-pre-wrap break-words border p-4 font-sans" style={{ marginTop: L.sectionContentGap, height: L.freeSpaceHeight, borderColor: '#cbd5e1', fontSize: L.font.freeSpace, lineHeight: '28px' }}>{data.freeSpace || '（未入力）'}</div>
-    </section>
-    <section style={{ marginTop: L.sectionGap }}><SectionTitle>対戦・交流について</SectionTitle>
-      <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{socialTags.length ? socialTags.map(label => <Chip key={label}>{label}</Chip>) : <span style={{ color: L.colors.muted, fontSize: L.font.body }}>（未選択）</span>}</div>
-      {data.socialNote && <p className="box-border h-10 pt-[10px] font-sans" style={{ fontSize: L.font.body, lineHeight: '20px' }}>{data.socialNote}</p>}
-    </section>
+    {RESUME_SECTION_ORDER.map(renderSection)}
     <p className="absolute left-0 text-center font-sans" style={{ top: L.height - L.margin / 2 - 28, width: L.width, color: L.colors.muted, fontSize: L.font.footer }}>デュエマ掲示板　https://www.duema-bbs.com　#デュエマ履歴書</p>
   </div>
 }

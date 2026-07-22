@@ -8,6 +8,14 @@ export const RESUME_LAYOUT = {
   font: { title: 56, date: 20, label: 18, value: 22, section: 30, body: 20, freeSpace: 22, chip: 18, footer: 16 },
 } as const
 
+export const RESUME_SECTION_ORDER = [
+  'interaction',
+  'achievements',
+  'freeSpace',
+] as const
+
+export type ResumeSection = (typeof RESUME_SECTION_ORDER)[number]
+
 export function formatResumeDate(value?: string | null) {
   const parsed = value ? new Date(value) : new Date()
   const date = Number.isNaN(parsed.getTime()) ? new Date() : parsed
