@@ -103,9 +103,10 @@ function drawFieldGridRow(
 
     context.fillStyle = INK
     context.font = `${L.font.value}px sans-serif`
-    const valueMaxWidth = cellWidth - labelWidth - 24
-    const lines = wrapText(context, cell.value, valueMaxWidth, 1)
-    context.fillText(lines[0] ?? '', cellX + labelWidth + (cellWidth - labelWidth) / 2, y + height / 2, valueMaxWidth)
+    const valueMaxWidth = cellWidth - labelWidth - 16
+    // DOMプレビューと同じく1行の全文を描画する。wrapTextで先頭行だけを
+    // 取り出すと、保存画像だけ末尾が欠けるため、CanvasのmaxWidthで収める。
+    context.fillText(cell.value, cellX + labelWidth + (cellWidth - labelWidth) / 2, y + height / 2, valueMaxWidth)
   })
 }
 
