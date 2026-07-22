@@ -655,7 +655,7 @@ export default async function MyPage({
               />
             ) : (
               <div className="p-4">
-                <p className="text-sm text-gray-600">あなたの好きなカードや使用デッキ、デュエマ歴を、本物の履歴書風にまとめられます。</p>
+                <p className="text-sm text-gray-600">あなたの好きなカードやメインデッキ、デュエマ歴を、本物の履歴書風にまとめられます。</p>
                 <Link href="/makers/resume-maker" className="mt-3 inline-flex items-center justify-center rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">デュエマ履歴書を作る</Link>
                 <Link href="/makers/resume-maker/submissions" className="mt-2 block text-center text-xs font-bold text-blue-700 hover:underline">みんなの履歴書を見る</Link>
               </div>
