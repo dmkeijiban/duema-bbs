@@ -17,9 +17,9 @@ type FieldCell = [label: string, value: string]
 
 function FieldRow({ cells, labelWidth = L.defaultLabelWidth, columnFractions }: { cells: FieldCell[]; labelWidth?: number; columnFractions?: number[] }) {
   const columns = columnFractions?.length === cells.length ? columnFractions.map(value => `${value}fr`).join(' ') : `repeat(${cells.length}, 1fr)`
-  return <div className="grid border" style={{ height: L.rowHeight, gridTemplateColumns: columns, borderColor: L.colors.line }}>
-    {cells.map(([label, value]) => <div key={label} className="flex min-w-0 border-r last:border-r-0" style={{ borderColor: L.colors.line }}>
-      <div className="flex shrink-0 items-center justify-center whitespace-nowrap border-r px-2 text-center font-sans font-bold" style={{ width: labelWidth, borderColor: L.colors.line, background: L.colors.label, color: L.colors.subInk, fontSize: L.font.label }}>{label}</div>
+  return <div className="grid border-2" style={{ height: L.rowHeight, gridTemplateColumns: columns, borderColor: L.colors.line }}>
+    {cells.map(([label, value]) => <div key={label} className="flex min-w-0 border-r-2 last:border-r-0" style={{ borderColor: L.colors.line }}>
+      <div className="flex shrink-0 items-center justify-center whitespace-nowrap border-r-2 px-2 text-center font-sans font-bold" style={{ width: labelWidth, borderColor: L.colors.line, background: L.colors.label, color: L.colors.subInk, fontSize: L.font.label }}>{label}</div>
       <div className="flex min-w-0 flex-1 items-center justify-center overflow-hidden whitespace-nowrap px-2 text-center font-sans" style={{ color: L.colors.ink, fontSize: L.font.value }}>{value}</div>
     </div>)}
   </div>
