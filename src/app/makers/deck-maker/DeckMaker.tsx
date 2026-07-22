@@ -61,6 +61,7 @@ function safeOfficialUrl(value: unknown, kind: 'image' | 'page') {
 function safeCard(card: DeckCard): DeckCard {
   return {
     ...card,
+    printingId: typeof card.printingId === 'string' && /^[0-9a-f-]{36}$/i.test(card.printingId) ? card.printingId : null,
     sourceKey: typeof card.sourceKey === 'string' ? card.sourceKey.slice(0, 100) : null,
     name: typeof card.name === 'string' ? card.name.slice(0, 200) : '',
     nameKana: typeof card.nameKana === 'string' ? card.nameKana.slice(0, 200) : null,
@@ -433,7 +434,13 @@ export default function DeckMaker() {
       const result = await savePublishedDeck({
         submissionId: existing?.submissionId,
         title: effectiveDeckName,
-        entries: entries.map(entry => ({ id: entry.id, sourceKey: entry.sourceKey, count: entry.count })),
+        entries: entries.map(entry => ({
+          id: entry.id,
+          printingId: entry.printingId,
+          sourceKey: entry.sourceKey,
+          faceSideIndex: entry.matchedFace?.sideIndex ?? 0,
+          count: entry.count,
+        })),
       })
       if (!result.ok || !result.submissionId) {
         setNotice('マイデッキには保存しましたが、みんなのデッキへの登録に失敗しました')

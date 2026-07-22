@@ -10,7 +10,9 @@ const SOURCE_KEY_PATTERN = /^[a-zA-Z0-9._-]{1,100}$/
 
 type PublishEntry = {
   id: string
+  printingId?: string | null
   sourceKey?: string | null
+  faceSideIndex?: number | null
   count: number
 }
 
@@ -38,6 +40,12 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
       if (entry.sourceKey != null && !SOURCE_KEY_PATTERN.test(entry.sourceKey)) {
         return { ok: false, message: 'カードの収録版情報が不正です' }
       }
+      if (entry.printingId != null && !UUID_PATTERN.test(entry.printingId)) {
+        return { ok: false, message: 'カードの収録版情報が不正です' }
+      }
+      if (entry.faceSideIndex != null && (!Number.isInteger(entry.faceSideIndex) || entry.faceSideIndex < 0)) {
+        return { ok: false, message: 'カードの面情報が不正です' }
+      }
       const next = (counts.get(entry.id) ?? 0) + entry.count
       if (next > 4) return { ok: false, message: '同名カードは合計4枚までです' }
       counts.set(entry.id, next)
@@ -51,7 +59,7 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
     const [{ data: cards, error: cardsError }, { data: printings, error: printingsError }] = await Promise.all([
       admin.from('cards').select('id,name,image_url').in('id', cardIds),
       sourceKeys.length
-        ? admin.from('card_printings').select('card_id,source_key,image_url').in('source_key', sourceKeys)
+        ? admin.from('card_printings').select('id,card_id,source_key,image_url').in('source_key', sourceKeys)
         : Promise.resolve({ data: [], error: null }),
     ])
     if (cardsError || printingsError || (cards ?? []).length !== cardIds.length) {
@@ -64,11 +72,15 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
       const card = cardById.get(entry.id)!
       const printing = entry.sourceKey ? printingByKey.get(entry.sourceKey) : null
       if (entry.sourceKey && (!printing || printing.card_id !== entry.id)) throw new Error('PRINTING_MISMATCH')
+      if (entry.printingId && (!printing || printing.id !== entry.printingId)) throw new Error('PRINTING_ID_MISMATCH')
       return {
         id: entry.id,
+        printingId: printing?.id ?? null,
         name: card.name,
         imageUrl: printing?.image_url ?? card.image_url ?? null,
         sourceKey: entry.sourceKey ?? null,
+        faceSideIndex: entry.faceSideIndex ?? 0,
+        zone: 'main',
         count: entry.count,
       }
     })

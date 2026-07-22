@@ -151,6 +151,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
             nameKana: front?.name_kana ?? row.name_kana,
             imageUrl: front?.image_url ?? printing.image_url ?? row.image_url,
             officialPageUrl: front?.official_page_url ?? printing.official_page_url ?? `https://dm.takaratomy.co.jp/card/detail/?id=${encodeURIComponent(printing.source_key)}`,
+            printingId: printing.id,
             sourceKey: printing.source_key,
           }]
         }
@@ -160,6 +161,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
           nameKana: face.name_kana ?? row.name_kana,
           imageUrl: face.image_url ?? printing.image_url ?? row.image_url,
           officialPageUrl: face.official_page_url ?? printing.official_page_url,
+          printingId: printing.id,
           sourceKey: printing.source_key,
           matchedFace: { name: face.name, imageUrl: face.image_url, sideIndex: face.side_index, sideKind: face.side_kind },
         }))
