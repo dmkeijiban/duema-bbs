@@ -13,17 +13,20 @@ function DefaultAvatarGlyph() {
   return <svg className="h-1/2 w-1/2" style={{ color: L.colors.lightLine }} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={RESUME_DEFAULT_AVATAR_PATH} /></svg>
 }
 
-function FieldRow({ cells, labelWidth = L.defaultLabelWidth }: { cells: [string, string][]; labelWidth?: number }) {
-  return <div className="grid border" style={{ height: L.rowHeight, gridTemplateColumns: `repeat(${cells.length}, 1fr)`, borderColor: L.colors.line }}>
+type FieldCell = [label: string, value: string]
+
+function FieldRow({ cells, labelWidth = L.defaultLabelWidth, columnFractions }: { cells: FieldCell[]; labelWidth?: number; columnFractions?: number[] }) {
+  const columns = columnFractions?.length === cells.length ? columnFractions.map(value => `${value}fr`).join(' ') : `repeat(${cells.length}, 1fr)`
+  return <div className="grid border" style={{ height: L.rowHeight, gridTemplateColumns: columns, borderColor: L.colors.line }}>
     {cells.map(([label, value]) => <div key={label} className="flex min-w-0 border-r last:border-r-0" style={{ borderColor: L.colors.line }}>
-      <div className="flex shrink-0 items-center whitespace-nowrap border-r px-3 font-sans font-bold" style={{ width: labelWidth, borderColor: L.colors.lightLine, background: L.colors.label, color: L.colors.subInk, fontSize: L.font.label }}>{label}</div>
-      <div className="flex min-w-0 flex-1 items-center overflow-hidden whitespace-nowrap px-3 font-sans" style={{ color: L.colors.ink, fontSize: L.font.value }}>{value}</div>
+      <div className="flex shrink-0 items-center justify-center whitespace-nowrap border-r px-2 text-center font-sans font-bold" style={{ width: labelWidth, borderColor: L.colors.lightLine, background: L.colors.label, color: L.colors.subInk, fontSize: L.font.label }}>{label}</div>
+      <div className="flex min-w-0 flex-1 items-center justify-center overflow-hidden whitespace-nowrap px-2 text-center font-sans" style={{ color: L.colors.ink, fontSize: L.font.value }}>{value}</div>
     </div>)}
   </div>
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="relative font-black" style={{ height: L.sectionTitleHeight, fontSize: L.font.section, lineHeight: 1 }}>{children}<span className="absolute bottom-0 left-0 h-0.5 w-1.5" style={{ background: L.colors.line }} /></h2>
+  return <h2 className="font-black" style={{ height: L.sectionTitleHeight, fontSize: L.font.section, lineHeight: 1 }}>{children}</h2>
 }
 
 export function ResumePreview({ data, avatarUrl, resumeDate }: { data: ResumeData; avatarUrl: string | null; resumeDate?: string | null }) {
@@ -56,7 +59,7 @@ export function ResumePreview({ data, avatarUrl, resumeDate }: { data: ResumeDat
       <div className="flex-1">
         <FieldRow cells={[["名前", data.handleName || '未入力']]} />
         <FieldRow cells={[["開始時期", data.startedAt || '-'], ['活動地域', data.region || '-']]} />
-        <FieldRow labelWidth={L.compactLabelWidth} cells={[["性別", data.gender || '-'], ['年齢', data.ageGroup || '-'], ['デュエプレ', data.playsDuelMastersPlay || '-']]} />
+        <FieldRow labelWidth={L.compactLabelWidth} cells={[["性別", data.gender || '-'], ['年齢', data.ageGroup || '-']]} />
         <FieldRow labelWidth={L.profileChoiceLabelWidth} cells={[["好きな文明", data.favoriteCivilization || '-'], ['プレイスタイル', data.playStyle || '-']]} />
       </div>
       <div className="flex shrink-0 items-center justify-center overflow-hidden border-2" style={{ width: L.photoSize, height: L.photoSize, borderColor: L.colors.line, background: L.colors.label }}>
@@ -64,7 +67,7 @@ export function ResumePreview({ data, avatarUrl, resumeDate }: { data: ResumeDat
       </div>
     </div>
     <section style={{ marginTop: L.sectionGap }}>
-      <FieldRow labelWidth={L.fullLabelWidth} cells={[["使用デッキ", data.currentDecksText || '-']]} />
+      <FieldRow labelWidth={L.fullLabelWidth} columnFractions={[2, 1]} cells={[["使用デッキ", data.currentDecksText || '-'], ['デュエプレ', data.playsDuelMastersPlay || '-']]} />
       <FieldRow labelWidth={L.fullLabelWidth} cells={[["好きなYouTuber", data.favoriteYouTuber || '-'], ['好きな事', data.otherInterests || '-']]} />
     </section>
     {RESUME_SECTION_ORDER.map(renderSection)}
