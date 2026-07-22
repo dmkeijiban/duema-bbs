@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type Ref } from 'react'
 import type { ResumeData } from '@/lib/maker-resume'
 import { formatResumeDate, RESUME_DEFAULT_AVATAR_PATH, RESUME_LAYOUT as L, RESUME_SECTION_ORDER, type ResumeSection } from '@/lib/maker-resume-layout'
 import { getResumeSectionContent } from '@/lib/maker-resume-render'
@@ -29,7 +29,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="font-black" style={{ height: L.sectionTitleHeight, fontSize: L.font.section, lineHeight: 1 }}>{children}</h2>
 }
 
-export function ResumePreview({ data, avatarUrl, resumeDate }: { data: ResumeData; avatarUrl: string | null; resumeDate?: string | null }) {
+export function ResumePreview({ data, avatarUrl, resumeDate, exportRef }: { data: ResumeData; avatarUrl: string | null; resumeDate?: string | null; exportRef?: Ref<HTMLDivElement> }) {
   const sectionContent = getResumeSectionContent(data)
   const renderSection = (section: ResumeSection) => {
     switch (section) {
@@ -49,7 +49,7 @@ export function ResumePreview({ data, avatarUrl, resumeDate }: { data: ResumeDat
         </section>
     }
   }
-  return <div className="relative box-border shrink-0 font-serif" style={{ width: L.width, height: L.height, padding: L.margin, background: L.colors.paper, color: L.colors.ink }}>
+  return <div ref={exportRef} data-resume-preview-root className="relative box-border shrink-0 font-serif" style={{ width: L.width, height: L.height, padding: L.margin, background: L.colors.paper, color: L.colors.ink }}>
     <div className="pointer-events-none absolute border-[3px]" style={{ inset: L.outerBorderInset, borderColor: L.colors.line }} />
     <header className="flex items-start justify-between border-b-2" style={{ height: L.headerRuleY - L.margin, borderColor: L.colors.line }}>
       <h1 className="font-black" style={{ fontSize: L.font.title, lineHeight: 1 }}>デュエマ履歴書</h1>
