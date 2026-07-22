@@ -1,7 +1,7 @@
 export const RESUME_LAYOUT = {
   width: 1240, height: 1754, margin: 64, outerBorderInset: 32,
   headerRuleY: 156, infoTop: 184, photoSize: 190, photoGap: 40,
-  rowHeight: 52, defaultLabelWidth: 110, compactLabelWidth: 90, profileChoiceLabelWidth: 164, fullLabelWidth: 150,
+  rowHeight: 52, defaultLabelWidth: 132, compactLabelWidth: 90, profileChoiceLabelWidth: 164, fullLabelWidth: 230,
   sectionGap: 40, sectionTitleHeight: 40, sectionContentGap: 16,
   freeSpaceHeight: 180, chipHeight: 36, chipGap: 10, chipPaddingX: 14,
   colors: { paper: '#fdfdfb', ink: '#1f2933', subInk: '#52606d', line: '#334155', lightLine: '#94a3b8', label: '#f1f5f9', chip: '#eef2f6', muted: '#94a3b8' },
