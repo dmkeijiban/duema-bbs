@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { FullscreenResumePreview, ScaledResumePreview } from '@/app/makers/resume-maker/ResumePreview'
+import { FullscreenResumePreview, ResumePreview, ScaledResumePreview } from '@/app/makers/resume-maker/ResumePreview'
 import { renderResumeExportImage, resumePngFileName } from '@/lib/maker-resume-export'
 import { RESUME_SHARE_TEXT } from '@/app/makers/resume-maker/constants'
 import type { ResumeData } from '@/lib/maker-resume'
@@ -14,6 +14,7 @@ export function ResumeProfileCard({ data, avatarUrl, resumeDate, isOwner, isPubl
   const [isSavingImage, setIsSavingImage] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
   const [pngPreview, setPngPreview] = useState<PngPreview | null>(null)
+  const exportPreviewRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!zoomed && !pngPreview) return
@@ -28,7 +29,7 @@ export function ResumeProfileCard({ data, avatarUrl, resumeDate, isOwner, isPubl
     if (isSavingImage) return
     setIsSavingImage(true)
     try {
-      const blob = await renderResumeExportImage(data, { url: avatarUrl }, resumeDate)
+      const blob = await renderResumeExportImage(exportPreviewRef.current)
       const fileName = resumePngFileName(data.handleName)
       const file = new File([blob], fileName, { type: blob.type || 'image/png' })
       const src = await new Promise<string>((resolve, reject) => {
@@ -73,6 +74,9 @@ export function ResumeProfileCard({ data, avatarUrl, resumeDate, isOwner, isPubl
 
   return (
     <section className="mt-4 rounded-sm border border-gray-200 bg-white px-4 py-4">
+      <div aria-hidden="true" className="pointer-events-none fixed left-[-10000px] top-0">
+        <ResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} exportRef={exportPreviewRef} />
+      </div>
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold text-gray-800">デュエマ履歴書</h2>
         {isOwner && <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${isPublic ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>{isPublic ? '公開中' : '非公開'}</span>}
