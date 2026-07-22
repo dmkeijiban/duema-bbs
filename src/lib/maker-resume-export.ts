@@ -226,20 +226,20 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
   drawFieldGridRow(context, contentX, cursorY, infoWidth, rowHeight, [
     { label: '性別', value: data.gender || '-' },
     { label: '年齢', value: data.ageGroup || '-' },
-  ], L.compactLabelWidth)
+  ], L.defaultLabelWidth)
   cursorY += rowHeight
   drawFieldGridRow(context, contentX, cursorY, infoWidth, rowHeight, [
     { label: '好きな文明', value: data.favoriteCivilization || '-' },
     { label: 'プレイスタイル', value: data.playStyle || '-' },
-  ], L.profileChoiceLabelWidth)
+  ], L.defaultLabelWidth)
   cursorY += rowHeight
 
   cursorY = Math.max(cursorY, photoY + photoSize) + L.sectionGap
 
   drawFieldGridRow(context, contentX, cursorY, contentWidth, rowHeight, [
-    { label: '使用デッキ', value: data.currentDecksText || '-' },
-    { label: 'デュエプレ', value: data.playsDuelMastersPlay || '-' },
-  ], L.fullLabelWidth, [2, 1])
+    { label: 'メインデッキ', value: data.currentDecksText || '-' },
+    { label: 'デュエプレのメインデッキ', value: data.duelMastersPlayMainDeck || '-' },
+  ], L.fullLabelWidth)
   cursorY += rowHeight
   drawFieldGridRow(context, contentX, cursorY, contentWidth, rowHeight, [
     { label: '好きなYouTuber', value: data.favoriteYouTuber || '-' },
