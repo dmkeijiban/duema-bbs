@@ -6,6 +6,7 @@ import { formatJapanDateTime } from '@/lib/date-time'
 import { getMakerAnonymousEditHash } from '@/lib/maker-anonymous-owner'
 import { copyPublishedDeck, deletePublishedDeck } from '../../actions'
 import DeckMetrics from './DeckMetrics'
+import DeckCardGrid from './DeckCardGrid'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,13 +62,7 @@ export default async function PublicDeckPage({ params }: { params: Promise<{ id:
           </div>
 
           <h2 className="mt-7 text-lg font-black text-slate-950">デッキ内容（40枚）</h2>
-          <div className="mt-3 grid grid-cols-8 gap-0.5 rounded-xl bg-slate-200 p-0.5">
-            {cards.map(card => (
-              <div key={`${card.id}:${card.printingId ?? card.sourceKey ?? 'default'}:${card.faceSideIndex ?? 0}:${card.entryIndex}:${card.copy}`} className="aspect-[5/7] overflow-hidden rounded-[3px] bg-slate-700" title={`${card.name}${card.sourceKey ? ` / ${card.sourceKey}` : ''}`}>
-                {card.imageUrl ? <img src={card.imageUrl} alt={card.name} className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center p-1 text-center text-[7px] font-bold leading-tight text-white">{card.name}</span>}
-              </div>
-            ))}
-          </div>
+          <DeckCardGrid cards={cards} />
         </article>
       </div>
     </main>
