@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-export function UserProfileShareButtons({ displayName }: { displayName: string }) {
+export function UserProfileShareButtons({ displayName, showCopy = true }: { displayName: string; showCopy?: boolean }) {
   const [copied, setCopied] = useState(false)
 
   function shareX() {
@@ -29,13 +29,15 @@ export function UserProfileShareButtons({ displayName }: { displayName: string }
       >
         Xでシェア
       </button>
-      <button
-        type="button"
-        onClick={copyUrl}
-        className="rounded border border-blue-500 bg-white px-3 py-1.5 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
-      >
-        {copied ? 'URLをコピーしました' : 'URLをコピー'}
-      </button>
+      {showCopy && (
+        <button
+          type="button"
+          onClick={copyUrl}
+          className="rounded border border-blue-500 bg-white px-3 py-1.5 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+        >
+          {copied ? 'URLをコピーしました' : 'URLをコピー'}
+        </button>
+      )}
     </div>
   )
 }
