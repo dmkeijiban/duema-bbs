@@ -4,7 +4,7 @@ export const RESUME_LAYOUT = {
   rowHeight: 52, defaultLabelWidth: 132, compactLabelWidth: 90, profileChoiceLabelWidth: 164, fullLabelWidth: 230,
   sectionGap: 40, sectionTitleHeight: 40, sectionContentGap: 16,
   freeSpaceHeight: 180, chipHeight: 36, chipGap: 10, chipPaddingX: 14,
-  colors: { paper: '#fdfdfb', ink: '#1f2933', subInk: '#52606d', line: '#334155', lightLine: '#94a3b8', label: '#f1f5f9', chip: '#eef2f6', muted: '#94a3b8' },
+  colors: { paper: '#fdfdfb', ink: '#1f2933', subInk: '#52606d', line: '#000000', lightLine: '#94a3b8', label: '#f1f5f9', chip: '#eef2f6', muted: '#94a3b8' },
   font: { title: 56, date: 20, label: 18, value: 22, section: 30, body: 20, freeSpace: 22, chip: 18, footer: 16 },
 } as const
 
