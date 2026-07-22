@@ -43,10 +43,10 @@ export default async function DeckCardRankingPage() {
   const decks = (data ?? []) as StatsDeck[]
   const entries = buildRanking(decks)
 
-  return <main className="min-h-screen bg-slate-100 px-3 py-6">
+  return <main className="min-h-screen bg-slate-100 px-3 py-3 sm:py-5">
     <div className="mx-auto max-w-6xl">
-      <Link href="/makers/deck-maker" className="text-sm font-bold text-blue-700">← デッキを作る</Link>
-      <div className="mt-3 sm:flex sm:items-end sm:justify-between sm:gap-4">
+      <Link href="/makers/deck-maker" className="inline-flex h-8 items-center text-sm font-bold text-blue-700">← デッキを作る</Link>
+      <div className="mt-1 sm:flex sm:items-end sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-black text-slate-950">採用カードランキング</h1>
           <p className="mt-1 text-sm text-slate-600">みんなのデッキで採用されたカードを、カード単位で集計しています。</p>
