@@ -220,7 +220,7 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
   cursorY += rowHeight
   drawFieldGridRow(context, contentX, cursorY, infoWidth, rowHeight, [
     { label: '開始時期', value: data.startedAt || '-' },
-    { label: '活動地域', value: data.region || '-' },
+    { label: '世代', value: data.generation || '-' },
   ], L.defaultLabelWidth)
   cursorY += rowHeight
   drawFieldGridRow(context, contentX, cursorY, infoWidth, rowHeight, [
@@ -233,12 +233,20 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
     { label: 'プレイスタイル', value: data.playStyle || '-' },
   ], L.defaultLabelWidth)
   cursorY += rowHeight
+  drawFieldGridRow(context, contentX, cursorY, infoWidth, rowHeight, [
+    { label: '活動地域', value: data.region || '-' },
+    { label: 'デュエプレ', value: data.duelMastersPlayStatus || '-' },
+  ], L.defaultLabelWidth)
+  cursorY += rowHeight
 
   cursorY = Math.max(cursorY, photoY + photoSize) + L.sectionGap
 
   drawFieldGridRow(context, contentX, cursorY, contentWidth, rowHeight, [
-    { label: 'メインデッキ', value: data.currentDecksText || '-' },
-    { label: 'デュエプレのメインデッキ', value: data.duelMastersPlayMainDeck || '-' },
+    { label: '使用デッキ', value: data.currentDecksText || '-' },
+  ], L.fullLabelWidth)
+  cursorY += rowHeight
+  drawFieldGridRow(context, contentX, cursorY, contentWidth, rowHeight, [
+    { label: 'デュエプレの使用デッキ', value: data.duelMastersPlayMainDeck || '-' },
   ], L.fullLabelWidth)
   cursorY += rowHeight
   drawFieldGridRow(context, contentX, cursorY, contentWidth, rowHeight, [
@@ -252,18 +260,17 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
     if (section === 'interaction') {
       sectionTitle(context, '対戦・交流について', contentX, cursorY)
       cursorY += 56
-      if (sectionContent.interaction.tags.length) cursorY = drawChips(context, sectionContent.interaction.tags, contentX, cursorY, contentWidth)
       if (sectionContent.interaction.note) {
         context.font = '20px sans-serif'
         context.fillStyle = INK
         context.fillText(sectionContent.interaction.note, contentX, cursorY + 10, contentWidth)
         cursorY += 40
       }
+      if (sectionContent.interaction.tags.length) cursorY = drawChips(context, sectionContent.interaction.tags, contentX, cursorY, contentWidth)
       cursorY += 40
     } else if (section === 'achievements') {
       sectionTitle(context, '大会・デュエマ実績', contentX, cursorY)
       cursorY += 56
-      if (sectionContent.achievements.tags.length) cursorY = drawChips(context, sectionContent.achievements.tags, contentX, cursorY, contentWidth)
       if (sectionContent.achievements.note) {
         context.font = '20px sans-serif'
         context.fillStyle = INK
@@ -272,6 +279,7 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
         context.fillText(sectionContent.achievements.note, contentX, cursorY + 10, contentWidth)
         cursorY += 40
       }
+      if (sectionContent.achievements.tags.length) cursorY = drawChips(context, sectionContent.achievements.tags, contentX, cursorY, contentWidth)
       cursorY += 30
     } else {
       sectionTitle(context, 'フリースペース', contentX, cursorY)
