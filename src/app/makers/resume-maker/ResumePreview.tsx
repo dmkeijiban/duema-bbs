@@ -65,17 +65,17 @@ export function ResumePreview({ data, avatarUrl, resumeDate, exportRef }: { data
     switch (section) {
       case 'interaction':
         return <section key={section} style={{ marginTop: L.sectionGap }}><SectionTitle>対戦・交流について</SectionTitle>
-          {sectionContent.interaction.note && <p className="box-border h-10 pt-[10px] font-sans" style={{ fontSize: L.font.body, lineHeight: '20px' }}>{sectionContent.interaction.note}</p>}
+          {sectionContent.interaction.note && <div className="box-border flex h-10 items-center border-2 px-3 font-sans" style={{ borderColor: L.colors.line, fontSize: L.font.body, lineHeight: '20px' }}>{sectionContent.interaction.note}</div>}
           <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{sectionContent.interaction.tags.map(label => <Chip key={label}>{label}</Chip>)}</div>
         </section>
       case 'achievements':
         return <section key={section} style={{ marginTop: L.sectionGap }}><SectionTitle>大会・デュエマ実績</SectionTitle>
-          {sectionContent.achievements.note && <p className="box-border h-10 pt-[10px] font-sans" style={{ fontSize: L.font.body, lineHeight: '20px' }}>{sectionContent.achievements.note}</p>}
+          {sectionContent.achievements.note && <div className="box-border flex h-10 items-center border-2 px-3 font-sans" style={{ borderColor: L.colors.line, fontSize: L.font.body, lineHeight: '20px' }}>{sectionContent.achievements.note}</div>}
           <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{sectionContent.achievements.tags.map(label => <Chip key={label}>{label}</Chip>)}</div>
         </section>
       case 'freeSpace':
         return <section key={section} style={{ marginTop: 30 }}><SectionTitle>フリースペース</SectionTitle>
-          <div className="overflow-hidden whitespace-pre-wrap break-words border p-4 font-sans" style={{ marginTop: L.sectionContentGap, height: freeSpaceHeight, borderColor: '#cbd5e1', fontSize: L.font.freeSpace, lineHeight: '28px' }}>{sectionContent.freeSpace.text}</div>
+          <div className="overflow-hidden whitespace-pre-wrap break-words border-2 p-4 font-sans" style={{ marginTop: L.sectionContentGap, height: freeSpaceHeight, borderColor: L.colors.line, fontSize: L.font.freeSpace, lineHeight: '28px' }}>{sectionContent.freeSpace.text}</div>
         </section>
     }
   }
