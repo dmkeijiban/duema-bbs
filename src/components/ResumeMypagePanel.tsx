@@ -15,12 +15,14 @@ export function ResumeMypagePanel({
   avatarUrl,
   isPublic: initialIsPublic,
   updatedAtLabel,
+  resumeDate,
   profileSlug,
 }: {
   data: ResumeData
   avatarUrl: string | null
   isPublic: boolean
   updatedAtLabel: string
+  resumeDate: string
   profileSlug: string
 }) {
   const [isPublic, setIsPublic] = useState(initialIsPublic)
@@ -48,7 +50,7 @@ export function ResumeMypagePanel({
     if (isSavingImage) return
     setIsSavingImage(true)
     try {
-      const blob = await renderResumeExportImage(data, { url: avatarUrl })
+      const blob = await renderResumeExportImage(data, { url: avatarUrl }, resumeDate)
       const fileName = resumePngFileName(data.handleName)
       const file = new File([blob], fileName, { type: blob.type || 'image/png' })
       const src = await new Promise<string>((resolve, reject) => {
@@ -95,7 +97,7 @@ export function ResumeMypagePanel({
     <>
       <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start">
         <div className="w-28 shrink-0 overflow-hidden rounded border border-gray-200">
-          <ScaledResumePreview data={data} avatarUrl={avatarUrl} />
+          <ScaledResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-gray-900">{isPublic ? '公開中' : '非公開'}</p>

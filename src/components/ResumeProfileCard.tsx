@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ScaledResumePreview } from '@/app/makers/resume-maker/ResumePreview'
 import { renderResumeExportImage, resumePngFileName } from '@/lib/maker-resume-export'
@@ -9,7 +9,7 @@ import type { ResumeData } from '@/lib/maker-resume'
 
 type PngPreview = { src: string; fileName: string; file: File }
 
-export function ResumeProfileCard({ data, avatarUrl, isOwner, isPublic, viewerLoggedIn }: { data: ResumeData; avatarUrl: string | null; isOwner: boolean; isPublic: boolean; viewerLoggedIn: boolean }) {
+export function ResumeProfileCard({ data, avatarUrl, resumeDate, isOwner, isPublic, viewerLoggedIn }: { data: ResumeData; avatarUrl: string | null; resumeDate: string; isOwner: boolean; isPublic: boolean; viewerLoggedIn: boolean }) {
   const [zoomed, setZoomed] = useState(false)
   const [isSavingImage, setIsSavingImage] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
@@ -17,11 +17,20 @@ export function ResumeProfileCard({ data, avatarUrl, isOwner, isPublic, viewerLo
 
   const createLikeThisHref = viewerLoggedIn ? '/mypage' : '/login?mode=signup&next=/mypage'
 
+  useEffect(() => {
+    if (!zoomed && !pngPreview) return
+    const previous = document.body.style.overflow
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') { setZoomed(false); setPngPreview(null) } }
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', close)
+    return () => { document.body.style.overflow = previous; window.removeEventListener('keydown', close) }
+  }, [zoomed, pngPreview])
+
   async function handleSaveImage() {
     if (isSavingImage) return
     setIsSavingImage(true)
     try {
-      const blob = await renderResumeExportImage(data, { url: avatarUrl })
+      const blob = await renderResumeExportImage(data, { url: avatarUrl }, resumeDate)
       const fileName = resumePngFileName(data.handleName)
       const file = new File([blob], fileName, { type: blob.type || 'image/png' })
       const src = await new Promise<string>((resolve, reject) => {
@@ -71,7 +80,7 @@ export function ResumeProfileCard({ data, avatarUrl, isOwner, isPublic, viewerLo
         {isOwner && <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${isPublic ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>{isPublic ? '公開中' : '非公開'}</span>}
       </div>
       <button type="button" onClick={() => setZoomed(true)} aria-label="デュエマ履歴書を拡大表示" className="mt-3 block w-40 overflow-hidden rounded border border-gray-200 transition-transform hover:scale-[1.02] sm:w-48">
-        <ScaledResumePreview data={data} avatarUrl={avatarUrl} />
+        <ScaledResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} />
       </button>
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" disabled={isSavingImage} onClick={() => void handleSaveImage()} className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40">{isSavingImage ? '生成中…' : '画像を保存'}</button>
@@ -84,7 +93,7 @@ export function ResumeProfileCard({ data, avatarUrl, isOwner, isPublic, viewerLo
         <div role="presentation" className="fixed inset-0 z-50 overflow-auto bg-black/90 p-3" onMouseDown={event => { if (event.currentTarget === event.target) setZoomed(false) }}>
           <div className="mx-auto max-w-xl">
             <div className="mb-2 flex justify-end"><button type="button" onClick={() => setZoomed(false)} aria-label="閉じる" className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl">×</button></div>
-            <ScaledResumePreview data={data} avatarUrl={avatarUrl} />
+            <ScaledResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} />
           </div>
         </div>
       )}

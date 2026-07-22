@@ -50,7 +50,7 @@ export default async function ResumeMakerPage() {
 
   const [{ data: profile }, { data: submission }] = await Promise.all([
     admin.from('profiles').select('display_name, avatar_url, profile_slug').eq('id', user.id).maybeSingle(),
-    project ? admin.from('maker_submissions').select('id, resume_data, is_public').eq('project_id', project.id).eq('user_id', user.id).eq('is_overwrite_slot', true).eq('is_valid', true).maybeSingle() : Promise.resolve({ data: null }),
+    project ? admin.from('maker_submissions').select('id, resume_data, is_public, updated_at').eq('project_id', project.id).eq('user_id', user.id).eq('is_overwrite_slot', true).eq('is_valid', true).maybeSingle() : Promise.resolve({ data: null }),
   ])
 
   let data = submission?.resume_data ? sanitizeResumeData(submission.resume_data) : null
@@ -66,6 +66,7 @@ export default async function ResumeMakerPage() {
     isPublic: submission ? submission.is_public : true,
     profileDefaults: profile ? { displayName: profile.display_name, avatarUrl: profile.avatar_url ?? null } : null,
     profileSlug: profile?.profile_slug ?? null,
+    resumeDate: submission?.updated_at ?? null,
   }
 
   return (

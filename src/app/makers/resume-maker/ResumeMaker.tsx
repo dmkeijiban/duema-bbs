@@ -43,6 +43,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   const [isTogglingVisibility, setIsTogglingVisibility] = useState(false)
   const [pngPreview, setPngPreview] = useState<PngPreview | null>(null)
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false)
+  const [resumeDate, setResumeDate] = useState<string | null>(initial.resumeDate)
 
   useEffect(() => {
     if (initial.data) setData(initial.data)
@@ -52,8 +53,10 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   useEffect(() => {
     if (!mobilePreviewOpen && !pngPreview) return
     const previous = document.body.style.overflow
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') { setMobilePreviewOpen(false); setPngPreview(null) } }
     document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = previous }
+    window.addEventListener('keydown', close)
+    return () => { document.body.style.overflow = previous; window.removeEventListener('keydown', close) }
   }, [mobilePreviewOpen, pngPreview])
 
   useEffect(() => {
@@ -83,7 +86,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
     const result = await saveResumeSubmission({ data, isPublic: nextIsPublic })
     setMessage(result.message)
     setSaveState(result.ok ? 'saved' : 'error')
-    if (result.ok && result.submissionId) { setSubmissionId(result.submissionId); return result.submissionId }
+    if (result.ok && result.submissionId) { setSubmissionId(result.submissionId); setResumeDate(new Date().toISOString()); return result.submissionId }
     return null
   }
 
@@ -109,7 +112,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
     if (isSavingImage || !complete) { if (!complete) setMessage('名前を入力してください'); return }
     setIsSavingImage(true)
     try {
-      const blob = await renderResumeExportImage(data, { url: avatarUrl })
+      const blob = await renderResumeExportImage(data, { url: avatarUrl }, resumeDate)
       const fileName = resumePngFileName(data.handleName)
       const file = new File([blob], fileName, { type: blob.type || 'image/png' })
       const src = await new Promise<string>((resolve, reject) => {
@@ -312,7 +315,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
 
         <div className="hidden lg:block">
           <div className="sticky top-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-            <ScaledResumePreview data={data} avatarUrl={avatarUrl} className="mx-auto" />
+            <ScaledResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} className="mx-auto" />
           </div>
         </div>
       </div>
@@ -330,7 +333,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
       {mobilePreviewOpen && (
         <div role="presentation" className="fixed inset-0 z-50 overflow-auto bg-black/90 p-3" onMouseDown={event => { if (event.currentTarget === event.target) setMobilePreviewOpen(false) }}>
           <div className="mx-auto max-w-xl"><div className="mb-2 flex justify-end"><button type="button" onClick={() => setMobilePreviewOpen(false)} aria-label="プレビューを閉じる" className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl">×</button></div>
-            <ScaledResumePreview data={data} avatarUrl={avatarUrl} />
+            <ScaledResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} />
           </div>
         </div>
       )}

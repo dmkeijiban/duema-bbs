@@ -6,16 +6,17 @@ import {
   RESUME_SOCIAL_TAG_PRESETS,
   type ResumeData,
 } from '@/lib/maker-resume'
+import { formatResumeDate, RESUME_LAYOUT as L } from '@/lib/maker-resume-layout'
 
 export type ResumeExportPhoto = { url: string | null }
 
-const CANVAS_WIDTH = 1240
-const CANVAS_HEIGHT = 1754
-const MARGIN = 64
-const INK = '#1f2933'
-const SUB_INK = '#52606d'
-const LINE = '#334155'
-const PAPER = '#fdfdfb'
+const CANVAS_WIDTH = L.width
+const CANVAS_HEIGHT = L.height
+const MARGIN = L.margin
+const INK = L.colors.ink
+const SUB_INK = L.colors.subInk
+const LINE = L.colors.line
+const PAPER = L.colors.paper
 
 function loadImage(url: string): Promise<HTMLImageElement | null> {
   return new Promise(resolve => {
@@ -52,7 +53,7 @@ function wrapText(context: CanvasRenderingContext2D, text: string, maxWidth: num
 
 function sectionTitle(context: CanvasRenderingContext2D, text: string, x: number, y: number) {
   context.fillStyle = INK
-  context.font = 'bold 30px "Hiragino Mincho ProN", "Yu Mincho", serif'
+  context.font = `bold ${L.font.section}px "Hiragino Mincho ProN", "Yu Mincho", serif`
   context.textAlign = 'left'
   context.textBaseline = 'top'
   context.fillText(text, x, y)
@@ -85,16 +86,16 @@ function drawFieldGridRow(context: CanvasRenderingContext2D, x: number, y: numbe
     context.stroke()
     context.strokeStyle = LINE
 
-    context.fillStyle = '#f1f5f9'
+    context.fillStyle = L.colors.label
     context.fillRect(cellX, y, labelWidth, height)
     context.fillStyle = SUB_INK
-    context.font = 'bold 18px sans-serif'
+    context.font = `bold ${L.font.label}px sans-serif`
     context.textAlign = 'left'
     context.textBaseline = 'middle'
     context.fillText(cell.label, cellX + 12, y + height / 2, labelWidth - 16)
 
     context.fillStyle = INK
-    context.font = '22px sans-serif'
+    context.font = `${L.font.value}px sans-serif`
     const valueMaxWidth = cellWidth - labelWidth - 24
     const lines = wrapText(context, cell.value, valueMaxWidth, 1)
     context.fillText(lines[0] ?? '', cellX + labelWidth + 12, y + height / 2, valueMaxWidth)
@@ -102,20 +103,20 @@ function drawFieldGridRow(context: CanvasRenderingContext2D, x: number, y: numbe
 }
 
 function drawChips(context: CanvasRenderingContext2D, labels: string[], x: number, y: number, maxWidth: number): number {
-  context.font = 'bold 18px sans-serif'
+  context.font = `bold ${L.font.chip}px sans-serif`
   let cursorX = x
   let cursorY = y
-  const chipHeight = 36
-  const gap = 10
+  const chipHeight = L.chipHeight
+  const gap = L.chipGap
   for (const label of labels) {
     const textWidth = context.measureText(label).width
-    const chipWidth = textWidth + 28
+    const chipWidth = textWidth + L.chipPaddingX * 2
     if (cursorX + chipWidth > x + maxWidth) {
       cursorX = x
       cursorY += chipHeight + gap
     }
-    context.fillStyle = '#eef2f6'
-    context.strokeStyle = '#94a3b8'
+    context.fillStyle = L.colors.chip
+    context.strokeStyle = L.colors.lightLine
     context.lineWidth = 1
     context.beginPath()
     context.roundRect(cursorX, cursorY, chipWidth, chipHeight, 18)
@@ -124,7 +125,7 @@ function drawChips(context: CanvasRenderingContext2D, labels: string[], x: numbe
     context.fillStyle = INK
     context.textAlign = 'left'
     context.textBaseline = 'middle'
-    context.fillText(label, cursorX + 14, cursorY + chipHeight / 2 + 1)
+    context.fillText(label, cursorX + L.chipPaddingX, cursorY + chipHeight / 2 + 1)
     cursorX += chipWidth + gap
   }
   return cursorY + chipHeight
@@ -132,9 +133,9 @@ function drawChips(context: CanvasRenderingContext2D, labels: string[], x: numbe
 
 /** アイコン未設定時の簡易な人型プレースホルダーを描画する。 */
 function drawDefaultAvatarGlyph(context: CanvasRenderingContext2D, x: number, y: number, size: number) {
-  context.fillStyle = '#f1f5f9'
+  context.fillStyle = L.colors.label
   context.fillRect(x, y, size, size)
-  context.fillStyle = '#94a3b8'
+  context.fillStyle = L.colors.lightLine
   const cx = x + size / 2
   const cy = y + size / 2
   const headRadius = size * 0.16
@@ -146,7 +147,7 @@ function drawDefaultAvatarGlyph(context: CanvasRenderingContext2D, x: number, y:
   context.fill()
 }
 
-export async function renderResumeExportImage(data: ResumeData, photo: ResumeExportPhoto | null): Promise<Blob> {
+export async function renderResumeExportImage(data: ResumeData, photo: ResumeExportPhoto | null, resumeDate?: string | null): Promise<Blob> {
   const canvas = document.createElement('canvas')
   canvas.width = CANVAS_WIDTH
   canvas.height = CANVAS_HEIGHT
@@ -163,13 +164,13 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
   const contentWidth = canvas.width - MARGIN * 2
 
   context.fillStyle = INK
-  context.font = 'bold 56px "Hiragino Mincho ProN", "Yu Mincho", serif'
+  context.font = `bold ${L.font.title}px "Hiragino Mincho ProN", "Yu Mincho", serif`
   context.textAlign = 'left'
   context.textBaseline = 'top'
   context.fillText('デュエマ履歴書', contentX, MARGIN)
 
-  const createdAtLabel = new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Tokyo' }).format(new Date())
-  context.font = '20px sans-serif'
+  const createdAtLabel = formatResumeDate(resumeDate)
+  context.font = `${L.font.date}px sans-serif`
   context.fillStyle = SUB_INK
   context.textAlign = 'right'
   context.fillText(`作成日 ${createdAtLabel}`, contentX + contentWidth, MARGIN + 70)
@@ -182,9 +183,9 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
   context.stroke()
 
   // 正方形プロフィールアイコン（右上）
-  const photoSize = 190
+  const photoSize = L.photoSize
   const photoX = contentX + contentWidth - photoSize
-  const photoY = MARGIN + 120
+  const photoY = L.infoTop
   if (photo?.url) {
     const image = await loadImage(photo.url)
     if (image) {
@@ -208,42 +209,50 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
   context.strokeRect(photoX, photoY, photoSize, photoSize)
 
   // 基本情報：複数列フィールドグリッド
-  const infoWidth = contentWidth - photoSize - 40
-  const rowHeight = 52
-  let cursorY = MARGIN + 120
-  drawFieldGridRow(context, contentX, cursorY, infoWidth, rowHeight, [{ label: '名前', value: data.handleName || '未入力' }], 110)
+  const infoWidth = contentWidth - photoSize - L.photoGap
+  const rowHeight = L.rowHeight
+  let cursorY: number = L.infoTop
+  drawFieldGridRow(context, contentX, cursorY, infoWidth, rowHeight, [{ label: '名前', value: data.handleName || '未入力' }], L.defaultLabelWidth)
   cursorY += rowHeight
   drawFieldGridRow(context, contentX, cursorY, infoWidth, rowHeight, [
     { label: '開始時期', value: data.startedAt || '-' },
     { label: '活動地域', value: data.region || '-' },
-  ], 110)
+  ], L.defaultLabelWidth)
   cursorY += rowHeight
   drawFieldGridRow(context, contentX, cursorY, infoWidth, rowHeight, [
     { label: '性別', value: data.gender },
     { label: '年齢', value: data.ageGroup },
     { label: 'デュエプレ', value: data.playsDuelMastersPlay },
-  ], 90)
+  ], L.compactLabelWidth)
   cursorY += rowHeight
   drawFieldGridRow(context, contentX, cursorY, infoWidth, rowHeight, [
     { label: '好きな文明', value: data.favoriteCivilization || '-' },
     { label: 'プレイスタイル', value: data.playStyle || '-' },
-  ], 110)
+  ], L.defaultLabelWidth)
   cursorY += rowHeight
 
-  cursorY = Math.max(cursorY, photoY + photoSize) + 40
+  cursorY = Math.max(cursorY, photoY + photoSize) + L.sectionGap
 
-  drawFieldGridRow(context, contentX, cursorY, contentWidth, rowHeight, [{ label: '使用デッキ', value: data.currentDecksText || '-' }], 150)
+  drawFieldGridRow(context, contentX, cursorY, contentWidth, rowHeight, [{ label: '使用デッキ', value: data.currentDecksText || '-' }], L.fullLabelWidth)
   cursorY += rowHeight
   drawFieldGridRow(context, contentX, cursorY, contentWidth, rowHeight, [
     { label: '好きなYouTuber', value: data.favoriteYouTuber || '-' },
     { label: '好きな事', value: data.otherInterests || '-' },
-  ], 150)
-  cursorY += rowHeight + 40
+  ], L.fullLabelWidth)
+  cursorY += rowHeight + L.sectionGap
 
   sectionTitle(context, '大会・デュエマ実績', contentX, cursorY)
   cursorY += 56
   const achievementLabels = data.achievements.map(key => RESUME_ACHIEVEMENT_PRESETS.find(preset => preset.key === key)?.label).filter((v): v is Exclude<typeof v, undefined> => v !== undefined)
-  cursorY = achievementLabels.length ? drawChips(context, achievementLabels, contentX, cursorY, contentWidth) : cursorY + 8
+  if (achievementLabels.length) cursorY = drawChips(context, achievementLabels, contentX, cursorY, contentWidth)
+  else {
+    context.font = `${L.font.body}px sans-serif`
+    context.fillStyle = L.colors.muted
+    context.textAlign = 'left'
+    context.textBaseline = 'top'
+    context.fillText('（未選択）', contentX, cursorY)
+    cursorY += 24
+  }
   if (data.achievementNote) {
     context.font = '20px sans-serif'
     context.fillStyle = INK
@@ -256,10 +265,10 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
 
   sectionTitle(context, 'フリースペース', contentX, cursorY)
   cursorY += 56
-  const freeSpaceBoxHeight = 180
+  const freeSpaceBoxHeight = L.freeSpaceHeight
   context.strokeStyle = '#cbd5e1'
   context.strokeRect(contentX, cursorY, contentWidth, freeSpaceBoxHeight)
-  context.font = '22px sans-serif'
+  context.font = `${L.font.freeSpace}px sans-serif`
   context.fillStyle = INK
   context.textAlign = 'left'
   context.textBaseline = 'top'
@@ -270,15 +279,23 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
   sectionTitle(context, '対戦・交流について', contentX, cursorY)
   cursorY += 56
   const socialLabels = data.socialTags.map(key => RESUME_SOCIAL_TAG_PRESETS.find(preset => preset.key === key)?.label).filter((v): v is Exclude<typeof v, undefined> => v !== undefined)
-  cursorY = socialLabels.length ? drawChips(context, socialLabels, contentX, cursorY, contentWidth) : cursorY + 8
+  if (socialLabels.length) cursorY = drawChips(context, socialLabels, contentX, cursorY, contentWidth)
+  else {
+    context.font = `${L.font.body}px sans-serif`
+    context.fillStyle = L.colors.muted
+    context.textAlign = 'left'
+    context.textBaseline = 'top'
+    context.fillText('（未選択）', contentX, cursorY)
+    cursorY += 24
+  }
   if (data.socialNote) {
     context.font = '20px sans-serif'
     context.fillStyle = INK
     context.fillText(data.socialNote, contentX, cursorY + 10, contentWidth)
   }
 
-  context.font = '16px sans-serif'
-  context.fillStyle = '#94a3b8'
+  context.font = `${L.font.footer}px sans-serif`
+  context.fillStyle = L.colors.muted
   context.textAlign = 'center'
   context.textBaseline = 'bottom'
   context.fillText('デュエマ掲示板　https://www.duema-bbs.com　#デュエマ履歴書', canvas.width / 2, canvas.height - MARGIN / 2 - 12)
