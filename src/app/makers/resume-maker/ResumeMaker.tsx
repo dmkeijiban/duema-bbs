@@ -232,7 +232,7 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
                 <label className="text-xs font-bold text-slate-700">世代
                   <select value={data.generation} onChange={e => update('generation', e.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100">
                     <option value="">選択しない</option>
-                    {RESUME_GENERATIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                    {RESUME_GENERATIONS.map(option => <option key={option.value} value={option.label}>{option.label}</option>)}
                   </select>
                 </label>
                 <label className="text-xs font-bold text-slate-700">性別
