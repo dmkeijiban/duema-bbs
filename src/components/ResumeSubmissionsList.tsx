@@ -14,7 +14,7 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'Asia/Tokyo' }).format(new Date(value))
 }
 
-export function ResumeSubmissionsList({ submissions, viewerLoggedIn }: { submissions: PublicResumeSubmission[]; viewerLoggedIn: boolean }) {
+export function ResumeSubmissionsList({ submissions }: { submissions: PublicResumeSubmission[] }) {
   const [openId, setOpenId] = useState<string | null>(null)
   const [isExtraZoomOpen, setIsExtraZoomOpen] = useState(false)
   const openSubmission = submissions.find(submission => submission.id === openId) ?? null
@@ -77,7 +77,7 @@ export function ResumeSubmissionsList({ submissions, viewerLoggedIn }: { submiss
             </button>
             <div className="flex shrink-0 flex-wrap gap-2 border-t bg-white p-3">
               <Link href={`/u/${openSubmission.profileSlug}`} className="inline-flex min-h-11 flex-1 items-center justify-center rounded border border-gray-300 px-3 text-xs font-bold text-gray-700 hover:bg-gray-50 active:scale-[0.99]">公開プロフィールを見る</Link>
-              <Link href={viewerLoggedIn ? '/mypage' : '/login?mode=signup&next=/mypage'} className="inline-flex min-h-11 flex-1 items-center justify-center rounded border border-blue-300 px-3 text-xs font-bold text-blue-700 hover:bg-blue-50 active:scale-[0.99]">自分の履歴書を作る</Link>
+              <Link href="/makers/resume-maker" className="inline-flex min-h-11 flex-1 items-center justify-center rounded border border-blue-300 px-3 text-xs font-bold text-blue-700 hover:bg-blue-50 active:scale-[0.99]">自分の履歴書を作る</Link>
             </div>
           </section>
         </div>
