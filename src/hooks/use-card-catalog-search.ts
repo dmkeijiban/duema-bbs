@@ -5,6 +5,7 @@ import type { DeckCard } from '@/lib/deck-maker'
 import { CARD_CATALOG_CACHE_VERSION, dedupeLogicalCards } from '@/lib/card-catalog-shared'
 
 export const CARD_SEARCH_PAGE_SIZE = 48
+export type CardSearchFilter = { kind: 'civilization' | 'race' | 'cardType' | 'setName'; value: string }
 
 type SearchResponse = {
   cards: DeckCard[]
@@ -19,11 +20,23 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
   const [hasMore, setHasMore] = useState(false)
   const [nextOffset, setNextOffset] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [filters, setFilters] = useState<CardSearchFilter[]>([])
   const requestId = useRef(0)
   const abort = useRef<AbortController | null>(null)
   const cache = useRef(new Map<string, SearchResponse>())
 
-  const cacheKey = `${CARD_CATALOG_CACHE_VERSION}:${makerSlug ?? ''}:${query.trim()}`
+  const filterKey = filters.map(filter => `${filter.kind}:${filter.value}`).sort().join('|')
+  const cacheKey = `${CARD_CATALOG_CACHE_VERSION}:${makerSlug ?? ''}:${query.trim()}:${filterKey}`
+
+  const addFilter = useCallback((filter: CardSearchFilter) => {
+    setFilters(current => current.some(item => item.kind === filter.kind && item.value === filter.value) ? current : [...current, filter])
+  }, [])
+  const removeFilter = useCallback((filter: CardSearchFilter) => setFilters(current => current.filter(item => item.kind !== filter.kind || item.value !== filter.value)), [])
+  const clearFilters = useCallback(() => setFilters([]), [])
+
+  const applyFilters = useCallback((params: URLSearchParams) => {
+    for (const filter of filters) params.append(filter.kind, filter.value)
+  }, [filters])
 
   const setQuery = useCallback((value: string) => {
     requestId.current += 1
@@ -49,6 +62,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
       const params = new URLSearchParams({ q: query.trim(), offset: '0', limit: String(CARD_SEARCH_PAGE_SIZE) })
       params.set('order', CARD_CATALOG_CACHE_VERSION)
       if (makerSlug) params.set('makerSlug', makerSlug)
+      applyFilters(params)
       if (!query.trim()) params.set('fastInitial', '1')
       fetch(`/api/cards/search?${params}`, { signal: controller.signal })
         .then(response => response.ok ? response.json() : Promise.reject(new Error('search_failed')))
@@ -71,7 +85,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
         .finally(() => { if (id === requestId.current) setLoading(false) })
     }, query.trim() ? 70 : 0)
     return () => { clearTimeout(timer); abort.current?.abort() }
-  }, [cacheKey, makerSlug, query])
+  }, [applyFilters, cacheKey, makerSlug, query])
 
   const loadMore = useCallback(() => {
     if (!hasMore || loading) return
@@ -82,6 +96,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
     const params = new URLSearchParams({ q: query.trim(), offset: String(nextOffset), limit: String(CARD_SEARCH_PAGE_SIZE) })
     params.set('order', CARD_CATALOG_CACHE_VERSION)
     if (makerSlug) params.set('makerSlug', makerSlug)
+    applyFilters(params)
     fetch(`/api/cards/search?${params}`, { signal: controller.signal })
       .then(response => response.ok ? response.json() : Promise.reject(new Error('search_failed')))
       .then(data => {
@@ -97,7 +112,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
       })
       .catch(error => { if (!(error instanceof DOMException && error.name === 'AbortError')) setHasMore(false) })
       .finally(() => { if (id === requestId.current && !controller.signal.aborted) setLoading(false) })
-  }, [cacheKey, hasMore, loading, makerSlug, nextOffset, query])
+  }, [applyFilters, cacheKey, hasMore, loading, makerSlug, nextOffset, query])
 
-  return { query, setQuery, cards, hasMore, loading, loadMore }
+  return { query, setQuery, cards, hasMore, loading, loadMore, filters, addFilter, removeFilter, clearFilters }
 }

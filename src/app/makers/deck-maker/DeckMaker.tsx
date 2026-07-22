@@ -210,7 +210,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   initialDeck?: { name: string; entries: DeckEntry[]; submissionId?: string }
   dbDecks?: SavedDeck[]
 }) {
-  const { query, setQuery, cards: results, loading: resultsLoading, hasMore: hasMoreResults, loadMore } = useCardCatalogSearch()
+  const { query, setQuery, cards: results, loading: resultsLoading, hasMore: hasMoreResults, loadMore, filters, addFilter, removeFilter, clearFilters } = useCardCatalogSearch()
   const [entries, setEntries] = useState<DeckEntry[]>([])
   const [deckName, setDeckName] = useState(DEFAULT_DECK_NAME)
   const [savedDecks, setSavedDecks] = useState<SavedDeck[]>([])
@@ -264,8 +264,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
           return [{ id: deck.id, name, entries: safeEntries(deck.entries), createdAt: typeof deck.createdAt === 'string' ? deck.createdAt : now, updatedAt: typeof deck.updatedAt === 'string' ? deck.updatedAt : now, ...(typeof deck.submissionId === 'string' && /^[0-9a-f-]{36}$/i.test(deck.submissionId) ? { submissionId: deck.submissionId } : {}), keyCardId: deck.keyCardId, keyCardPrintingId: deck.keyCardPrintingId }]
         })
       }
-      const dbIds = new Set(dbDecks.map(deck => deck.submissionId))
-      setSavedDecks([...dbDecks.map(deck => ({ ...deck, entries: safeEntries(deck.entries) })), ...localDecks.filter(deck => !deck.submissionId || !dbIds.has(deck.submissionId))])
+      setSavedDecks([...dbDecks.map(deck => ({ ...deck, entries: safeEntries(deck.entries) })), ...localDecks.filter(deck => !deck.submissionId)])
       if (initialDeck) {
         const restored = safeEntries(initialDeck.entries)
         const now = new Date().toISOString()
@@ -619,7 +618,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
           </div>
         </section>
 
-        <CardCatalogSearchPanel cards={results} query={query} loading={resultsLoading} hasMore={hasMoreResults} onLoadMore={loadMore} onSelect={openCard} onQueryChange={setQuery} onClear={() => { setQuery(''); searchInput.current?.focus() }} inputRef={searchInput} clearIcon={<Icon name="close" />} filterIcon={<Icon name="filter" />} selectedCount={card => countsByCard.get(card.id) ?? 0} selectedBadge={count => `${count}/4`} renderCardArt={(card, index) => <CardArt card={card} eager={index < 4} />} />
+        <CardCatalogSearchPanel cards={results} query={query} loading={resultsLoading} hasMore={hasMoreResults} onLoadMore={loadMore} onSelect={openCard} onQueryChange={setQuery} onClear={() => { setQuery(''); searchInput.current?.focus() }} inputRef={searchInput} clearIcon={<Icon name="close" />} filterIcon={<Icon name="filter" />} selectedCount={card => countsByCard.get(card.id) ?? 0} selectedBadge={count => `${count}/4`} renderCardArt={(card, index) => <CardArt card={card} eager={index < 4} />} filters={filters} onRemoveFilter={removeFilter} onClearFilters={clearFilters} />
       </div>
 
       {libraryOpen && (
@@ -701,6 +700,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
         onAdd={add}
         onRemove={remove}
         onMove={moveSelectedEntry}
+        onAddFilter={(filter) => { addFilter(filter); closeCard() }}
         renderCardArt={(card, full) => <CardArt key={printingKey(card)} card={card} full={full} eager className="w-full rounded-xl shadow-lg" />}
       />
 
