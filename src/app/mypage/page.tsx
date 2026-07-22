@@ -652,7 +652,6 @@ export default async function MyPage({
                 isPublic={resume.isPublic}
                 updatedAtLabel={formatDateTime(resume.updatedAt)}
                 resumeDate={resume.updatedAt}
-                profileSlug={profile.profile_slug}
               />
             ) : (
               <div className="p-4">
