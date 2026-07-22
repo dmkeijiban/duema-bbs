@@ -9,6 +9,7 @@ import {
   DUEMA_PLAY_STYLES,
   type DuemaOption,
 } from '@/lib/duema-profile'
+import { RESUME_MAKER_SLUG } from '@/lib/maker-resume'
 
 const ADMIN_COOKIE = 'admin_auth'
 
@@ -62,15 +63,35 @@ export default async function DuemaStatsPage() {
   if (!verifyAdminCookie(cookieStore.get(ADMIN_COOKIE)?.value)) redirect('/admin')
 
   const admin = createAdminClient()
-  const { data: rows } = await admin
-    .from('profiles')
-    .select('duema_generation, favorite_civilization, play_style, favorite_card')
-    .eq('account_suspended', false)
-    .is('withdrawn_at', null)
-    .limit(5000)
+  const [{ data: rows }, { data: resumeProject }] = await Promise.all([
+    admin
+      .from('profiles')
+      .select('id, duema_generation, favorite_civilization, play_style, favorite_card')
+      .eq('account_suspended', false)
+      .is('withdrawn_at', null)
+      .limit(5000),
+    admin
+      .from('maker_projects')
+      .select('id')
+      .eq('slug', RESUME_MAKER_SLUG)
+      .eq('type', 'resume')
+      .maybeSingle(),
+  ])
 
   const all = rows ?? []
   const total = all.length
+  const activeUserIds = new Set(all.map(profile => profile.id))
+  const { data: resumeRows } = resumeProject
+    ? await admin
+        .from('maker_submissions')
+        .select('user_id, resume_data')
+        .eq('project_id', resumeProject.id)
+        .eq('is_overwrite_slot', true)
+        .eq('is_valid', true)
+        .not('user_id', 'is', null)
+        .limit(5000)
+    : { data: [] }
+  const resumes = (resumeRows ?? []).filter(row => row.user_id && activeUserIds.has(row.user_id))
 
   const generationCounts: Record<string, number> = {}
   const civilizationCounts: Record<string, number> = {}
@@ -96,6 +117,27 @@ export default async function DuemaStatsPage() {
     if (p.favorite_card) favoriteCardCount++
   }
 
+  const countResumeChoice = (
+    value: unknown,
+    options: readonly DuemaOption[],
+    counts: Record<string, number>,
+  ) => {
+    if (typeof value !== 'string' || !value) return false
+    const option = options.find(item => item.label === value || item.value === value)
+    if (!option) return false
+    counts[option.value] = (counts[option.value] ?? 0) + 1
+    return true
+  }
+
+  for (const submission of resumes) {
+    const resume = submission.resume_data && typeof submission.resume_data === 'object'
+      ? submission.resume_data as Record<string, unknown>
+      : {}
+    if (countResumeChoice(resume.generation, DUEMA_GENERATIONS, generationCounts)) generationFilled++
+    if (countResumeChoice(resume.favoriteCivilization, DUEMA_CIVILIZATIONS, civilizationCounts)) civilizationFilled++
+    if (countResumeChoice(resume.playStyle, DUEMA_PLAY_STYLES, playStyleCounts)) playStyleFilled++
+  }
+
   const totalWithAny = all.filter(
     p => p.duema_generation || p.favorite_card || p.favorite_civilization || p.play_style
   ).length
@@ -113,7 +155,12 @@ export default async function DuemaStatsPage() {
         <span>有効ユーザー: <strong className="text-gray-800">{total}人</strong></span>
         <span>いずれか設定済み: <strong className="text-gray-800">{totalWithAny}人</strong></span>
         <span>好きなカード入力済み: <strong className="text-gray-800">{favoriteCardCount}人</strong></span>
+        <span>保存済み履歴書: <strong className="text-gray-800">{resumes.length}人</strong></span>
       </div>
+
+      <p className="mb-4 text-xs text-gray-500">
+        世代・好きな文明・プレイスタイルは、プロフィール回答と履歴書回答を合算しています。同じ人が両方で回答した場合は、それぞれ1件として集計します。
+      </p>
 
       <StatTable
         label="どの世代？"
