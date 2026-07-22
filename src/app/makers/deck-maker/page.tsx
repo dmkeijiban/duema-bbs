@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase-server'
 import DeckMaker from './DeckMaker'
 
 const PAGE_URL = 'https://www.duema-bbs.com/makers/deck-maker'
@@ -18,7 +20,11 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 }
 
-export default function DeckMakerPage() {
+export default async function DeckMakerPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login?next=/makers/deck-maker')
+
   return (
     <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4">
       <DeckMaker />
