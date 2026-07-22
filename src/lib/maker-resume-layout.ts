@@ -1,6 +1,6 @@
 export const RESUME_LAYOUT = {
   width: 1240, height: 1754, margin: 64, outerBorderInset: 32,
-  headerRuleY: 156, infoTop: 184, photoSize: 190, photoGap: 40,
+  headerRuleY: 156, infoTop: 184, photoSize: 242, photoGap: 40,
   rowHeight: 52, defaultLabelWidth: 132, compactLabelWidth: 90, profileChoiceLabelWidth: 164, fullLabelWidth: 230,
   sectionGap: 40, sectionTitleHeight: 40, sectionContentGap: 16,
   freeSpaceHeight: 180, chipHeight: 36, chipGap: 10, chipPaddingX: 14,

@@ -35,13 +35,13 @@ export function ResumePreview({ data, avatarUrl, resumeDate }: { data: ResumeDat
     switch (section) {
       case 'interaction':
         return <section key={section} style={{ marginTop: L.sectionGap }}><SectionTitle>対戦・交流について</SectionTitle>
-          <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{sectionContent.interaction.tags.map(label => <Chip key={label}>{label}</Chip>)}</div>
           {sectionContent.interaction.note && <p className="box-border h-10 pt-[10px] font-sans" style={{ fontSize: L.font.body, lineHeight: '20px' }}>{sectionContent.interaction.note}</p>}
+          <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{sectionContent.interaction.tags.map(label => <Chip key={label}>{label}</Chip>)}</div>
         </section>
       case 'achievements':
         return <section key={section} style={{ marginTop: L.sectionGap }}><SectionTitle>大会・デュエマ実績</SectionTitle>
-          <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{sectionContent.achievements.tags.map(label => <Chip key={label}>{label}</Chip>)}</div>
           {sectionContent.achievements.note && <p className="box-border h-10 pt-[10px] font-sans" style={{ fontSize: L.font.body, lineHeight: '20px' }}>{sectionContent.achievements.note}</p>}
+          <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{sectionContent.achievements.tags.map(label => <Chip key={label}>{label}</Chip>)}</div>
         </section>
       case 'freeSpace':
         return <section key={section} style={{ marginTop: 30 }}><SectionTitle>フリースペース</SectionTitle>
@@ -58,16 +58,18 @@ export function ResumePreview({ data, avatarUrl, resumeDate }: { data: ResumeDat
     <div className="flex" style={{ marginTop: L.infoTop - L.headerRuleY, gap: L.photoGap }}>
       <div className="flex-1">
         <FieldRow cells={[["名前", data.handleName || '未入力']]} />
-        <FieldRow cells={[["開始時期", data.startedAt || '-'], ['活動地域', data.region || '-']]} />
+        <FieldRow cells={[["開始時期", data.startedAt || '-'], ['世代', data.generation || '-']]} />
         <FieldRow cells={[["性別", data.gender || '-'], ['年齢', data.ageGroup || '-']]} />
         <FieldRow cells={[["好きな文明", data.favoriteCivilization || '-'], ['プレイスタイル', data.playStyle || '-']]} />
+        <FieldRow cells={[["活動地域", data.region || '-'], ['デュエプレ', data.duelMastersPlayStatus || '-']]} />
       </div>
       <div className="flex shrink-0 items-center justify-center overflow-hidden border-2" style={{ width: L.photoSize, height: L.photoSize, borderColor: L.colors.line, background: L.colors.label }}>
         {avatarUrl ? <img src={avatarUrl} alt="プロフィールアイコン" className="h-full w-full object-cover" /> : <DefaultAvatarGlyph />}
       </div>
     </div>
     <section style={{ marginTop: L.sectionGap }}>
-      <FieldRow labelWidth={L.fullLabelWidth} cells={[["メインデッキ", data.currentDecksText || '-'], ['デュエプレのメインデッキ', data.duelMastersPlayMainDeck || '-']]} />
+      <FieldRow labelWidth={L.fullLabelWidth} cells={[["使用デッキ", data.currentDecksText || '-']]} />
+      <FieldRow labelWidth={L.fullLabelWidth} cells={[["デュエプレの使用デッキ", data.duelMastersPlayMainDeck || '-']]} />
       <FieldRow labelWidth={L.fullLabelWidth} cells={[["好きなYouTuber", data.favoriteYouTuber || '-'], ['好きな事', data.otherInterests || '-']]} />
     </section>
     {RESUME_SECTION_ORDER.map(renderSection)}

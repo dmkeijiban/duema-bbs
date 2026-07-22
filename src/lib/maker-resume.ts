@@ -36,6 +36,7 @@ export type ResumeData = {
   version: 1
   handleName: string
   startedAt: string
+  generation: string
   region: string
   favoriteCivilization: string
   playStyle: string
@@ -46,6 +47,7 @@ export type ResumeData = {
   favoriteYouTuber: string
   otherInterests: string
   duelMastersPlayMainDeck: string
+  duelMastersPlayStatus: string
   achievements: string[]
   achievementNote: string
   freeSpace: string
@@ -87,6 +89,8 @@ export const RESUME_UNANSWERED = '未回答'
 
 export const RESUME_GENDERS = ['男', '女', 'その他', RESUME_UNANSWERED] as const
 export const RESUME_AGE_GROUPS = ['10代', '20代', '30代', '40代', '50代', '60代', 'その他', RESUME_UNANSWERED] as const
+export const RESUME_GENERATIONS = ['切札勝舞', '切札勝太', '切札ジョー', 'その他'] as const
+export const RESUME_DUEL_MASTERS_PLAY_STATUSES = ['プレイ中', '過去にプレイ', '未経験'] as const
 export const RESUME_FAVORITE_CARD_LABEL = '好きなカード'
 
 function clampText(value: unknown, max: number): string {
@@ -205,6 +209,7 @@ export function sanitizeResumeData(value: unknown): ResumeData {
     version: 1,
     handleName: clampText(raw.handleName, RESUME_MAX_HANDLE_NAME),
     startedAt: clampText(raw.startedAt, RESUME_MAX_STARTED_AT),
+    generation: sanitizeChoice(raw.generation, RESUME_GENERATIONS, 10, ''),
     region: RESUME_REGIONS.includes(clampText(raw.region, RESUME_MAX_REGION) as typeof RESUME_REGIONS[number]) ? clampText(raw.region, RESUME_MAX_REGION) : '',
     favoriteCivilization: RESUME_FAVORITE_CIVILIZATIONS.some(o => o.label === civilizationValue) ? civilizationValue : '',
     playStyle: RESUME_PLAY_STYLES.some(o => o.label === playStyleValue) ? playStyleValue : '',
@@ -215,6 +220,7 @@ export function sanitizeResumeData(value: unknown): ResumeData {
     favoriteYouTuber: clampText(raw.favoriteYouTuber, RESUME_MAX_FAVORITE_YOUTUBER),
     otherInterests: clampOtherInterestsText(typeof raw.otherInterests === 'string' ? raw.otherInterests : ''),
     duelMastersPlayMainDeck: clampText(raw.duelMastersPlayMainDeck, RESUME_MAX_DUEL_MASTERS_PLAY_MAIN_DECK),
+    duelMastersPlayStatus: sanitizeChoice(raw.duelMastersPlayStatus, RESUME_DUEL_MASTERS_PLAY_STATUSES, 10, ''),
     achievements: sanitizePresetKeys(raw.achievements, RESUME_ACHIEVEMENT_PRESETS, RESUME_ACHIEVEMENT_PRESETS.length),
     achievementNote: clampText(raw.achievementNote, RESUME_MAX_ACHIEVEMENT_NOTE),
     freeSpace: deriveFreeSpace(raw),
