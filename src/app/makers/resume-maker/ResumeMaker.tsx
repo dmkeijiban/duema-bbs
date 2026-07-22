@@ -6,7 +6,7 @@ import { renderResumeExportImage, resumePngFileName } from '@/lib/maker-resume-e
 import {
   RESUME_ACHIEVEMENT_PRESETS,
   RESUME_AGE_GROUPS,
-  RESUME_DUEL_MASTERS_PLAY_OPTIONS,
+  RESUME_MAX_DUEL_MASTERS_PLAY_MAIN_DECK,
   RESUME_FAVORITE_CIVILIZATIONS,
   RESUME_GENDERS,
   RESUME_MAX_CURRENT_DECKS_TEXT,
@@ -239,14 +239,12 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
 
           {step === 2 && (
             <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
-              <h2 className="font-black text-slate-900">使用デッキ</h2>
+              <h2 className="font-black text-slate-900">メインデッキ</h2>
               <textarea value={data.currentDecksText} onChange={e => update('currentDecksText', clampCurrentDecksText(e.target.value))} maxLength={RESUME_MAX_CURRENT_DECKS_TEXT} rows={3} placeholder="例: 赤単我我我、青魔導具、昔は連ドラを使用" className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-slate-50 p-2 text-sm outline-none focus:border-emerald-700" />
               <p className="mt-1 text-right text-[11px] text-slate-400">{data.currentDecksText.length} / {RESUME_MAX_CURRENT_DECKS_TEXT}</p>
 
-              <h2 className="mt-4 font-black text-slate-900">デュエプレ</h2>
-              <select value={data.playsDuelMastersPlay} onChange={e => update('playsDuelMastersPlay', e.target.value)} className="mt-2 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100">
-                {RESUME_DUEL_MASTERS_PLAY_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
-              </select>
+              <h2 className="mt-4 font-black text-slate-900">デュエプレのメインデッキ</h2>
+              <input value={data.duelMastersPlayMainDeck} onChange={e => update('duelMastersPlayMainDeck', e.target.value.slice(0, RESUME_MAX_DUEL_MASTERS_PLAY_MAIN_DECK))} maxLength={RESUME_MAX_DUEL_MASTERS_PLAY_MAIN_DECK} placeholder="自由記述（任意）" className="mt-2 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" />
 
               <h2 className="mt-5 font-black text-slate-900">好きなYouTuber</h2>
               <input value={data.favoriteYouTuber} onChange={e => update('favoriteYouTuber', e.target.value.slice(0, RESUME_MAX_FAVORITE_YOUTUBER))} maxLength={RESUME_MAX_FAVORITE_YOUTUBER} placeholder="自由記述（任意）" className="mt-2 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm outline-none focus:border-emerald-700" />

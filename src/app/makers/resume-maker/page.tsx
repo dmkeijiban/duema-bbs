@@ -22,7 +22,7 @@ function ResumeSignupInvite() {
     <main className="min-h-screen bg-slate-100 px-3 py-8">
       <div className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
         <h1 className="text-xl font-black text-slate-900">デュエマ履歴書を作ろう</h1>
-        <p className="mt-2 text-sm leading-relaxed text-slate-600">あなたの好きなカードや使用デッキ、デュエマ歴を、本物の履歴書風にまとめられます。</p>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600">あなたの好きなカードやメインデッキ、デュエマ歴を、本物の履歴書風にまとめられます。</p>
         <ul className="mt-4 space-y-2">
           {RESUME_SIGNUP_BENEFITS.map(benefit => (
             <li key={benefit} className="flex items-start gap-2 text-sm text-slate-700">
