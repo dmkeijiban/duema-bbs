@@ -71,9 +71,8 @@ export function ResumeSubmissionsList({ submissions }: { submissions: PublicResu
               <h2 id="resume-submission-preview-title" className="min-w-0 truncate font-black text-slate-900">{openSubmission.displayName}</h2>
               <button type="button" onClick={closeSubmission} aria-label="閉じる" className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-2xl hover:bg-slate-100 active:scale-95">×</button>
             </div>
-            <button type="button" onClick={() => setIsExtraZoomOpen(true)} aria-label="履歴書をさらに拡大表示" className="group relative min-h-0 flex-1 bg-slate-100 p-2 text-left sm:p-4">
+            <button type="button" onClick={() => setIsExtraZoomOpen(true)} aria-label="履歴書を拡大表示" className="relative min-h-0 flex-1 bg-slate-100 p-2 text-left sm:p-4">
               <FullscreenResumePreview data={openSubmission.data} avatarUrl={openSubmission.avatarUrl} resumeDate={openSubmission.updatedAt} />
-              <span className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-4 py-2 text-xs font-bold text-white opacity-90 transition group-hover:bg-black/80">押すとさらに拡大</span>
             </button>
             <div className="flex shrink-0 flex-wrap gap-2 border-t bg-white p-3">
               <Link href={`/u/${openSubmission.profileSlug}`} className="inline-flex min-h-11 flex-1 items-center justify-center rounded border border-gray-300 px-3 text-xs font-bold text-gray-700 hover:bg-gray-50 active:scale-[0.99]">公開プロフィールを見る</Link>
@@ -85,7 +84,7 @@ export function ResumeSubmissionsList({ submissions }: { submissions: PublicResu
 
       {openSubmission && isExtraZoomOpen && (
         <div role="presentation" className="fixed inset-0 z-[60] overflow-auto bg-black/95 p-3 sm:p-5" onMouseDown={event => { if (event.currentTarget === event.target) setIsExtraZoomOpen(false) }}>
-          <div className="mx-auto w-full max-w-[1240px]">
+          <div className="mx-auto w-full max-w-[900px]">
             <div className="sticky top-0 z-10 mb-2 flex justify-end">
               <button type="button" onClick={() => setIsExtraZoomOpen(false)} aria-label="拡大表示を閉じる" className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl shadow-lg active:scale-95">×</button>
             </div>
