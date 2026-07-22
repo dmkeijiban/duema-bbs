@@ -65,6 +65,12 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
         : Promise.resolve({ data: [], error: null }),
     ])
     if (cardsError || printingsError || (cards ?? []).length !== cardIds.length) {
+      console.error('savePublishedDeck card lookup failed', {
+        cardsCode: cardsError?.code,
+        printingsCode: printingsError?.code,
+        expectedCards: cardIds.length,
+        resolvedCards: cards?.length ?? 0,
+      })
       return { ok: false, message: 'カード情報を確認できませんでした' }
     }
 
@@ -138,7 +144,10 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
       key_card_printing_id: deckData[0]?.printingId ?? null,
       is_public: true,
     }).select('id').single()
-    if (error || !data) return { ok: false, message: 'みんなのデッキリストへの登録に失敗しました' }
+    if (error || !data) {
+      console.error('savePublishedDeck insert failed', { code: error?.code, message: error?.message })
+      return { ok: false, message: 'みんなのデッキリストへの登録に失敗しました' }
+    }
 
     if (!user) {
       cookieStore.set(MAKER_ANONYMOUS_COOKIE, anonymousId!, {
