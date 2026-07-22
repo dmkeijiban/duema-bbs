@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
+import { redirect } from 'next/navigation'
 import { getCurrentHallCards, getHallCardOfficialId } from '@/lib/hall-of-fame'
 import type { MakerCard, MakerDraft } from '@/lib/maker'
 import HallReleaseMaker from './HallReleaseMaker'
@@ -7,6 +8,10 @@ import HallReleaseMaker from './HallReleaseMaker'
 export const metadata = { title: '殿堂解除選手権 | デュエマ掲示板', description: '次に殿堂解除されると思うカードを選ぼう！', openGraph: { title: '殿堂解除選手権', description: '次に殿堂解除されると思うカードを選ぼう！', images: ['/hall-of-fame-release-og.svg'] }, twitter: { card: 'summary_large_image' as const, images: ['/hall-of-fame-release-og.svg'] } }
 
 export default async function Page() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login?next=/makers/hall-of-fame-release')
+
   const admin = process.env.SUPABASE_SERVICE_ROLE_KEY ? createAdminClient() : null
   const current = [...getCurrentHallCards()].sort(
     (a, b) => Number(a.status !== 'hall') - Number(b.status !== 'hall'),
@@ -40,7 +45,6 @@ export default async function Page() {
     const card = bySourceKey.get(sourceKey)
     return { id: card?.id ?? `hall:${item.name}`, name: item.name, imageUrl: card?.image_url ?? item.imageUrl ?? null, civilization: card?.civilization ?? [], cost: card?.cost ?? null, cardType: card?.card_type ?? null, searchText: item.name, badge: item.status === 'hall' ? { label: '殿堂', value: 'hall', className: 'bg-yellow-300' } : { label: 'プレ殿', value: 'premium', className: 'bg-red-700 text-white' } }
   })
-  const supabase = await createClient(); const { data: { user } } = await supabase.auth.getUser()
   const draft: MakerDraft = { release: [] }; let saved = false
   if (user && projectReady && project && admin) { const { data: submissions } = await admin.from('maker_submissions').select('id').eq('project_id', project.id).eq('user_id', user.id).eq('is_valid', true).order('created_at', { ascending: false }).limit(1); const submission = submissions?.[0]; if (submission) { saved = true; const { data: items } = await admin.from('maker_submission_items').select('card_id').eq('submission_id', submission.id).eq('group_key', 'release').order('position'); draft.release = (items ?? []).map(item => item.card_id) } }
   const { data: rows } = projectReady && project && admin ? await admin.from('maker_selection_aggregates').select('card_id,selection_count,submission_count,selection_rate').eq('project_id', project.id) : { data: [] }
