@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ScaledResumePreview } from '@/app/makers/resume-maker/ResumePreview'
+import { FullscreenResumePreview, ScaledResumePreview } from '@/app/makers/resume-maker/ResumePreview'
 import { renderResumeExportImage, resumePngFileName } from '@/lib/maker-resume-export'
 import { RESUME_SHARE_TEXT } from '@/app/makers/resume-maker/constants'
 import type { ResumeData } from '@/lib/maker-resume'
@@ -84,19 +84,19 @@ export function ResumeProfileCard({ data, avatarUrl, resumeDate, isOwner, isPubl
       </button>
       {showActions && (
         <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" disabled={isSavingImage} onClick={() => void handleSaveImage()} className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40">{isSavingImage ? '生成中…' : '画像を保存'}</button>
-          <button type="button" disabled={isSharing} onClick={handleShare} className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40">{isSharing ? '共有準備中…' : 'Xで共有'}</button>
+          {isOwner && <button type="button" disabled={isSavingImage} onClick={() => void handleSaveImage()} className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40">{isSavingImage ? '生成中…' : '画像を保存'}</button>}
+          {isOwner && <button type="button" disabled={isSharing} onClick={handleShare} className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40">{isSharing ? '共有準備中…' : 'Xで共有'}</button>}
           {isOwner && <Link href="/makers/resume-maker" className="inline-flex items-center justify-center rounded border border-blue-300 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50">編集する</Link>}
-          {!isOwner && <Link href={createLikeThisHref} className="inline-flex items-center justify-center rounded border border-blue-300 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50">この形式で自分も作る</Link>}
+          {!isOwner && <Link href={createLikeThisHref} className="inline-flex items-center justify-center rounded border border-blue-300 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50">自分の履歴書を作る</Link>}
           <Link href="/makers/resume-maker/submissions" className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">みんなの履歴書を見る</Link>
         </div>
       )}
       {zoomed && (
-        <div role="presentation" className="fixed inset-0 z-50 overflow-auto bg-black/90 p-3" onMouseDown={event => { if (event.currentTarget === event.target) setZoomed(false) }}>
-          <div className="mx-auto max-w-xl">
-            <div className="mb-2 flex justify-end"><button type="button" onClick={() => setZoomed(false)} aria-label="閉じる" className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl">×</button></div>
-            <ScaledResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} />
-          </div>
+        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-3" onMouseDown={event => { if (event.currentTarget === event.target) setZoomed(false) }}>
+          <section role="dialog" aria-modal="true" aria-label="デュエマ履歴書" className="flex h-full max-h-[calc(100dvh-24px)] w-full max-w-5xl flex-col overflow-hidden">
+            <div className="mb-2 flex shrink-0 justify-end"><button type="button" onClick={() => setZoomed(false)} aria-label="閉じる" className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl">×</button></div>
+            <div className="min-h-0 flex-1"><FullscreenResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} /></div>
+          </section>
         </div>
       )}
       {pngPreview && (
