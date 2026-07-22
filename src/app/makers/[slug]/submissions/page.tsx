@@ -58,7 +58,6 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
   const savedRepresentativeId = tab === 'mine' && slug === 'my-duema-9' && user
     ? await getRepresentativeId(user.id, 'my_duema_9')
     : null
-  const representativeId = savedRepresentativeId ?? mineSubmissions[0]?.id ?? null
   const [{ data: links }, { data: rows }] = await Promise.all([
     project.type === 'tier' || project.type === 'prediction' ? admin.from('maker_project_cards').select('cards!inner(id,name,image_url,civilization,cost,card_type,regulation,source_key,is_active)').eq('project_id', project.id).eq('cards.is_active', true).order('sort_order') : Promise.resolve({ data: [] }),
     project.type === 'tier' ? admin.from('maker_tier_aggregates').select('card_id,s_count,a_count,b_count,c_count,d_count,rating_count,average_tier').eq('project_id', project.id) : project.type === 'prediction' ? admin.from('maker_selection_aggregates').select('card_id,selection_count,submission_count,selection_rate').eq('project_id', project.id) : Promise.resolve({ data: [] }),
@@ -111,7 +110,7 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
         <time className="mt-2 block text-xs text-gray-400">{formatJapanDateTime(submission.created_at)}</time>
       </Link>
       {tab === 'mine' && slug === 'my-duema-9' && user && (
-        <div className="mt-3"><RepresentativeButton contentType="my_duema_9" contentId={submission.id} selected={representativeId === submission.id} /></div>
+        <div className="mt-3"><RepresentativeButton contentType="my_duema_9" contentId={submission.id} selected={savedRepresentativeId === submission.id} /></div>
       )}
       <SubmissionActions slug={slug} submissionId={submission.id} canEdit={canEdit} />
     </article>

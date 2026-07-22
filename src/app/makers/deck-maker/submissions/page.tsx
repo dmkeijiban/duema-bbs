@@ -89,7 +89,6 @@ export default async function PublicDeckListPage({ searchParams }: { searchParam
   })
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
   const savedRepresentativeId = tab === 'mine' && user ? await getRepresentativeId(user.id, 'deck') : null
-  const representativeId = savedRepresentativeId ?? (tab === 'mine' ? visibleDecks[0]?.id ?? null : null)
 
   return (
     <main className="min-h-screen bg-slate-100 px-3 py-6">
@@ -115,7 +114,7 @@ export default async function PublicDeckListPage({ searchParams }: { searchParam
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             {visibleDecks.map(deck => <article key={deck.id}>
               <PublicDeckCard deck={deck} authorName={deck.user_id ? String(profileById.get(deck.user_id)?.display_name || 'デュエマプレイヤー') : '名無しのデュエリスト'} />
-              {tab === 'mine' && user && <div className="mt-2"><RepresentativeButton contentType="deck" contentId={deck.id} selected={representativeId === deck.id} /></div>}
+              {tab === 'mine' && user && <div className="mt-2"><RepresentativeButton contentType="deck" contentId={deck.id} selected={savedRepresentativeId === deck.id} /></div>}
             </article>)}
           </div>
         ) : (
