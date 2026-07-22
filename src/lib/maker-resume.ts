@@ -14,6 +14,7 @@ export const RESUME_MAX_DECK_NAME = 60
 export const RESUME_MAX_ACHIEVEMENT_NOTE = 40
 export const RESUME_MAX_SOCIAL_NOTE = 40
 export const RESUME_MAX_CURRENT_DECKS_TEXT = 150
+export const RESUME_MAX_DUEL_MASTERS_PLAY_MAIN_DECK = 60
 export const RESUME_MAX_FAVORITE_YOUTUBER = 60
 export const RESUME_MAX_OTHER_INTERESTS = 100
 export const RESUME_MAX_FREE_SPACE = 200
@@ -44,7 +45,7 @@ export type ResumeData = {
   currentDecksText: string
   favoriteYouTuber: string
   otherInterests: string
-  playsDuelMastersPlay: string
+  duelMastersPlayMainDeck: string
   achievements: string[]
   achievementNote: string
   freeSpace: string
@@ -86,8 +87,6 @@ export const RESUME_UNANSWERED = '未回答'
 
 export const RESUME_GENDERS = ['男', '女', 'その他', RESUME_UNANSWERED] as const
 export const RESUME_AGE_GROUPS = ['10代', '20代', '30代', '40代', '50代', '60代', 'その他', RESUME_UNANSWERED] as const
-export const RESUME_DUEL_MASTERS_PLAY_OPTIONS = ['やってる', 'やってない', RESUME_UNANSWERED] as const
-
 export const RESUME_FAVORITE_CARD_LABEL = '好きなカード'
 
 function clampText(value: unknown, max: number): string {
@@ -215,7 +214,7 @@ export function sanitizeResumeData(value: unknown): ResumeData {
     currentDecksText: deriveCurrentDecksText(raw, legacyDeckHistory),
     favoriteYouTuber: clampText(raw.favoriteYouTuber, RESUME_MAX_FAVORITE_YOUTUBER),
     otherInterests: clampOtherInterestsText(typeof raw.otherInterests === 'string' ? raw.otherInterests : ''),
-    playsDuelMastersPlay: sanitizeChoice(raw.playsDuelMastersPlay, RESUME_DUEL_MASTERS_PLAY_OPTIONS, 10, RESUME_UNANSWERED),
+    duelMastersPlayMainDeck: clampText(raw.duelMastersPlayMainDeck, RESUME_MAX_DUEL_MASTERS_PLAY_MAIN_DECK),
     achievements: sanitizePresetKeys(raw.achievements, RESUME_ACHIEVEMENT_PRESETS, RESUME_ACHIEVEMENT_PRESETS.length),
     achievementNote: clampText(raw.achievementNote, RESUME_MAX_ACHIEVEMENT_NOTE),
     freeSpace: deriveFreeSpace(raw),
