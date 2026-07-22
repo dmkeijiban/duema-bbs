@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase-server'
 import { getPublicResumeSubmissions, type ResumeListingSort } from '@/lib/maker-resume-queries'
 import { ResumeSubmissionsList } from '@/components/ResumeSubmissionsList'
 
@@ -19,9 +18,6 @@ export default async function ResumeSubmissionsPage({ searchParams }: { searchPa
   const { page: pageValue, sort: sortValue } = await searchParams
   const page = Math.max(1, Number.parseInt(pageValue ?? '1', 10) || 1)
   const sort = parseSort(sortValue)
-
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
 
   const { submissions, total } = await getPublicResumeSubmissions(page, PAGE_SIZE, sort)
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
@@ -45,12 +41,12 @@ export default async function ResumeSubmissionsPage({ searchParams }: { searchPa
         <div id="submissions-list" className="scroll-mt-4" />
 
         {submissions.length ? (
-          <div className="mt-5"><ResumeSubmissionsList submissions={submissions} viewerLoggedIn={Boolean(user)} /></div>
+          <div className="mt-5"><ResumeSubmissionsList submissions={submissions} /></div>
         ) : (
           <div className="mt-6 rounded-xl border bg-white p-8 text-center">
             <p className="text-gray-500">まだ公開されている履歴書はありません。最初のデュエマ履歴書を作ってみよう。</p>
-            <Link href={user ? '/makers/resume-maker' : '/login?mode=signup&next=/mypage'} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-700 px-6 font-bold text-white">
-              {user ? '自分の履歴書を作る' : '無料登録して履歴書を作る'}
+            <Link href="/makers/resume-maker" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-700 px-6 font-bold text-white">
+              自分の履歴書を作る
             </Link>
           </div>
         )}
