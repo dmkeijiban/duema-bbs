@@ -50,7 +50,7 @@ export default async function PublicDeckPage({ params }: { params: Promise<{ id:
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
                 <span>{deck.user_id ? String(profile?.display_name || 'デュエマプレイヤー') : '名無しのデュエリスト'}</span>
                 <time>{formatJapanDateTime(deck.created_at)}</time>
-                <DeckMetrics id={deck.id} initialViews={deck.view_count} copies={deck.copy_count} />
+                <DeckMetrics id={deck.id} />
               </div>
               <div className="mt-5 flex flex-wrap gap-2">
                 <form action={copyPublishedDeck}><input type="hidden" name="id" value={deck.id} /><button className="min-h-11 rounded-xl bg-blue-700 px-5 font-bold text-white">コピーして新規作成</button></form>
@@ -67,9 +67,6 @@ export default async function PublicDeckPage({ params }: { params: Promise<{ id:
                 {card.imageUrl ? <img src={card.imageUrl} alt={card.name} className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center p-1 text-center text-[7px] font-bold leading-tight text-white">{card.name}</span>}
               </div>
             ))}
-          </div>
-          <div className="mt-5 grid gap-2 sm:grid-cols-2">
-            {deck.deck_data.map((card, index) => <div key={`${card.id}:${card.printingId ?? index}`} className="rounded-lg border border-slate-200 px-3 py-2 text-sm"><span className="font-bold text-slate-900">{card.name}</span><span className="ml-2 text-slate-500">×{card.count}</span>{card.sourceKey && <span className="mt-0.5 block text-xs text-slate-500">収録版: {card.sourceKey}{(card.faceSideIndex ?? 0) > 0 ? ` / 面${(card.faceSideIndex ?? 0) + 1}` : ''}</span>}</div>)}
           </div>
         </article>
       </div>
