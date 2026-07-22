@@ -86,7 +86,7 @@ function drawFieldGridRow(
       context.lineTo(cellX, y + height)
       context.stroke()
     }
-    context.strokeStyle = '#94a3b8'
+    context.strokeStyle = LINE
     context.beginPath()
     context.moveTo(cellX + labelWidth, y)
     context.lineTo(cellX + labelWidth, y + height)
