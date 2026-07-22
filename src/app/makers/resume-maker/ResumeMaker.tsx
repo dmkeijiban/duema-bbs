@@ -144,13 +144,26 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
       const blob = await renderResumeExportImage(exportPreviewRef.current)
       const fileName = resumePngFileName(data.handleName)
       const file = new File([blob], fileName, { type: blob.type || 'image/png' })
-      const src = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(String(reader.result))
-        reader.onerror = () => reject(reader.error)
-        reader.readAsDataURL(blob)
-      })
-      setPngPreview({ src, fileName, file })
+      const usesMobileSaveFlow = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+      if (usesMobileSaveFlow) {
+        const src = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(String(reader.result))
+          reader.onerror = () => reject(reader.error)
+          reader.readAsDataURL(blob)
+        })
+        setPngPreview({ src, fileName, file })
+      } else {
+        const objectUrl = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = objectUrl
+        link.download = fileName
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(objectUrl)
+      }
       void persistToDb(isPublic)
     } catch {
       setMessage('画像生成に失敗しました')
