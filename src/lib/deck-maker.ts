@@ -2,10 +2,13 @@ import { normalizeCardSearch } from '@/lib/card-name'
 
 export type CardFace = { name: string; imageUrl: string | null; sideIndex: number; sideKind: string | null }
 export type DeckCard = { id: string; printingId?: string | null; name: string; nameKana: string | null; imageUrl: string | null; officialPageUrl: string | null; sourceKey: string | null; cost?: number | null; civilization?: string[]; cardType?: string | null; race?: string | null; abilityText?: string | null; setName?: string | null; cardNumber?: string | null; matchedFace?: CardFace | null }
-export type DeckEntry = DeckCard & { count: number }
+export type DeckFormat = 'original' | 'advance'
+export type DeckZone = 'main' | 'gr' | 'hyperspatial' | 'special'
+export type DeckEntry = DeckCard & { count: number; zone?: DeckZone }
 export const DECK_STORAGE_KEY = 'duema-bbs:deck-maker'
 export const DECK_STORAGE_VERSION = 1
 export const MAX_DECK_CARDS = 40
+export const DECK_ZONE_LIMITS: Record<DeckZone, number> = { main: 40, gr: 12, hyperspatial: 8, special: 1 }
 export const MAX_SAME_CARD = 4
 export function printingKey(card: DeckCard) {
   return `${card.id}:${card.printingId ?? card.sourceKey ?? 'base'}:${card.matchedFace?.sideIndex ?? 0}`
@@ -23,3 +26,5 @@ export function matchesCard(card: DeckCard, query: string) {
 }
 
 export function deckSize(entries: DeckEntry[]) { return entries.reduce((sum, entry) => sum + entry.count, 0) }
+export function entryZone(entry: DeckEntry): DeckZone { return entry.zone ?? 'main' }
+export function zoneDeckSize(entries: DeckEntry[], zone: DeckZone) { return entries.reduce((sum, entry) => sum + (entryZone(entry) === zone ? entry.count : 0), 0) }
