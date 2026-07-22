@@ -6,6 +6,32 @@ import { PublicDeckCard, type PublicDeckCardData } from '@/components/deck/Publi
 export const dynamic = 'force-dynamic'
 
 const PAGE_SIZE = 12
+const STATS_DECK_LIMIT = 1000
+
+type StatsDeck = { deck_data: Array<{ id: string; name: string; imageUrl: string | null; count: number }> }
+
+function buildStats(decks: StatsDeck[], civilizations: Map<string, string[]>) {
+  const cards = new Map<string, { id: string; name: string; imageUrl: string | null; deckCount: number; totalCount: number }>()
+  const civilizationCounts = new Map<string, number>()
+  for (const deck of decks) {
+    const seen = new Set<string>()
+    for (const entry of Array.isArray(deck.deck_data) ? deck.deck_data : []) {
+      if (!entry?.id || !Number.isInteger(entry.count) || entry.count < 1) continue
+      const current = cards.get(entry.id) ?? { id: entry.id, name: entry.name, imageUrl: entry.imageUrl, deckCount: 0, totalCount: 0 }
+      current.totalCount += entry.count
+      if (!seen.has(entry.id)) current.deckCount += 1
+      seen.add(entry.id)
+      cards.set(entry.id, current)
+      for (const civilization of civilizations.get(entry.id) ?? []) {
+        civilizationCounts.set(civilization, (civilizationCounts.get(civilization) ?? 0) + entry.count)
+      }
+    }
+  }
+  return {
+    cards: [...cards.values()].sort((a, b) => b.deckCount - a.deckCount || b.totalCount - a.totalCount || a.name.localeCompare(b.name, 'ja')).slice(0, 10),
+    civilizations: [...civilizationCounts.entries()].sort((a, b) => b[1] - a[1]),
+  }
+}
 
 function safePage(value: string | string[] | undefined) {
   const parsed = Number(Array.isArray(value) ? value[0] : value)
@@ -21,6 +47,18 @@ export default async function PublicDeckListPage({ searchParams }: { searchParam
   const page = safePage(params.page)
   const query = safeQuery(params.q)
   const admin = createAdminClient()
+  const { data: statsDeckRows } = await admin.from('deck_submissions')
+    .select('deck_data')
+    .eq('is_public', true)
+    .eq('format', 'original')
+    .order('created_at', { ascending: false })
+    .limit(STATS_DECK_LIMIT)
+  const statsDecks = (statsDeckRows ?? []) as StatsDeck[]
+  const statsCardIds = [...new Set(statsDecks.flatMap(deck => (Array.isArray(deck.deck_data) ? deck.deck_data : []).map(card => card.id).filter(Boolean)))]
+  const { data: statsCards } = statsCardIds.length
+    ? await admin.from('cards').select('id,civilization').in('id', statsCardIds)
+    : { data: [] }
+  const stats = buildStats(statsDecks, new Map((statsCards ?? []).map(card => [card.id, card.civilization ?? []])))
   let deckQuery = admin.from('deck_submissions')
     .select('id,user_id,title,format,deck_data,created_at', { count: 'exact' })
     .eq('is_public', true)
@@ -70,6 +108,33 @@ export default async function PublicDeckListPage({ searchParams }: { searchParam
         )}
 
         <div className="mt-7"><Pagination currentPage={page} totalPages={totalPages} basePath="/makers/deck-maker/submissions" searchParams={{ q: query || undefined }} /></div>
+
+        <section className="mt-10 grid gap-5 lg:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <h2 className="text-xl font-black text-slate-950">採用カードランキング</h2>
+            <p className="mt-1 text-xs text-slate-500">公開中のオリジナルデッキ最大{STATS_DECK_LIMIT}件を集計</p>
+            {stats.cards.length ? <ol className="mt-4 divide-y divide-slate-100">
+              {stats.cards.map((card, index) => <li key={card.id} className="grid grid-cols-[2rem_1fr_auto] items-center gap-2 py-3 text-sm">
+                <span className="font-black text-slate-400">{index + 1}</span>
+                <span className="min-w-0 truncate font-bold text-slate-900">{card.name}</span>
+                <span className="text-right text-xs text-slate-600"><b className="text-sm text-blue-700">{card.deckCount}</b>デッキ<br />合計{card.totalCount}枚</span>
+              </li>)}
+            </ol> : <p className="mt-5 text-sm text-slate-500">集計できるデッキがまだありません。</p>}
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <h2 className="text-xl font-black text-slate-950">文明分布</h2>
+            <p className="mt-1 text-xs text-slate-500">多色カードは各文明へ1枚ずつ加算</p>
+            {stats.civilizations.length ? <div className="mt-5 space-y-3">
+              {stats.civilizations.map(([civilization, count]) => {
+                const max = stats.civilizations[0]?.[1] ?? 1
+                return <div key={civilization}>
+                  <div className="mb-1 flex justify-between text-sm"><span className="font-bold">{civilization}</span><span>{count}枚</span></div>
+                  <div className="h-3 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-600" style={{ width: `${Math.max(3, count / max * 100)}%` }} /></div>
+                </div>
+              })}
+            </div> : <p className="mt-5 text-sm text-slate-500">文明データを集計中です。</p>}
+          </div>
+        </section>
 
         <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
           <h2 className="text-xl font-black text-slate-950">みんなのデッキリストについて</h2>
