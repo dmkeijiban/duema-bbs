@@ -9,6 +9,8 @@ import {
   RESUME_MAX_DUEL_MASTERS_PLAY_MAIN_DECK,
   RESUME_FAVORITE_CIVILIZATIONS,
   RESUME_GENDERS,
+  RESUME_GENERATIONS,
+  RESUME_DUEL_MASTERS_PLAY_STATUSES,
   RESUME_MAX_CURRENT_DECKS_TEXT,
   RESUME_MAX_FAVORITE_YOUTUBER,
   RESUME_MAX_FREE_SPACE,
@@ -189,11 +191,17 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
             <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
               <h2 className="font-black text-slate-900">基本情報</h2>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <label className="text-xs font-bold text-slate-700">名前（必須）
+                <label className="text-xs font-bold text-slate-700 sm:col-span-2">名前（必須）
                   <input value={data.handleName} onChange={e => update('handleName', e.target.value.slice(0, 30))} maxLength={30} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base font-bold text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" placeholder="デュエマ太郎" />
                 </label>
                 <label className="text-xs font-bold text-slate-700">デュエマを始めた時期
                   <input value={data.startedAt} onChange={e => update('startedAt', e.target.value.slice(0, 20))} maxLength={20} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" placeholder="例: 小学生の頃" />
+                </label>
+                <label className="text-xs font-bold text-slate-700">世代
+                  <select value={data.generation} onChange={e => update('generation', e.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100">
+                    <option value="">選択しない</option>
+                    {RESUME_GENERATIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                  </select>
                 </label>
                 <label className="text-xs font-bold text-slate-700">性別
                   <select value={data.gender} onChange={e => update('gender', e.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100">
@@ -203,12 +211,6 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
                 <label className="text-xs font-bold text-slate-700">年齢
                   <select value={data.ageGroup} onChange={e => update('ageGroup', e.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100">
                     {RESUME_AGE_GROUPS.map(option => <option key={option} value={option}>{option}</option>)}
-                  </select>
-                </label>
-                <label className="text-xs font-bold text-slate-700">活動地域
-                  <select value={data.region} onChange={e => update('region', e.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100">
-                    <option value="">選択しない</option>
-                    {RESUME_REGIONS.map(region => <option key={region} value={region}>{region}</option>)}
                   </select>
                 </label>
                 <label className="text-xs font-bold text-slate-700">好きな文明
@@ -221,6 +223,18 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
                   <select value={data.playStyle} onChange={e => update('playStyle', e.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100">
                     <option value="">選択しない</option>
                     {RESUME_PLAY_STYLES.map(option => <option key={option.value} value={option.label}>{option.label}</option>)}
+                  </select>
+                </label>
+                <label className="text-xs font-bold text-slate-700">活動地域
+                  <select value={data.region} onChange={e => update('region', e.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100">
+                    <option value="">選択しない</option>
+                    {RESUME_REGIONS.map(region => <option key={region} value={region}>{region}</option>)}
+                  </select>
+                </label>
+                <label className="text-xs font-bold text-slate-700">デュエプレ
+                  <select value={data.duelMastersPlayStatus} onChange={e => update('duelMastersPlayStatus', e.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100">
+                    <option value="">選択しない</option>
+                    {RESUME_DUEL_MASTERS_PLAY_STATUSES.map(option => <option key={option} value={option}>{option}</option>)}
                   </select>
                 </label>
               </div>
@@ -239,11 +253,11 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
 
           {step === 2 && (
             <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
-              <h2 className="font-black text-slate-900">メインデッキ</h2>
+              <h2 className="font-black text-slate-900">使用デッキ</h2>
               <textarea value={data.currentDecksText} onChange={e => update('currentDecksText', clampCurrentDecksText(e.target.value))} maxLength={RESUME_MAX_CURRENT_DECKS_TEXT} rows={3} placeholder="例: 赤単我我我、青魔導具、昔は連ドラを使用" className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-slate-50 p-2 text-sm outline-none focus:border-emerald-700" />
               <p className="mt-1 text-right text-[11px] text-slate-400">{data.currentDecksText.length} / {RESUME_MAX_CURRENT_DECKS_TEXT}</p>
 
-              <h2 className="mt-4 font-black text-slate-900">デュエプレのメインデッキ</h2>
+              <h2 className="mt-4 font-black text-slate-900">デュエプレの使用デッキ</h2>
               <input value={data.duelMastersPlayMainDeck} onChange={e => update('duelMastersPlayMainDeck', e.target.value.slice(0, RESUME_MAX_DUEL_MASTERS_PLAY_MAIN_DECK))} maxLength={RESUME_MAX_DUEL_MASTERS_PLAY_MAIN_DECK} placeholder="自由記述（任意）" className="mt-2 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" />
 
               <h2 className="mt-5 font-black text-slate-900">好きなYouTuber</h2>
@@ -261,20 +275,20 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
                 <p className="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800">最後に画面下部の保存ボタンから履歴書を保存してください。</p>
 
                 <h2 className="font-black text-slate-900">対戦・交流について</h2>
+                <input value={data.socialNote} onChange={e => update('socialNote', e.target.value.slice(0, 40))} maxLength={40} placeholder="自由記述（任意）" className="mt-2 h-9 w-full rounded-lg border border-slate-300 bg-slate-50 px-2 text-sm outline-none focus:border-emerald-700" />
                 <div className="mt-2 flex flex-wrap gap-2">
                   {RESUME_SOCIAL_TAG_PRESETS.map(preset => (
                     <button key={preset.key} type="button" onClick={() => toggleSocialTag(preset.key)} className={`min-h-9 rounded-full border px-3 text-xs font-bold ${data.socialTags.includes(preset.key) ? 'border-emerald-700 bg-emerald-50 text-emerald-800' : 'border-slate-300 text-slate-600'}`}>{preset.label}</button>
                   ))}
                 </div>
-                <input value={data.socialNote} onChange={e => update('socialNote', e.target.value.slice(0, 40))} maxLength={40} placeholder="自由記述（任意）" className="mt-2 h-9 w-full rounded-lg border border-slate-300 bg-slate-50 px-2 text-sm outline-none focus:border-emerald-700" />
 
                 <h2 className="mt-5 font-black text-slate-900">大会・デュエマ実績</h2>
+                <input value={data.achievementNote} onChange={e => update('achievementNote', e.target.value.slice(0, 40))} maxLength={40} placeholder="自由記述（任意）" className="mt-2 h-9 w-full rounded-lg border border-slate-300 bg-slate-50 px-2 text-sm outline-none focus:border-emerald-700" />
                 <div className="mt-2 flex flex-wrap gap-2">
                   {RESUME_ACHIEVEMENT_PRESETS.map(preset => (
                     <button key={preset.key} type="button" onClick={() => toggleAchievement(preset.key)} className={`min-h-9 rounded-full border px-3 text-xs font-bold ${data.achievements.includes(preset.key) ? 'border-emerald-700 bg-emerald-50 text-emerald-800' : 'border-slate-300 text-slate-600'}`}>{preset.label}</button>
                   ))}
                 </div>
-                <input value={data.achievementNote} onChange={e => update('achievementNote', e.target.value.slice(0, 40))} maxLength={40} placeholder="自由記述（任意）" className="mt-2 h-9 w-full rounded-lg border border-slate-300 bg-slate-50 px-2 text-sm outline-none focus:border-emerald-700" />
 
                 <h2 className="mt-5 font-black text-slate-900">フリースペース</h2>
                 <textarea value={data.freeSpace} onChange={e => update('freeSpace', clampFreeSpaceText(e.target.value))} maxLength={RESUME_MAX_FREE_SPACE} rows={4} placeholder="自由に書いてみましょう" className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-slate-50 p-2 text-sm outline-none focus:border-emerald-700" />
