@@ -15,7 +15,7 @@ import {
 import { CardCatalogSearchPanel } from '@/components/CardCatalogSearchPanel'
 import { CardDetailModal } from '@/components/CardDetailModal'
 import { useCardCatalogSearch } from '@/hooks/use-card-catalog-search'
-import { savePublishedDeck } from './actions'
+import { deleteMyDeck, savePublishedDeck } from './actions'
 
 const OFFICIAL_ORIGIN = 'https://dm.takaratomy.co.jp'
 const DEFAULT_DECK_NAME = 'メインデッキ'
@@ -40,6 +40,8 @@ type SavedDeck = {
   createdAt: string
   updatedAt: string
   submissionId?: string
+  keyCardId?: string | null
+  keyCardPrintingId?: string | null
 }
 
 function pngFileName(deckName: string) {
@@ -204,7 +206,10 @@ async function loadImage(card: DeckCard) {
   })
 }
 
-export default function DeckMaker({ initialDeck }: { initialDeck?: { name: string; entries: DeckEntry[]; submissionId?: string } }) {
+export default function DeckMaker({ initialDeck, dbDecks = [] }: {
+  initialDeck?: { name: string; entries: DeckEntry[]; submissionId?: string }
+  dbDecks?: SavedDeck[]
+}) {
   const { query, setQuery, cards: results, loading: resultsLoading, hasMore: hasMoreResults, loadMore } = useCardCatalogSearch()
   const [entries, setEntries] = useState<DeckEntry[]>([])
   const [deckName, setDeckName] = useState(DEFAULT_DECK_NAME)
@@ -248,16 +253,19 @@ export default function DeckMaker({ initialDeck }: { initialDeck?: { name: strin
         resolveStoredEntries(restored).then(setEntries).catch(() => {})
       }
       const storedDecks = JSON.parse(localStorage.getItem(SAVED_DECKS_STORAGE_KEY) ?? '[]') as unknown
+      let localDecks: SavedDeck[] = []
       if (Array.isArray(storedDecks)) {
         const now = new Date().toISOString()
-        setSavedDecks(storedDecks.flatMap((value): SavedDeck[] => {
+        localDecks = storedDecks.flatMap((value): SavedDeck[] => {
           if (!value || typeof value !== 'object') return []
           const deck = value as Partial<SavedDeck>
           if (typeof deck.id !== 'string' || deck.id.length > 100) return []
           const name = typeof deck.name === 'string' ? deck.name.trim().slice(0, MAX_DECK_NAME_LENGTH) || DEFAULT_DECK_NAME : DEFAULT_DECK_NAME
-          return [{ id: deck.id, name, entries: safeEntries(deck.entries), createdAt: typeof deck.createdAt === 'string' ? deck.createdAt : now, updatedAt: typeof deck.updatedAt === 'string' ? deck.updatedAt : now, ...(typeof deck.submissionId === 'string' && /^[0-9a-f-]{36}$/i.test(deck.submissionId) ? { submissionId: deck.submissionId } : {}) }]
-        }))
+          return [{ id: deck.id, name, entries: safeEntries(deck.entries), createdAt: typeof deck.createdAt === 'string' ? deck.createdAt : now, updatedAt: typeof deck.updatedAt === 'string' ? deck.updatedAt : now, ...(typeof deck.submissionId === 'string' && /^[0-9a-f-]{36}$/i.test(deck.submissionId) ? { submissionId: deck.submissionId } : {}), keyCardId: deck.keyCardId, keyCardPrintingId: deck.keyCardPrintingId }]
+        })
       }
+      const dbIds = new Set(dbDecks.map(deck => deck.submissionId))
+      setSavedDecks([...dbDecks.map(deck => ({ ...deck, entries: safeEntries(deck.entries) })), ...localDecks.filter(deck => !deck.submissionId || !dbIds.has(deck.submissionId))])
       if (initialDeck) {
         const restored = safeEntries(initialDeck.entries)
         const now = new Date().toISOString()
@@ -273,7 +281,7 @@ export default function DeckMaker({ initialDeck }: { initialDeck?: { name: strin
       localStorage.removeItem(SAVED_DECKS_STORAGE_KEY)
     }
     setReady(true)
-  }, [initialDeck])
+  }, [dbDecks, initialDeck])
 
   useEffect(() => {
     if (ready) localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ version: DECK_STORAGE_VERSION, entries, deckName, savedDeckId: activeSavedDeckId }))
@@ -435,6 +443,8 @@ export default function DeckMaker({ initialDeck }: { initialDeck?: { name: strin
       const result = await savePublishedDeck({
         submissionId: existing?.submissionId,
         title: effectiveDeckName,
+        keyCardId: existing?.keyCardId,
+        keyCardPrintingId: existing?.keyCardPrintingId,
         entries: entries.map(entry => ({
           id: entry.id,
           printingId: entry.printingId,
@@ -472,13 +482,24 @@ export default function DeckMaker({ initialDeck }: { initialDeck?: { name: strin
 
   function copySavedDeck(deck: SavedDeck) {
     const now = new Date().toISOString()
-    const copy: SavedDeck = { id: crypto.randomUUID(), name: `${deck.name} コピー`.slice(0, MAX_DECK_NAME_LENGTH), entries: deck.entries.map((entry) => ({ ...entry })), createdAt: now, updatedAt: now }
+    const copy: SavedDeck = { id: crypto.randomUUID(), name: `${deck.name} コピー`.slice(0, MAX_DECK_NAME_LENGTH), entries: deck.entries.map((entry) => ({ ...entry })), createdAt: now, updatedAt: now, keyCardId: deck.keyCardId, keyCardPrintingId: deck.keyCardPrintingId }
     setSavedDecks((decks) => [copy, ...decks])
     setNotice('デッキをコピーしました')
   }
 
-  function deleteSavedDeck() {
+  function changeKeyCard(deckId: string, value: string) {
+    const [cardId, printingId = ''] = value.split(':')
+    setSavedDecks(decks => decks.map(deck => deck.id === deckId ? { ...deck, keyCardId: cardId, keyCardPrintingId: printingId || null, updatedAt: new Date().toISOString() } : deck))
+    if (activeSavedDeckId === deckId) setNotice('キーカードを変更しました。保存すると公開デッキにも反映されます')
+  }
+
+  async function deleteSavedDeck() {
     if (!deleteDeckId) return
+    const target = savedDecks.find(deck => deck.id === deleteDeckId)
+    if (target?.submissionId) {
+      const result = await deleteMyDeck(target.submissionId)
+      if (!result.ok) return setNotice('DB保存デッキを削除できませんでした')
+    }
     setSavedDecks((decks) => decks.filter((deck) => deck.id !== deleteDeckId))
     if (activeSavedDeckId === deleteDeckId) setActiveSavedDeckId(null)
     setDeleteDeckId(null)
@@ -620,7 +641,7 @@ export default function DeckMaker({ initialDeck }: { initialDeck?: { name: strin
               ) : (
                 <div className="grid gap-3 md:grid-cols-2">
                   {[...savedDecks].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((deck) => {
-                    const cover = deck.entries[0]
+                    const cover = deck.entries.find(entry => entry.id === deck.keyCardId && (!deck.keyCardPrintingId || entry.printingId === deck.keyCardPrintingId)) ?? deck.entries[0]
                     return (
                       <article key={deck.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                         <div className="flex gap-3 p-3">
@@ -633,6 +654,12 @@ export default function DeckMaker({ initialDeck }: { initialDeck?: { name: strin
                               {deck.id === activeSavedDeckId && <span className="shrink-0 rounded-full bg-blue-100 px-2 py-1 text-[10px] font-bold text-blue-700">編集中</span>}
                             </div>
                             <p className="mt-2 text-xs text-slate-500">更新 {new Date(deck.updatedAt).toLocaleDateString('ja-JP')}</p>
+                            {deck.submissionId && <p className="mt-1 text-[10px] font-bold text-emerald-700">DB保存済み</p>}
+                            {deck.entries.length > 0 && <label className="mt-2 block text-xs font-bold text-slate-600">キーカード
+                              <select value={`${cover?.id ?? ''}:${cover?.printingId ?? ''}`} onChange={event => changeKeyCard(deck.id, event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs font-normal text-slate-800">
+                                {deck.entries.map(entry => <option key={printingKey(entry)} value={`${entry.id}:${entry.printingId ?? ''}`}>{entry.name}</option>)}
+                              </select>
+                            </label>}
                           </div>
                         </div>
                         <div className="grid grid-cols-3 border-t border-slate-200">
