@@ -35,6 +35,7 @@ type Row = {
   normalized_name: string
   name_kana: string | null
   image_url: string | null
+  cost: number | null
   card_printings?: Printing[]
   card_faces?: Face[]
   matched_face?: Face | null
@@ -102,6 +103,7 @@ function mapCard(row: Row, selectedPrinting?: Printing, matchedFace = row.matche
     imageUrl: face?.image_url ?? printing?.image_url ?? row.image_url,
     officialPageUrl: face?.official_page_url ?? printing?.official_page_url ?? null,
     sourceKey: printing?.source_key ?? null,
+    cost: row.cost,
     matchedFace: face ? { name: face.name, imageUrl: face.image_url, sideIndex: face.side_index, sideKind: face.side_kind } : null,
   }
 }
@@ -241,7 +243,7 @@ async function getFastInitialCatalog(supabase: ReturnType<typeof createAdminClie
   // collapsing to one row per card we still have enough to fill the page.
   const supersededKeys = await getSupersededKeys(supabase)
   const result = await supabase.from('card_printings')
-    .select('id,source_key,official_page_url,image_url,set_name,card_number,release_date,official_sort_position,is_representative,is_search_visible,cards!inner(id,name,normalized_name,name_kana,image_url,is_active)')
+    .select('id,source_key,official_page_url,image_url,set_name,card_number,release_date,official_sort_position,is_representative,is_search_visible,cards!inner(id,name,normalized_name,name_kana,image_url,cost,is_active)')
     .eq('cards.is_active', true)
     .eq('is_search_visible', true)
     .order('official_sort_position', { ascending: true, nullsFirst: false })
@@ -286,7 +288,7 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createAdminClient()
     const makerCardPool = await getMakerCardPool(supabase, makerSlug)
-    const columns = 'id,name,normalized_name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,card_number,release_date,official_sort_position,is_representative,is_search_visible)'
+    const columns = 'id,name,normalized_name,name_kana,image_url,cost,card_printings(id,source_key,official_page_url,image_url,set_name,card_number,release_date,official_sort_position,is_representative,is_search_visible)'
     if (!rawQuery && fastInitial && offset === 0) {
       const cards = await getFastInitialCatalog(supabase, makerCardPool)
       if (cards.length > 0) {
