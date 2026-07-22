@@ -22,6 +22,9 @@ export async function saveSelectSubmission(input: { slug: string; cards: { cardI
     const comment = input.comment.trim().slice(0, 200)
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    if (input.slug === 'my-duema-9' && !user) {
+      return { ok: false, message: '9選の作成にはログインが必要です' }
+    }
     const cookieStore = await cookies()
     let anonymousId = cookieStore.get(MAKER_ANONYMOUS_COOKIE)?.value
     if (!user && (!anonymousId || !/^[A-Za-z0-9_-]{40,100}$/.test(anonymousId))) anonymousId = randomBytes(32).toString('base64url')
