@@ -204,7 +204,7 @@ async function loadImage(card: DeckCard) {
   })
 }
 
-export default function DeckMaker() {
+export default function DeckMaker({ initialDeck }: { initialDeck?: { name: string; entries: DeckEntry[]; submissionId?: string } }) {
   const { query, setQuery, cards: results, loading: resultsLoading, hasMore: hasMoreResults, loadMore } = useCardCatalogSearch()
   const [entries, setEntries] = useState<DeckEntry[]>([])
   const [deckName, setDeckName] = useState(DEFAULT_DECK_NAME)
@@ -258,12 +258,22 @@ export default function DeckMaker() {
           return [{ id: deck.id, name, entries: safeEntries(deck.entries), createdAt: typeof deck.createdAt === 'string' ? deck.createdAt : now, updatedAt: typeof deck.updatedAt === 'string' ? deck.updatedAt : now, ...(typeof deck.submissionId === 'string' && /^[0-9a-f-]{36}$/i.test(deck.submissionId) ? { submissionId: deck.submissionId } : {}) }]
         }))
       }
+      if (initialDeck) {
+        const restored = safeEntries(initialDeck.entries)
+        const now = new Date().toISOString()
+        const id = initialDeck.submissionId ?? crypto.randomUUID()
+        setEntries(restored)
+        setDeckName(initialDeck.name.trim().slice(0, MAX_DECK_NAME_LENGTH) || DEFAULT_DECK_NAME)
+        setActiveSavedDeckId(id)
+        setSavedDecks(current => [{ id, name: initialDeck.name, entries: restored, createdAt: now, updatedAt: now, ...(initialDeck.submissionId ? { submissionId: initialDeck.submissionId } : {}) }, ...current.filter(deck => deck.id !== id)])
+        resolveStoredEntries(restored).then(setEntries).catch(() => {})
+      }
     } catch {
       localStorage.removeItem(DECK_STORAGE_KEY)
       localStorage.removeItem(SAVED_DECKS_STORAGE_KEY)
     }
     setReady(true)
-  }, [])
+  }, [initialDeck])
 
   useEffect(() => {
     if (ready) localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ version: DECK_STORAGE_VERSION, entries, deckName, savedDeckId: activeSavedDeckId }))

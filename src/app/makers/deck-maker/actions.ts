@@ -2,6 +2,8 @@
 
 import { randomBytes } from 'node:crypto'
 import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 import { hashMakerAnonymousOwner, MAKER_ANONYMOUS_COOKIE } from '@/lib/maker-anonymous-owner'
@@ -112,6 +114,8 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
         title,
         format: 'original',
         deck_data: deckData,
+        key_card_id: deckData[0]?.id ?? null,
+        key_card_printing_id: deckData[0]?.printingId ?? null,
         is_public: true,
         updated_at: new Date().toISOString(),
       }).eq('id', input.submissionId)
@@ -130,6 +134,8 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
       title,
       format: 'original',
       deck_data: deckData,
+      key_card_id: deckData[0]?.id ?? null,
+      key_card_printing_id: deckData[0]?.printingId ?? null,
       is_public: true,
     }).select('id').single()
     if (error || !data) return { ok: false, message: 'みんなのデッキリストへの登録に失敗しました' }
@@ -148,4 +154,29 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
     console.error('savePublishedDeck failed', { message: error instanceof Error ? error.message : String(error) })
     return { ok: false, message: 'みんなのデッキリストへの登録に失敗しました' }
   }
+}
+
+export async function copyPublishedDeck(formData: FormData) {
+  const id = String(formData.get('id') ?? '')
+  if (!UUID_PATTERN.test(id)) redirect('/makers/deck-maker')
+  const admin = createAdminClient()
+  await admin.rpc('increment_deck_submission_metric', { target_id: id, metric_name: 'copy' })
+  redirect(`/makers/deck-maker?copy=${id}`)
+}
+
+export async function deletePublishedDeck(formData: FormData) {
+  const id = String(formData.get('id') ?? '')
+  if (!UUID_PATTERN.test(id)) return
+  const admin = createAdminClient()
+  const { data: existing } = await admin.from('deck_submissions').select('id,user_id,anonymous_edit_token_hash').eq('id', id).maybeSingle()
+  if (!existing) return
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const anonymousId = (await cookies()).get(MAKER_ANONYMOUS_COOKIE)?.value
+  const owned = (user && existing.user_id === user.id)
+    || (!user && existing.user_id === null && anonymousId && /^[A-Za-z0-9_-]{40,100}$/.test(anonymousId) && existing.anonymous_edit_token_hash === hashMakerAnonymousOwner(anonymousId, 'edit'))
+  if (!owned) return
+  await admin.from('deck_submissions').update({ is_public: false, updated_at: new Date().toISOString() }).eq('id', id)
+  revalidatePath('/makers/deck-maker/submissions')
+  redirect('/makers/deck-maker/submissions')
 }

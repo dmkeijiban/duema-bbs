@@ -3,6 +3,9 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { makerRequiresLogin } from '@/lib/maker-auth-requirements'
 import DeckMaker from './DeckMaker'
+import { createAdminClient } from '@/lib/supabase-admin'
+import { getMakerAnonymousEditHash } from '@/lib/maker-anonymous-owner'
+import type { DeckEntry } from '@/lib/deck-maker'
 
 const PAGE_URL = 'https://www.duema-bbs.com/makers/deck-maker'
 
@@ -21,14 +24,26 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 }
 
-export default async function DeckMakerPage() {
+export default async function DeckMakerPage({ searchParams }: { searchParams: Promise<{ copy?: string; edit?: string }> }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (makerRequiresLogin() && !user) redirect('/login?next=/makers/deck-maker')
+  const params = await searchParams
+  const requestedId = params.edit ?? params.copy
+  let initialDeck: { name: string; entries: DeckEntry[]; submissionId?: string } | undefined
+  if (requestedId && /^[0-9a-f-]{36}$/i.test(requestedId)) {
+    const admin = createAdminClient()
+    const { data } = await admin.from('deck_submissions').select('id,user_id,anonymous_edit_token_hash,title,deck_data,is_public').eq('id', requestedId).maybeSingle()
+    if (data?.is_public) {
+      const editHash = params.edit ? await getMakerAnonymousEditHash() : null
+      const canEdit = params.edit && ((user && data.user_id === user.id) || (!user && data.user_id === null && editHash && data.anonymous_edit_token_hash === editHash))
+      if (!params.edit || canEdit) initialDeck = { name: params.copy ? `${data.title}のコピー` : data.title, entries: data.deck_data as DeckEntry[], ...(canEdit ? { submissionId: data.id } : {}) }
+    }
+  }
 
   return (
     <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4">
-      <DeckMaker />
+      <DeckMaker initialDeck={initialDeck} />
     </main>
   )
 }
