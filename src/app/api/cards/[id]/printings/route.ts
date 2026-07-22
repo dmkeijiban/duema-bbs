@@ -203,7 +203,9 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     })
 
     return NextResponse.json({ cards: dedupedCards }, { headers: { 'Cache-Control': 'private, no-store' } })
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error('[cards/printings] printing list fetch failed', { cardId: id, message })
     return NextResponse.json({ error: '収録版の取得に失敗しました' }, { status: 500 })
   }
 }

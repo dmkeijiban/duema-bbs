@@ -46,7 +46,9 @@ export async function POST(request: NextRequest) {
       return row && printing ? [{ oldSourceKey: alias.old_source_key, card: mapCard(row, printing) }] : []
     })
     return NextResponse.json({ cards: [...rowById.values()].map((row) => mapCard(row)), aliases: resolvedAliases }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error('[cards/resolve] card resolve failed', { idCount: ids.length, sourceKeyCount: sourceKeys.length, message })
     return NextResponse.json({ cards: [], aliases: [], fallback: true }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
   }
 }
