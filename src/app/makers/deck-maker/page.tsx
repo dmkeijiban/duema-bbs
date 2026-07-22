@@ -29,10 +29,30 @@ export default async function DeckMakerPage({ searchParams }: { searchParams: Pr
   const { data: { user } } = await supabase.auth.getUser()
   if (makerRequiresLogin() && !user) redirect('/login?next=/makers/deck-maker')
   const params = await searchParams
+  const admin = createAdminClient()
+  const anonymousHash = await getMakerAnonymousEditHash()
+  let ownedQuery = admin.from('deck_submissions')
+    .select('id,title,deck_data,key_card_id,key_card_printing_id,created_at,updated_at')
+    .eq('is_public', true)
+    .order('updated_at', { ascending: false })
+    .limit(100)
+  if (user) ownedQuery = ownedQuery.eq('user_id', user.id)
+  else if (anonymousHash) ownedQuery = ownedQuery.is('user_id', null).eq('anonymous_edit_token_hash', anonymousHash)
+  else ownedQuery = ownedQuery.eq('id', '00000000-0000-0000-0000-000000000000')
+  const { data: ownedRows } = await ownedQuery
+  const dbDecks = (ownedRows ?? []).map(row => ({
+    id: row.id,
+    submissionId: row.id,
+    name: row.title,
+    entries: row.deck_data as DeckEntry[],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    keyCardId: row.key_card_id,
+    keyCardPrintingId: row.key_card_printing_id,
+  }))
   const requestedId = params.edit ?? params.copy
   let initialDeck: { name: string; entries: DeckEntry[]; submissionId?: string } | undefined
   if (requestedId && /^[0-9a-f-]{36}$/i.test(requestedId)) {
-    const admin = createAdminClient()
     const { data } = await admin.from('deck_submissions').select('id,user_id,anonymous_edit_token_hash,title,deck_data,is_public').eq('id', requestedId).maybeSingle()
     if (data?.is_public) {
       const editHash = params.edit ? await getMakerAnonymousEditHash() : null
@@ -43,7 +63,7 @@ export default async function DeckMakerPage({ searchParams }: { searchParams: Pr
 
   return (
     <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4">
-      <DeckMaker initialDeck={initialDeck} />
+      <DeckMaker initialDeck={initialDeck} dbDecks={dbDecks} />
     </main>
   )
 }

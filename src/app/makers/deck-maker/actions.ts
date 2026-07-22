@@ -20,7 +20,7 @@ type PublishEntry = {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-export async function savePublishedDeck(input: { submissionId?: string | null; title: string; entries: PublishEntry[] }) {
+export async function savePublishedDeck(input: { submissionId?: string | null; title: string; entries: PublishEntry[]; keyCardId?: string | null; keyCardPrintingId?: string | null }) {
   try {
     if (typeof input.title !== 'string' || input.title.trim().length > 60) {
       return { ok: false, message: 'デッキ名は60文字以内で入力してください' }
@@ -57,6 +57,9 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
 
     const admin = createAdminClient()
     const cardIds = [...counts.keys()]
+    const keyCardId = input.keyCardId && cardIds.includes(input.keyCardId) ? input.keyCardId : input.entries[0]?.id ?? null
+    const keyCardEntry = input.entries.find(entry => entry.id === keyCardId && (!input.keyCardPrintingId || entry.printingId === input.keyCardPrintingId))
+    const keyCardPrintingId = keyCardEntry?.printingId ?? null
     const sourceKeys = input.entries.flatMap(entry => entry.sourceKey ? [entry.sourceKey] : [])
     const [{ data: cards, error: cardsError }, { data: printings, error: printingsError }] = await Promise.all([
       admin.from('cards').select('id,name,image_url').in('id', cardIds),
@@ -120,8 +123,8 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
         title,
         format: 'original',
         deck_data: deckData,
-        key_card_id: deckData[0]?.id ?? null,
-        key_card_printing_id: deckData[0]?.printingId ?? null,
+        key_card_id: keyCardId,
+        key_card_printing_id: keyCardPrintingId,
         is_public: true,
         updated_at: new Date().toISOString(),
       }).eq('id', input.submissionId)
@@ -140,8 +143,8 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
       title,
       format: 'original',
       deck_data: deckData,
-      key_card_id: deckData[0]?.id ?? null,
-      key_card_printing_id: deckData[0]?.printingId ?? null,
+      key_card_id: keyCardId,
+      key_card_printing_id: keyCardPrintingId,
       is_public: true,
     }).select('id').single()
     if (error || !data) {
@@ -188,4 +191,22 @@ export async function deletePublishedDeck(formData: FormData) {
   await admin.from('deck_submissions').update({ is_public: false, updated_at: new Date().toISOString() }).eq('id', id)
   revalidatePath('/makers/deck-maker/submissions')
   redirect('/makers/deck-maker/submissions')
+}
+
+export async function deleteMyDeck(id: string) {
+  if (!UUID_PATTERN.test(id)) return { ok: false }
+  const admin = createAdminClient()
+  const { data: existing } = await admin.from('deck_submissions').select('id,user_id,anonymous_edit_token_hash').eq('id', id).maybeSingle()
+  if (!existing) return { ok: false }
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const anonymousId = (await cookies()).get(MAKER_ANONYMOUS_COOKIE)?.value
+  const owned = (user && existing.user_id === user.id)
+    || (existing.user_id === null && anonymousId && /^[A-Za-z0-9_-]{40,100}$/.test(anonymousId) && existing.anonymous_edit_token_hash === hashMakerAnonymousOwner(anonymousId, 'edit'))
+  if (!owned) return { ok: false }
+  const { error } = await admin.from('deck_submissions').update({ is_public: false, updated_at: new Date().toISOString() }).eq('id', id)
+  if (error) return { ok: false }
+  revalidatePath('/makers/deck-maker')
+  revalidatePath('/makers/deck-maker/submissions')
+  return { ok: true }
 }
