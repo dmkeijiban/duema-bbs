@@ -77,18 +77,29 @@ export default function SelectSubmissionBoard({
     }
   }
 
+  function cardImage(card: SelectCard) {
+    return card.imageUrl
+      ? <img src={card.imageUrl} alt={card.name} loading="lazy" decoding="async" className="h-full w-full object-contain" />
+      : <span className="flex h-full items-center justify-center p-1 text-center text-xs text-slate-500">{card.name}</span>
+  }
+
   return <>
     <div className={`grid gap-2 ${compact ? 'grid-cols-3' : 'grid-cols-3 sm:grid-cols-3'}`}>
-      {cards.map(card => <button
+      {cards.map(card => enableActions ? <button
         key={card.id}
         type="button"
-        disabled={!enableActions || !card.imageUrl}
+        disabled={!card.imageUrl}
         onClick={() => card.imageUrl && setZoomedCard(card)}
-        aria-label={enableActions && card.imageUrl ? `${card.name}を拡大表示` : undefined}
-        className={`relative aspect-[5/7] overflow-hidden rounded-lg border border-slate-200 bg-slate-100 ${enableActions && card.imageUrl ? 'cursor-zoom-in' : 'cursor-default'}`}
+        aria-label={card.imageUrl ? `${card.name}を拡大表示` : undefined}
+        className={`relative aspect-[5/7] overflow-hidden rounded-lg border border-slate-200 bg-slate-100 ${card.imageUrl ? 'cursor-zoom-in' : 'cursor-default'}`}
       >
-        {card.imageUrl ? <img src={card.imageUrl} alt={card.name} loading="lazy" decoding="async" className="h-full w-full object-contain" /> : <span className="flex h-full items-center justify-center p-1 text-center text-xs text-slate-500">{card.name}</span>}
-      </button>)}
+        {cardImage(card)}
+      </button> : <div
+        key={card.id}
+        className="relative aspect-[5/7] overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
+      >
+        {cardImage(card)}
+      </div>)}
     </div>
 
     {enableActions && <div className="mt-4">
