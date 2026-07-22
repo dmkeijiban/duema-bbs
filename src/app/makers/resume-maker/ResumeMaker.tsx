@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { renderResumeExportImage, resumePngFileName } from '@/lib/maker-resume-export'
 import {
   RESUME_ACHIEVEMENT_PRESETS,
@@ -26,7 +26,7 @@ import {
   sanitizeResumeData,
   type ResumeData,
 } from '@/lib/maker-resume'
-import { ScaledResumePreview } from './ResumePreview'
+import { ResumePreview, ScaledResumePreview } from './ResumePreview'
 import { RESUME_STEPS, RESUME_SHARE_TEXT } from './constants'
 import type { ResumeInitialState } from './types'
 import { saveResumeSubmission, setResumeVisibility } from './actions'
@@ -48,6 +48,7 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
   const [pngPreview, setPngPreview] = useState<PngPreview | null>(null)
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false)
   const [resumeDate, setResumeDate] = useState<string | null>(initial.resumeDate)
+  const exportPreviewRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (initial.data) {
@@ -140,7 +141,7 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
     if (isSavingImage || !complete) { if (!complete) setMessage('名前を入力してください'); return }
     setIsSavingImage(true)
     try {
-      const blob = await renderResumeExportImage(data, { url: avatarUrl }, resumeDate)
+      const blob = await renderResumeExportImage(exportPreviewRef.current)
       const fileName = resumePngFileName(data.handleName)
       const file = new File([blob], fileName, { type: blob.type || 'image/png' })
       const src = await new Promise<string>((resolve, reject) => {
@@ -192,6 +193,9 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
 
   return (
     <div className="pb-28">
+      <div aria-hidden="true" className="pointer-events-none fixed left-[-10000px] top-0">
+        <ResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} exportRef={exportPreviewRef} />
+      </div>
       <header className="mb-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
         <h1 className="text-lg font-black text-slate-900">デュエマ履歴書メーカー</h1>
         <p className="mt-1 text-xs text-slate-500">あなたのデュエマ自己紹介を、本物の履歴書風にまとめよう。</p>
