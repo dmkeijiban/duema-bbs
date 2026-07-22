@@ -1,15 +1,16 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { RESUME_ACHIEVEMENT_PRESETS, RESUME_SOCIAL_TAG_PRESETS, type ResumeData } from '@/lib/maker-resume'
-import { formatResumeDate, RESUME_LAYOUT as L, RESUME_SECTION_ORDER, type ResumeSection } from '@/lib/maker-resume-layout'
+import type { ResumeData } from '@/lib/maker-resume'
+import { formatResumeDate, RESUME_DEFAULT_AVATAR_PATH, RESUME_LAYOUT as L, RESUME_SECTION_ORDER, type ResumeSection } from '@/lib/maker-resume-layout'
+import { getResumeSectionContent } from '@/lib/maker-resume-render'
 
 function Chip({ children }: { children: React.ReactNode }) {
   return <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border font-sans font-bold" style={{ height: L.chipHeight, paddingInline: L.chipPaddingX, borderColor: L.colors.lightLine, background: L.colors.chip, fontSize: L.font.chip }}>{children}</span>
 }
 
 function DefaultAvatarGlyph() {
-  return <svg className="h-1/2 w-1/2" style={{ color: L.colors.lightLine }} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" /></svg>
+  return <svg className="h-1/2 w-1/2" style={{ color: L.colors.lightLine }} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={RESUME_DEFAULT_AVATAR_PATH} /></svg>
 }
 
 function FieldRow({ cells, labelWidth = L.defaultLabelWidth }: { cells: [string, string][]; labelWidth?: number }) {
@@ -26,23 +27,22 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export function ResumePreview({ data, avatarUrl, resumeDate }: { data: ResumeData; avatarUrl: string | null; resumeDate?: string | null }) {
-  const achievements = data.achievements.map(key => RESUME_ACHIEVEMENT_PRESETS.find(item => item.key === key)?.label).filter((value): value is Exclude<typeof value, undefined> => value !== undefined)
-  const socialTags = data.socialTags.map(key => RESUME_SOCIAL_TAG_PRESETS.find(item => item.key === key)?.label).filter((value): value is Exclude<typeof value, undefined> => value !== undefined)
+  const sectionContent = getResumeSectionContent(data)
   const renderSection = (section: ResumeSection) => {
     switch (section) {
       case 'interaction':
         return <section key={section} style={{ marginTop: L.sectionGap }}><SectionTitle>対戦・交流について</SectionTitle>
-          <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{socialTags.length ? socialTags.map(label => <Chip key={label}>{label}</Chip>) : <span style={{ color: L.colors.muted, fontSize: L.font.body }}>（未選択）</span>}</div>
-          {data.socialNote && <p className="box-border h-10 pt-[10px] font-sans" style={{ fontSize: L.font.body, lineHeight: '20px' }}>{data.socialNote}</p>}
+          <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{sectionContent.interaction.tags.map(label => <Chip key={label}>{label}</Chip>)}</div>
+          {sectionContent.interaction.note && <p className="box-border h-10 pt-[10px] font-sans" style={{ fontSize: L.font.body, lineHeight: '20px' }}>{sectionContent.interaction.note}</p>}
         </section>
       case 'achievements':
         return <section key={section} style={{ marginTop: L.sectionGap }}><SectionTitle>大会・デュエマ実績</SectionTitle>
-          <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{achievements.length ? achievements.map(label => <Chip key={label}>{label}</Chip>) : <span style={{ color: L.colors.muted, fontSize: L.font.body }}>（未選択）</span>}</div>
-          {data.achievementNote && <p className="box-border h-10 pt-[10px] font-sans" style={{ fontSize: L.font.body, lineHeight: '20px' }}>{data.achievementNote}</p>}
+          <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{sectionContent.achievements.tags.map(label => <Chip key={label}>{label}</Chip>)}</div>
+          {sectionContent.achievements.note && <p className="box-border h-10 pt-[10px] font-sans" style={{ fontSize: L.font.body, lineHeight: '20px' }}>{sectionContent.achievements.note}</p>}
         </section>
       case 'freeSpace':
         return <section key={section} style={{ marginTop: 30 }}><SectionTitle>フリースペース</SectionTitle>
-          <div className="overflow-hidden whitespace-pre-wrap break-words border p-4 font-sans" style={{ marginTop: L.sectionContentGap, height: L.freeSpaceHeight, borderColor: '#cbd5e1', fontSize: L.font.freeSpace, lineHeight: '28px' }}>{data.freeSpace || '（未入力）'}</div>
+          <div className="overflow-hidden whitespace-pre-wrap break-words border p-4 font-sans" style={{ marginTop: L.sectionContentGap, height: L.freeSpaceHeight, borderColor: '#cbd5e1', fontSize: L.font.freeSpace, lineHeight: '28px' }}>{sectionContent.freeSpace.text}</div>
         </section>
     }
   }
@@ -57,7 +57,7 @@ export function ResumePreview({ data, avatarUrl, resumeDate }: { data: ResumeDat
         <FieldRow cells={[["名前", data.handleName || '未入力']]} />
         <FieldRow cells={[["開始時期", data.startedAt || '-'], ['活動地域', data.region || '-']]} />
         <FieldRow labelWidth={L.compactLabelWidth} cells={[["性別", data.gender || '-'], ['年齢', data.ageGroup || '-'], ['デュエプレ', data.playsDuelMastersPlay || '-']]} />
-        <FieldRow cells={[["好きな文明", data.favoriteCivilization || '-'], ['プレイスタイル', data.playStyle || '-']]} />
+        <FieldRow labelWidth={L.profileChoiceLabelWidth} cells={[["好きな文明", data.favoriteCivilization || '-'], ['プレイスタイル', data.playStyle || '-']]} />
       </div>
       <div className="flex shrink-0 items-center justify-center overflow-hidden border-2" style={{ width: L.photoSize, height: L.photoSize, borderColor: L.colors.line, background: L.colors.label }}>
         {avatarUrl ? <img src={avatarUrl} alt="プロフィールアイコン" className="h-full w-full object-cover" /> : <DefaultAvatarGlyph />}
