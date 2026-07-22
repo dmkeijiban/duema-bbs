@@ -50,7 +50,7 @@ function PairedExpandableFieldRow({ cells }: { cells: [FieldCell, FieldCell] }) 
 }
 
 function getFreeSpaceHeight(value: string) {
-  const contentHeight = estimateWrappedLines(value, 48) * 28 + 32
+  const contentHeight = estimateWrappedLines(value, 34) * 28 + 32
   return Math.min(360, Math.max(L.freeSpaceHeight, contentHeight))
 }
 
@@ -60,6 +60,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 export function ResumePreview({ data, avatarUrl, resumeDate, exportRef }: { data: ResumeData; avatarUrl: string | null; resumeDate?: string | null; exportRef?: Ref<HTMLDivElement> }) {
   const sectionContent = getResumeSectionContent(data)
+  const favoriteCard = data.photo?.type === 'card' ? data.photo : null
   const freeSpaceHeight = getFreeSpaceHeight(sectionContent.freeSpace.text)
   const renderSection = (section: ResumeSection) => {
     switch (section) {
@@ -74,8 +75,17 @@ export function ResumePreview({ data, avatarUrl, resumeDate, exportRef }: { data
           <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{sectionContent.achievements.tags.map(label => <Chip key={label}>{label}</Chip>)}</div>
         </section>
       case 'freeSpace':
-        return <section key={section} style={{ marginTop: 30 }}><SectionTitle>フリースペース</SectionTitle>
-          <div className="overflow-hidden whitespace-pre-wrap break-words border-2 p-4 font-sans" style={{ marginTop: L.sectionContentGap, height: freeSpaceHeight, borderColor: L.colors.line, fontSize: L.font.freeSpace, lineHeight: '28px' }}>{sectionContent.freeSpace.text}</div>
+        return <section key={section} style={{ marginTop: 30 }}>
+          <div className="flex items-end justify-between gap-6">
+            <SectionTitle>フリースペース</SectionTitle>
+            {favoriteCard && <h2 className="font-black text-center" style={{ width: 250, height: L.sectionTitleHeight, fontSize: L.font.section, lineHeight: 1 }}>好きなカード</h2>}
+          </div>
+          <div className="flex items-start gap-6" style={{ marginTop: L.sectionContentGap }}>
+            <div className="min-w-0 flex-1 overflow-hidden whitespace-pre-wrap break-words border-2 p-4 font-sans" style={{ height: freeSpaceHeight, borderColor: L.colors.line, fontSize: L.font.freeSpace, lineHeight: '28px' }}>{sectionContent.freeSpace.text}</div>
+            {favoriteCard && <div className="flex shrink-0 items-start justify-center" style={{ width: 250, height: freeSpaceHeight }}>
+              {favoriteCard.imageUrl ? <img src={favoriteCard.imageUrl} alt={favoriteCard.name || '好きなカード'} className="max-h-full max-w-full object-contain" /> : <div className="flex h-full w-full items-center justify-center border-2 font-sans text-slate-400" style={{ borderColor: L.colors.line, fontSize: L.font.body }}>画像なし</div>}
+            </div>}
+          </div>
         </section>
     }
   }
