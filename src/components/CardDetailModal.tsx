@@ -45,20 +45,24 @@ export function CardDetailModal({
 
   if (!card) return null
 
+  const activeCard = card
   const civilizations = card.civilization ?? []
+  const cardType = card.cardType
+  const race = card.race
+  const setName = card.setName
   const canRemove = visibleCount > 0
   const canAdd = !maxReached
 
   function removeOne() {
     if (!canRemove) return
     setVisibleCount(current => Math.max(0, current - 1))
-    onRemove?.(card)
+    onRemove?.(activeCard)
   }
 
   function addOne() {
     if (!canAdd) return
     setVisibleCount(current => current + 1)
-    onAdd?.(card)
+    onAdd?.(activeCard)
   }
 
   return <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3" onMouseDown={event => { if (event.currentTarget === event.target) onClose() }}>
@@ -84,9 +88,9 @@ export function CardDetailModal({
         <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl bg-slate-50 p-3 text-sm">
           <div><dt className="text-xs font-bold text-slate-500">文明</dt><dd>{civilizations.length ? civilizations.map(value => <button key={value} type="button" onClick={() => onAddFilter?.({ kind: 'civilization', value })} className="mr-1 underline decoration-dotted disabled:no-underline" disabled={!onAddFilter}>{value}</button>) : '—'}</dd></div>
           <div><dt className="text-xs font-bold text-slate-500">コスト</dt><dd>{card.cost ?? '—'}</dd></div>
-          <div><dt className="text-xs font-bold text-slate-500">タイプ</dt><dd>{card.cardType ? <button type="button" onClick={() => onAddFilter?.({ kind: 'cardType', value: card.cardType })} className="underline decoration-dotted disabled:no-underline" disabled={!onAddFilter}>{card.cardType}</button> : '—'}</dd></div>
-          <div><dt className="text-xs font-bold text-slate-500">種族</dt><dd>{card.race ? <button type="button" onClick={() => onAddFilter?.({ kind: 'race', value: card.race })} className="underline decoration-dotted disabled:no-underline" disabled={!onAddFilter}>{card.race}</button> : '—'}</dd></div>
-          <div className="col-span-2"><dt className="text-xs font-bold text-slate-500">収録弾・カード番号</dt><dd>{card.setName ? <button type="button" onClick={() => onAddFilter?.({ kind: 'setName', value: card.setName })} className="underline decoration-dotted disabled:no-underline" disabled={!onAddFilter}>{card.setName}</button> : '—'}{card.cardNumber ? ` / ${card.cardNumber}` : ''}</dd></div>
+          <div><dt className="text-xs font-bold text-slate-500">タイプ</dt><dd>{cardType ? <button type="button" onClick={() => onAddFilter?.({ kind: 'cardType', value: cardType })} className="underline decoration-dotted disabled:no-underline" disabled={!onAddFilter}>{cardType}</button> : '—'}</dd></div>
+          <div><dt className="text-xs font-bold text-slate-500">種族</dt><dd>{race ? <button type="button" onClick={() => onAddFilter?.({ kind: 'race', value: race })} className="underline decoration-dotted disabled:no-underline" disabled={!onAddFilter}>{race}</button> : '—'}</dd></div>
+          <div className="col-span-2"><dt className="text-xs font-bold text-slate-500">収録弾・カード番号</dt><dd>{setName ? <button type="button" onClick={() => onAddFilter?.({ kind: 'setName', value: setName })} className="underline decoration-dotted disabled:no-underline" disabled={!onAddFilter}>{setName}</button> : '—'}{card.cardNumber ? ` / ${card.cardNumber}` : ''}</dd></div>
           <div className="col-span-2"><dt className="text-xs font-bold text-slate-500">効果</dt><dd className="whitespace-pre-wrap">{card.abilityText || '効果テキスト未登録'}</dd></div>
         </dl>
 
