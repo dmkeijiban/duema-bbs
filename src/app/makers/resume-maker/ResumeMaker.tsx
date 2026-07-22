@@ -53,6 +53,10 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   }, [])
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }, [step])
+
+  useEffect(() => {
     if (!mobilePreviewOpen && !pngPreview) return
     const previous = document.body.style.overflow
     const close = (event: KeyboardEvent) => { if (event.key === 'Escape') { setMobilePreviewOpen(false); setPngPreview(null) } }
