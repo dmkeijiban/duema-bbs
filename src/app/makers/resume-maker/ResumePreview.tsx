@@ -17,7 +17,7 @@ type FieldCell = [label: string, value: string]
 
 function FieldRow({ cells, labelWidth = L.defaultLabelWidth, columnFractions, height = L.rowHeight, wrapValues = false }: { cells: FieldCell[]; labelWidth?: number; columnFractions?: number[]; height?: number; wrapValues?: boolean }) {
   const columns = columnFractions?.length === cells.length ? columnFractions.map(value => `${value}fr`).join(' ') : `repeat(${cells.length}, 1fr)`
-  return <div className="grid border-2" style={{ height, gridTemplateColumns: columns, borderColor: L.colors.line }}>
+  return <div className="grid -mt-0.5 border-2 first:mt-0" style={{ height, gridTemplateColumns: columns, borderColor: L.colors.line }}>
     {cells.map(([label, value]) => <div key={label} className="flex min-w-0 border-r-2 last:border-r-0" style={{ borderColor: L.colors.line }}>
       <div className="flex shrink-0 items-center justify-center whitespace-nowrap border-r-2 px-2 text-center font-sans font-bold" style={{ width: labelWidth, borderColor: L.colors.line, background: L.colors.label, color: L.colors.subInk, fontSize: L.font.label }}>{label}</div>
       <div className={`flex min-w-0 flex-1 items-center justify-center overflow-hidden px-2 text-center font-sans ${wrapValues ? 'whitespace-pre-wrap break-words' : 'whitespace-nowrap'}`} style={{ color: L.colors.ink, fontSize: L.font.value, lineHeight: wrapValues ? '28px' : undefined }}>{value}</div>
