@@ -16,4 +16,5 @@ export type ResumeInitialState = {
   isPublic: boolean
   profileDefaults: ResumeProfileDefaults | null
   profileSlug: string | null
+  resumeDate: string | null
 }

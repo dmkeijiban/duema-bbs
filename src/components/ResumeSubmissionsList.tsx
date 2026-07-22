@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ScaledResumePreview } from '@/app/makers/resume-maker/ResumePreview'
 import { ResumeProfileCard } from '@/components/ResumeProfileCard'
@@ -19,12 +19,21 @@ export function ResumeSubmissionsList({ submissions, viewerLoggedIn }: { submiss
   const [openId, setOpenId] = useState<string | null>(null)
   const openSubmission = submissions.find(submission => submission.id === openId) ?? null
 
+  useEffect(() => {
+    if (!openId) return
+    const previous = document.body.style.overflow
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpenId(null) }
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', close)
+    return () => { document.body.style.overflow = previous; window.removeEventListener('keydown', close) }
+  }, [openId])
+
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {submissions.map(submission => (
           <button key={submission.id} type="button" onClick={() => setOpenId(submission.id)} className="min-w-0 rounded-xl border bg-white p-3 text-left shadow-sm transition hover:border-blue-400 hover:shadow-md">
-            <div className="w-full overflow-hidden rounded border border-gray-200"><ScaledResumePreview data={submission.data} avatarUrl={submission.avatarUrl} /></div>
+            <div className="w-full overflow-hidden rounded border border-gray-200"><ScaledResumePreview data={submission.data} avatarUrl={submission.avatarUrl} resumeDate={submission.updatedAt} /></div>
             <div className="mt-2 flex items-center gap-2">
               <div className="h-7 w-7 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-50">
                 {submission.avatarUrl && <img src={submission.avatarUrl} alt="" className="h-full w-full object-cover" />}
@@ -55,7 +64,7 @@ export function ResumeSubmissionsList({ submissions, viewerLoggedIn }: { submiss
                 <p className="min-w-0 truncate font-black text-slate-900">{openSubmission.displayName}</p>
                 <Link href={`/u/${openSubmission.profileSlug}`} className="ml-auto shrink-0 text-xs font-bold text-blue-700 hover:underline">公開プロフィールを見る</Link>
               </div>
-              <ResumeProfileCard data={openSubmission.data} avatarUrl={openSubmission.avatarUrl} isOwner={false} isPublic={true} viewerLoggedIn={viewerLoggedIn} />
+              <ResumeProfileCard data={openSubmission.data} avatarUrl={openSubmission.avatarUrl} resumeDate={openSubmission.updatedAt} isOwner={false} isPublic={true} viewerLoggedIn={viewerLoggedIn} />
             </div>
           </div>
         </div>

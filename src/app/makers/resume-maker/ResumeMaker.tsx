@@ -43,6 +43,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   const [isTogglingVisibility, setIsTogglingVisibility] = useState(false)
   const [pngPreview, setPngPreview] = useState<PngPreview | null>(null)
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false)
+  const [resumeDate, setResumeDate] = useState<string | null>(initial.resumeDate)
 
   useEffect(() => {
     if (initial.data) setData(initial.data)
@@ -52,8 +53,10 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   useEffect(() => {
     if (!mobilePreviewOpen && !pngPreview) return
     const previous = document.body.style.overflow
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') { setMobilePreviewOpen(false); setPngPreview(null) } }
     document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = previous }
+    window.addEventListener('keydown', close)
+    return () => { document.body.style.overflow = previous; window.removeEventListener('keydown', close) }
   }, [mobilePreviewOpen, pngPreview])
 
   useEffect(() => {
@@ -83,7 +86,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
     const result = await saveResumeSubmission({ data, isPublic: nextIsPublic })
     setMessage(result.message)
     setSaveState(result.ok ? 'saved' : 'error')
-    if (result.ok && result.submissionId) { setSubmissionId(result.submissionId); return result.submissionId }
+    if (result.ok && result.submissionId) { setSubmissionId(result.submissionId); setResumeDate(new Date().toISOString()); return result.submissionId }
     return null
   }
 
@@ -109,7 +112,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
     if (isSavingImage || !complete) { if (!complete) setMessage('名前を入力してください'); return }
     setIsSavingImage(true)
     try {
-      const blob = await renderResumeExportImage(data, { url: avatarUrl })
+      const blob = await renderResumeExportImage(data, { url: avatarUrl }, resumeDate)
       const fileName = resumePngFileName(data.handleName)
       const file = new File([blob], fileName, { type: blob.type || 'image/png' })
       const src = await new Promise<string>((resolve, reject) => {
@@ -167,7 +170,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold text-blue-700">
           <Link href="/mypage" className="hover:underline">マイページに戻る</Link>
           <Link href="/makers/resume-maker/submissions" className="hover:underline">みんなの履歴書を見る</Link>
-          {initial.profileSlug && <Link href={`/u/${initial.profileSlug}`} className="hover:underline">投稿者ページで見る</Link>}
+          {initial.profileSlug && <Link href={`/u/${initial.profileSlug}`} className="hover:underline">公開プロフィールを見る</Link>}
         </div>
         <nav className="mt-3 flex gap-2">
           {RESUME_STEPS.map(item => (
@@ -287,7 +290,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
                     <h2 className="font-black text-slate-900">履歴書の公開設定</h2>
                     <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${isPublic ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{isPublic ? '公開中' : '非公開'}</span>
                   </div>
-                  <p className="mt-2 text-xs text-slate-600">{isPublic ? 'あなたの投稿者ページと「みんなの履歴書」に表示されています。' : 'あなた以外には表示されません。'}</p>
+                  <p className="mt-2 text-xs text-slate-600">{isPublic ? 'あなたの公開プロフィールと「みんなの履歴書」に表示されています。' : 'あなた以外には表示されません。'}</p>
                   <button type="button" onClick={() => void handleToggleVisibility()} disabled={isTogglingVisibility} className={`mt-3 min-h-10 w-full rounded-lg px-4 text-sm font-bold text-white disabled:opacity-60 ${isPublic ? 'bg-slate-500' : 'bg-emerald-700'}`}>
                     {isTogglingVisibility ? '変更中…' : isPublic ? '非公開にする' : '公開する'}
                   </button>
@@ -312,7 +315,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
 
         <div className="hidden lg:block">
           <div className="sticky top-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-            <ScaledResumePreview data={data} avatarUrl={avatarUrl} className="mx-auto" />
+            <ScaledResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} className="mx-auto" />
           </div>
         </div>
       </div>
@@ -330,7 +333,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
       {mobilePreviewOpen && (
         <div role="presentation" className="fixed inset-0 z-50 overflow-auto bg-black/90 p-3" onMouseDown={event => { if (event.currentTarget === event.target) setMobilePreviewOpen(false) }}>
           <div className="mx-auto max-w-xl"><div className="mb-2 flex justify-end"><button type="button" onClick={() => setMobilePreviewOpen(false)} aria-label="プレビューを閉じる" className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl">×</button></div>
-            <ScaledResumePreview data={data} avatarUrl={avatarUrl} />
+            <ScaledResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} />
           </div>
         </div>
       )}

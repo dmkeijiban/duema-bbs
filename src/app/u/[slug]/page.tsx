@@ -367,7 +367,7 @@ export default async function UserProfilePage({
         </div>
       </section>
 
-      {resume && <ResumeProfileCard data={resume.data} avatarUrl={profile.avatar_url} isOwner={isOwner} isPublic={resume.isPublic} viewerLoggedIn={Boolean(viewerUserId)} />}
+      {resume && <ResumeProfileCard data={resume.data} avatarUrl={profile.avatar_url} resumeDate={resume.updatedAt} isOwner={isOwner} isPublic={resume.isPublic} viewerLoggedIn={Boolean(viewerUserId)} />}
 
       {!isOwner && (
         <section className="mt-4 rounded-sm border border-blue-200 bg-blue-50 px-4 py-3">

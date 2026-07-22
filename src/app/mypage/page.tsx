@@ -651,6 +651,7 @@ export default async function MyPage({
                 avatarUrl={profile.avatar_url}
                 isPublic={resume.isPublic}
                 updatedAtLabel={formatDateTime(resume.updatedAt)}
+                resumeDate={resume.updatedAt}
                 profileSlug={profile.profile_slug}
               />
             ) : (
