@@ -102,7 +102,7 @@ export function ResumeMypagePanel({
           <p className="mt-1 text-xs text-gray-500">最終更新日: {updatedAtLabel}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <Link href="/makers/resume-maker" className="inline-flex items-center justify-center rounded border border-blue-300 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50">履歴書を編集する</Link>
-            <Link href={`/u/${profileSlug}`} className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">投稿者ページで見る</Link>
+            <Link href={`/u/${profileSlug}`} className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">公開プロフィールを見る</Link>
             <button type="button" disabled={isSavingImage} onClick={() => void handleSaveImage()} className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40">{isSavingImage ? '生成中…' : '画像を保存'}</button>
             <button type="button" disabled={isSharing} onClick={handleShare} className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40">{isSharing ? '共有準備中…' : 'Xで共有'}</button>
             <Link href="/makers/resume-maker/submissions" className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">みんなの履歴書を見る</Link>
@@ -115,7 +115,7 @@ export function ResumeMypagePanel({
           <h3 className="text-sm font-bold text-gray-800">履歴書の公開設定</h3>
           <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${isPublic ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>{isPublic ? '公開中' : '非公開'}</span>
         </div>
-        <p className="mt-1 text-xs text-gray-600">{isPublic ? 'あなたの投稿者ページと「みんなの履歴書」に表示されています。' : 'あなた以外には表示されません。'}</p>
+        <p className="mt-1 text-xs text-gray-600">{isPublic ? 'あなたの公開プロフィールと「みんなの履歴書」に表示されています。' : 'あなた以外には表示されません。'}</p>
         {toggleMessage && <p role="status" className="mt-1 text-xs font-bold text-blue-700">{toggleMessage}</p>}
         <button type="button" onClick={() => void handleToggleVisibility()} disabled={isToggling} className={`mt-2 inline-flex min-h-9 items-center justify-center rounded px-4 text-xs font-bold text-white disabled:opacity-60 ${isPublic ? 'bg-slate-500 hover:bg-slate-600' : 'bg-emerald-700 hover:bg-emerald-800'}`}>
           {isToggling ? '変更中…' : isPublic ? '非公開にする' : '公開する'}

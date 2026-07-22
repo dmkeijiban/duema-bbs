@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 
 const RESUME_SIGNUP_BENEFITS = [
   '後から何度でも編集できる',
-  '投稿者ページに掲載できる',
+  '公開プロフィールに掲載できる',
   '公開・非公開を切り替えられる',
   'PNG画像として保存できる',
   'Xで共有できる',

@@ -37,7 +37,7 @@ export function ZukanReviewAuthor({
         <Link
           href={`/u/${profileSlug}`}
           className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
-          aria-label={`${displayName}の投稿者ページ`}
+          aria-label={`${displayName}の公開プロフィール`}
         >
           {avatar}
         </Link>
