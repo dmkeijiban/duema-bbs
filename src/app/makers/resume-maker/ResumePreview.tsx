@@ -15,23 +15,38 @@ function DefaultAvatarGlyph() {
 
 type FieldCell = [label: string, value: string]
 
-function FieldRow({ cells, labelWidth = L.defaultLabelWidth, columnFractions, height = L.rowHeight, wrapValues = false }: { cells: FieldCell[]; labelWidth?: number; columnFractions?: number[]; height?: number; wrapValues?: boolean }) {
+function estimateWrappedLines(value: string, charactersPerLine: number) {
+  if (!value.trim()) return 1
+  return value.split('\n').reduce((total, line) => total + Math.max(1, Math.ceil(Array.from(line).length / charactersPerLine)), 0)
+}
+
+function getRowLines(cells: FieldCell[], charactersPerLine: number, maxLines = 3) {
+  return Math.min(maxLines, Math.max(1, ...cells.map(([, value]) => estimateWrappedLines(value, charactersPerLine))))
+}
+
+function FieldRow({ cells, labelWidth = L.defaultLabelWidth, columnFractions, charactersPerLine, maxLines = 3 }: { cells: FieldCell[]; labelWidth?: number; columnFractions?: number[]; charactersPerLine?: number; maxLines?: number }) {
   const columns = columnFractions?.length === cells.length ? columnFractions.map(value => `${value}fr`).join(' ') : `repeat(${cells.length}, 1fr)`
-  return <div className="grid -mt-0.5 border-2 first:mt-0" style={{ height, gridTemplateColumns: columns, borderColor: L.colors.line }}>
-    {cells.map(([label, value]) => <div key={label} className="flex min-w-0 border-r-2 last:border-r-0" style={{ borderColor: L.colors.line }}>
+  const rowLines = getRowLines(cells, charactersPerLine ?? (cells.length === 1 ? 42 : 16), maxLines)
+  const rowHeight = L.rowHeight * rowLines
+  const shouldWrap = rowLines > 1
+  return <div className="grid -mt-0.5 border-2 first:mt-0" style={{ minHeight: rowHeight, gridTemplateColumns: columns, borderColor: L.colors.line }}>
+    {cells.map(([label, value]) => <div key={label} className="flex min-w-0 border-r-2 last:border-r-0" style={{ minHeight: rowHeight, borderColor: L.colors.line }}>
       <div className="flex shrink-0 items-center justify-center whitespace-nowrap border-r-2 px-2 text-center font-sans font-bold" style={{ width: labelWidth, borderColor: L.colors.line, background: L.colors.label, color: L.colors.subInk, fontSize: L.font.label }}>{label}</div>
-      <div className={`flex min-w-0 flex-1 items-center justify-center overflow-hidden px-2 text-center font-sans ${wrapValues ? 'whitespace-pre-wrap break-words' : 'whitespace-nowrap'}`} style={{ color: L.colors.ink, fontSize: L.font.value, lineHeight: wrapValues ? '28px' : undefined }}>{value}</div>
+      <div className={`flex min-w-0 flex-1 items-center justify-center overflow-hidden px-2 text-center font-sans ${shouldWrap ? 'whitespace-pre-wrap break-words' : 'whitespace-nowrap'}`} style={{ color: L.colors.ink, fontSize: L.font.value, lineHeight: shouldWrap ? '28px' : undefined }}>{value}</div>
     </div>)}
   </div>
 }
 
-function shouldUseTwoLines(value: string, threshold: number) {
-  return value.includes('\n') || Array.from(value.trim()).length > threshold
-}
-
-function estimateWrappedLines(value: string, charactersPerLine: number) {
-  if (!value.trim()) return 1
-  return value.split('\n').reduce((total, line) => total + Math.max(1, Math.ceil(Array.from(line).length / charactersPerLine)), 0)
+function PairedExpandableFieldRow({ cells }: { cells: [FieldCell, FieldCell] }) {
+  const lines = getRowLines(cells, 13, 3)
+  const height = L.rowHeight * lines
+  const shouldWrap = lines > 1
+  return <div className="grid -mt-0.5 grid-cols-2 border-2 first:mt-0" style={{ minHeight: height, borderColor: L.colors.line }}>
+    {cells.map(([label, value]) => <div key={label} className="grid min-w-0 border-r-2 last:border-r-0" style={{ minHeight: height, gridTemplateColumns: `${L.fullLabelWidth}px minmax(0, 1fr)`, borderColor: L.colors.line }}>
+      <div className="flex items-center justify-center whitespace-nowrap border-r-2 px-2 text-center font-sans font-bold" style={{ borderColor: L.colors.line, background: L.colors.label, color: L.colors.subInk, fontSize: L.font.label }}>{label}</div>
+      <div className={`flex min-w-0 items-center justify-center overflow-hidden px-2 text-center font-sans ${shouldWrap ? 'whitespace-pre-wrap break-words' : 'whitespace-nowrap'}`} style={{ color: L.colors.ink, fontSize: L.font.value, lineHeight: shouldWrap ? '28px' : undefined }}>{value}</div>
+    </div>)}
+  </div>
 }
 
 function getFreeSpaceHeight(value: string) {
@@ -45,9 +60,6 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 export function ResumePreview({ data, avatarUrl, resumeDate, exportRef }: { data: ResumeData; avatarUrl: string | null; resumeDate?: string | null; exportRef?: Ref<HTMLDivElement> }) {
   const sectionContent = getResumeSectionContent(data)
-  const currentDecksWrap = shouldUseTwoLines(data.currentDecksText, 38)
-  const duelMastersPlayDeckWrap = shouldUseTwoLines(data.duelMastersPlayMainDeck, 38)
-  const interestsWrap = shouldUseTwoLines(data.favoriteYouTuber, 13) || shouldUseTwoLines(data.otherInterests, 13)
   const freeSpaceHeight = getFreeSpaceHeight(sectionContent.freeSpace.text)
   const renderSection = (section: ResumeSection) => {
     switch (section) {
@@ -86,9 +98,9 @@ export function ResumePreview({ data, avatarUrl, resumeDate, exportRef }: { data
       </div>
     </div>
     <section style={{ marginTop: L.sectionGap }}>
-      <FieldRow labelWidth={L.fullLabelWidth} height={currentDecksWrap ? L.rowHeight * 2 : L.rowHeight} wrapValues={currentDecksWrap} cells={[["使用デッキ", data.currentDecksText || '-']]} />
-      <FieldRow labelWidth={L.fullLabelWidth} height={duelMastersPlayDeckWrap ? L.rowHeight * 2 : L.rowHeight} wrapValues={duelMastersPlayDeckWrap} cells={[["デュエプレの使用デッキ", data.duelMastersPlayMainDeck || '-']]} />
-      <FieldRow labelWidth={L.fullLabelWidth} height={interestsWrap ? L.rowHeight * 2 : L.rowHeight} wrapValues={interestsWrap} cells={[["好きなYouTuber", data.favoriteYouTuber || '-'], ['好きな事', data.otherInterests || '-']]} />
+      <FieldRow labelWidth={L.fullLabelWidth} charactersPerLine={38} maxLines={3} cells={[["使用デッキ", data.currentDecksText || '-']]} />
+      <FieldRow labelWidth={L.fullLabelWidth} charactersPerLine={38} maxLines={3} cells={[["デュエプレの使用デッキ", data.duelMastersPlayMainDeck || '-']]} />
+      <PairedExpandableFieldRow cells={[["好きなYouTuber", data.favoriteYouTuber || '-'], ['好きな事', data.otherInterests || '-']]} />
     </section>
     {RESUME_SECTION_ORDER.map(renderSection)}
     <p className="absolute left-0 text-center font-sans" style={{ top: L.height - L.margin / 2 - 28, width: L.width, color: L.colors.muted, fontSize: L.font.footer }}>デュエマ掲示板　https://www.duema-bbs.com　#デュエマ履歴書</p>
@@ -111,7 +123,6 @@ export function ScaledResumePreview({ data, avatarUrl, resumeDate, className }: 
     <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: L.width, height: L.height }}><ResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} /></div>
   </div>
 }
-
 
 export function FullscreenResumePreview({ data, avatarUrl, resumeDate, className }: { data: ResumeData; avatarUrl: string | null; resumeDate?: string | null; className?: string }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
