@@ -16,11 +16,12 @@ type PublishEntry = {
   sourceKey?: string | null
   faceSideIndex?: number | null
   count: number
+  zone?: 'main' | 'gr' | 'hyperspatial' | 'special'
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-export async function savePublishedDeck(input: { submissionId?: string | null; title: string; entries: PublishEntry[]; keyCardId?: string | null; keyCardPrintingId?: string | null }) {
+export async function savePublishedDeck(input: { submissionId?: string | null; title: string; format?: 'original' | 'advance'; entries: PublishEntry[]; keyCardId?: string | null; keyCardPrintingId?: string | null }) {
   try {
     if (typeof input.title !== 'string' || input.title.trim().length > 60) {
       return { ok: false, message: 'デッキ名は60文字以内で入力してください' }
@@ -29,11 +30,13 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
       return { ok: false, message: '公開デッキの情報が不正です' }
     }
     const title = input.title.trim() || 'メインデッキ'
-    if (!Array.isArray(input.entries) || input.entries.length < 1 || input.entries.length > 40) {
+    const format = input.format === 'advance' ? 'advance' : 'original'
+    if (!Array.isArray(input.entries) || input.entries.length < 1 || input.entries.length > 61) {
       return { ok: false, message: 'デッキの内容が不正です' }
     }
 
     const counts = new Map<string, number>()
+    const zoneCounts = new Map<string, number>()
     let total = 0
     for (const entry of input.entries) {
       if (!UUID_PATTERN.test(entry.id) || !Number.isInteger(entry.count) || entry.count < 1 || entry.count > 4) {
@@ -51,9 +54,13 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
       const next = (counts.get(entry.id) ?? 0) + entry.count
       if (next > 4) return { ok: false, message: '同名カードは合計4枚までです' }
       counts.set(entry.id, next)
+      const zone = format === 'advance' && ['main', 'gr', 'hyperspatial', 'special'].includes(entry.zone ?? '') ? entry.zone! : 'main'
+      zoneCounts.set(zone, (zoneCounts.get(zone) ?? 0) + entry.count)
       total += entry.count
     }
-    if (total !== 40) return { ok: false, message: '40枚そろったデッキを登録してください' }
+    if ((zoneCounts.get('main') ?? 0) !== 40) return { ok: false, message: 'メインデッキ40枚をそろえてください' }
+    if ((zoneCounts.get('gr') ?? 0) > 12 || (zoneCounts.get('hyperspatial') ?? 0) > 8 || (zoneCounts.get('special') ?? 0) > 1) return { ok: false, message: 'ゾーンの枚数上限を超えています' }
+    if (format === 'original' && total !== 40) return { ok: false, message: '40枚そろったデッキを登録してください' }
 
     const admin = createAdminClient()
     const cardIds = [...counts.keys()]
@@ -91,7 +98,7 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
         imageUrl: printing?.image_url ?? card.image_url ?? null,
         sourceKey: entry.sourceKey ?? null,
         faceSideIndex: entry.faceSideIndex ?? 0,
-        zone: 'main',
+        zone: format === 'advance' && ['main', 'gr', 'hyperspatial', 'special'].includes(entry.zone ?? '') ? entry.zone : 'main',
         count: entry.count,
       }
     })
@@ -121,7 +128,7 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
 
       let updateQuery = admin.from('deck_submissions').update({
         title,
-        format: 'original',
+        format,
         deck_data: deckData,
         key_card_id: keyCardId,
         key_card_printing_id: keyCardPrintingId,
@@ -141,7 +148,7 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
       user_id: user?.id ?? null,
       anonymous_edit_token_hash: user ? null : hashMakerAnonymousOwner(anonymousId!, 'edit'),
       title,
-      format: 'original',
+      format,
       deck_data: deckData,
       key_card_id: keyCardId,
       key_card_printing_id: keyCardPrintingId,

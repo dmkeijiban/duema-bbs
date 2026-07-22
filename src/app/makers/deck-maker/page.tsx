@@ -5,7 +5,7 @@ import { makerRequiresLogin } from '@/lib/maker-auth-requirements'
 import DeckMaker from './DeckMaker'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getMakerAnonymousEditHash } from '@/lib/maker-anonymous-owner'
-import type { DeckEntry } from '@/lib/deck-maker'
+import type { DeckEntry, DeckFormat } from '@/lib/deck-maker'
 
 const PAGE_URL = 'https://www.duema-bbs.com/makers/deck-maker'
 
@@ -32,7 +32,7 @@ export default async function DeckMakerPage({ searchParams }: { searchParams: Pr
   const admin = createAdminClient()
   const anonymousHash = await getMakerAnonymousEditHash()
   let ownedQuery = admin.from('deck_submissions')
-    .select('id,title,deck_data,key_card_id,key_card_printing_id,created_at,updated_at')
+    .select('id,title,format,deck_data,key_card_id,key_card_printing_id,created_at,updated_at')
     .eq('is_public', true)
     .order('updated_at', { ascending: false })
     .limit(100)
@@ -49,15 +49,16 @@ export default async function DeckMakerPage({ searchParams }: { searchParams: Pr
     updatedAt: row.updated_at,
     keyCardId: row.key_card_id,
     keyCardPrintingId: row.key_card_printing_id,
+    format: row.format === 'advance' ? 'advance' as const : 'original' as const,
   }))
   const requestedId = params.edit ?? params.copy
-  let initialDeck: { name: string; entries: DeckEntry[]; submissionId?: string } | undefined
+  let initialDeck: { name: string; entries: DeckEntry[]; submissionId?: string; format?: DeckFormat } | undefined
   if (requestedId && /^[0-9a-f-]{36}$/i.test(requestedId)) {
-    const { data } = await admin.from('deck_submissions').select('id,user_id,anonymous_edit_token_hash,title,deck_data,is_public').eq('id', requestedId).maybeSingle()
+    const { data } = await admin.from('deck_submissions').select('id,user_id,anonymous_edit_token_hash,title,format,deck_data,is_public').eq('id', requestedId).maybeSingle()
     if (data?.is_public) {
       const editHash = params.edit ? await getMakerAnonymousEditHash() : null
       const canEdit = params.edit && ((user && data.user_id === user.id) || (!user && data.user_id === null && editHash && data.anonymous_edit_token_hash === editHash))
-      if (!params.edit || canEdit) initialDeck = { name: params.copy ? `${data.title}のコピー` : data.title, entries: data.deck_data as DeckEntry[], ...(canEdit ? { submissionId: data.id } : {}) }
+      if (!params.edit || canEdit) initialDeck = { name: params.copy ? `${data.title}のコピー` : data.title, entries: data.deck_data as DeckEntry[], format: data.format === 'advance' ? 'advance' : 'original', ...(canEdit ? { submissionId: data.id } : {}) }
     }
   }
 

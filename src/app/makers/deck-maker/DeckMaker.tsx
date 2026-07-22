@@ -6,11 +6,15 @@ import {
   DECK_STORAGE_KEY,
   DECK_STORAGE_VERSION,
   MAX_DECK_CARDS,
+  DECK_ZONE_LIMITS,
   MAX_SAME_CARD,
-  deckSize,
+  entryZone,
+  zoneDeckSize,
   printingKey,
   type DeckCard,
   type DeckEntry,
+  type DeckFormat,
+  type DeckZone,
 } from '@/lib/deck-maker'
 import { CardCatalogSearchPanel } from '@/components/CardCatalogSearchPanel'
 import { CardDetailModal } from '@/components/CardDetailModal'
@@ -42,6 +46,14 @@ type SavedDeck = {
   submissionId?: string
   keyCardId?: string | null
   keyCardPrintingId?: string | null
+  format?: DeckFormat
+}
+
+const ZONE_LABELS: Record<DeckZone, string> = { main: 'メインデッキ', gr: 'GRゾーン', hyperspatial: '超次元ゾーン', special: '特殊カード' }
+const zonedPrintingKey = (card: DeckCard, zone: DeckZone) => `${printingKey(card)}:${zone}`
+function cardZone(card: DeckCard, fallback: DeckZone): DeckZone {
+  const zone = (card as Partial<DeckEntry>).zone
+  return zone && zone in DECK_ZONE_LIMITS ? zone : fallback
 }
 
 function pngFileName(deckName: string) {
@@ -89,17 +101,20 @@ function safeCard(card: DeckCard): DeckCard {
 
 function safeEntries(values: unknown): DeckEntry[] {
   if (!Array.isArray(values)) return []
-  let remaining = MAX_DECK_CARDS
+  const remainingByZone = new Map<DeckZone, number>(Object.entries(DECK_ZONE_LIMITS) as [DeckZone, number][])
   const countsByCard = new Map<string, number>()
   const restored: DeckEntry[] = []
   for (const value of values as DeckEntry[]) {
-    if (!value || typeof value.id !== 'string' || value.id.length > 100 || !Number.isInteger(value.count) || remaining <= 0) continue
+    if (!value || typeof value.id !== 'string' || value.id.length > 100 || !Number.isInteger(value.count)) continue
+    const zone: DeckZone = ['main', 'gr', 'hyperspatial', 'special'].includes(value.zone ?? '') ? value.zone! : 'main'
+    const remaining = remainingByZone.get(zone) ?? 0
+    if (remaining <= 0) continue
     const sameNameRemaining = MAX_SAME_CARD - (countsByCard.get(value.id) ?? 0)
     const count = Math.min(sameNameRemaining, Math.max(0, value.count), remaining)
     if (!count) continue
-    restored.push({ ...safeCard(value), id: value.id, count })
+    restored.push({ ...safeCard(value), id: value.id, count, zone })
     countsByCard.set(value.id, (countsByCard.get(value.id) ?? 0) + count)
-    remaining -= count
+    remainingByZone.set(zone, remaining - count)
   }
   return restored
 }
@@ -207,11 +222,13 @@ async function loadImage(card: DeckCard) {
 }
 
 export default function DeckMaker({ initialDeck, dbDecks = [] }: {
-  initialDeck?: { name: string; entries: DeckEntry[]; submissionId?: string }
+  initialDeck?: { name: string; entries: DeckEntry[]; submissionId?: string; format?: DeckFormat }
   dbDecks?: SavedDeck[]
 }) {
   const { query, setQuery, cards: results, loading: resultsLoading, hasMore: hasMoreResults, loadMore, filters, addFilter, removeFilter, clearFilters } = useCardCatalogSearch()
   const [entries, setEntries] = useState<DeckEntry[]>([])
+  const [format, setFormat] = useState<DeckFormat>('original')
+  const [activeZone, setActiveZone] = useState<DeckZone>('main')
   const [deckName, setDeckName] = useState(DEFAULT_DECK_NAME)
   const [savedDecks, setSavedDecks] = useState<SavedDeck[]>([])
   const [activeSavedDeckId, setActiveSavedDeckId] = useState<string | null>(null)
@@ -229,25 +246,28 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   const printingsAbort = useRef<AbortController | null>(null)
   const printingsCache = useRef(new Map<string, DeckCard[]>())
   const searchInput = useRef<HTMLInputElement>(null)
-  const total = deckSize(entries)
+  const mainTotal = zoneDeckSize(entries, 'main')
+  const activeTotal = zoneDeckSize(entries, activeZone)
   const effectiveDeckName = deckName.trim() || DEFAULT_DECK_NAME
-  const byPrinting = useMemo(() => new Map(entries.map((entry) => [printingKey(entry), entry])), [entries])
+  const byPrinting = useMemo(() => new Map(entries.map((entry) => [zonedPrintingKey(entry, entryZone(entry)), entry])), [entries])
   const countsByCard = useMemo(() => {
     const counts = new Map<string, number>()
     for (const entry of entries) counts.set(entry.id, (counts.get(entry.id) ?? 0) + entry.count)
     return counts
   }, [entries])
-  const selected = selectedCard ? byPrinting.get(printingKey(selectedCard)) ?? selectedCard : null
-  const selectedCount = selected ? byPrinting.get(printingKey(selected))?.count ?? 0 : 0
+  const selected = selectedCard ? byPrinting.get(zonedPrintingKey(selectedCard, cardZone(selectedCard, activeZone))) ?? selectedCard : null
+  const selectedZone = selected ? cardZone(selected, activeZone) : activeZone
+  const selectedCount = selected ? byPrinting.get(zonedPrintingKey(selected, selectedZone))?.count ?? 0 : 0
   const selectedNameCount = selected ? countsByCard.get(selected.id) ?? 0 : 0
-  const deckCards = useMemo(() => entries.flatMap((entry) => Array.from({ length: entry.count }, (_, copy) => ({ entry, copy }))), [entries])
+  const deckCards = useMemo(() => entries.filter(entry => entryZone(entry) === activeZone).flatMap((entry) => Array.from({ length: entry.count }, (_, copy) => ({ entry, copy }))), [activeZone, entries])
 
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) ?? 'null') as { version?: number; entries?: DeckEntry[]; deckName?: string; savedDeckId?: string | null } | null
+      const saved = JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) ?? 'null') as { version?: number; entries?: DeckEntry[]; deckName?: string; savedDeckId?: string | null; format?: DeckFormat } | null
       if (saved && saved.version === DECK_STORAGE_VERSION && Array.isArray(saved.entries)) {
         if (typeof saved.deckName === 'string') setDeckName(saved.deckName.trim().slice(0, MAX_DECK_NAME_LENGTH) || DEFAULT_DECK_NAME)
         if (typeof saved.savedDeckId === 'string' && saved.savedDeckId.length <= 100) setActiveSavedDeckId(saved.savedDeckId)
+        if (saved.format === 'advance') setFormat('advance')
         const restored = safeEntries(saved.entries)
         setEntries(restored)
         resolveStoredEntries(restored).then(setEntries).catch(() => {})
@@ -261,7 +281,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
           const deck = value as Partial<SavedDeck>
           if (typeof deck.id !== 'string' || deck.id.length > 100) return []
           const name = typeof deck.name === 'string' ? deck.name.trim().slice(0, MAX_DECK_NAME_LENGTH) || DEFAULT_DECK_NAME : DEFAULT_DECK_NAME
-          return [{ id: deck.id, name, entries: safeEntries(deck.entries), createdAt: typeof deck.createdAt === 'string' ? deck.createdAt : now, updatedAt: typeof deck.updatedAt === 'string' ? deck.updatedAt : now, ...(typeof deck.submissionId === 'string' && /^[0-9a-f-]{36}$/i.test(deck.submissionId) ? { submissionId: deck.submissionId } : {}), keyCardId: deck.keyCardId, keyCardPrintingId: deck.keyCardPrintingId }]
+          return [{ id: deck.id, name, entries: safeEntries(deck.entries), createdAt: typeof deck.createdAt === 'string' ? deck.createdAt : now, updatedAt: typeof deck.updatedAt === 'string' ? deck.updatedAt : now, ...(typeof deck.submissionId === 'string' && /^[0-9a-f-]{36}$/i.test(deck.submissionId) ? { submissionId: deck.submissionId } : {}), keyCardId: deck.keyCardId, keyCardPrintingId: deck.keyCardPrintingId, format: deck.format === 'advance' ? 'advance' : 'original' }]
         })
       }
       setSavedDecks([...dbDecks.map(deck => ({ ...deck, entries: safeEntries(deck.entries) })), ...localDecks.filter(deck => !deck.submissionId)])
@@ -271,8 +291,9 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
         const id = initialDeck.submissionId ?? crypto.randomUUID()
         setEntries(restored)
         setDeckName(initialDeck.name.trim().slice(0, MAX_DECK_NAME_LENGTH) || DEFAULT_DECK_NAME)
+        setFormat(initialDeck.format === 'advance' ? 'advance' : 'original')
         setActiveSavedDeckId(id)
-        setSavedDecks(current => [{ id, name: initialDeck.name, entries: restored, createdAt: now, updatedAt: now, ...(initialDeck.submissionId ? { submissionId: initialDeck.submissionId } : {}) }, ...current.filter(deck => deck.id !== id)])
+        setSavedDecks(current => [{ id, name: initialDeck.name, entries: restored, createdAt: now, updatedAt: now, format: initialDeck.format === 'advance' ? 'advance' : 'original', ...(initialDeck.submissionId ? { submissionId: initialDeck.submissionId } : {}) }, ...current.filter(deck => deck.id !== id)])
         resolveStoredEntries(restored).then(setEntries).catch(() => {})
       }
     } catch {
@@ -283,8 +304,8 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   }, [dbDecks, initialDeck])
 
   useEffect(() => {
-    if (ready) localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ version: DECK_STORAGE_VERSION, entries, deckName, savedDeckId: activeSavedDeckId }))
-  }, [activeSavedDeckId, deckName, entries, ready])
+    if (ready) localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ version: DECK_STORAGE_VERSION, entries, deckName, savedDeckId: activeSavedDeckId, format }))
+  }, [activeSavedDeckId, deckName, entries, format, ready])
 
   useEffect(() => {
     if (ready) localStorage.setItem(SAVED_DECKS_STORAGE_KEY, JSON.stringify(savedDecks))
@@ -352,23 +373,25 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   }
 
   function add(card: DeckCard) {
-    const key = printingKey(card)
+    const key = zonedPrintingKey(card, activeZone)
     const current = byPrinting.get(key)
-    if (total >= MAX_DECK_CARDS) return setNotice('メインデッキは40枚までです')
+    if (activeTotal >= DECK_ZONE_LIMITS[activeZone]) return setNotice(`${ZONE_LABELS[activeZone]}は${DECK_ZONE_LIMITS[activeZone]}枚までです`)
     if ((countsByCard.get(card.id) ?? 0) >= MAX_SAME_CARD) return setNotice('同名カードは合計4枚までです')
     setEntries((list) => current
-      ? list.map((entry) => printingKey(entry) === key ? { ...entry, count: entry.count + 1 } : entry)
-      : [...list, { ...card, count: 1 }])
+      ? list.map((entry) => zonedPrintingKey(entry, entryZone(entry)) === key ? { ...entry, count: entry.count + 1 } : entry)
+      : [...list, { ...card, count: 1, zone: activeZone }])
   }
 
   function remove(card: DeckCard) {
-    const key = printingKey(card)
-    setEntries((list) => list.flatMap((entry) => printingKey(entry) !== key ? [entry] : entry.count > 1 ? [{ ...entry, count: entry.count - 1 }] : []))
+    const key = zonedPrintingKey(card, cardZone(card, activeZone))
+    setEntries((list) => list.flatMap((entry) => zonedPrintingKey(entry, entryZone(entry)) !== key ? [entry] : entry.count > 1 ? [{ ...entry, count: entry.count - 1 }] : []))
   }
 
   function resetDeck() {
     printingsAbort.current?.abort()
     setEntries([])
+    setFormat('original')
+    setActiveZone('main')
     setDeckName(DEFAULT_DECK_NAME)
     setActiveSavedDeckId(null)
     setSelectedCard(null)
@@ -389,7 +412,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   function moveSelectedEntry(offset: -1 | 1) {
     if (!selected) return
     setEntries(list => {
-      const index = list.findIndex(entry => printingKey(entry) === printingKey(selected))
+      const index = list.findIndex(entry => zonedPrintingKey(entry, entryZone(entry)) === zonedPrintingKey(selected, selectedZone))
       const target = index + offset
       if (index < 0 || target < 0 || target >= list.length) return list
       const next = [...list]
@@ -411,6 +434,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
       id,
       name: effectiveDeckName,
       entries: entries.map((entry) => ({ ...entry })),
+      format,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
       ...(existing?.submissionId ? { submissionId: existing.submissionId } : {}),
@@ -421,7 +445,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
 
     try {
       localStorage.setItem(SAVED_DECKS_STORAGE_KEY, JSON.stringify(nextSavedDecks))
-      localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ version: DECK_STORAGE_VERSION, entries, deckName, savedDeckId: id }))
+      localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ version: DECK_STORAGE_VERSION, entries, deckName, savedDeckId: id, format }))
       setSavedDecks(nextSavedDecks)
       setActiveSavedDeckId(id)
     } catch {
@@ -431,7 +455,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
       return
     }
 
-    if (total !== MAX_DECK_CARDS) {
+    if (mainTotal !== MAX_DECK_CARDS) {
       setNotice('マイデッキに保存しました')
       savingRef.current = false
       setSaving(false)
@@ -442,14 +466,16 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
       const result = await savePublishedDeck({
         submissionId: existing?.submissionId,
         title: effectiveDeckName,
+        format,
         keyCardId: existing?.keyCardId,
         keyCardPrintingId: existing?.keyCardPrintingId,
-        entries: entries.map(entry => ({
+        entries: entries.filter(entry => format === 'advance' || entryZone(entry) === 'main').map(entry => ({
           id: entry.id,
           printingId: entry.printingId,
           sourceKey: entry.sourceKey,
           faceSideIndex: entry.matchedFace?.sideIndex ?? 0,
           count: entry.count,
+          zone: format === 'advance' ? entryZone(entry) : 'main',
         })),
       })
       if (!result.ok || !result.submissionId) {
@@ -474,6 +500,8 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
     setEntries(restored)
     resolveStoredEntries(restored).then(setEntries).catch(() => {})
     setDeckName(deck.name)
+    setFormat(deck.format === 'advance' ? 'advance' : 'original')
+    setActiveZone('main')
     setActiveSavedDeckId(deck.id)
     setLibraryOpen(false)
     setNotice('デッキを開きました')
@@ -481,7 +509,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
 
   function copySavedDeck(deck: SavedDeck) {
     const now = new Date().toISOString()
-    const copy: SavedDeck = { id: crypto.randomUUID(), name: `${deck.name} コピー`.slice(0, MAX_DECK_NAME_LENGTH), entries: deck.entries.map((entry) => ({ ...entry })), createdAt: now, updatedAt: now, keyCardId: deck.keyCardId, keyCardPrintingId: deck.keyCardPrintingId }
+    const copy: SavedDeck = { id: crypto.randomUUID(), name: `${deck.name} コピー`.slice(0, MAX_DECK_NAME_LENGTH), entries: deck.entries.map((entry) => ({ ...entry })), createdAt: now, updatedAt: now, keyCardId: deck.keyCardId, keyCardPrintingId: deck.keyCardPrintingId, format: deck.format }
     setSavedDecks((decks) => [copy, ...decks])
     setNotice('デッキをコピーしました')
   }
@@ -591,12 +619,22 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
         </div>
       </header>
 
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+        <span className="px-1 text-xs font-bold text-slate-600">フォーマット</span>
+        <div className="inline-flex rounded-xl bg-slate-100 p-1 text-sm font-bold">
+          {(['original', 'advance'] as const).map(value => <button key={value} type="button" onClick={() => { setFormat(value); setActiveZone('main') }} className={`min-h-10 rounded-lg px-4 ${format === value ? 'bg-blue-700 text-white shadow-sm' : 'text-slate-700 active:bg-slate-200'}`}>{value === 'original' ? 'オリジナル' : 'アドバンス'}</button>)}
+        </div>
+        {format === 'advance' && <div className="flex min-w-0 flex-1 flex-wrap gap-1 sm:justify-end">
+          {(['main', 'gr', 'hyperspatial'] as DeckZone[]).map(zone => <button key={zone} type="button" onClick={() => setActiveZone(zone)} className={`min-h-10 rounded-lg border px-3 text-xs font-bold ${activeZone === zone ? 'border-blue-700 bg-blue-50 text-blue-800' : 'border-slate-200 text-slate-600 active:bg-slate-100'}`}>{ZONE_LABELS[zone]} {zoneDeckSize(entries, zone)} / {DECK_ZONE_LIMITS[zone]}</button>)}
+        </div>}
+      </div>
+
       {notice && <div role="status" className="fixed left-1/2 top-20 z-[60] -translate-x-1/2 rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white shadow-xl">{notice}</div>}
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.85fr)_minmax(320px,1fr)] lg:items-start">
         <section aria-labelledby="deck-heading" className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm sm:p-3">
           <div className="mb-2 px-1">
-            <h2 id="deck-heading" className="text-sm font-black text-slate-800">メインデッキ <span data-testid="deck-count">{total}/40</span></h2>
+            <h2 id="deck-heading" className="text-sm font-black text-slate-800">{ZONE_LABELS[activeZone]} <span data-testid="deck-count">{activeTotal}/{DECK_ZONE_LIMITS[activeZone]}</span></h2>
           </div>
           <div data-testid="deck-list" className={`rounded-xl bg-slate-100 ${deckCards.length ? 'grid grid-cols-8 gap-0.5' : 'flex h-[220px] items-center justify-center'}`}>
             {deckCards.length ? deckCards.map(({ entry, copy }) => (
