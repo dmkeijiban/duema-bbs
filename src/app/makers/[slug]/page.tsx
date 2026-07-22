@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { parseSelectMakerConfig } from '@/lib/maker'
 import { getOwnedMakerSubmissionIds } from '@/lib/maker-anonymous-owner'
@@ -17,6 +17,9 @@ export default async function GenericMakerPage({ params, searchParams }: { param
   const admin = createAdminClient()
   const supabaseForUser = await createClient()
   const { data: { user: currentUser } } = await supabaseForUser.auth.getUser()
+  if (slug === 'my-duema-9' && !currentUser) {
+    redirect('/login?next=/makers/my-duema-9')
+  }
   const { data: project } = await admin.from('maker_projects').select('id,slug,title,type,status,is_public,config').eq('slug', slug).maybeSingle()
   if (!project || project.type !== 'select' || !isMakerProjectPageAccessible(project)) notFound()
   const parsedConfig = parseSelectMakerConfig(project.config)
