@@ -14,9 +14,17 @@ type PublishEntry = {
   count: number
 }
 
-export async function publishDeck(input: { title: string; entries: PublishEntry[] }) {
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+export async function savePublishedDeck(input: { submissionId?: string | null; title: string; entries: PublishEntry[] }) {
   try {
-    const title = input.title.trim().slice(0, 60) || 'メインデッキ'
+    if (typeof input.title !== 'string' || input.title.trim().length > 60) {
+      return { ok: false, message: 'デッキ名は60文字以内で入力してください' }
+    }
+    if (input.submissionId != null && !UUID_PATTERN.test(input.submissionId)) {
+      return { ok: false, message: '公開デッキの情報が不正です' }
+    }
+    const title = input.title.trim() || 'メインデッキ'
     if (!Array.isArray(input.entries) || input.entries.length < 1 || input.entries.length > 40) {
       return { ok: false, message: 'デッキの内容が不正です' }
     }
@@ -24,7 +32,7 @@ export async function publishDeck(input: { title: string; entries: PublishEntry[
     const counts = new Map<string, number>()
     let total = 0
     for (const entry of input.entries) {
-      if (!/^[0-9a-f-]{36}$/i.test(entry.id) || !Number.isInteger(entry.count) || entry.count < 1 || entry.count > 4) {
+      if (!UUID_PATTERN.test(entry.id) || !Number.isInteger(entry.count) || entry.count < 1 || entry.count > 4) {
         return { ok: false, message: 'デッキの内容が不正です' }
       }
       if (entry.sourceKey != null && !SOURCE_KEY_PATTERN.test(entry.sourceKey)) {
@@ -69,10 +77,41 @@ export async function publishDeck(input: { title: string; entries: PublishEntry[
     const { data: { user } } = await supabase.auth.getUser()
     const cookieStore = await cookies()
     let anonymousId = cookieStore.get(MAKER_ANONYMOUS_COOKIE)?.value
-    if (!user && (!anonymousId || !/^[A-Za-z0-9_-]{40,100}$/.test(anonymousId))) {
-      anonymousId = randomBytes(32).toString('base64url')
+    const hasValidAnonymousId = !user && anonymousId != null && /^[A-Za-z0-9_-]{40,100}$/.test(anonymousId)
+
+    if (input.submissionId) {
+      const { data: existing, error: existingError } = await admin
+        .from('deck_submissions')
+        .select('id,user_id,anonymous_edit_token_hash')
+        .eq('id', input.submissionId)
+        .maybeSingle()
+      if (existingError || !existing) return { ok: false, message: '公開デッキを更新できませんでした' }
+
+      const ownedByUser = user != null && existing.user_id === user.id
+      const ownedAnonymously = user == null
+        && existing.user_id === null
+        && hasValidAnonymousId
+        && existing.anonymous_edit_token_hash === hashMakerAnonymousOwner(anonymousId!, 'edit')
+      if (!ownedByUser && !ownedAnonymously) {
+        return { ok: false, message: 'この公開デッキを更新する権限がありません' }
+      }
+
+      let updateQuery = admin.from('deck_submissions').update({
+        title,
+        format: 'original',
+        deck_data: deckData,
+        is_public: true,
+        updated_at: new Date().toISOString(),
+      }).eq('id', input.submissionId)
+      updateQuery = user
+        ? updateQuery.eq('user_id', user.id)
+        : updateQuery.is('user_id', null).eq('anonymous_edit_token_hash', hashMakerAnonymousOwner(anonymousId!, 'edit'))
+      const { data, error } = await updateQuery.select('id').single()
+      if (error || !data) return { ok: false, message: '公開デッキを更新できませんでした' }
+      return { ok: true, submissionId: data.id }
     }
 
+    if (!user && !hasValidAnonymousId) anonymousId = randomBytes(32).toString('base64url')
     const { data, error } = await admin.from('deck_submissions').insert({
       user_id: user?.id ?? null,
       anonymous_edit_token_hash: user ? null : hashMakerAnonymousOwner(anonymousId!, 'edit'),
@@ -92,9 +131,9 @@ export async function publishDeck(input: { title: string; entries: PublishEntry[
         maxAge: 31536000,
       })
     }
-    return { ok: true, message: 'みんなのデッキリストに登録しました', submissionId: data.id }
+    return { ok: true, submissionId: data.id }
   } catch (error) {
-    console.error('publishDeck failed', { message: error instanceof Error ? error.message : String(error) })
+    console.error('savePublishedDeck failed', { message: error instanceof Error ? error.message : String(error) })
     return { ok: false, message: 'みんなのデッキリストへの登録に失敗しました' }
   }
 }

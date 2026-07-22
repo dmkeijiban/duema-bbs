@@ -13,7 +13,7 @@ import {
 } from '@/lib/deck-maker'
 import { CardCatalogSearchPanel } from '@/components/CardCatalogSearchPanel'
 import { useCardCatalogSearch } from '@/hooks/use-card-catalog-search'
-import { publishDeck } from './actions'
+import { savePublishedDeck } from './actions'
 
 const OFFICIAL_ORIGIN = 'https://dm.takaratomy.co.jp'
 const DEFAULT_DECK_NAME = 'メインデッキ'
@@ -37,6 +37,7 @@ type SavedDeck = {
   entries: DeckEntry[]
   createdAt: string
   updatedAt: string
+  submissionId?: string
 }
 
 function pngFileName(deckName: string) {
@@ -212,7 +213,8 @@ export default function DeckMaker() {
   const [printingsLoading, setPrintingsLoading] = useState(false)
   const [resetConfirm, setResetConfirm] = useState(false)
   const [pngPreview, setPngPreview] = useState<{ src: string; title: string; fileName: string } | null>(null)
-  const [publishing, setPublishing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
   const printingsAbort = useRef<AbortController | null>(null)
   const printingsCache = useRef(new Map<string, DeckCard[]>())
   const searchInput = useRef<HTMLInputElement>(null)
@@ -249,7 +251,7 @@ export default function DeckMaker() {
           const deck = value as Partial<SavedDeck>
           if (typeof deck.id !== 'string' || deck.id.length > 100) return []
           const name = typeof deck.name === 'string' ? deck.name.trim().slice(0, MAX_DECK_NAME_LENGTH) || DEFAULT_DECK_NAME : DEFAULT_DECK_NAME
-          return [{ id: deck.id, name, entries: safeEntries(deck.entries), createdAt: typeof deck.createdAt === 'string' ? deck.createdAt : now, updatedAt: typeof deck.updatedAt === 'string' ? deck.updatedAt : now }]
+          return [{ id: deck.id, name, entries: safeEntries(deck.entries), createdAt: typeof deck.createdAt === 'string' ? deck.createdAt : now, updatedAt: typeof deck.updatedAt === 'string' ? deck.updatedAt : now, ...(typeof deck.submissionId === 'string' && /^[0-9a-f-]{36}$/i.test(deck.submissionId) ? { submissionId: deck.submissionId } : {}) }]
         }))
       }
     } catch {
@@ -387,32 +389,66 @@ export default function DeckMaker() {
     setNotice('デッキをリセットしました')
   }
 
-  function saveCurrentDeck() {
+  async function saveCurrentDeck() {
     if (!entries.length) return setNotice('カードを追加してください')
+    if (savingRef.current) return
+    savingRef.current = true
+    setSaving(true)
+    setNotice('保存中…')
     const now = new Date().toISOString()
-    if (activeSavedDeckId && savedDecks.some((deck) => deck.id === activeSavedDeckId)) {
-      setSavedDecks((decks) => decks.map((deck) => deck.id === activeSavedDeckId ? { ...deck, name: effectiveDeckName, entries: entries.map((entry) => ({ ...entry })), updatedAt: now } : deck))
-    } else {
-      const id = crypto.randomUUID()
-      setSavedDecks((decks) => [{ id, name: effectiveDeckName, entries: entries.map((entry) => ({ ...entry })), createdAt: now, updatedAt: now }, ...decks])
-      setActiveSavedDeckId(id)
+    const existing = activeSavedDeckId ? savedDecks.find((deck) => deck.id === activeSavedDeckId) : undefined
+    const id = existing?.id ?? crypto.randomUUID()
+    const savedDeck: SavedDeck = {
+      id,
+      name: effectiveDeckName,
+      entries: entries.map((entry) => ({ ...entry })),
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+      ...(existing?.submissionId ? { submissionId: existing.submissionId } : {}),
     }
-    setNotice('マイデッキに保存しました')
-  }
+    let nextSavedDecks = existing
+      ? savedDecks.map((deck) => deck.id === id ? savedDeck : deck)
+      : [savedDeck, ...savedDecks]
 
-  async function publishCurrentDeck() {
-    if (total !== MAX_DECK_CARDS) return setNotice('40枚そろったデッキを登録してください')
-    if (publishing) return
-    setPublishing(true)
-    setNotice('みんなのデッキリストに登録中…')
-    const result = await publishDeck({
-      title: effectiveDeckName,
-      entries: entries.map(entry => ({ id: entry.id, sourceKey: entry.sourceKey, count: entry.count })),
-    })
-    setPublishing(false)
-    setNotice(result.message)
-    if (result.ok && result.submissionId) {
-      window.location.assign(`/makers/deck-maker/submissions/${result.submissionId}`)
+    try {
+      localStorage.setItem(SAVED_DECKS_STORAGE_KEY, JSON.stringify(nextSavedDecks))
+      localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ version: DECK_STORAGE_VERSION, entries, deckName, savedDeckId: id }))
+      setSavedDecks(nextSavedDecks)
+      setActiveSavedDeckId(id)
+    } catch {
+      setNotice('マイデッキへの保存に失敗しました')
+      savingRef.current = false
+      setSaving(false)
+      return
+    }
+
+    if (total !== MAX_DECK_CARDS) {
+      setNotice('マイデッキに保存しました')
+      savingRef.current = false
+      setSaving(false)
+      return
+    }
+
+    try {
+      const result = await savePublishedDeck({
+        submissionId: existing?.submissionId,
+        title: effectiveDeckName,
+        entries: entries.map(entry => ({ id: entry.id, sourceKey: entry.sourceKey, count: entry.count })),
+      })
+      if (!result.ok || !result.submissionId) {
+        setNotice('マイデッキには保存しましたが、みんなのデッキへの登録に失敗しました')
+        return
+      }
+      const publishedAt = new Date().toISOString()
+      nextSavedDecks = nextSavedDecks.map((deck) => deck.id === id ? { ...deck, submissionId: result.submissionId, updatedAt: publishedAt } : deck)
+      localStorage.setItem(SAVED_DECKS_STORAGE_KEY, JSON.stringify(nextSavedDecks))
+      setSavedDecks(nextSavedDecks)
+      setNotice('マイデッキに保存し、みんなのデッキに登録しました')
+    } catch {
+      setNotice('マイデッキには保存しましたが、みんなのデッキへの登録に失敗しました')
+    } finally {
+      savingRef.current = false
+      setSaving(false)
     }
   }
 
@@ -507,14 +543,17 @@ export default function DeckMaker() {
             <input id="deck-name" value={deckName} onChange={(event) => setDeckName(event.target.value.slice(0, MAX_DECK_NAME_LENGTH))} onBlur={() => { if (!deckName.trim()) setDeckName(DEFAULT_DECK_NAME) }} maxLength={MAX_DECK_NAME_LENGTH} className="h-10 min-w-0 flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 text-base font-bold text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" placeholder={DEFAULT_DECK_NAME} />
           </div>
         </div>
-        <div className="ml-auto flex w-full items-center justify-end gap-1 sm:w-auto">
-          <button onClick={saveCurrentDeck} aria-label="デッキをマイデッキに保存" className="flex min-h-9 items-center gap-1 rounded-lg bg-blue-700 px-2.5 text-xs font-bold text-white hover:bg-blue-800 [&>svg]:h-4 [&>svg]:w-4">
-            <Icon name="save" /><span>保存</span>
+        <div className="flex w-full flex-wrap items-center justify-start gap-1 sm:ml-auto sm:w-auto sm:flex-nowrap sm:justify-end">
+          <button onClick={saveCurrentDeck} disabled={saving} aria-label="デッキをマイデッキに保存" aria-busy={saving} className="flex min-h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-blue-700 px-2.5 text-xs font-bold text-white hover:bg-blue-800 disabled:cursor-wait disabled:bg-blue-500 disabled:opacity-75 [&>svg]:h-4 [&>svg]:w-4">
+            <Icon name="save" /><span>{saving ? '保存中…' : '保存'}</span>
           </button>
-          <button onClick={() => setLibraryOpen(true)} aria-label="マイデッキを開く" className="flex min-h-9 items-center gap-1 rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 hover:bg-slate-50 [&>svg]:h-4 [&>svg]:w-4">
+          <button onClick={() => setLibraryOpen(true)} aria-label="マイデッキを開く" className="flex min-h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 hover:bg-slate-50 [&>svg]:h-4 [&>svg]:w-4">
             <Icon name="folder" /><span>マイデッキ</span>
           </button>
-          <button onClick={savePng} aria-label="デッキ画像を出力" className="flex min-h-9 items-center gap-1 rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 hover:bg-slate-50 [&>svg]:h-4 [&>svg]:w-4">
+          <Link href="/makers/deck-maker/submissions" className="flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-lg border border-blue-300 px-2 text-xs font-bold text-blue-700 hover:bg-blue-50">
+            みんなのデッキを見る
+          </Link>
+          <button onClick={savePng} aria-label="デッキ画像を出力" className="flex min-h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 hover:bg-slate-50 [&>svg]:h-4 [&>svg]:w-4">
             <Icon name="download" /><span>画像出力</span>
           </button>
           <button onClick={() => entries.length ? setResetConfirm(true) : resetDeck()} aria-label="デッキをリセット" className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-red-50 hover:text-red-700 [&>svg]:h-4 [&>svg]:w-4">
@@ -522,23 +561,6 @@ export default function DeckMaker() {
           </button>
         </div>
       </header>
-
-      <div className="mb-3 grid gap-2 sm:grid-cols-2">
-        <Link
-          href="/makers/deck-maker/submissions"
-          className="flex min-h-11 items-center justify-center rounded-xl border border-blue-700 bg-white px-4 text-sm font-black text-blue-700 transition active:scale-[0.99] active:bg-blue-50"
-        >
-          みんなのデッキリストを見る
-        </Link>
-        <button
-          type="button"
-          onClick={publishCurrentDeck}
-          disabled={publishing || total !== MAX_DECK_CARDS}
-          className="min-h-11 rounded-xl bg-emerald-700 px-4 text-sm font-black text-white transition active:scale-[0.99] active:bg-emerald-900 disabled:cursor-not-allowed disabled:bg-slate-400"
-        >
-          {publishing ? '登録中…' : 'みんなのデッキリストに登録'}
-        </button>
-      </div>
 
       {notice && <div role="status" className="fixed left-1/2 top-20 z-[60] -translate-x-1/2 rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white shadow-xl">{notice}</div>}
 
