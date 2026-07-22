@@ -56,6 +56,21 @@ function sectionTitle(context: CanvasRenderingContext2D, text: string, x: number
   context.fillText(text, x, y)
 }
 
+function setFittedSingleLineFont(
+  context: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  baseSize: number,
+  weight = '',
+) {
+  context.font = `${weight}${baseSize}px sans-serif`
+  const measuredWidth = context.measureText(text).width
+  const fittedSize = measuredWidth > maxWidth
+    ? Math.max(14, Math.floor(baseSize * maxWidth / measuredWidth))
+    : baseSize
+  context.font = `${weight}${fittedSize}px sans-serif`
+}
+
 /** 1行に複数セル（ラベル+値）を並べる罫線付きグリッド行を描画する。 */
 function drawFieldGridRow(
   context: CanvasRenderingContext2D,
@@ -72,7 +87,7 @@ function drawFieldGridRow(
   let consumedWidth = 0
 
   context.strokeStyle = LINE
-  context.lineWidth = 1.5
+  context.lineWidth = 2
   context.strokeRect(x, y, width, height)
 
   cells.forEach((cell, index) => {
@@ -96,17 +111,17 @@ function drawFieldGridRow(
     context.fillStyle = L.colors.label
     context.fillRect(cellX, y, labelWidth, height)
     context.fillStyle = SUB_INK
-    context.font = `bold ${L.font.label}px sans-serif`
+    setFittedSingleLineFont(context, cell.label, labelWidth - 16, L.font.label, 'bold ')
     context.textAlign = 'center'
     context.textBaseline = 'middle'
     context.fillText(cell.label, cellX + labelWidth / 2, y + height / 2, labelWidth - 16)
 
     context.fillStyle = INK
-    context.font = `${L.font.value}px sans-serif`
     const valueMaxWidth = cellWidth - labelWidth - 16
-    // DOMプレビューと同じく1行の全文を描画する。wrapTextで先頭行だけを
-    // 取り出すと、保存画像だけ末尾が欠けるため、CanvasのmaxWidthで収める。
-    context.fillText(cell.value, cellX + labelWidth + (cellWidth - labelWidth) / 2, y + height / 2, valueMaxWidth)
+    // 右側のDOMプレビューと同じ中央配置・左右余白にする。
+    // 横方向へ潰さず、収まらない場合だけ文字サイズを下げる。
+    setFittedSingleLineFont(context, cell.value, valueMaxWidth, L.font.value)
+    context.fillText(cell.value, cellX + labelWidth + (cellWidth - labelWidth) / 2, y + height / 2)
   })
 }
 
