@@ -306,7 +306,10 @@ export default async function UserProfilePage({
 
       {(hasDuemaFields || showHonorTitle) && (
         <section className="mt-4 rounded-sm border border-gray-200 bg-white px-4 py-4">
-          <h2 className="mb-3 text-sm font-bold text-gray-800">デュエマプロフィール</h2>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-sm font-bold text-gray-800">デュエマプロフィール</h2>
+            <UserProfileShareButtons displayName={profile.display_name} showCopy={false} />
+          </div>
           <div className={hasDuemaFields && showHonorTitle ? 'flex flex-col gap-3 lg:flex-row lg:items-stretch' : ''}>
             {hasDuemaFields && (
               <dl className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
@@ -360,14 +363,7 @@ export default async function UserProfilePage({
         </section>
       )}
 
-      <section className="mt-4 rounded-sm border border-gray-200 bg-white px-4 py-3">
-        <h2 className="text-sm font-bold text-gray-800">このプロフィールを共有</h2>
-        <div className="mt-2">
-          <UserProfileShareButtons displayName={profile.display_name} />
-        </div>
-      </section>
-
-      {resume && <ResumeProfileCard data={resume.data} avatarUrl={profile.avatar_url} resumeDate={resume.updatedAt} isOwner={isOwner} isPublic={resume.isPublic} viewerLoggedIn={Boolean(viewerUserId)} />}
+      {resume && <ResumeProfileCard data={resume.data} avatarUrl={profile.avatar_url} resumeDate={resume.updatedAt} isOwner={isOwner} isPublic={resume.isPublic} viewerLoggedIn={Boolean(viewerUserId)} showActions={false} />}
 
       {!isOwner && (
         <section className="mt-4 rounded-sm border border-blue-200 bg-blue-50 px-4 py-3">

@@ -9,7 +9,7 @@ import type { ResumeData } from '@/lib/maker-resume'
 
 type PngPreview = { src: string; fileName: string; file: File }
 
-export function ResumeProfileCard({ data, avatarUrl, resumeDate, isOwner, isPublic, viewerLoggedIn }: { data: ResumeData; avatarUrl: string | null; resumeDate: string; isOwner: boolean; isPublic: boolean; viewerLoggedIn: boolean }) {
+export function ResumeProfileCard({ data, avatarUrl, resumeDate, isOwner, isPublic, viewerLoggedIn, showActions = true }: { data: ResumeData; avatarUrl: string | null; resumeDate: string; isOwner: boolean; isPublic: boolean; viewerLoggedIn: boolean; showActions?: boolean }) {
   const [zoomed, setZoomed] = useState(false)
   const [isSavingImage, setIsSavingImage] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
@@ -82,13 +82,15 @@ export function ResumeProfileCard({ data, avatarUrl, resumeDate, isOwner, isPubl
       <button type="button" onClick={() => setZoomed(true)} aria-label="デュエマ履歴書を拡大表示" className="mt-3 block w-40 overflow-hidden rounded border border-gray-200 transition-transform hover:scale-[1.02] sm:w-48">
         <ScaledResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} />
       </button>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button type="button" disabled={isSavingImage} onClick={() => void handleSaveImage()} className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40">{isSavingImage ? '生成中…' : '画像を保存'}</button>
-        <button type="button" disabled={isSharing} onClick={handleShare} className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40">{isSharing ? '共有準備中…' : 'Xで共有'}</button>
-        {isOwner && <Link href="/makers/resume-maker" className="inline-flex items-center justify-center rounded border border-blue-300 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50">編集する</Link>}
-        {!isOwner && <Link href={createLikeThisHref} className="inline-flex items-center justify-center rounded border border-blue-300 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50">この形式で自分も作る</Link>}
-        <Link href="/makers/resume-maker/submissions" className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">みんなの履歴書を見る</Link>
-      </div>
+      {showActions && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button type="button" disabled={isSavingImage} onClick={() => void handleSaveImage()} className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40">{isSavingImage ? '生成中…' : '画像を保存'}</button>
+          <button type="button" disabled={isSharing} onClick={handleShare} className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40">{isSharing ? '共有準備中…' : 'Xで共有'}</button>
+          {isOwner && <Link href="/makers/resume-maker" className="inline-flex items-center justify-center rounded border border-blue-300 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50">編集する</Link>}
+          {!isOwner && <Link href={createLikeThisHref} className="inline-flex items-center justify-center rounded border border-blue-300 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50">この形式で自分も作る</Link>}
+          <Link href="/makers/resume-maker/submissions" className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">みんなの履歴書を見る</Link>
+        </div>
+      )}
       {zoomed && (
         <div role="presentation" className="fixed inset-0 z-50 overflow-auto bg-black/90 p-3" onMouseDown={event => { if (event.currentTarget === event.target) setZoomed(false) }}>
           <div className="mx-auto max-w-xl">
