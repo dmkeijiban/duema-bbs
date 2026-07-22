@@ -9,6 +9,7 @@ import SelectMaker from './SelectMaker'
 import { isMakerProjectPageAccessible } from '@/lib/maker-catalog'
 import { MakerDefaultTitleProvider } from '@/components/MakerDefaultTitleContext'
 import { resolveSelectPrintingImages, selectPrintingRefKey } from '@/lib/maker-select-printing'
+import { makerRequiresLogin } from '@/lib/maker-auth-requirements'
 
 export const dynamic = 'force-dynamic'
 export default async function GenericMakerPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ edit?: string }> }) {
@@ -17,7 +18,7 @@ export default async function GenericMakerPage({ params, searchParams }: { param
   const admin = createAdminClient()
   const supabaseForUser = await createClient()
   const { data: { user: currentUser } } = await supabaseForUser.auth.getUser()
-  if (slug === 'my-duema-9' && !currentUser) {
+  if (slug === 'my-duema-9' && makerRequiresLogin() && !currentUser) {
     redirect('/login?next=/makers/my-duema-9')
   }
   const { data: project } = await admin.from('maker_projects').select('id,slug,title,type,status,is_public,config').eq('slug', slug).maybeSingle()

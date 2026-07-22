@@ -23,6 +23,7 @@ import {
   clampOtherInterestsText,
   emptyResumeData,
   isResumeComplete,
+  sanitizeResumeData,
   type ResumeData,
 } from '@/lib/maker-resume'
 import { ScaledResumePreview } from './ResumePreview'
@@ -32,8 +33,9 @@ import { saveResumeSubmission, setResumeVisibility } from './actions'
 
 type PngPreview = { src: string; fileName: string; file: File }
 type SaveState = 'dirty' | 'saving' | 'saved' | 'error'
+const ANONYMOUS_RESUME_STORAGE_KEY = 'duema-bbs:resume-maker:anonymous-draft:v1'
 
-export default function ResumeMaker({ initial }: { initial: ResumeInitialState }) {
+export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInitialState; loggedIn: boolean }) {
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [data, setData] = useState<ResumeData>(emptyResumeData())
   const [isPublic, setIsPublic] = useState(initial.isPublic)
@@ -48,7 +50,16 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   const [resumeDate, setResumeDate] = useState<string | null>(initial.resumeDate)
 
   useEffect(() => {
-    if (initial.data) setData(initial.data)
+    if (initial.data) {
+      setData(initial.data)
+    } else if (!loggedIn) {
+      try {
+        const stored = localStorage.getItem(ANONYMOUS_RESUME_STORAGE_KEY)
+        if (stored) { setData(sanitizeResumeData(JSON.parse(stored))); setSaveState('saved') }
+      } catch {
+        localStorage.removeItem(ANONYMOUS_RESUME_STORAGE_KEY)
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -89,6 +100,17 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
 
   async function persistToDb(nextIsPublic: boolean): Promise<string | null> {
     setSaveState('saving')
+    if (!loggedIn) {
+      try {
+        localStorage.setItem(ANONYMOUS_RESUME_STORAGE_KEY, JSON.stringify(data))
+        setMessage('この端末に履歴書を保存しました')
+        setSaveState('saved')
+      } catch {
+        setMessage('端末への保存に失敗しました')
+        setSaveState('error')
+      }
+      return null
+    }
     const result = await saveResumeSubmission({ data, isPublic: nextIsPublic })
     setMessage(result.message)
     setSaveState(result.ok ? 'saved' : 'error')
@@ -174,7 +196,9 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
         <h1 className="text-lg font-black text-slate-900">デュエマ履歴書メーカー</h1>
         <p className="mt-1 text-xs text-slate-500">あなたのデュエマ自己紹介を、本物の履歴書風にまとめよう。</p>
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold text-blue-700">
-          <Link href="/mypage" className="hover:underline">マイページに戻る</Link>
+          {loggedIn
+            ? <Link href="/mypage" className="hover:underline">マイページに戻る</Link>
+            : <Link href="/login?mode=signup&next=/makers/resume-maker" className="hover:underline">登録すると履歴書を公開・管理できます</Link>}
           <Link href="/makers/resume-maker/submissions" className="hover:underline">みんなの履歴書を見る</Link>
           {initial.profileSlug && <Link href={`/u/${initial.profileSlug}`} className="hover:underline">公開プロフィールを見る</Link>}
         </div>
@@ -248,8 +272,8 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
                   {avatarUrl ? <img src={avatarUrl} alt="プロフィールアイコン" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-400">未設定</div>}
                 </div>
                 <p className="min-w-0 flex-1 text-xs text-slate-600">
-                  証明写真にはプロフィールアイコンが使われます。
-                  <Link href="/mypage/edit" className="ml-1 font-bold text-blue-700 hover:underline">アイコンを変更する</Link>
+                  {loggedIn ? '証明写真にはプロフィールアイコンが使われます。' : 'アカウント登録後はプロフィールアイコンを証明写真に使えます。'}
+                  {loggedIn && <Link href="/mypage/edit" className="ml-1 font-bold text-blue-700 hover:underline">アイコンを変更する</Link>}
                 </p>
               </div>
             </section>
@@ -340,7 +364,7 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-2 backdrop-blur">
         <div className="mx-auto flex max-w-[1200px] items-center gap-2">
           <button type="button" disabled={!complete || saveState === 'saving'} onClick={() => void handleSaveResume()} className="min-h-11 flex-[2] rounded-lg bg-emerald-700 px-3 text-sm font-black text-white disabled:bg-slate-300">
-            {saveState === 'saving' ? '保存中…' : submissionId ? '変更を保存する' : '履歴書を保存する'}
+            {saveState === 'saving' ? '保存中…' : submissionId ? '変更を保存する' : loggedIn ? '履歴書を保存する' : 'この端末に保存する'}
           </button>
           <button type="button" disabled={!complete || isSavingImage} onClick={() => void handleSaveImage()} className="min-h-11 flex-1 rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 disabled:opacity-40">{isSavingImage ? '生成中…' : '画像保存'}</button>
           <button type="button" disabled={!complete || isSharing} onClick={() => void handleShare()} className="min-h-11 flex-1 rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 disabled:opacity-40">{isSharing ? '共有中…' : 'X共有'}</button>

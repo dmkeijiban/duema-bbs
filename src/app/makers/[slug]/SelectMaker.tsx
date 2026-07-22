@@ -12,6 +12,7 @@ import { saveSelectSubmission } from './actions'
 import { SelectMakerToolbar } from '@/components/SelectMakerToolbar'
 import { renderSelectExportImage } from '@/lib/maker-select-export'
 import { cardPrintingKey, exactCardImageUrl } from '@/lib/card-catalog-shared'
+import { makerRequiresLogin } from '@/lib/maker-auth-requirements'
 
 type Draft = { cards: DeckCard[]; title: string; comment: string; listPublic?: boolean; sessionId: string; submissionId: string | null; completedEventSent: boolean }
 type PngPreview = { src: string; title: string; fileName: string; file: File }
@@ -278,7 +279,7 @@ export default function SelectMaker({ slug, config, initialDraft, loggedIn }: { 
       onShare={() => void share()}
       onReset={reset}
     />
-    {slug === 'my-duema-9' && (loggedIn ? (
+    {slug === 'my-duema-9' && (loggedIn || !makerRequiresLogin() ? (
       <Link href="/makers/resume-maker" className="mb-3 block rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-center text-sm font-bold text-indigo-800 hover:bg-indigo-100">デュエマ履歴書を作る</Link>
     ) : (
       <div className="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-center">

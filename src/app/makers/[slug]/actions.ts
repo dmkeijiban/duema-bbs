@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 import { hashMakerAnonymousOwner, MAKER_ANONYMOUS_COOKIE } from '@/lib/maker-anonymous-owner'
 import { parseSelectMakerConfig } from '@/lib/maker'
+import { makerRequiresLogin } from '@/lib/maker-auth-requirements'
 
 const SOURCE_KEY_PATTERN = /^[a-zA-Z0-9._-]{1,100}$/
 
@@ -22,7 +23,7 @@ export async function saveSelectSubmission(input: { slug: string; cards: { cardI
     const comment = input.comment.trim().slice(0, 200)
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (input.slug === 'my-duema-9' && !user) {
+    if (input.slug === 'my-duema-9' && makerRequiresLogin() && !user) {
       return { ok: false, message: '9選の作成にはログインが必要です' }
     }
     const cookieStore = await cookies()

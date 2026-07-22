@@ -1,14 +1,25 @@
 'use server'
 
+import { createHash, randomBytes } from 'node:crypto'
+import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 import type { MakerSubmissionMeta } from '@/lib/maker'
+import { makerRequiresLogin } from '@/lib/maker-auth-requirements'
 
 const SLUG = 'hall-of-fame-release'
+const ANONYMOUS_COOKIE = 'maker_anonymous_id'
+
+function anonymousHash(value: string, purpose: 'actor' | 'edit') {
+  const pepper = process.env.ADMIN_COOKIE_SECRET || process.env.NEXTAUTH_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!pepper) throw new Error('匿名登録のサーバー設定が不足しています')
+  return createHash('sha256').update(`${pepper}:${purpose}:${value}`).digest('hex')
+}
+
 export async function saveHallReleaseSubmission(payload: Record<string, string[]>, meta?: MakerSubmissionMeta) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { ok: false, message: '殿堂解除予想の登録にはログインが必要です' }
+  if (makerRequiresLogin() && !user) return { ok: false, message: '殿堂解除予想の登録にはログインが必要です' }
   const admin = createAdminClient()
   const { data: project } = await admin.from('maker_projects').select('id').eq('slug', SLUG).eq('status', 'published').eq('is_public', true).maybeSingle()
   if (!project) return { ok: false, message: 'この企画は現在公開されていません' }
@@ -23,9 +34,21 @@ export async function saveHallReleaseSubmission(payload: Record<string, string[]
   const { data: allowed } = await admin.from('maker_project_cards').select('card_id,cards!inner(is_active)').eq('project_id', project.id).in('card_id', ids).eq('cards.is_active', true)
   if ((allowed ?? []).length !== ids.length) return { ok: false, message: '企画対象外のカードが含まれています' }
 
-  const result = await admin.rpc('create_maker_submission', { p_project_id: project.id, p_user_id: user.id, p_title: title, p_comment: comment || null, p_items: items })
-  const submissionId: string | null = result.data
-  const error: { message: string } | null = result.error
+  let submissionId: string | null = null
+  let error: { message: string } | null = null
+  if (user) {
+    const result = await admin.rpc('create_maker_submission', { p_project_id: project.id, p_user_id: user.id, p_title: title, p_comment: comment || null, p_items: items })
+    submissionId = result.data
+    error = result.error
+  } else {
+    const cookieStore = await cookies()
+    let anonymousId = cookieStore.get(ANONYMOUS_COOKIE)?.value
+    if (!anonymousId || !/^[A-Za-z0-9_-]{40,100}$/.test(anonymousId)) anonymousId = randomBytes(32).toString('base64url')
+    const result = await admin.rpc('create_anonymous_maker_submission', { p_project_id: project.id, p_title: title, p_comment: comment || null, p_items: items, p_edit_token_hash: anonymousHash(anonymousId, 'edit'), p_actor_hash: anonymousHash(anonymousId, 'actor') })
+    submissionId = result.data
+    error = result.error
+    if (!error) cookieStore.set(ANONYMOUS_COOKIE, anonymousId, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 365 })
+  }
   if (error || !submissionId) {
     const message = error?.message.includes('MAKER_RATE_LIMITED') ? '連続登録を防ぐため、少し時間をおいてください' : error?.message ?? '登録IDを取得できませんでした'
     return { ok: false, message: `保存に失敗しました: ${message}` }

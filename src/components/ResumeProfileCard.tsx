@@ -9,13 +9,11 @@ import type { ResumeData } from '@/lib/maker-resume'
 
 type PngPreview = { src: string; fileName: string; file: File }
 
-export function ResumeProfileCard({ data, avatarUrl, resumeDate, isOwner, isPublic, viewerLoggedIn, showActions = true }: { data: ResumeData; avatarUrl: string | null; resumeDate: string; isOwner: boolean; isPublic: boolean; viewerLoggedIn: boolean; showActions?: boolean }) {
+export function ResumeProfileCard({ data, avatarUrl, resumeDate, isOwner, isPublic, showActions = true }: { data: ResumeData; avatarUrl: string | null; resumeDate: string; isOwner: boolean; isPublic: boolean; showActions?: boolean }) {
   const [zoomed, setZoomed] = useState(false)
   const [isSavingImage, setIsSavingImage] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
   const [pngPreview, setPngPreview] = useState<PngPreview | null>(null)
-
-  const createLikeThisHref = viewerLoggedIn ? '/mypage' : '/login?mode=signup&next=/mypage'
 
   useEffect(() => {
     if (!zoomed && !pngPreview) return
@@ -87,7 +85,7 @@ export function ResumeProfileCard({ data, avatarUrl, resumeDate, isOwner, isPubl
           {isOwner && <button type="button" disabled={isSavingImage} onClick={() => void handleSaveImage()} className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40">{isSavingImage ? '生成中…' : '画像を保存'}</button>}
           {isOwner && <button type="button" disabled={isSharing} onClick={handleShare} className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40">{isSharing ? '共有準備中…' : 'Xで共有'}</button>}
           {isOwner && <Link href="/makers/resume-maker" className="inline-flex items-center justify-center rounded border border-blue-300 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50">編集する</Link>}
-          {!isOwner && <Link href={createLikeThisHref} className="inline-flex items-center justify-center rounded border border-blue-300 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50">自分の履歴書を作る</Link>}
+          {!isOwner && <Link href="/makers/resume-maker" className="inline-flex items-center justify-center rounded border border-blue-300 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50">自分の履歴書を作る</Link>}
           <Link href="/makers/resume-maker/submissions" className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">みんなの履歴書を見る</Link>
         </div>
       )}
