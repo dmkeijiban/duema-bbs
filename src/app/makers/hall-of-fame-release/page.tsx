@@ -4,13 +4,14 @@ import { redirect } from 'next/navigation'
 import { getCurrentHallCards, getHallCardOfficialId } from '@/lib/hall-of-fame'
 import type { MakerCard, MakerDraft } from '@/lib/maker'
 import HallReleaseMaker from './HallReleaseMaker'
+import { makerRequiresLogin } from '@/lib/maker-auth-requirements'
 
 export const metadata = { title: '殿堂解除選手権 | デュエマ掲示板', description: '次に殿堂解除されると思うカードを選ぼう！', openGraph: { title: '殿堂解除選手権', description: '次に殿堂解除されると思うカードを選ぼう！', images: ['/hall-of-fame-release-og.svg'] }, twitter: { card: 'summary_large_image' as const, images: ['/hall-of-fame-release-og.svg'] } }
 
 export default async function Page() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login?next=/makers/hall-of-fame-release')
+  if (makerRequiresLogin() && !user) redirect('/login?next=/makers/hall-of-fame-release')
 
   const admin = process.env.SUPABASE_SERVICE_ROLE_KEY ? createAdminClient() : null
   const current = [...getCurrentHallCards()].sort(
