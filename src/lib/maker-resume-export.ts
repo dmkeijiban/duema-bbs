@@ -1,12 +1,9 @@
 // デュエマ履歴書メーカーのPNG出力（A4縦・高解像度）。既存の maker-select-export.ts と同じく
 // Canvasで1箇所描画し、DOMプレビューとは独立して壊れないことを優先する。
 
-import {
-  RESUME_ACHIEVEMENT_PRESETS,
-  RESUME_SOCIAL_TAG_PRESETS,
-  type ResumeData,
-} from '@/lib/maker-resume'
-import { formatResumeDate, RESUME_LAYOUT as L, RESUME_SECTION_ORDER } from '@/lib/maker-resume-layout'
+import type { ResumeData } from '@/lib/maker-resume'
+import { formatResumeDate, RESUME_DEFAULT_AVATAR_PATH, RESUME_LAYOUT as L, RESUME_SECTION_ORDER } from '@/lib/maker-resume-layout'
+import { getResumeSectionContent } from '@/lib/maker-resume-render'
 
 export type ResumeExportPhoto = { url: string | null }
 
@@ -136,15 +133,12 @@ function drawDefaultAvatarGlyph(context: CanvasRenderingContext2D, x: number, y:
   context.fillStyle = L.colors.label
   context.fillRect(x, y, size, size)
   context.fillStyle = L.colors.lightLine
-  const cx = x + size / 2
-  const cy = y + size / 2
-  const headRadius = size * 0.16
-  context.beginPath()
-  context.arc(cx, cy - size * 0.08, headRadius, 0, Math.PI * 2)
-  context.fill()
-  context.beginPath()
-  context.arc(cx, cy + size * 0.34, size * 0.28, Math.PI, 0)
-  context.fill()
+  const glyphSize = size / 2
+  context.save()
+  context.translate(x + (size - glyphSize) / 2, y + (size - glyphSize) / 2)
+  context.scale(glyphSize / 24, glyphSize / 24)
+  context.fill(new Path2D(RESUME_DEFAULT_AVATAR_PATH))
+  context.restore()
 }
 
 export async function renderResumeExportImage(data: ResumeData, photo: ResumeExportPhoto | null, resumeDate?: string | null): Promise<Blob> {
@@ -228,7 +222,7 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
   drawFieldGridRow(context, contentX, cursorY, infoWidth, rowHeight, [
     { label: '好きな文明', value: data.favoriteCivilization || '-' },
     { label: 'プレイスタイル', value: data.playStyle || '-' },
-  ], L.defaultLabelWidth)
+  ], L.profileChoiceLabelWidth)
   cursorY += rowHeight
 
   cursorY = Math.max(cursorY, photoY + photoSize) + L.sectionGap
@@ -241,46 +235,29 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
   ], L.fullLabelWidth)
   cursorY += rowHeight + L.sectionGap
 
-  const achievementLabels = data.achievements.map(key => RESUME_ACHIEVEMENT_PRESETS.find(preset => preset.key === key)?.label).filter((v): v is Exclude<typeof v, undefined> => v !== undefined)
-  const socialLabels = data.socialTags.map(key => RESUME_SOCIAL_TAG_PRESETS.find(preset => preset.key === key)?.label).filter((v): v is Exclude<typeof v, undefined> => v !== undefined)
+  const sectionContent = getResumeSectionContent(data)
   for (const section of RESUME_SECTION_ORDER) {
     if (section === 'interaction') {
       sectionTitle(context, '対戦・交流について', contentX, cursorY)
       cursorY += 56
-      if (socialLabels.length) cursorY = drawChips(context, socialLabels, contentX, cursorY, contentWidth)
-      else {
-        context.font = `${L.font.body}px sans-serif`
-        context.fillStyle = L.colors.muted
-        context.textAlign = 'left'
-        context.textBaseline = 'top'
-        context.fillText('（未選択）', contentX, cursorY)
-        cursorY += 24
-      }
-      if (data.socialNote) {
+      if (sectionContent.interaction.tags.length) cursorY = drawChips(context, sectionContent.interaction.tags, contentX, cursorY, contentWidth)
+      if (sectionContent.interaction.note) {
         context.font = '20px sans-serif'
         context.fillStyle = INK
-        context.fillText(data.socialNote, contentX, cursorY + 10, contentWidth)
+        context.fillText(sectionContent.interaction.note, contentX, cursorY + 10, contentWidth)
         cursorY += 40
       }
       cursorY += 40
     } else if (section === 'achievements') {
       sectionTitle(context, '大会・デュエマ実績', contentX, cursorY)
       cursorY += 56
-      if (achievementLabels.length) cursorY = drawChips(context, achievementLabels, contentX, cursorY, contentWidth)
-      else {
-        context.font = `${L.font.body}px sans-serif`
-        context.fillStyle = L.colors.muted
-        context.textAlign = 'left'
-        context.textBaseline = 'top'
-        context.fillText('（未選択）', contentX, cursorY)
-        cursorY += 24
-      }
-      if (data.achievementNote) {
+      if (sectionContent.achievements.tags.length) cursorY = drawChips(context, sectionContent.achievements.tags, contentX, cursorY, contentWidth)
+      if (sectionContent.achievements.note) {
         context.font = '20px sans-serif'
         context.fillStyle = INK
         context.textAlign = 'left'
         context.textBaseline = 'top'
-        context.fillText(data.achievementNote, contentX, cursorY + 10, contentWidth)
+        context.fillText(sectionContent.achievements.note, contentX, cursorY + 10, contentWidth)
         cursorY += 40
       }
       cursorY += 30
@@ -294,7 +271,7 @@ export async function renderResumeExportImage(data: ResumeData, photo: ResumeExp
       context.fillStyle = INK
       context.textAlign = 'left'
       context.textBaseline = 'top'
-      const freeSpaceLines = wrapText(context, data.freeSpace || '（未入力）', contentWidth - 32, 6)
+      const freeSpaceLines = wrapText(context, sectionContent.freeSpace.text, contentWidth - 32, 6)
       freeSpaceLines.forEach((line, index) => context.fillText(line, contentX + 16, cursorY + 16 + index * 28, contentWidth - 32))
       cursorY += freeSpaceBoxHeight
     }

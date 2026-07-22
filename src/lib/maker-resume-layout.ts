@@ -1,7 +1,7 @@
 export const RESUME_LAYOUT = {
   width: 1240, height: 1754, margin: 64, outerBorderInset: 32,
   headerRuleY: 156, infoTop: 184, photoSize: 190, photoGap: 40,
-  rowHeight: 52, defaultLabelWidth: 110, compactLabelWidth: 90, fullLabelWidth: 150,
+  rowHeight: 52, defaultLabelWidth: 110, compactLabelWidth: 90, profileChoiceLabelWidth: 164, fullLabelWidth: 150,
   sectionGap: 40, sectionTitleHeight: 40, sectionContentGap: 16,
   freeSpaceHeight: 180, chipHeight: 36, chipGap: 10, chipPaddingX: 14,
   colors: { paper: '#fdfdfb', ink: '#1f2933', subInk: '#52606d', line: '#334155', lightLine: '#94a3b8', label: '#f1f5f9', chip: '#eef2f6', muted: '#94a3b8' },
@@ -15,6 +15,8 @@ export const RESUME_SECTION_ORDER = [
 ] as const
 
 export type ResumeSection = (typeof RESUME_SECTION_ORDER)[number]
+
+export const RESUME_DEFAULT_AVATAR_PATH = 'M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z'
 
 export function formatResumeDate(value?: string | null) {
   const parsed = value ? new Date(value) : new Date()
