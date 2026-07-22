@@ -276,12 +276,39 @@ async function getMakerCardPool(supabase: ReturnType<typeof createAdminClient>, 
   return new Set((data ?? []).map(row => row.card_id))
 }
 
+type CatalogFilters = { civilization: string[]; race: string[]; cardType: string[]; setName: string[] }
+
+function readFilters(request: NextRequest): CatalogFilters {
+  const read = (name: string) => request.nextUrl.searchParams.getAll(name).map(value => value.trim()).filter(value => value.length > 0 && value.length <= 80).slice(0, 8)
+  return { civilization: read('civilization'), race: read('race'), cardType: read('cardType'), setName: read('setName') }
+}
+
+async function applyCatalogFilters(supabase: ReturnType<typeof createAdminClient>, items: CatalogItem[], filters: CatalogFilters) {
+  let filtered = items.filter(item =>
+    filters.civilization.every(value => (item.row.civilization ?? []).includes(value))
+    && filters.cardType.every(value => item.row.card_type === value)
+    && filters.setName.every(value => item.row.card_printings?.some(printing => printing.set_name === value)),
+  )
+  for (const race of filters.race) {
+    const { data, error } = await supabase.from('zukan_cards').select('name').ilike('race', `%${escapeLikePattern(race)}%`).limit(5000)
+    if (error) throw error
+    const names = new Set((data ?? []).map(row => row.name))
+    filtered = filtered.filter(item => names.has(item.row.name) || (item.matchedFace && names.has(item.matchedFace.name)))
+  }
+  if (filters.setName.length) {
+    filtered = filtered.map(item => ({ ...item, printing: item.row.card_printings?.find(printing => filters.setName.every(value => printing.set_name === value)) ?? item.printing }))
+  }
+  return filtered
+}
+
 export async function GET(request: NextRequest) {
   if (!(await canAccessDeckMaker())) return new NextResponse(null, { status: 404 })
 
   const rawQuery = request.nextUrl.searchParams.get('q')?.trim() ?? ''
   const makerSlug = request.nextUrl.searchParams.get('makerSlug')?.trim() ?? ''
   const fastInitial = request.nextUrl.searchParams.get('fastInitial') === '1'
+  const filters = readFilters(request)
+  const hasFilters = Object.values(filters).some(values => values.length > 0)
   if (rawQuery.length > MAX_QUERY_LENGTH || /[\u0000-\u001f\u007f]/.test(rawQuery)) return NextResponse.json({ error: 'Invalid query' }, { status: 400 })
   const normalizedQuery = normalizeCardName(rawQuery)
   const kanaQuery = rawQuery.normalize('NFKC')
@@ -293,7 +320,7 @@ export async function GET(request: NextRequest) {
     const supabase = createAdminClient()
     const makerCardPool = await getMakerCardPool(supabase, makerSlug)
     const columns = 'id,name,normalized_name,name_kana,image_url,cost,civilization,card_type,card_printings(id,source_key,official_page_url,image_url,set_name,card_number,release_date,official_sort_position,is_representative,is_search_visible)'
-    if (!rawQuery && fastInitial && offset === 0) {
+    if (!rawQuery && !hasFilters && fastInitial && offset === 0) {
       const cards = await getFastInitialCatalog(supabase, makerCardPool)
       if (cards.length > 0) {
         return NextResponse.json({ cards, hasMore: true, nextOffset: cards.length }, { headers: { 'Cache-Control': BROWSER_CACHE_HEADER } })
@@ -303,7 +330,8 @@ export async function GET(request: NextRequest) {
     const facesAvailable = !faceProbe.error
     if (!rawQuery) {
       const fullCatalog = await getCatalog(supabase, columns)
-      const catalog = makerCardPool ? fullCatalog.filter(item => makerCardPool.has(item.row.id)) : fullCatalog
+      const makerCatalog = makerCardPool ? fullCatalog.filter(item => makerCardPool.has(item.row.id)) : fullCatalog
+      const catalog = await applyCatalogFilters(supabase, makerCatalog, filters)
       const items = catalog.slice(offset, offset + limit)
       const cards = items.map((item) => mapCard(item.row, item.printing, item.matchedFace))
       const total = catalog.length
@@ -312,7 +340,8 @@ export async function GET(request: NextRequest) {
     }
 
     const allMatches = await getMatches(supabase, columns, normalizedQuery, kanaQuery, facesAvailable)
-    const matches = makerCardPool ? allMatches.filter(item => makerCardPool.has(item.row.id)) : allMatches
+    const makerMatches = makerCardPool ? allMatches.filter(item => makerCardPool.has(item.row.id)) : allMatches
+    const matches = await applyCatalogFilters(supabase, makerMatches, filters)
     const rows = matches.slice(offset, offset + limit)
     const cards = rows.map((item) => mapCard(item.row, item.printing, item.matchedFace))
     const nextOffset = offset + cards.length

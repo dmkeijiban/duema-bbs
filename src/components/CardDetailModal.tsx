@@ -2,8 +2,9 @@
 
 import type { ReactNode } from 'react'
 import { printingKey, type DeckCard } from '@/lib/deck-maker'
+import type { CardSearchFilter } from '@/hooks/use-card-catalog-search'
 
-export function CardDetailModal({ card, versions, loading = false, count, maxReached = false, onClose, onSelectVersion, onAdd, onRemove, onMove, renderCardArt }: {
+export function CardDetailModal({ card, versions, loading = false, count, maxReached = false, onClose, onSelectVersion, onAdd, onRemove, onMove, onAddFilter, renderCardArt }: {
   card: DeckCard | null
   versions: DeckCard[]
   loading?: boolean
@@ -14,6 +15,7 @@ export function CardDetailModal({ card, versions, loading = false, count, maxRea
   onAdd?: (card: DeckCard) => void
   onRemove?: (card: DeckCard) => void
   onMove?: (offset: -1 | 1) => void
+  onAddFilter?: (filter: CardSearchFilter) => void
   renderCardArt: (card: DeckCard, full?: boolean) => ReactNode
 }) {
   if (!card) return null
@@ -34,11 +36,11 @@ export function CardDetailModal({ card, versions, loading = false, count, maxRea
           <button type="button" onClick={() => onMove(1)} className="min-h-10 rounded-lg border border-slate-300 text-sm font-bold text-slate-700">右へ移動</button>
         </div>}
         <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl bg-slate-50 p-3 text-sm">
-          <div><dt className="text-xs font-bold text-slate-500">文明</dt><dd>{civilizations.join(' / ') || '—'}</dd></div>
+          <div><dt className="text-xs font-bold text-slate-500">文明</dt><dd>{civilizations.length ? civilizations.map(value => <button key={value} type="button" onClick={() => onAddFilter?.({ kind: 'civilization', value })} className="mr-1 underline decoration-dotted disabled:no-underline" disabled={!onAddFilter}>{value}</button>) : '—'}</dd></div>
           <div><dt className="text-xs font-bold text-slate-500">コスト</dt><dd>{card.cost ?? '—'}</dd></div>
-          <div><dt className="text-xs font-bold text-slate-500">タイプ</dt><dd>{card.cardType || '—'}</dd></div>
-          <div><dt className="text-xs font-bold text-slate-500">種族</dt><dd>{card.race || '—'}</dd></div>
-          <div className="col-span-2"><dt className="text-xs font-bold text-slate-500">収録弾・カード番号</dt><dd>{[card.setName, card.cardNumber].filter(Boolean).join(' / ') || '—'}</dd></div>
+          <div><dt className="text-xs font-bold text-slate-500">タイプ</dt><dd>{card.cardType ? <button type="button" onClick={() => onAddFilter?.({ kind: 'cardType', value: card.cardType! })} className="underline decoration-dotted disabled:no-underline" disabled={!onAddFilter}>{card.cardType}</button> : '—'}</dd></div>
+          <div><dt className="text-xs font-bold text-slate-500">種族</dt><dd>{card.race ? <button type="button" onClick={() => onAddFilter?.({ kind: 'race', value: card.race! })} className="underline decoration-dotted disabled:no-underline" disabled={!onAddFilter}>{card.race}</button> : '—'}</dd></div>
+          <div className="col-span-2"><dt className="text-xs font-bold text-slate-500">収録弾・カード番号</dt><dd>{card.setName ? <button type="button" onClick={() => onAddFilter?.({ kind: 'setName', value: card.setName! })} className="underline decoration-dotted disabled:no-underline" disabled={!onAddFilter}>{card.setName}</button> : '—'}{card.cardNumber ? ` / ${card.cardNumber}` : ''}</dd></div>
           <div className="col-span-2"><dt className="text-xs font-bold text-slate-500">効果</dt><dd className="whitespace-pre-wrap">{card.abilityText || '効果テキスト未登録'}</dd></div>
         </dl>
         <div className="mt-5">
