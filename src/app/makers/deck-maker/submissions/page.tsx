@@ -15,14 +15,13 @@ const STATS_DECK_LIMIT = 1000
 type StatsDeck = { deck_data: Array<{ id: string; name: string; imageUrl: string | null; count: number }> }
 
 function buildStats(decks: StatsDeck[], civilizations: Map<string, string[]>) {
-  const cards = new Map<string, { id: string; name: string; imageUrl: string | null; deckCount: number; totalCount: number }>()
+  const cards = new Map<string, { id: string; name: string; imageUrl: string | null; deckCount: number }>()
   const civilizationCounts = new Map<string, number>()
   for (const deck of decks) {
     const seen = new Set<string>()
     for (const entry of Array.isArray(deck.deck_data) ? deck.deck_data : []) {
       if (!entry?.id || !Number.isInteger(entry.count) || entry.count < 1) continue
-      const current = cards.get(entry.id) ?? { id: entry.id, name: entry.name, imageUrl: entry.imageUrl, deckCount: 0, totalCount: 0 }
-      current.totalCount += entry.count
+      const current = cards.get(entry.id) ?? { id: entry.id, name: entry.name, imageUrl: entry.imageUrl, deckCount: 0 }
       if (!seen.has(entry.id)) current.deckCount += 1
       seen.add(entry.id)
       cards.set(entry.id, current)
@@ -32,7 +31,7 @@ function buildStats(decks: StatsDeck[], civilizations: Map<string, string[]>) {
     }
   }
   return {
-    cards: [...cards.values()].sort((a, b) => b.deckCount - a.deckCount || b.totalCount - a.totalCount || a.name.localeCompare(b.name, 'ja')).slice(0, 10),
+    cards: [...cards.values()].sort((a, b) => b.deckCount - a.deckCount || a.name.localeCompare(b.name, 'ja')).slice(0, 10),
     civilizations: [...civilizationCounts.entries()].sort((a, b) => b[1] - a[1]),
   }
 }
@@ -129,12 +128,12 @@ export default async function PublicDeckListPage({ searchParams }: { searchParam
         {tab === 'all' && <section className="mt-10 grid gap-5 lg:grid-cols-2">
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <h2 className="text-xl font-black text-slate-950">採用カードランキング</h2>
-            <p className="mt-1 text-xs text-slate-500">公開中のオリジナルデッキ最大{STATS_DECK_LIMIT}件を集計</p>
+            <p className="mt-1 text-xs text-slate-500">公開中のオリジナルデッキ最大{STATS_DECK_LIMIT}件を、同じデッキ内は採用枚数にかかわらず1件として集計</p>
             {stats.cards.length ? <ol className="mt-4 divide-y divide-slate-100">
               {stats.cards.map((card, index) => <li key={card.id} className="grid grid-cols-[2rem_1fr_auto] items-center gap-2 py-3 text-sm">
                 <span className="font-black text-slate-400">{index + 1}</span>
                 <span className="min-w-0 truncate font-bold text-slate-900">{card.name}</span>
-                <span className="text-right text-xs text-slate-600"><b className="text-sm text-blue-700">{card.deckCount}</b>デッキ<br />合計{card.totalCount}枚</span>
+                <span className="text-right text-xs text-slate-600"><b className="text-sm text-blue-700">{card.deckCount}</b>デッキ</span>
               </li>)}
             </ol> : <p className="mt-5 text-sm text-slate-500">集計できるデッキがまだありません。</p>}
           </div>
