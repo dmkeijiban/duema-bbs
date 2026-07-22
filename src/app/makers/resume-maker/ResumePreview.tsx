@@ -55,7 +55,14 @@ function getFreeSpaceHeight(value: string) {
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="font-black" style={{ height: L.sectionTitleHeight, fontSize: L.font.section, lineHeight: 1 }}>{children}</h2>
+  return <h2 className="shrink-0 font-black" style={{ height: L.sectionTitleHeight, fontSize: L.font.section, lineHeight: 1 }}>{children}</h2>
+}
+
+function SectionHeading({ title, tags }: { title: string; tags: string[] }) {
+  return <div className="flex min-h-8 items-start gap-4">
+    <SectionTitle>{title}</SectionTitle>
+    <div className="flex min-w-0 flex-1 flex-wrap font-sans" style={{ marginTop: -3, gap: L.chipGap }}>{tags.map(label => <Chip key={label}>{label}</Chip>)}</div>
+  </div>
 }
 
 export function ResumePreview({ data, avatarUrl, resumeDate, exportRef }: { data: ResumeData; avatarUrl: string | null; resumeDate?: string | null; exportRef?: Ref<HTMLDivElement> }) {
@@ -65,25 +72,23 @@ export function ResumePreview({ data, avatarUrl, resumeDate, exportRef }: { data
   const renderSection = (section: ResumeSection) => {
     switch (section) {
       case 'interaction':
-        return <section key={section} style={{ marginTop: L.sectionGap }}><SectionTitle>対戦・交流について</SectionTitle>
+        return <section key={section} style={{ marginTop: L.sectionGap }}><SectionHeading title="対戦・交流について" tags={sectionContent.interaction.tags} />
           {sectionContent.interaction.note && <div className="box-border flex h-[52px] items-center border-2 px-3 font-sans" style={{ marginTop: L.sectionContentGap, borderColor: L.colors.line, fontSize: L.font.body, lineHeight: '20px' }}>{sectionContent.interaction.note}</div>}
-          <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{sectionContent.interaction.tags.map(label => <Chip key={label}>{label}</Chip>)}</div>
         </section>
       case 'achievements':
-        return <section key={section} style={{ marginTop: L.sectionGap }}><SectionTitle>大会・デュエマ実績</SectionTitle>
+        return <section key={section} style={{ marginTop: L.sectionGap }}><SectionHeading title="大会・デュエマ実績" tags={sectionContent.achievements.tags} />
           {sectionContent.achievements.note && <div className="box-border flex h-[52px] items-center border-2 px-3 font-sans" style={{ marginTop: L.sectionContentGap, borderColor: L.colors.line, fontSize: L.font.body, lineHeight: '20px' }}>{sectionContent.achievements.note}</div>}
-          <div className="flex flex-wrap font-sans" style={{ marginTop: L.sectionContentGap, gap: L.chipGap }}>{sectionContent.achievements.tags.map(label => <Chip key={label}>{label}</Chip>)}</div>
         </section>
       case 'freeSpace':
         return <section key={section} style={{ marginTop: 30 }}>
-          <div className="flex items-end justify-between gap-6">
+          <div className="flex items-end justify-between gap-3">
             <SectionTitle>フリースペース</SectionTitle>
-            {favoriteCard && <h2 className="font-black text-center" style={{ width: 250, height: L.sectionTitleHeight, fontSize: L.font.section, lineHeight: 1 }}>好きなカード</h2>}
+            {favoriteCard && <h2 className="font-black text-center" style={{ width: 300, height: L.sectionTitleHeight, fontSize: L.font.section, lineHeight: 1 }}>好きなカード</h2>}
           </div>
-          <div className="flex items-start gap-6" style={{ marginTop: L.sectionContentGap }}>
+          <div className="flex items-start gap-3" style={{ marginTop: L.sectionContentGap }}>
             <div className="min-w-0 flex-1 overflow-hidden whitespace-pre-wrap break-words border-2 p-4 font-sans" style={{ height: freeSpaceHeight, borderColor: L.colors.line, fontSize: L.font.freeSpace, lineHeight: '28px' }}>{sectionContent.freeSpace.text}</div>
-            {favoriteCard && <div className="flex shrink-0 items-start justify-center" style={{ width: 250, height: freeSpaceHeight }}>
-              {favoriteCard.imageUrl ? <img src={favoriteCard.imageUrl} alt={favoriteCard.name || '好きなカード'} className="max-h-full max-w-full object-contain" /> : <div className="flex h-full w-full items-center justify-center border-2 font-sans text-slate-400" style={{ borderColor: L.colors.line, fontSize: L.font.body }}>画像なし</div>}
+            {favoriteCard && <div className="flex shrink-0 items-center justify-center overflow-visible" style={{ width: 300, height: freeSpaceHeight }}>
+              {favoriteCard.imageUrl ? <img src={favoriteCard.imageUrl} alt={favoriteCard.name || '好きなカード'} className="h-full w-full scale-[1.18] object-contain" /> : <div className="flex h-full w-full items-center justify-center border-2 font-sans text-slate-400" style={{ borderColor: L.colors.line, fontSize: L.font.body }}>画像なし</div>}
             </div>}
           </div>
         </section>
