@@ -95,7 +95,7 @@ export function ResumeProfileCard({ data, avatarUrl, resumeDate, isOwner, isPubl
       )}
       {zoomed && (
         <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-3" onMouseDown={event => { if (event.currentTarget === event.target) setZoomed(false) }}>
-          <section role="dialog" aria-modal="true" aria-label="デュエマ履歴書" className="flex h-full max-h-[calc(100dvh-24px)] w-full max-w-5xl flex-col overflow-hidden">
+          <section role="dialog" aria-modal="true" aria-label="デュエマ履歴書" className="flex h-full max-h-[calc(100dvh-24px)] w-full max-w-[900px] flex-col overflow-hidden">
             <div className="mb-2 flex shrink-0 justify-end"><button type="button" onClick={() => setZoomed(false)} aria-label="閉じる" className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl">×</button></div>
             <div className="min-h-0 flex-1"><FullscreenResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} /></div>
           </section>
