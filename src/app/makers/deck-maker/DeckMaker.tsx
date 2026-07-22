@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   DECK_STORAGE_KEY,
@@ -8,10 +8,12 @@ import {
   MAX_DECK_CARDS,
   MAX_SAME_CARD,
   deckSize,
+  printingKey,
   type DeckCard,
   type DeckEntry,
 } from '@/lib/deck-maker'
 import { CardCatalogSearchPanel } from '@/components/CardCatalogSearchPanel'
+import { CardDetailModal } from '@/components/CardDetailModal'
 import { useCardCatalogSearch } from '@/hooks/use-card-catalog-search'
 import { savePublishedDeck } from './actions'
 
@@ -66,6 +68,12 @@ function safeCard(card: DeckCard): DeckCard {
     name: typeof card.name === 'string' ? card.name.slice(0, 200) : '',
     nameKana: typeof card.nameKana === 'string' ? card.nameKana.slice(0, 200) : null,
     cost: Number.isInteger(card.cost) && Number(card.cost) >= 0 ? Number(card.cost) : null,
+    civilization: Array.isArray(card.civilization) ? card.civilization.filter(value => typeof value === 'string').slice(0, 5) : [],
+    cardType: typeof card.cardType === 'string' ? card.cardType.slice(0, 100) : null,
+    race: typeof card.race === 'string' ? card.race.slice(0, 200) : null,
+    abilityText: typeof card.abilityText === 'string' ? card.abilityText.slice(0, 5000) : null,
+    setName: typeof card.setName === 'string' ? card.setName.slice(0, 200) : null,
+    cardNumber: typeof card.cardNumber === 'string' ? card.cardNumber.slice(0, 100) : null,
     imageUrl: safeOfficialUrl(card.imageUrl, 'image'),
     officialPageUrl: safeOfficialUrl(card.officialPageUrl, 'page'),
     matchedFace: card.matchedFace && typeof card.matchedFace.name === 'string' && Number.isInteger(card.matchedFace.sideIndex) ? {
@@ -75,10 +83,6 @@ function safeCard(card: DeckCard): DeckCard {
       sideKind: typeof card.matchedFace.sideKind === 'string' ? card.matchedFace.sideKind.slice(0, 50) : null,
     } : null,
   }
-}
-
-function printingKey(card: DeckCard) {
-  return `${card.id}:${card.sourceKey ?? 'representative'}:${card.matchedFace?.sideIndex ?? 'front'}`
 }
 
 function safeEntries(values: unknown): DeckEntry[] {
@@ -220,8 +224,6 @@ export default function DeckMaker() {
   const printingsAbort = useRef<AbortController | null>(null)
   const printingsCache = useRef(new Map<string, DeckCard[]>())
   const searchInput = useRef<HTMLInputElement>(null)
-  const printingsScroller = useRef<HTMLDivElement>(null)
-  const printingDrag = useRef({ active: false, moved: false, startX: 0, scrollLeft: 0 })
   const total = deckSize(entries)
   const effectiveDeckName = deckName.trim() || DEFAULT_DECK_NAME
   const byPrinting = useMemo(() => new Map(entries.map((entry) => [printingKey(entry), entry])), [entries])
@@ -310,6 +312,7 @@ export default function DeckMaker() {
           printingsCache.current.set(card.id, options)
           prefetchCardImages(options)
           setPrintingOptions(options)
+          setSelectedCard(options.find(option => printingKey(option) === printingKey(card)) ?? card)
         }
       })
       .catch((error: unknown) => {
@@ -327,41 +330,7 @@ export default function DeckMaker() {
     setPrintingsLoading(false)
   }
 
-  function startPrintingDrag(event: ReactPointerEvent<HTMLDivElement>) {
-    if (event.pointerType !== 'mouse' || event.button !== 0) return
-    const scroller = printingsScroller.current
-    if (!scroller) return
-    printingDrag.current = { active: true, moved: false, startX: event.clientX, scrollLeft: scroller.scrollLeft }
-  }
-
-  function movePrintingDrag(event: ReactPointerEvent<HTMLDivElement>) {
-    const drag = printingDrag.current
-    const scroller = printingsScroller.current
-    if (!drag.active || !scroller) return
-    const distance = event.clientX - drag.startX
-    if (Math.abs(distance) > 5 && !drag.moved) {
-      drag.moved = true
-      scroller.setPointerCapture(event.pointerId)
-    }
-    if (drag.moved) {
-      event.preventDefault()
-      scroller.scrollLeft = drag.scrollLeft - distance
-    }
-  }
-
-  function endPrintingDrag(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!printingDrag.current.active) return
-    printingDrag.current.active = false
-    if (printingsScroller.current?.hasPointerCapture(event.pointerId)) {
-      printingsScroller.current.releasePointerCapture(event.pointerId)
-    }
-  }
-
   function selectPrinting(printing: DeckCard) {
-    if (printingDrag.current.moved) {
-      printingDrag.current.moved = false
-      return
-    }
     setSelectedCard(printing)
   }
 
@@ -684,55 +653,19 @@ export default function DeckMaker() {
         </div>
       )}
 
-      {selected && (
-        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3" onMouseDown={(event) => { if (event.currentTarget === event.target) closeCard() }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="card-dialog-title" className="relative flex max-h-[calc(100dvh-24px)] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <button type="button" onClick={closeCard} aria-label="カード操作を閉じる" className="absolute right-2 top-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-slate-800 shadow"><Icon name="close" /></button>
-            <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
-              <h2 id="card-dialog-title" className="mb-3 pr-12 text-center text-base font-black text-slate-900">{selected.name}</h2>
-              <CardArt key={printingKey(selected)} card={selected} full eager className="mx-auto w-full max-w-[min(330px,calc((100dvh-310px)*5/7))] rounded-xl shadow-lg" />
-              <div className="mt-3 flex items-center justify-center gap-5">
-                <button type="button" onClick={() => remove(selected)} disabled={selectedCount === 0} aria-label={`${selected.name}を1枚減らす`} className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 text-2xl font-bold disabled:text-slate-300">−</button>
-                <div className="min-w-20 text-center"><span className="text-3xl font-black">{selectedCount}</span></div>
-                <button type="button" onClick={() => add(selected)} disabled={selectedNameCount >= MAX_SAME_CARD} aria-label={`${selected.name}を1枚増やす`} className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-700 text-2xl font-bold text-white disabled:bg-slate-400">＋</button>
-              </div>
-              {selectedCount > 0 && <div className="mt-2 grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => moveSelectedEntry(-1)} className="min-h-10 rounded-lg border border-slate-300 text-sm font-bold text-slate-700">左へ移動</button>
-                <button type="button" onClick={() => moveSelectedEntry(1)} className="min-h-10 rounded-lg border border-slate-300 text-sm font-bold text-slate-700">右へ移動</button>
-              </div>}
-              <div className="mt-5">
-                <p className="mb-2 text-center text-xs font-bold text-slate-600">表裏面・収録版</p>
-                {printingsLoading && <p className="mb-2 text-center text-xs font-bold text-slate-500">表裏面と収録版を読み込み中…</p>}
-                <div
-                  ref={printingsScroller}
-                  className="flex cursor-grab select-none gap-3 overflow-x-auto overscroll-x-contain pb-2 active:cursor-grabbing"
-                  onPointerDown={startPrintingDrag}
-                  onPointerMove={movePrintingDrag}
-                  onPointerUp={endPrintingDrag}
-                  onPointerCancel={endPrintingDrag}
-                >
-                  {printingOptions.map((printing) => {
-                    const active = printingKey(printing) === printingKey(selected)
-                    return (
-                      <button
-                        key={printingKey(printing)}
-                        type="button"
-                        onClick={() => selectPrinting(printing)}
-                        aria-label={`${printing.name}の面または収録版を選択`}
-                        aria-pressed={active}
-                        className={`w-24 shrink-0 overflow-hidden rounded-lg transition ${active ? 'ring-2 ring-blue-600' : 'opacity-55 ring-1 ring-slate-300 hover:opacity-100'}`}
-                      >
-                        <CardArt card={printing} />
-                        <span className="block min-h-8 bg-white px-1 py-1 text-[9px] font-bold leading-tight text-slate-800">{printing.name}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-      )}
+      <CardDetailModal
+        card={selected}
+        versions={printingOptions}
+        loading={printingsLoading}
+        count={selectedCount}
+        maxReached={selectedNameCount >= MAX_SAME_CARD}
+        onClose={closeCard}
+        onSelectVersion={selectPrinting}
+        onAdd={add}
+        onRemove={remove}
+        onMove={moveSelectedEntry}
+        renderCardArt={(card, full) => <CardArt key={printingKey(card)} card={card} full={full} eager className="w-full rounded-xl shadow-lg" />}
+      />
 
       {resetConfirm && (
         <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onMouseDown={(event) => { if (event.currentTarget === event.target) setResetConfirm(false) }}>

@@ -31,9 +31,13 @@ type Row = {
   name_kana: string | null
   image_url: string | null
   cost: number | null
+  civilization: string[] | null
+  card_type: string | null
   card_printings?: Printing[]
   card_faces?: Face[]
 }
+
+type ZukanDetail = { name: string; race: string | null; ability_text: string | null }
 
 type AliasRow = {
   old_source_key: string
@@ -83,8 +87,8 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     const faceProbe = await admin.from('card_faces').select('id', { head: true, count: 'exact' }).limit(1)
     const facesAvailable = !faceProbe.error
     const columns = facesAvailable
-      ? 'id,name,name_kana,image_url,cost,card_printings(id,source_key,official_page_url,image_url,set_name,card_number,is_search_visible),card_faces(card_printing_id,side_index,side_kind,name,name_kana,image_url,official_page_url)'
-      : 'id,name,name_kana,image_url,cost,card_printings(id,source_key,official_page_url,image_url,set_name,card_number,is_search_visible)'
+      ? 'id,name,name_kana,image_url,cost,civilization,card_type,card_printings(id,source_key,official_page_url,image_url,set_name,card_number,is_search_visible),card_faces(card_printing_id,side_index,side_kind,name,name_kana,image_url,official_page_url)'
+      : 'id,name,name_kana,image_url,cost,civilization,card_type,card_printings(id,source_key,official_page_url,image_url,set_name,card_number,is_search_visible)'
     const { data, error } = await admin
       .from('cards')
       .select(columns)
@@ -95,6 +99,9 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     if (!data) return NextResponse.json({ cards: [] }, { status: 404 })
 
     const row = data as unknown as Row
+    const detailNames = [...new Set([row.name, ...(row.card_faces ?? []).map(face => face.name)])]
+    const detailResult = await admin.from('zukan_cards').select('name,race,ability_text').in('name', detailNames).limit(20)
+    const detailsByName = new Map<string, ZukanDetail>(((detailResult.error ? [] : detailResult.data ?? []) as ZukanDetail[]).map(detail => [detail.name, detail]))
     const printingKeys = (row.card_printings ?? []).map((printing) => normalizeKey(printing.source_key)).filter(Boolean)
     const aliasResult = printingKeys.length
       ? await admin.from('card_printing_source_aliases').select('old_source_key,official_source_key').limit(5000)
@@ -155,6 +162,12 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
             printingId: printing.id,
             sourceKey: printing.source_key,
             cost: row.cost,
+            civilization: row.civilization ?? [],
+            cardType: row.card_type,
+            race: detailsByName.get(front?.name ?? row.name)?.race ?? null,
+            abilityText: detailsByName.get(front?.name ?? row.name)?.ability_text ?? null,
+            setName: printing.set_name,
+            cardNumber: printing.card_number,
           }]
         }
         return faces.map((face) => ({
@@ -166,12 +179,19 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
           printingId: printing.id,
           sourceKey: printing.source_key,
           cost: row.cost,
+          civilization: row.civilization ?? [],
+          cardType: row.card_type,
+          race: detailsByName.get(face.name)?.race ?? null,
+          abilityText: detailsByName.get(face.name)?.ability_text ?? null,
+          setName: printing.set_name,
+          cardNumber: printing.card_number,
           matchedFace: { name: face.name, imageUrl: face.image_url, sideIndex: face.side_index, sideKind: face.side_kind },
         }))
       })
 
     if (!cards.length) {
-      cards.push({ id: row.id, name: row.name, nameKana: row.name_kana, imageUrl: row.image_url, officialPageUrl: null, sourceKey: null, cost: row.cost })
+      const detail = detailsByName.get(row.name)
+      cards.push({ id: row.id, name: row.name, nameKana: row.name_kana, imageUrl: row.image_url, officialPageUrl: null, sourceKey: null, cost: row.cost, civilization: row.civilization ?? [], cardType: row.card_type, race: detail?.race ?? null, abilityText: detail?.ability_text ?? null })
     }
 
     const seenImage = new Set<string>()
