@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState, type Ref } from 'react'
-import type { ResumeData } from '@/lib/maker-resume'
+import { exactCardImageUrl } from '@/lib/card-catalog-shared'
+import { RESUME_MAKER_SLUG, type ResumeData } from '@/lib/maker-resume'
 import { formatResumeDate, RESUME_DEFAULT_AVATAR_PATH, RESUME_LAYOUT as L, RESUME_SECTION_ORDER, type ResumeSection } from '@/lib/maker-resume-layout'
 import { getResumeSectionContent } from '@/lib/maker-resume-render'
 
@@ -88,7 +89,7 @@ export function ResumePreview({ data, avatarUrl, resumeDate, exportRef }: { data
           <div className="flex items-start gap-3" style={{ marginTop: L.sectionContentGap }}>
             <div className="min-w-0 flex-1 overflow-hidden whitespace-pre-wrap break-words border-2 p-4 font-sans" style={{ height: freeSpaceHeight, borderColor: L.colors.line, fontSize: L.font.freeSpace, lineHeight: '28px' }}>{sectionContent.freeSpace.text}</div>
             {favoriteCard && <div className="flex shrink-0 items-center justify-center overflow-visible" style={{ width: 300, height: freeSpaceHeight }}>
-              {favoriteCard.imageUrl ? <img src={favoriteCard.imageUrl} alt={favoriteCard.name || '好きなカード'} className="h-full w-full scale-[1.18] object-contain" /> : <div className="flex h-full w-full items-center justify-center border-2 font-sans text-slate-400" style={{ borderColor: L.colors.line, fontSize: L.font.body }}>画像なし</div>}
+              {favoriteCard.imageUrl ? <img src={exactCardImageUrl({ id: favoriteCard.cardId, imageUrl: favoriteCard.imageUrl }, RESUME_MAKER_SLUG)} alt={favoriteCard.name || '好きなカード'} className="h-full w-full scale-[1.18] object-contain" /> : <div className="flex h-full w-full items-center justify-center border-2 font-sans text-slate-400" style={{ borderColor: L.colors.line, fontSize: L.font.body }}>画像なし</div>}
             </div>}
           </div>
         </section>
