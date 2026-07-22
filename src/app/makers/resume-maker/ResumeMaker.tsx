@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { getSavedDeckNames } from '@/lib/deck-maker-names'
 import { renderResumeExportImage, resumePngFileName } from '@/lib/maker-resume-export'
 import {
   RESUME_ACHIEVEMENT_PRESETS,
@@ -37,7 +36,6 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   const [data, setData] = useState<ResumeData>(emptyResumeData())
   const [isPublic, setIsPublic] = useState(initial.isPublic)
   const [submissionId, setSubmissionId] = useState<string | null>(initial.submissionId)
-  const [deckNameCandidates, setDeckNameCandidates] = useState<string[]>([])
   const [message, setMessage] = useState('')
   const [saveState, setSaveState] = useState<SaveState>(initial.data ? 'saved' : 'dirty')
   const [isSavingImage, setIsSavingImage] = useState(false)
@@ -47,7 +45,6 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false)
 
   useEffect(() => {
-    setDeckNameCandidates(getSavedDeckNames())
     if (initial.data) setData(initial.data)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -79,12 +76,6 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
   }
   function toggleSocialTag(key: string) {
     update('socialTags', data.socialTags.includes(key) ? data.socialTags.filter(item => item !== key) : [...data.socialTags, key])
-  }
-
-  function appendDeckCandidate(name: string) {
-    const current = data.currentDecksText
-    const next = current ? `${current}、${name}` : name
-    update('currentDecksText', clampCurrentDecksText(next))
   }
 
   async function persistToDb(nextIsPublic: boolean): Promise<string | null> {
@@ -167,9 +158,6 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
       setIsSharing(false)
     }
   }
-
-  const saveStatusLabel = saveState === 'saving' ? '保存中…' : saveState === 'saved' ? '保存しました' : saveState === 'error' ? '保存に失敗しました' : '未保存の変更があります'
-  const saveStatusClass = saveState === 'saving' ? 'text-slate-500' : saveState === 'saved' ? 'text-emerald-700' : saveState === 'error' ? 'text-red-600' : 'text-amber-600'
 
   return (
     <div className="pb-28">
@@ -256,17 +244,6 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
               <h2 className="font-black text-slate-900">使用デッキ</h2>
               <textarea value={data.currentDecksText} onChange={e => update('currentDecksText', clampCurrentDecksText(e.target.value))} maxLength={RESUME_MAX_CURRENT_DECKS_TEXT} rows={3} placeholder="例: 赤単我我我、青魔導具、昔は連ドラを使用" className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-slate-50 p-2 text-sm outline-none focus:border-emerald-700" />
               <p className="mt-1 text-right text-[11px] text-slate-400">{data.currentDecksText.length} / {RESUME_MAX_CURRENT_DECKS_TEXT}</p>
-              {deckNameCandidates.length > 0 && (
-                <div className="mt-1">
-                  <p className="text-[11px] text-slate-500">デッキ名候補（クリックで追加）</p>
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    {deckNameCandidates.map(name => (
-                      <button key={name} type="button" onClick={() => appendDeckCandidate(name)} className="min-h-7 rounded-full border border-slate-300 px-2.5 text-xs text-slate-600 hover:bg-slate-50">{name}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <h2 className="mt-5 font-black text-slate-900">好きなYouTuber</h2>
               <input value={data.favoriteYouTuber} onChange={e => update('favoriteYouTuber', e.target.value.slice(0, RESUME_MAX_FAVORITE_YOUTUBER))} maxLength={RESUME_MAX_FAVORITE_YOUTUBER} placeholder="自由記述（任意）" className="mt-2 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm outline-none focus:border-emerald-700" />
 
@@ -279,9 +256,17 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
           {step === 3 && (
             <>
               <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
-                <p className="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800">最後に画面下部の「履歴書を完成する」から保存してください。</p>
+                <p className="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800">最後に画面下部の保存ボタンから履歴書を保存してください。</p>
 
-                <h2 className="font-black text-slate-900">大会・デュエマ実績</h2>
+                <h2 className="font-black text-slate-900">対戦・交流について</h2>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {RESUME_SOCIAL_TAG_PRESETS.map(preset => (
+                    <button key={preset.key} type="button" onClick={() => toggleSocialTag(preset.key)} className={`min-h-9 rounded-full border px-3 text-xs font-bold ${data.socialTags.includes(preset.key) ? 'border-emerald-700 bg-emerald-50 text-emerald-800' : 'border-slate-300 text-slate-600'}`}>{preset.label}</button>
+                  ))}
+                </div>
+                <input value={data.socialNote} onChange={e => update('socialNote', e.target.value.slice(0, 40))} maxLength={40} placeholder="自由記述（任意）" className="mt-2 h-9 w-full rounded-lg border border-slate-300 bg-slate-50 px-2 text-sm outline-none focus:border-emerald-700" />
+
+                <h2 className="mt-5 font-black text-slate-900">大会・デュエマ実績</h2>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {RESUME_ACHIEVEMENT_PRESETS.map(preset => (
                     <button key={preset.key} type="button" onClick={() => toggleAchievement(preset.key)} className={`min-h-9 rounded-full border px-3 text-xs font-bold ${data.achievements.includes(preset.key) ? 'border-emerald-700 bg-emerald-50 text-emerald-800' : 'border-slate-300 text-slate-600'}`}>{preset.label}</button>
@@ -293,13 +278,6 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
                 <textarea value={data.freeSpace} onChange={e => update('freeSpace', clampFreeSpaceText(e.target.value))} maxLength={RESUME_MAX_FREE_SPACE} rows={4} placeholder="自由に書いてみましょう" className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-slate-50 p-2 text-sm outline-none focus:border-emerald-700" />
                 <p className="mt-1 text-right text-[11px] text-slate-400">{data.freeSpace.length} / {RESUME_MAX_FREE_SPACE}</p>
 
-                <h2 className="mt-4 font-black text-slate-900">対戦・交流について</h2>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {RESUME_SOCIAL_TAG_PRESETS.map(preset => (
-                    <button key={preset.key} type="button" onClick={() => toggleSocialTag(preset.key)} className={`min-h-9 rounded-full border px-3 text-xs font-bold ${data.socialTags.includes(preset.key) ? 'border-emerald-700 bg-emerald-50 text-emerald-800' : 'border-slate-300 text-slate-600'}`}>{preset.label}</button>
-                  ))}
-                </div>
-                <input value={data.socialNote} onChange={e => update('socialNote', e.target.value.slice(0, 40))} maxLength={40} placeholder="自由記述（任意）" className="mt-2 h-9 w-full rounded-lg border border-slate-300 bg-slate-50 px-2 text-sm outline-none focus:border-emerald-700" />
                 <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">本名、住所、学校名、勤務先など、個人を特定できる情報は入力しないでください。</p>
               </section>
 
@@ -316,38 +294,20 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
                 </section>
               )}
 
-              <section className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/40 p-3 shadow-sm sm:p-5">
-                <h2 className="font-black text-slate-900">履歴書を完成する</h2>
-                <p className="mt-1 text-xs text-slate-600">入力内容を確認して、履歴書を保存・画像出力できます。</p>
-                <button type="button" onClick={() => setMobilePreviewOpen(true)} className="mt-2 text-xs font-bold text-blue-700 hover:underline lg:hidden">完成プレビューを見る</button>
-
-                <p className={`mt-3 text-xs font-bold ${saveStatusClass}`}>{saveStatusLabel}</p>
-                <button type="button" disabled={!complete || saveState === 'saving'} onClick={() => void handleSaveResume()} className="mt-2 min-h-12 w-full rounded-xl bg-emerald-700 text-base font-black text-white disabled:opacity-40">
-                  {saveState === 'saving' ? '保存中…' : submissionId ? '変更を保存する' : '履歴書を保存する'}
-                </button>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <button type="button" disabled={!complete || isSavingImage} onClick={() => void handleSaveImage()} className="min-h-10 rounded-lg border border-slate-300 text-sm font-bold text-slate-700 disabled:opacity-40">{isSavingImage ? '生成中...' : '画像を保存'}</button>
-                  <button type="button" disabled={!complete || isSharing} onClick={() => void handleShare()} className="min-h-10 rounded-lg border border-slate-300 text-sm font-bold text-slate-700 disabled:opacity-40">{isSharing ? '共有準備中...' : 'Xで共有'}</button>
-                </div>
-
-                {saveState === 'saved' && submissionId && (
-                  <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold text-blue-700">
-                    {initial.profileSlug && <Link href={`/u/${initial.profileSlug}`} className="hover:underline">投稿者ページで確認</Link>}
-                    <Link href="/makers/resume-maker/submissions" className="hover:underline">みんなの履歴書を見る</Link>
-                  </div>
-                )}
-
-                {initial.profileSlug && <Link href={`/u/${initial.profileSlug}`} className="mt-3 block text-center text-xs font-bold text-slate-500 hover:underline">投稿者ページを見る</Link>}
-                <Link href="/makers/my-duema-9" className="mt-3 block rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-center text-sm font-bold text-indigo-800 hover:bg-indigo-100">私を象徴するデュエマカード9選を作る</Link>
-              </section>
             </>
           )}
 
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setStep(current => (current > 1 ? current - 1 : current) as 1 | 2 | 3)} disabled={step === 1} className="min-h-10 flex-1 rounded-lg border border-slate-300 text-sm font-bold text-slate-700 disabled:opacity-30">戻る</button>
-            <button type="button" onClick={() => setStep(current => (current < 3 ? current + 1 : current) as 1 | 2 | 3)} disabled={step === 3} className="min-h-10 flex-1 rounded-lg border border-slate-300 text-sm font-bold text-slate-500 disabled:opacity-30">スキップ</button>
-            <button type="button" onClick={() => setStep(current => (current < 3 ? current + 1 : current) as 1 | 2 | 3)} disabled={step === 3} className="min-h-10 flex-1 rounded-lg bg-emerald-700 text-sm font-bold text-white disabled:opacity-40">次へ</button>
-          </div>
+          {step < 3 ? (
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setStep(current => (current > 1 ? current - 1 : current) as 1 | 2 | 3)} disabled={step === 1} className="min-h-10 flex-1 rounded-lg border border-slate-300 text-sm font-bold text-slate-700 disabled:opacity-30">戻る</button>
+              <button type="button" onClick={() => setStep(current => (current + 1) as 2 | 3)} className="min-h-10 flex-1 rounded-lg border border-slate-300 text-sm font-bold text-slate-500">スキップ</button>
+              <button type="button" onClick={() => setStep(current => (current + 1) as 2 | 3)} className="min-h-10 flex-1 rounded-lg bg-emerald-700 text-sm font-bold text-white">次へ</button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setStep(2)} className="min-h-10 flex-1 rounded-lg border border-slate-300 text-sm font-bold text-slate-700">戻る</button>
+            </div>
+          )}
         </div>
 
         <div className="hidden lg:block">
@@ -362,8 +322,8 @@ export default function ResumeMaker({ initial }: { initial: ResumeInitialState }
           <button type="button" disabled={!complete || saveState === 'saving'} onClick={() => void handleSaveResume()} className="min-h-11 flex-[2] rounded-lg bg-emerald-700 px-3 text-sm font-black text-white disabled:bg-slate-300">
             {saveState === 'saving' ? '保存中…' : submissionId ? '変更を保存する' : '履歴書を保存する'}
           </button>
-          <button type="button" disabled={!complete || isSavingImage} onClick={() => void handleSaveImage()} className="min-h-11 flex-1 rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 disabled:opacity-40">{isSavingImage ? '生成中...' : '画像保存'}</button>
-          <button type="button" disabled={!complete || isSharing} onClick={() => void handleShare()} className="min-h-11 flex-1 rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 disabled:opacity-40">{isSharing ? '共有中...' : 'X共有'}</button>
+          <button type="button" disabled={!complete || isSavingImage} onClick={() => void handleSaveImage()} className="min-h-11 flex-1 rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 disabled:opacity-40">{isSavingImage ? '生成中…' : '画像保存'}</button>
+          <button type="button" disabled={!complete || isSharing} onClick={() => void handleShare()} className="min-h-11 flex-1 rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 disabled:opacity-40">{isSharing ? '共有中…' : 'X共有'}</button>
         </div>
       </div>
 
