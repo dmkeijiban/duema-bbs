@@ -52,10 +52,10 @@ export default async function PublicDeckListPage({ searchParams }: { searchParam
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
   const savedRepresentativeId = tab === 'mine' && user ? await getRepresentativeId(user.id, 'deck') : null
 
-  return <main className="min-h-screen bg-slate-100 px-3 py-6">
+  return <main className="min-h-screen bg-slate-100 px-3 py-3 sm:py-5">
     <div className="mx-auto max-w-6xl">
-      <Link href="/makers/deck-maker" className="inline-flex min-h-11 items-center text-sm font-bold text-blue-700 active:opacity-60">← デッキを作る</Link>
-      <div className="mt-2 sm:flex sm:items-end sm:justify-between sm:gap-4">
+      <Link href="/makers/deck-maker" className="inline-flex h-8 items-center text-sm font-bold text-blue-700 active:opacity-60">← デッキを作る</Link>
+      <div className="mt-1 sm:flex sm:items-end sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-black text-slate-950">{tab === 'mine' ? '自分のデッキ' : 'みんなのデッキリスト'}</h1>
           <p className="mt-1 text-sm text-slate-600">{tab === 'mine' ? 'あなたが保存したデッキを新着順で表示しています。' : 'オリジナルの公開デッキを新着順で表示しています。'}</p>

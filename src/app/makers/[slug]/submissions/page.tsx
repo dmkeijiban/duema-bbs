@@ -114,9 +114,9 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
       )}
       <SubmissionActions slug={slug} submissionId={submission.id} canEdit={canEdit} />
     </article>
-  return <main className="min-h-screen bg-slate-50 px-3 py-6"><div className="mx-auto max-w-6xl">
-    <Link href={`/makers/${slug}`} className="text-sm font-bold text-blue-700">{backLabel}</Link>
-    <div className="mt-3 sm:flex sm:items-end sm:justify-between sm:gap-4">
+  return <main className="min-h-screen bg-slate-50 px-3 py-3 sm:py-5"><div className="mx-auto max-w-6xl">
+    <Link href={`/makers/${slug}`} className="inline-flex h-8 items-center text-sm font-bold text-blue-700">{backLabel}</Link>
+    <div className="mt-1 sm:flex sm:items-end sm:justify-between sm:gap-4">
       <div className="min-w-0">
         <h1 className="text-2xl font-black">{heading}</h1>
         <p className="mt-1 text-sm text-gray-500">{description}</p>
