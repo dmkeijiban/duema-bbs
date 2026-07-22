@@ -15,14 +15,28 @@ function DefaultAvatarGlyph() {
 
 type FieldCell = [label: string, value: string]
 
-function FieldRow({ cells, labelWidth = L.defaultLabelWidth, columnFractions }: { cells: FieldCell[]; labelWidth?: number; columnFractions?: number[] }) {
+function FieldRow({ cells, labelWidth = L.defaultLabelWidth, columnFractions, height = L.rowHeight, wrapValues = false }: { cells: FieldCell[]; labelWidth?: number; columnFractions?: number[]; height?: number; wrapValues?: boolean }) {
   const columns = columnFractions?.length === cells.length ? columnFractions.map(value => `${value}fr`).join(' ') : `repeat(${cells.length}, 1fr)`
-  return <div className="grid border-2" style={{ height: L.rowHeight, gridTemplateColumns: columns, borderColor: L.colors.line }}>
+  return <div className="grid border-2" style={{ height, gridTemplateColumns: columns, borderColor: L.colors.line }}>
     {cells.map(([label, value]) => <div key={label} className="flex min-w-0 border-r-2 last:border-r-0" style={{ borderColor: L.colors.line }}>
       <div className="flex shrink-0 items-center justify-center whitespace-nowrap border-r-2 px-2 text-center font-sans font-bold" style={{ width: labelWidth, borderColor: L.colors.line, background: L.colors.label, color: L.colors.subInk, fontSize: L.font.label }}>{label}</div>
-      <div className="flex min-w-0 flex-1 items-center justify-center overflow-hidden whitespace-nowrap px-2 text-center font-sans" style={{ color: L.colors.ink, fontSize: L.font.value }}>{value}</div>
+      <div className={`flex min-w-0 flex-1 items-center justify-center overflow-hidden px-2 text-center font-sans ${wrapValues ? 'whitespace-pre-wrap break-words' : 'whitespace-nowrap'}`} style={{ color: L.colors.ink, fontSize: L.font.value, lineHeight: wrapValues ? '28px' : undefined }}>{value}</div>
     </div>)}
   </div>
+}
+
+function shouldUseTwoLines(value: string, threshold: number) {
+  return value.includes('\n') || Array.from(value.trim()).length > threshold
+}
+
+function estimateWrappedLines(value: string, charactersPerLine: number) {
+  if (!value.trim()) return 1
+  return value.split('\n').reduce((total, line) => total + Math.max(1, Math.ceil(Array.from(line).length / charactersPerLine)), 0)
+}
+
+function getFreeSpaceHeight(value: string) {
+  const contentHeight = estimateWrappedLines(value, 48) * 28 + 32
+  return Math.min(360, Math.max(L.freeSpaceHeight, contentHeight))
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -31,6 +45,10 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 export function ResumePreview({ data, avatarUrl, resumeDate, exportRef }: { data: ResumeData; avatarUrl: string | null; resumeDate?: string | null; exportRef?: Ref<HTMLDivElement> }) {
   const sectionContent = getResumeSectionContent(data)
+  const currentDecksWrap = shouldUseTwoLines(data.currentDecksText, 38)
+  const duelMastersPlayDeckWrap = shouldUseTwoLines(data.duelMastersPlayMainDeck, 38)
+  const interestsWrap = shouldUseTwoLines(data.favoriteYouTuber, 13) || shouldUseTwoLines(data.otherInterests, 13)
+  const freeSpaceHeight = getFreeSpaceHeight(sectionContent.freeSpace.text)
   const renderSection = (section: ResumeSection) => {
     switch (section) {
       case 'interaction':
@@ -45,7 +63,7 @@ export function ResumePreview({ data, avatarUrl, resumeDate, exportRef }: { data
         </section>
       case 'freeSpace':
         return <section key={section} style={{ marginTop: 30 }}><SectionTitle>フリースペース</SectionTitle>
-          <div className="overflow-hidden whitespace-pre-wrap break-words border p-4 font-sans" style={{ marginTop: L.sectionContentGap, height: L.freeSpaceHeight, borderColor: '#cbd5e1', fontSize: L.font.freeSpace, lineHeight: '28px' }}>{sectionContent.freeSpace.text}</div>
+          <div className="overflow-hidden whitespace-pre-wrap break-words border p-4 font-sans" style={{ marginTop: L.sectionContentGap, height: freeSpaceHeight, borderColor: '#cbd5e1', fontSize: L.font.freeSpace, lineHeight: '28px' }}>{sectionContent.freeSpace.text}</div>
         </section>
     }
   }
@@ -68,9 +86,9 @@ export function ResumePreview({ data, avatarUrl, resumeDate, exportRef }: { data
       </div>
     </div>
     <section style={{ marginTop: L.sectionGap }}>
-      <FieldRow labelWidth={L.fullLabelWidth} cells={[["使用デッキ", data.currentDecksText || '-']]} />
-      <FieldRow labelWidth={L.fullLabelWidth} cells={[["デュエプレの使用デッキ", data.duelMastersPlayMainDeck || '-']]} />
-      <FieldRow labelWidth={L.fullLabelWidth} cells={[["好きなYouTuber", data.favoriteYouTuber || '-'], ['好きな事', data.otherInterests || '-']]} />
+      <FieldRow labelWidth={L.fullLabelWidth} height={currentDecksWrap ? L.rowHeight * 2 : L.rowHeight} wrapValues={currentDecksWrap} cells={[["使用デッキ", data.currentDecksText || '-']]} />
+      <FieldRow labelWidth={L.fullLabelWidth} height={duelMastersPlayDeckWrap ? L.rowHeight * 2 : L.rowHeight} wrapValues={duelMastersPlayDeckWrap} cells={[["デュエプレの使用デッキ", data.duelMastersPlayMainDeck || '-']]} />
+      <FieldRow labelWidth={L.fullLabelWidth} height={interestsWrap ? L.rowHeight * 2 : L.rowHeight} wrapValues={interestsWrap} cells={[["好きなYouTuber", data.favoriteYouTuber || '-'], ['好きな事', data.otherInterests || '-']]} />
     </section>
     {RESUME_SECTION_ORDER.map(renderSection)}
     <p className="absolute left-0 text-center font-sans" style={{ top: L.height - L.margin / 2 - 28, width: L.width, color: L.colors.muted, fontSize: L.font.footer }}>デュエマ掲示板　https://www.duema-bbs.com　#デュエマ履歴書</p>
