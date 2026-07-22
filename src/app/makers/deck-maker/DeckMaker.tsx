@@ -19,6 +19,7 @@ import {
 import { CardCatalogSearchPanel } from '@/components/CardCatalogSearchPanel'
 import { CardDetailModal } from '@/components/CardDetailModal'
 import { useCardCatalogSearch } from '@/hooks/use-card-catalog-search'
+import { useCardPrintingSelector } from '@/hooks/use-card-printing-selector'
 import { deleteMyDeck, savePublishedDeck } from './actions'
 
 const OFFICIAL_ORIGIN = 'https://dm.takaratomy.co.jp'
@@ -236,16 +237,16 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   const [deleteDeckId, setDeleteDeckId] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
   const [notice, setNotice] = useState('')
-  const [selectedCard, setSelectedCard] = useState<DeckCard | null>(null)
-  const [printingOptions, setPrintingOptions] = useState<DeckCard[]>([])
-  const [printingsLoading, setPrintingsLoading] = useState(false)
   const [resetConfirm, setResetConfirm] = useState(false)
   const [pngPreview, setPngPreview] = useState<{ src: string; title: string; fileName: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const savingRef = useRef(false)
-  const printingsAbort = useRef<AbortController | null>(null)
-  const printingsCache = useRef(new Map<string, DeckCard[]>())
   const searchInput = useRef<HTMLInputElement>(null)
+  const { selectedCard, printingOptions, loading: printingsLoading, openCard, closeCard, selectPrinting } = useCardPrintingSelector({
+    normalizeCard: safeCard,
+    onLoadError: () => setNotice('別イラストを読み込めませんでした'),
+    onOptionsLoaded: prefetchCardImages,
+  })
   const mainTotal = zoneDeckSize(entries, 'main')
   const activeTotal = zoneDeckSize(entries, activeZone)
   const effectiveDeckName = deckName.trim() || DEFAULT_DECK_NAME
@@ -312,65 +313,10 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   }, [ready, savedDecks])
 
   useEffect(() => {
-    if (!selected) return
-    const close = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setSelectedCard(null)
-    }
-    window.addEventListener('keydown', close)
-    return () => window.removeEventListener('keydown', close)
-  }, [selected])
-
-  useEffect(() => {
     if (!notice) return
     const timer = window.setTimeout(() => setNotice(''), 2400)
     return () => window.clearTimeout(timer)
   }, [notice])
-
-  function openCard(card: DeckCard) {
-    printingsAbort.current?.abort()
-    const cached = printingsCache.current.get(card.id)
-    const controller = new AbortController()
-    printingsAbort.current = controller
-    setSelectedCard(card)
-    setPrintingOptions(cached ?? [card])
-    setPrintingsLoading(!cached)
-    if (cached) {
-      prefetchCardImages(cached)
-      return
-    }
-    fetch(`/api/cards/${encodeURIComponent(card.id)}/printings`, { signal: controller.signal })
-      .then((response) => response.json())
-      .then((data) => {
-        const cards = Array.isArray(data.cards) ? (data.cards as DeckCard[]).map(safeCard) : []
-        if (cards.length) {
-          const unique = new Map<string, DeckCard>()
-          for (const printing of cards) unique.set(printingKey(printing), printing)
-          if (!unique.has(printingKey(card))) unique.set(printingKey(card), card)
-          const options = [...unique.values()]
-          printingsCache.current.set(card.id, options)
-          prefetchCardImages(options)
-          setPrintingOptions(options)
-          setSelectedCard(options.find(option => printingKey(option) === printingKey(card)) ?? card)
-        }
-      })
-      .catch((error: unknown) => {
-        if (!(error instanceof DOMException && error.name === 'AbortError')) setNotice('別イラストを読み込めませんでした')
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setPrintingsLoading(false)
-      })
-  }
-
-  function closeCard() {
-    printingsAbort.current?.abort()
-    setSelectedCard(null)
-    setPrintingOptions([])
-    setPrintingsLoading(false)
-  }
-
-  function selectPrinting(printing: DeckCard) {
-    setSelectedCard(printing)
-  }
 
   function add(card: DeckCard) {
     const key = zonedPrintingKey(card, activeZone)
@@ -388,14 +334,12 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   }
 
   function resetDeck() {
-    printingsAbort.current?.abort()
     setEntries([])
     setFormat('original')
     setActiveZone('main')
     setDeckName(DEFAULT_DECK_NAME)
     setActiveSavedDeckId(null)
-    setSelectedCard(null)
-    setPrintingOptions([])
+    closeCard()
     setResetConfirm(false)
     setNotice('デッキをリセットしました')
   }
