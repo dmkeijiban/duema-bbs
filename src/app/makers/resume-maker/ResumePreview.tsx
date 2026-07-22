@@ -91,3 +91,27 @@ export function ScaledResumePreview({ data, avatarUrl, resumeDate, className }: 
     <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: L.width, height: L.height }}><ResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} /></div>
   </div>
 }
+
+
+export function FullscreenResumePreview({ data, avatarUrl, resumeDate, className }: { data: ResumeData; avatarUrl: string | null; resumeDate?: string | null; className?: string }) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [scale, setScale] = useState(0)
+
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element) return
+    const update = () => setScale(Math.min(1, element.clientWidth / L.width, element.clientHeight / L.height))
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
+  return <div ref={containerRef} className={`flex h-full min-h-0 w-full items-center justify-center overflow-hidden ${className ?? ''}`}>
+    {scale > 0 && <div className="shrink-0" style={{ width: L.width * scale, height: L.height * scale }}>
+      <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: L.width, height: L.height }}>
+        <ResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} />
+      </div>
+    </div>}
+  </div>
+}

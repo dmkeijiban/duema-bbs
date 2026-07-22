@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ScaledResumePreview } from '@/app/makers/resume-maker/ResumePreview'
-import { ResumeProfileCard } from '@/components/ResumeProfileCard'
+import { FullscreenResumePreview, ScaledResumePreview } from '@/app/makers/resume-maker/ResumePreview'
 import type { PublicResumeSubmission } from '@/lib/maker-resume-queries'
 
 function excerpt(value: string, max = 40) {
@@ -53,20 +52,23 @@ export function ResumeSubmissionsList({ submissions, viewerLoggedIn }: { submiss
       </div>
 
       {openSubmission && (
-        <div role="presentation" className="fixed inset-0 z-50 overflow-auto bg-black/80 p-3" onMouseDown={event => { if (event.currentTarget === event.target) setOpenId(null) }}>
-          <div className="mx-auto max-w-lg">
-            <div className="mb-2 flex justify-end"><button type="button" onClick={() => setOpenId(null)} aria-label="閉じる" className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl">×</button></div>
-            <div className="rounded-2xl bg-white p-3">
-              <div className="flex items-center gap-2 px-1">
-                <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-50">
-                  {openSubmission.avatarUrl && <img src={openSubmission.avatarUrl} alt="" className="h-full w-full object-cover" />}
-                </div>
-                <p className="min-w-0 truncate font-black text-slate-900">{openSubmission.displayName}</p>
-                <Link href={`/u/${openSubmission.profileSlug}`} className="ml-auto shrink-0 text-xs font-bold text-blue-700 hover:underline">公開プロフィールを見る</Link>
+        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3" onMouseDown={event => { if (event.currentTarget === event.target) setOpenId(null) }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="resume-submission-preview-title" className="flex h-full max-h-[calc(100dvh-24px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex shrink-0 items-center gap-2 border-b px-3 py-2">
+              <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-50">
+                {openSubmission.avatarUrl && <img src={openSubmission.avatarUrl} alt="" className="h-full w-full object-cover" />}
               </div>
-              <ResumeProfileCard data={openSubmission.data} avatarUrl={openSubmission.avatarUrl} resumeDate={openSubmission.updatedAt} isOwner={false} isPublic={true} viewerLoggedIn={viewerLoggedIn} />
+              <h2 id="resume-submission-preview-title" className="min-w-0 truncate font-black text-slate-900">{openSubmission.displayName}</h2>
+              <button type="button" onClick={() => setOpenId(null)} aria-label="閉じる" className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-2xl hover:bg-slate-100">×</button>
             </div>
-          </div>
+            <div className="min-h-0 flex-1 bg-slate-100 p-2 sm:p-4">
+              <FullscreenResumePreview data={openSubmission.data} avatarUrl={openSubmission.avatarUrl} resumeDate={openSubmission.updatedAt} />
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2 border-t bg-white p-3">
+              <Link href={`/u/${openSubmission.profileSlug}`} className="inline-flex min-h-11 flex-1 items-center justify-center rounded border border-gray-300 px-3 text-xs font-bold text-gray-700 hover:bg-gray-50">公開プロフィールを見る</Link>
+              <Link href={viewerLoggedIn ? '/mypage' : '/login?mode=signup&next=/mypage'} className="inline-flex min-h-11 flex-1 items-center justify-center rounded border border-blue-300 px-3 text-xs font-bold text-blue-700 hover:bg-blue-50">自分の履歴書を作る</Link>
+            </div>
+          </section>
         </div>
       )}
     </>
