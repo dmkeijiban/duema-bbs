@@ -9,7 +9,8 @@ import { getCachedUserRankings } from '@/lib/cached-queries'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 import { getOwnResumeSubmission } from '@/lib/maker-resume-queries'
-import { ResumeMypagePanel } from '@/components/ResumeMypagePanel'
+import { CreatedContentSection } from '@/components/CreatedContentSection'
+import { getMyCreatedContent } from '@/lib/mypage-created-content'
 
 type Profile = {
   display_name: string
@@ -556,13 +557,14 @@ export default async function MyPage({
     redirect('/account/reactivate')
   }
 
-  const [myThreads, myPosts, rankings, activityCounts, notifications, resume] = await Promise.all([
+  const [myThreads, myPosts, rankings, activityCounts, notifications, resume, createdContent] = await Promise.all([
     getMyThreads(user.id),
     getMyPosts(user.id),
     getCachedUserRankings(),
     getMyActivityCounts(user.id),
     getActivityNotifications({ userId: user.id, sessionId: null }),
     getOwnResumeSubmission(user.id),
+    getMyCreatedContent(user.id),
   ])
 
   const emptySuggestion = notifications.length === 0
@@ -641,26 +643,13 @@ export default async function MyPage({
             }
           />
 
-          <section className="rounded border border-gray-200 bg-white">
-            <div className="border-b border-blue-100 bg-blue-50 px-4 py-3">
-              <h2 className="text-sm font-bold text-blue-900">デュエマ履歴書</h2>
-            </div>
-            {resume ? (
-              <ResumeMypagePanel
-                data={resume.data}
-                avatarUrl={profile.avatar_url}
-                isPublic={resume.isPublic}
-                updatedAtLabel={formatDateTime(resume.updatedAt)}
-                resumeDate={resume.updatedAt}
-              />
-            ) : (
-              <div className="p-4">
-                <p className="text-sm text-gray-600">あなたの好きなカードやメインデッキ、デュエマ歴を、本物の履歴書風にまとめられます。</p>
-                <Link href="/makers/resume-maker" className="mt-3 inline-flex items-center justify-center rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">デュエマ履歴書を作る</Link>
-                <Link href="/makers/resume-maker/submissions" className="mt-2 block text-center text-xs font-bold text-blue-700 hover:underline">みんなの履歴書を見る</Link>
-              </div>
-            )}
-          </section>
+          <CreatedContentSection
+            resume={resume}
+            avatarUrl={profile.avatar_url}
+            resumeUpdatedAtLabel={resume ? formatDateTime(resume.updatedAt) : ''}
+            nine={createdContent.nine}
+            deck={createdContent.deck}
+          />
 
           {notifications.length > 0 ? (
             <NotificationListCard notifications={notifications} />

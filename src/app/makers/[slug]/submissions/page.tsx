@@ -17,6 +17,8 @@ import SmoothHashLink from '@/components/SmoothHashLink'
 import { getOwnedMakerSubmissionIds } from '@/lib/maker-anonymous-owner'
 import { ADMIN_COOKIE, verifyAdminCookie } from '@/lib/admin-auth'
 import { cookies } from 'next/headers'
+import { RepresentativeButton } from '@/components/RepresentativeButton'
+import { getRepresentativeId } from '@/lib/user-content-representatives'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,9 +50,15 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
   const admin = createAdminClient()
   const [ownedSubmissionIds, mineSubmissions, selectAggregate] = await Promise.all([
     tab === 'all' ? getOwnedMakerSubmissionIds(project.id, submissions.map(submission => submission.id), user?.id ?? null) : Promise.resolve(new Set<string>()),
-    tab === 'mine' ? getOwnedPublicSubmissions(project.id, user?.id ?? null) : Promise.resolve([] as PublicSubmission[]),
+    tab === 'mine'
+      ? getOwnedPublicSubmissions(project.id, user?.id ?? null).then(items => slug === 'my-duema-9' && user ? items.filter(item => item.user_id === user.id) : items)
+      : Promise.resolve([] as PublicSubmission[]),
     tab === 'ranking' ? getSelectMakerAggregates(project.id) : Promise.resolve(null),
   ])
+  const savedRepresentativeId = tab === 'mine' && slug === 'my-duema-9' && user
+    ? await getRepresentativeId(user.id, 'my_duema_9')
+    : null
+  const representativeId = savedRepresentativeId ?? mineSubmissions[0]?.id ?? null
   const [{ data: links }, { data: rows }] = await Promise.all([
     project.type === 'tier' || project.type === 'prediction' ? admin.from('maker_project_cards').select('cards!inner(id,name,image_url,civilization,cost,card_type,regulation,source_key,is_active)').eq('project_id', project.id).eq('cards.is_active', true).order('sort_order') : Promise.resolve({ data: [] }),
     project.type === 'tier' ? admin.from('maker_tier_aggregates').select('card_id,s_count,a_count,b_count,c_count,d_count,rating_count,average_tier').eq('project_id', project.id) : project.type === 'prediction' ? admin.from('maker_selection_aggregates').select('card_id,selection_count,submission_count,selection_rate').eq('project_id', project.id) : Promise.resolve({ data: [] }),
@@ -101,7 +109,12 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
         <p className="mt-1 text-sm text-gray-600">{submission.authorName}</p>
         {submission.comment && <p className="mt-2 line-clamp-2 break-words text-sm text-gray-600">{submission.comment}</p>}
         <time className="mt-2 block text-xs text-gray-400">{formatJapanDateTime(submission.created_at)}</time>
-      </Link><SubmissionActions slug={slug} submissionId={submission.id} canEdit={canEdit} /></article>
+      </Link>
+      {tab === 'mine' && slug === 'my-duema-9' && user && (
+        <div className="mt-3"><RepresentativeButton contentType="my_duema_9" contentId={submission.id} selected={representativeId === submission.id} /></div>
+      )}
+      <SubmissionActions slug={slug} submissionId={submission.id} canEdit={canEdit} />
+    </article>
   return <main className="min-h-screen bg-slate-50 px-3 py-6"><div className="mx-auto max-w-6xl">
     <Link href={`/makers/${slug}`} className="text-sm font-bold text-blue-700">{backLabel}</Link>
     <div className="mt-3 sm:flex sm:items-end sm:justify-between sm:gap-4">
