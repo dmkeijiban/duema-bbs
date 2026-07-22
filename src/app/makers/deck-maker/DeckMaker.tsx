@@ -65,6 +65,7 @@ function safeCard(card: DeckCard): DeckCard {
     sourceKey: typeof card.sourceKey === 'string' ? card.sourceKey.slice(0, 100) : null,
     name: typeof card.name === 'string' ? card.name.slice(0, 200) : '',
     nameKana: typeof card.nameKana === 'string' ? card.nameKana.slice(0, 200) : null,
+    cost: Number.isInteger(card.cost) && Number(card.cost) >= 0 ? Number(card.cost) : null,
     imageUrl: safeOfficialUrl(card.imageUrl, 'image'),
     officialPageUrl: safeOfficialUrl(card.officialPageUrl, 'page'),
     matchedFace: card.matchedFace && typeof card.matchedFace.name === 'string' && Number.isInteger(card.matchedFace.sideIndex) ? {
@@ -390,6 +391,27 @@ export default function DeckMaker() {
     setNotice('デッキをリセットしました')
   }
 
+  function sortDeckByCost() {
+    setEntries(list => list.map((entry, index) => ({ entry, index })).sort((a, b) => {
+      const costA = a.entry.cost ?? Number.MAX_SAFE_INTEGER
+      const costB = b.entry.cost ?? Number.MAX_SAFE_INTEGER
+      return costA - costB || a.entry.name.localeCompare(b.entry.name, 'ja') || a.index - b.index
+    }).map(item => item.entry))
+    setNotice('コストが小さい順に並べ替えました')
+  }
+
+  function moveSelectedEntry(offset: -1 | 1) {
+    if (!selected) return
+    setEntries(list => {
+      const index = list.findIndex(entry => printingKey(entry) === printingKey(selected))
+      const target = index + offset
+      if (index < 0 || target < 0 || target >= list.length) return list
+      const next = [...list]
+      ;[next[index], next[target]] = [next[target], next[index]]
+      return next
+    })
+  }
+
   async function saveCurrentDeck() {
     if (!entries.length) return setNotice('カードを追加してください')
     if (savingRef.current) return
@@ -563,6 +585,7 @@ export default function DeckMaker() {
           <button onClick={savePng} aria-label="デッキ画像を出力" className="flex min-h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 hover:bg-slate-50 [&>svg]:h-4 [&>svg]:w-4">
             <Icon name="download" /><span>画像出力</span>
           </button>
+          <button onClick={sortDeckByCost} disabled={entries.length < 2} aria-label="コストが小さい順に並べ替え" className="flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40">コスト順</button>
           <button onClick={() => entries.length ? setResetConfirm(true) : resetDeck()} aria-label="デッキをリセット" className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-red-50 hover:text-red-700 [&>svg]:h-4 [&>svg]:w-4">
             <Icon name="trash" />
           </button>
@@ -673,6 +696,10 @@ export default function DeckMaker() {
                 <div className="min-w-20 text-center"><span className="text-3xl font-black">{selectedCount}</span></div>
                 <button type="button" onClick={() => add(selected)} disabled={selectedNameCount >= MAX_SAME_CARD} aria-label={`${selected.name}を1枚増やす`} className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-700 text-2xl font-bold text-white disabled:bg-slate-400">＋</button>
               </div>
+              {selectedCount > 0 && <div className="mt-2 grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => moveSelectedEntry(-1)} className="min-h-10 rounded-lg border border-slate-300 text-sm font-bold text-slate-700">左へ移動</button>
+                <button type="button" onClick={() => moveSelectedEntry(1)} className="min-h-10 rounded-lg border border-slate-300 text-sm font-bold text-slate-700">右へ移動</button>
+              </div>}
               <div className="mt-5">
                 <p className="mb-2 text-center text-xs font-bold text-slate-600">表裏面・収録版</p>
                 {printingsLoading && <p className="mb-2 text-center text-xs font-bold text-slate-500">表裏面と収録版を読み込み中…</p>}

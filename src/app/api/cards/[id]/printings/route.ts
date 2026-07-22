@@ -30,6 +30,7 @@ type Row = {
   name: string
   name_kana: string | null
   image_url: string | null
+  cost: number | null
   card_printings?: Printing[]
   card_faces?: Face[]
 }
@@ -82,8 +83,8 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     const faceProbe = await admin.from('card_faces').select('id', { head: true, count: 'exact' }).limit(1)
     const facesAvailable = !faceProbe.error
     const columns = facesAvailable
-      ? 'id,name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,card_number,is_search_visible),card_faces(card_printing_id,side_index,side_kind,name,name_kana,image_url,official_page_url)'
-      : 'id,name,name_kana,image_url,card_printings(id,source_key,official_page_url,image_url,set_name,card_number,is_search_visible)'
+      ? 'id,name,name_kana,image_url,cost,card_printings(id,source_key,official_page_url,image_url,set_name,card_number,is_search_visible),card_faces(card_printing_id,side_index,side_kind,name,name_kana,image_url,official_page_url)'
+      : 'id,name,name_kana,image_url,cost,card_printings(id,source_key,official_page_url,image_url,set_name,card_number,is_search_visible)'
     const { data, error } = await admin
       .from('cards')
       .select(columns)
@@ -153,6 +154,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
             officialPageUrl: front?.official_page_url ?? printing.official_page_url ?? `https://dm.takaratomy.co.jp/card/detail/?id=${encodeURIComponent(printing.source_key)}`,
             printingId: printing.id,
             sourceKey: printing.source_key,
+            cost: row.cost,
           }]
         }
         return faces.map((face) => ({
@@ -163,12 +165,13 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
           officialPageUrl: face.official_page_url ?? printing.official_page_url,
           printingId: printing.id,
           sourceKey: printing.source_key,
+          cost: row.cost,
           matchedFace: { name: face.name, imageUrl: face.image_url, sideIndex: face.side_index, sideKind: face.side_kind },
         }))
       })
 
     if (!cards.length) {
-      cards.push({ id: row.id, name: row.name, nameKana: row.name_kana, imageUrl: row.image_url, officialPageUrl: null, sourceKey: null })
+      cards.push({ id: row.id, name: row.name, nameKana: row.name_kana, imageUrl: row.image_url, officialPageUrl: null, sourceKey: null, cost: row.cost })
     }
 
     const seenImage = new Set<string>()
