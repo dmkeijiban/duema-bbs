@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import Link from 'next/link'
 import {
   DECK_STORAGE_KEY,
   DECK_STORAGE_VERSION,
@@ -12,6 +13,7 @@ import {
 } from '@/lib/deck-maker'
 import { CardCatalogSearchPanel } from '@/components/CardCatalogSearchPanel'
 import { useCardCatalogSearch } from '@/hooks/use-card-catalog-search'
+import { publishDeck } from './actions'
 
 const OFFICIAL_ORIGIN = 'https://dm.takaratomy.co.jp'
 const DEFAULT_DECK_NAME = 'メインデッキ'
@@ -210,6 +212,7 @@ export default function DeckMaker() {
   const [printingsLoading, setPrintingsLoading] = useState(false)
   const [resetConfirm, setResetConfirm] = useState(false)
   const [pngPreview, setPngPreview] = useState<{ src: string; title: string; fileName: string } | null>(null)
+  const [publishing, setPublishing] = useState(false)
   const printingsAbort = useRef<AbortController | null>(null)
   const printingsCache = useRef(new Map<string, DeckCard[]>())
   const searchInput = useRef<HTMLInputElement>(null)
@@ -397,6 +400,22 @@ export default function DeckMaker() {
     setNotice('マイデッキに保存しました')
   }
 
+  async function publishCurrentDeck() {
+    if (total !== MAX_DECK_CARDS) return setNotice('40枚そろったデッキを登録してください')
+    if (publishing) return
+    setPublishing(true)
+    setNotice('みんなのデッキリストに登録中…')
+    const result = await publishDeck({
+      title: effectiveDeckName,
+      entries: entries.map(entry => ({ id: entry.id, sourceKey: entry.sourceKey, count: entry.count })),
+    })
+    setPublishing(false)
+    setNotice(result.message)
+    if (result.ok && result.submissionId) {
+      window.location.assign(`/makers/deck-maker/submissions/${result.submissionId}`)
+    }
+  }
+
   function openSavedDeck(deck: SavedDeck) {
     const restored = deck.entries.map((entry) => ({ ...entry }))
     setEntries(restored)
@@ -503,6 +522,23 @@ export default function DeckMaker() {
           </button>
         </div>
       </header>
+
+      <div className="mb-3 grid gap-2 sm:grid-cols-2">
+        <Link
+          href="/makers/deck-maker/submissions"
+          className="flex min-h-11 items-center justify-center rounded-xl border border-blue-700 bg-white px-4 text-sm font-black text-blue-700 transition active:scale-[0.99] active:bg-blue-50"
+        >
+          みんなのデッキリストを見る
+        </Link>
+        <button
+          type="button"
+          onClick={publishCurrentDeck}
+          disabled={publishing || total !== MAX_DECK_CARDS}
+          className="min-h-11 rounded-xl bg-emerald-700 px-4 text-sm font-black text-white transition active:scale-[0.99] active:bg-emerald-900 disabled:cursor-not-allowed disabled:bg-slate-400"
+        >
+          {publishing ? '登録中…' : 'みんなのデッキリストに登録'}
+        </button>
+      </div>
 
       {notice && <div role="status" className="fixed left-1/2 top-20 z-[60] -translate-x-1/2 rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white shadow-xl">{notice}</div>}
 
