@@ -3,9 +3,7 @@ import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { Pagination } from '@/components/Pagination'
 import { PublicDeckCard, type PublicDeckCardData } from '@/components/deck/PublicDeckCard'
-import { RepresentativeButton } from '@/components/RepresentativeButton'
 import { createClient } from '@/lib/supabase-server'
-import { getRepresentativeId } from '@/lib/user-content-representatives'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,7 +48,6 @@ export default async function PublicDeckListPage({ searchParams }: { searchParam
     return profile && !profile.profile_hidden && !profile.account_suspended && !profile.withdrawn_at
   })
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
-  const savedRepresentativeId = tab === 'mine' && user ? await getRepresentativeId(user.id, 'deck') : null
 
   return <main className="min-h-screen bg-slate-100 px-3 py-3 sm:py-5">
     <div className="mx-auto max-w-6xl">
@@ -74,10 +71,7 @@ export default async function PublicDeckListPage({ searchParams }: { searchParam
       </form>
 
       {visibleDecks.length ? <div className="mt-5 grid gap-4 md:grid-cols-2">
-        {visibleDecks.map(deck => <article key={deck.id}>
-          <PublicDeckCard deck={deck} authorName={deck.user_id ? String(profileById.get(deck.user_id)?.display_name || 'デュエマプレイヤー') : '名無しのデュエリスト'} />
-          {tab === 'mine' && user && <div className="mt-2"><RepresentativeButton contentType="deck" contentId={deck.id} selected={savedRepresentativeId === deck.id} /></div>}
-        </article>)}
+        {visibleDecks.map(deck => <PublicDeckCard key={deck.id} deck={deck} authorName={deck.user_id ? String(profileById.get(deck.user_id)?.display_name || 'デュエマプレイヤー') : '名無しのデュエリスト'} />)}
       </div> : <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-16 text-center">
         <p className="font-bold text-slate-800">{query ? '条件に一致するデッキはありません' : '公開されたデッキはまだありません'}</p>
         {query ? <Link href={tab === 'mine' ? '/makers/deck-maker/submissions?tab=mine' : '/makers/deck-maker/submissions'} className="mt-4 inline-flex min-h-11 items-center text-sm font-bold text-blue-700">検索をクリア</Link> : <Link href="/makers/deck-maker" className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-blue-700 px-5 font-bold text-white">最初のデッキを作る</Link>}
