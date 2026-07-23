@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { FullscreenResumePreview, ScaledResumePreview } from '@/app/makers/resume-maker/ResumePreview'
+import { FullscreenResumeRenderer, ScaledResumeRenderer } from '@/app/makers/resume-maker/ResumeRenderer'
 import type { ResumeData } from '@/lib/maker-resume'
 
 export function ResumeMypagePanel({
@@ -38,7 +38,7 @@ export function ResumeMypagePanel({
     <>
       <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start">
         <button type="button" aria-label="履歴書を拡大表示" onClick={() => setIsPreviewOpen(true)} className="w-28 shrink-0 cursor-zoom-in overflow-hidden rounded border border-gray-200 text-left">
-          <ScaledResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} />
+          <ScaledResumeRenderer data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} />
         </button>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-gray-900">{initialIsPublic ? '公開中' : '非公開'}</p>
@@ -54,7 +54,7 @@ export function ResumeMypagePanel({
         <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center overscroll-contain bg-black/75 p-3" onMouseDown={event => { if (event.currentTarget === event.target) setIsPreviewOpen(false) }}>
           <section role="dialog" aria-modal="true" aria-labelledby="resume-mypage-preview-title" className="relative flex h-full max-h-[calc(100dvh-24px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex shrink-0 items-center justify-between border-b px-4 py-2"><h2 id="resume-mypage-preview-title" className="font-black text-slate-900">デュエマ履歴書</h2><button type="button" onClick={() => setIsPreviewOpen(false)} aria-label="拡大プレビューを閉じる" className="flex h-11 w-11 items-center justify-center rounded-full text-2xl text-slate-700 hover:bg-slate-100">×</button></div>
-            <div className="min-h-0 flex-1 bg-slate-100 p-2 sm:p-4"><FullscreenResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} /></div>
+            <div className="min-h-0 flex-1 bg-slate-100 p-2 sm:p-4"><FullscreenResumeRenderer data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} /></div>
           </section>
         </div>
       )}

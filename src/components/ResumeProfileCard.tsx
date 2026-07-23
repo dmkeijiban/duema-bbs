@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { FullscreenResumePreview, ResumePreview, ScaledResumePreview } from '@/app/makers/resume-maker/ResumePreview'
+import { FullscreenResumeRenderer, ResumeRenderer, ScaledResumeRenderer } from '@/app/makers/resume-maker/ResumeRenderer'
 import { renderResumeExportImage, resumePngFileName } from '@/lib/maker-resume-export'
 import { RESUME_SHARE_TEXT } from '@/app/makers/resume-maker/constants'
 import type { ResumeData } from '@/lib/maker-resume'
@@ -75,14 +75,14 @@ export function ResumeProfileCard({ data, avatarUrl, resumeDate, isOwner, isPubl
   return (
     <section className="mt-4 rounded-sm border border-gray-200 bg-white px-4 py-4">
       <div aria-hidden="true" className="pointer-events-none fixed left-[-10000px] top-0">
-        <ResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} exportRef={exportPreviewRef} />
+        <ResumeRenderer data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} exportRef={exportPreviewRef} />
       </div>
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold text-gray-800">デュエマ履歴書</h2>
         {isOwner && <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${isPublic ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>{isPublic ? '公開中' : '非公開'}</span>}
       </div>
       <button type="button" onClick={() => setZoomed(true)} aria-label="デュエマ履歴書を拡大表示" className="mt-3 block w-40 overflow-hidden rounded border border-gray-200 transition-transform hover:scale-[1.02] sm:w-48">
-        <ScaledResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} />
+        <ScaledResumeRenderer data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} />
       </button>
       {showActions && (
         <div className="mt-3 flex flex-wrap gap-2">
@@ -97,7 +97,7 @@ export function ResumeProfileCard({ data, avatarUrl, resumeDate, isOwner, isPubl
         <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-3" onMouseDown={event => { if (event.currentTarget === event.target) setZoomed(false) }}>
           <section role="dialog" aria-modal="true" aria-label="デュエマ履歴書" className="flex h-full max-h-[calc(100dvh-24px)] w-full max-w-[900px] flex-col overflow-hidden">
             <div className="mb-2 flex shrink-0 justify-end"><button type="button" onClick={() => setZoomed(false)} aria-label="閉じる" className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl">×</button></div>
-            <div className="min-h-0 flex-1"><FullscreenResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} /></div>
+            <div className="min-h-0 flex-1"><FullscreenResumeRenderer data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} /></div>
           </section>
         </div>
       )}

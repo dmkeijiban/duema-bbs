@@ -19,6 +19,7 @@ export const RESUME_MAX_FAVORITE_YOUTUBER = 60
 export const RESUME_MAX_OTHER_INTERESTS = 100
 export const RESUME_MAX_FREE_SPACE = 200
 export const RESUME_MAX_FREE_SPACE_LINES = 8
+export const RESUME_MAX_FAVORITE_CARD_COMMENT = 60
 
 export type ResumeHistoryEntry = { id: string; period: string; content: string }
 export type ResumeDeckEntry = { id: string; period: string; deckName: string }
@@ -32,8 +33,14 @@ export type ResumePhotoCard = {
 }
 export type ResumePhoto = { type: 'avatar' } | ResumePhotoCard | null
 
+export type ResumeLayoutType = 'classic' | 'visual'
+export const RESUME_LAYOUT_TYPES = ['classic', 'visual'] as const satisfies readonly ResumeLayoutType[]
+export const RESUME_DEFAULT_NEW_LAYOUT_TYPE: ResumeLayoutType = 'visual'
+export const RESUME_DEFAULT_LEGACY_LAYOUT_TYPE: ResumeLayoutType = 'classic'
+
 export type ResumeData = {
   version: 1
+  layoutType: ResumeLayoutType
   handleName: string
   startedAt: string
   generation: string
@@ -43,6 +50,8 @@ export type ResumeData = {
   gender: string
   ageGroup: string
   photo: ResumePhoto
+  /** 見やすさ重視レイアウトの「好きなカード」欄に添える短い一言コメント。標準レイアウトでは表示しない。 */
+  favoriteCardComment: string
   currentDecksText: string
   favoriteYouTuber: string
   otherInterests: string
@@ -118,6 +127,10 @@ export function clampCurrentDecksText(value: string): string {
 
 export function clampOtherInterestsText(value: string): string {
   return clampMultilineText(value, RESUME_MAX_OTHER_INTERESTS, 4)
+}
+
+export function clampFavoriteCardComment(value: string): string {
+  return clampText(value, RESUME_MAX_FAVORITE_CARD_COMMENT)
 }
 
 function sanitizePresetKeys(value: unknown, allowed: readonly { key: string }[], max: number): string[] {
@@ -199,14 +212,23 @@ function deriveFreeSpace(raw: Record<string, unknown>): string {
   return clampFreeSpaceText(typeof raw.aboutDuema === 'string' ? raw.aboutDuema : '')
 }
 
-/** 未検証の入力（localStorage・フォーム）を安全なResumeDataへ正規化する。壊れたデータは空値へフォールバックする。 */
-export function sanitizeResumeData(value: unknown): ResumeData {
+function sanitizeLayoutType(value: unknown, fallback: ResumeLayoutType): ResumeLayoutType {
+  return (RESUME_LAYOUT_TYPES as readonly string[]).includes(value as string) ? value as ResumeLayoutType : fallback
+}
+
+/**
+ * 未検証の入力（localStorage・フォーム・DBのjsonb）を安全なResumeDataへ正規化する。壊れたデータは空値へフォールバックする。
+ * layoutType が未保存の場合のフォールバックは呼び出し元が決める：
+ * 新規作成（emptyResumeData）は「見やすさ重視」、既存データ読み込みは「標準」を既定とする。
+ */
+export function sanitizeResumeData(value: unknown, options?: { defaultLayoutType?: ResumeLayoutType }): ResumeData {
   const raw = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>
   const civilizationValue = clampText(raw.favoriteCivilization, 20)
   const playStyleValue = clampText(raw.playStyle, 20)
   const legacyDeckHistory = sanitizeDeckHistory(raw.deckHistory)
   return {
     version: 1,
+    layoutType: sanitizeLayoutType(raw.layoutType, options?.defaultLayoutType ?? RESUME_DEFAULT_LEGACY_LAYOUT_TYPE),
     handleName: clampText(raw.handleName, RESUME_MAX_HANDLE_NAME),
     startedAt: clampText(raw.startedAt, RESUME_MAX_STARTED_AT),
     generation: DUEMA_GENERATIONS.some(o => o.label === clampText(raw.generation, 10)) ? clampText(raw.generation, 10) : '',
@@ -216,6 +238,7 @@ export function sanitizeResumeData(value: unknown): ResumeData {
     gender: sanitizeChoice(raw.gender, RESUME_GENDERS, 10, RESUME_UNANSWERED),
     ageGroup: sanitizeChoice(raw.ageGroup, RESUME_AGE_GROUPS, 10, RESUME_UNANSWERED),
     photo: sanitizePhoto(raw.photo),
+    favoriteCardComment: clampFavoriteCardComment(typeof raw.favoriteCardComment === 'string' ? raw.favoriteCardComment : ''),
     currentDecksText: deriveCurrentDecksText(raw, legacyDeckHistory),
     favoriteYouTuber: clampText(raw.favoriteYouTuber, RESUME_MAX_FAVORITE_YOUTUBER),
     otherInterests: clampOtherInterestsText(typeof raw.otherInterests === 'string' ? raw.otherInterests : ''),
@@ -232,7 +255,7 @@ export function sanitizeResumeData(value: unknown): ResumeData {
 }
 
 export function emptyResumeData(): ResumeData {
-  return sanitizeResumeData({})
+  return sanitizeResumeData({}, { defaultLayoutType: RESUME_DEFAULT_NEW_LAYOUT_TYPE })
 }
 
 export function isResumeComplete(data: ResumeData) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { FullscreenResumePreview, ScaledResumePreview } from '@/app/makers/resume-maker/ResumePreview'
+import { FullscreenResumeRenderer, ScaledResumeRenderer } from '@/app/makers/resume-maker/ResumeRenderer'
 import type { PublicResumeSubmission } from '@/lib/maker-resume-queries'
 
 function excerpt(value: string, max = 40) {
@@ -42,7 +42,7 @@ export function ResumeSubmissionsList({ submissions }: { submissions: PublicResu
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {submissions.map(submission => (
           <button key={submission.id} type="button" onClick={() => setOpenId(submission.id)} className="min-w-0 rounded-xl border bg-white p-3 text-left shadow-sm transition hover:border-blue-400 hover:shadow-md active:scale-[0.99]">
-            <div className="w-full overflow-hidden rounded border border-gray-200"><ScaledResumePreview data={submission.data} avatarUrl={submission.avatarUrl} resumeDate={submission.updatedAt} /></div>
+            <div className="w-full overflow-hidden rounded border border-gray-200"><ScaledResumeRenderer data={submission.data} avatarUrl={submission.avatarUrl} resumeDate={submission.updatedAt} /></div>
             <div className="mt-2 flex items-center gap-2">
               <div className="h-7 w-7 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-50">
                 {submission.avatarUrl && <img src={submission.avatarUrl} alt="" className="h-full w-full object-cover" />}
@@ -72,7 +72,7 @@ export function ResumeSubmissionsList({ submissions }: { submissions: PublicResu
               <button type="button" onClick={closeSubmission} aria-label="閉じる" className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-2xl hover:bg-slate-100 active:scale-95">×</button>
             </div>
             <button type="button" onClick={() => setIsExtraZoomOpen(true)} aria-label="履歴書を拡大表示" className="relative min-h-0 flex-1 bg-slate-100 p-2 text-left sm:p-4">
-              <FullscreenResumePreview data={openSubmission.data} avatarUrl={openSubmission.avatarUrl} resumeDate={openSubmission.updatedAt} />
+              <FullscreenResumeRenderer data={openSubmission.data} avatarUrl={openSubmission.avatarUrl} resumeDate={openSubmission.updatedAt} />
             </button>
             <div className="flex shrink-0 flex-wrap gap-2 border-t bg-white p-3">
               <Link href={`/u/${openSubmission.profileSlug}`} className="inline-flex min-h-11 flex-1 items-center justify-center rounded border border-gray-300 px-3 text-xs font-bold text-gray-700 hover:bg-gray-50 active:scale-[0.99]">公開プロフィールを見る</Link>
@@ -89,7 +89,7 @@ export function ResumeSubmissionsList({ submissions }: { submissions: PublicResu
               <button type="button" onClick={() => setIsExtraZoomOpen(false)} aria-label="拡大表示を閉じる" className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl shadow-lg active:scale-95">×</button>
             </div>
             <div className="overflow-hidden bg-white shadow-2xl">
-              <ScaledResumePreview data={openSubmission.data} avatarUrl={openSubmission.avatarUrl} resumeDate={openSubmission.updatedAt} />
+              <ScaledResumeRenderer data={openSubmission.data} avatarUrl={openSubmission.avatarUrl} resumeDate={openSubmission.updatedAt} />
             </div>
           </div>
         </div>

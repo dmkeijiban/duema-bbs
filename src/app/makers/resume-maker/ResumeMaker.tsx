@@ -17,6 +17,7 @@ import {
   RESUME_GENERATIONS,
   RESUME_DUEL_MASTERS_PLAY_STATUSES,
   RESUME_MAX_CURRENT_DECKS_TEXT,
+  RESUME_MAX_FAVORITE_CARD_COMMENT,
   RESUME_MAX_FAVORITE_YOUTUBER,
   RESUME_MAX_FREE_SPACE,
   RESUME_MAX_OTHER_INTERESTS,
@@ -24,14 +25,17 @@ import {
   RESUME_REGIONS,
   RESUME_SOCIAL_TAG_PRESETS,
   clampCurrentDecksText,
+  clampFavoriteCardComment,
   clampFreeSpaceText,
   clampOtherInterestsText,
   emptyResumeData,
   isResumeComplete,
   sanitizeResumeData,
   type ResumeData,
+  type ResumeLayoutType,
 } from '@/lib/maker-resume'
-import { ResumePreview, ScaledResumePreview } from './ResumePreview'
+import { ResumeRenderer, ScaledResumeRenderer } from './ResumeRenderer'
+import { ResumeLayoutToggle } from './ResumeLayoutToggle'
 import { RESUME_STEPS, RESUME_SHARE_TEXT } from './constants'
 import type { ResumeInitialState } from './types'
 import { saveResumeSubmission, setResumeVisibility } from './actions'
@@ -151,24 +155,32 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
     } finally { setIsTogglingVisibility(false) }
   }
 
+  async function buildResumePngFile() {
+    const blob = await renderResumeExportImage(exportPreviewRef.current)
+    const fileName = resumePngFileName(data.handleName)
+    const file = new File([blob], fileName, { type: blob.type || 'image/png' })
+    return { fileName, file }
+  }
+
+  async function fileToDataUrl(file: Blob) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.onerror = () => reject(reader.error)
+      reader.readAsDataURL(file)
+    })
+  }
+
   async function handleSaveImage() {
     if (isSavingImage || !complete) { if (!complete) setMessage('名前を入力してください'); return }
     setIsSavingImage(true)
     try {
-      const blob = await renderResumeExportImage(exportPreviewRef.current)
-      const fileName = resumePngFileName(data.handleName)
-      const file = new File([blob], fileName, { type: blob.type || 'image/png' })
+      const { fileName, file } = await buildResumePngFile()
       const usesMobileSaveFlow = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
       if (usesMobileSaveFlow) {
-        const src = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(String(reader.result))
-          reader.onerror = () => reject(reader.error)
-          reader.readAsDataURL(blob)
-        })
-        setPngPreview({ src, fileName, file })
+        setPngPreview({ src: await fileToDataUrl(file), fileName, file })
       } else {
-        const objectUrl = URL.createObjectURL(blob)
+        const objectUrl = URL.createObjectURL(file)
         const link = document.createElement('a')
         link.href = objectUrl
         link.download = fileName
@@ -178,6 +190,19 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
         URL.revokeObjectURL(objectUrl)
       }
       void persistToDb(isPublic)
+    } catch { setMessage('画像生成に失敗しました') }
+    finally { setIsSavingImage(false) }
+  }
+
+  /** PNGプレビュー内でのレイアウト切替。連打・切替直後でも古いレイアウトの画像を保存しないよう、再描画を待ってから作り直す。 */
+  async function handlePngPreviewLayoutChange(next: ResumeLayoutType) {
+    if (isSavingImage || data.layoutType === next) return
+    update('layoutType', next)
+    setIsSavingImage(true)
+    try {
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      const { fileName, file } = await buildResumePngFile()
+      setPngPreview({ src: await fileToDataUrl(file), fileName, file })
     } catch { setMessage('画像生成に失敗しました') }
     finally { setIsSavingImage(false) }
   }
@@ -214,7 +239,7 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
 
   return <div className="pb-28">
     <CardDetailModal card={cardSelector.selectedCard} versions={cardSelector.printingOptions} loading={cardSelector.loading} onClose={cardSelector.closeCard} onSelectVersion={cardSelector.selectPrinting} onChoose={card => { update('photo', favoritePhoto(card)); cardSelector.closeCard() }} onAddFilter={filter => { cardSearch.addFilter(filter); cardSelector.closeCard() }} renderCardArt={card => card.imageUrl ? <img src={card.imageUrl} alt={card.name} className="aspect-[5/7] w-full object-contain" /> : <div className="flex aspect-[5/7] items-center justify-center rounded-xl bg-slate-800 p-3 text-center text-sm font-bold text-white">{card.name}</div>} />
-    <div aria-hidden="true" className="pointer-events-none fixed left-[-10000px] top-0"><ResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} exportRef={exportPreviewRef} /></div>
+    <div aria-hidden="true" className="pointer-events-none fixed left-[-10000px] top-0"><ResumeRenderer data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} exportRef={exportPreviewRef} /></div>
 
     <header className="mb-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <h1 className="text-lg font-black text-slate-900">デュエマ履歴書メーカー</h1>
@@ -256,6 +281,10 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
 
         {step === 3 && <>
           <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
+            <ResumeLayoutToggle value={data.layoutType} onChange={next => update('layoutType', next)} />
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
             <p className="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800">最後に画面下部の保存ボタンから履歴書を保存してください。</p>
             <h2 className="font-black text-slate-900">対戦・交流について</h2><input value={data.socialNote} onChange={e => update('socialNote', e.target.value.slice(0, 40))} maxLength={40} placeholder="自由記述（任意）" className="mt-2 h-9 w-full rounded-lg border border-slate-300 bg-slate-50 px-2 text-sm" /><div className="mt-2 flex flex-wrap gap-2">{RESUME_SOCIAL_TAG_PRESETS.map(preset => <button key={preset.key} type="button" onClick={() => toggleSocialTag(preset.key)} className={`min-h-9 rounded-full border px-3 text-xs font-bold ${data.socialTags.includes(preset.key) ? 'border-emerald-700 bg-emerald-50 text-emerald-800' : 'border-slate-300 text-slate-600'}`}>{preset.label}</button>)}</div>
             <h2 className="mt-5 font-black text-slate-900">大会・デュエマ実績</h2><input value={data.achievementNote} onChange={e => update('achievementNote', e.target.value.slice(0, 40))} maxLength={40} placeholder="自由記述（任意）" className="mt-2 h-9 w-full rounded-lg border border-slate-300 bg-slate-50 px-2 text-sm" /><div className="mt-2 flex flex-wrap gap-2">{RESUME_ACHIEVEMENT_PRESETS.map(preset => <button key={preset.key} type="button" onClick={() => toggleAchievement(preset.key)} className={`min-h-9 rounded-full border px-3 text-xs font-bold ${data.achievements.includes(preset.key) ? 'border-emerald-700 bg-emerald-50 text-emerald-800' : 'border-slate-300 text-slate-600'}`}>{preset.label}</button>)}</div>
@@ -266,6 +295,7 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
           <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
             <div className="flex items-center justify-between gap-3"><div><h2 className="font-black text-slate-900">好きなカード</h2><p className="mt-1 text-xs text-slate-500">選んだカードをフリースペースの右側に表示します。</p></div>{favoriteCard && <button type="button" onClick={() => update('photo', null)} className="min-h-9 rounded-lg border border-red-300 px-3 text-xs font-bold text-red-700">選択を解除</button>}</div>
             {favoriteCard && <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3"><img src={favoriteCard.imageUrl ?? ''} alt={favoriteCard.name} className="h-28 w-20 object-contain" /><p className="font-bold text-slate-900">{favoriteCard.name}</p></div>}
+            {favoriteCard && <label className="mt-3 block text-xs font-bold text-slate-700">カードコメント（見やすさ重視レイアウトのみ表示・任意）<input value={data.favoriteCardComment} onChange={e => update('favoriteCardComment', clampFavoriteCardComment(e.target.value))} maxLength={RESUME_MAX_FAVORITE_CARD_COMMENT} placeholder="このカードが好きな理由など" className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm" /></label>}
             <div className="mt-4"><CardCatalogSearchPanel cards={cardSearch.cards} query={cardSearch.query} loading={cardSearch.loading} hasMore={cardSearch.hasMore} onLoadMore={cardSearch.loadMore} onSelect={cardSelector.openCard} onQueryChange={cardSearch.setQuery} onClear={() => { cardSearch.setQuery(''); searchInput.current?.focus() }} inputRef={searchInput} selectedCount={card => favoriteCard?.cardId === card.id ? 1 : 0} selectedBadge={() => '選択中'} filters={cardSearch.filters} onRemoveFilter={cardSearch.removeFilter} onClearFilters={cardSearch.clearFilters} /></div>
           </section>
 
@@ -275,13 +305,13 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
         {step < 3 ? <div className="flex gap-2"><button type="button" onClick={() => setStep(current => (current > 1 ? current - 1 : current) as 1 | 2 | 3)} disabled={step === 1} className="min-h-10 flex-1 rounded-lg border border-slate-300 text-sm font-bold text-slate-700 disabled:opacity-30">戻る</button><button type="button" onClick={() => setStep(current => (current + 1) as 2 | 3)} className="min-h-10 flex-1 rounded-lg border border-slate-300 text-sm font-bold text-slate-500">スキップ</button><button type="button" onClick={() => setStep(current => (current + 1) as 2 | 3)} className="min-h-10 flex-1 rounded-lg bg-emerald-700 text-sm font-bold text-white">次へ</button></div> : <div className="flex gap-2"><button type="button" onClick={() => setStep(2)} className="min-h-10 flex-1 rounded-lg border border-slate-300 text-sm font-bold text-slate-700">戻る</button></div>}
       </div>
 
-      <div className="hidden lg:block"><div className="sticky top-3 rounded-2xl border border-slate-200 bg-slate-50 p-3"><ScaledResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} className="mx-auto" /></div></div>
+      <div className="hidden lg:block"><div className="sticky top-3 rounded-2xl border border-slate-200 bg-slate-50 p-3"><ResumeLayoutToggle value={data.layoutType} onChange={next => update('layoutType', next)} heading={null} compact /><ScaledResumeRenderer data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} className="mx-auto mt-3" /></div></div>
     </div>
 
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-2 backdrop-blur"><div className="mx-auto flex max-w-[1200px] items-center gap-2"><button type="button" disabled={!complete || saveState === 'saving'} onClick={() => void handleSaveResume()} className="min-h-11 flex-[2] rounded-lg bg-emerald-700 px-3 text-sm font-black text-white disabled:bg-slate-300">{saveState === 'saving' ? '保存中…' : submissionId ? '変更を保存する' : loggedIn ? '履歴書を保存する' : 'この端末に保存する'}</button><button type="button" disabled={!complete || isSavingImage} onClick={() => void handleSaveImage()} className="min-h-11 flex-1 rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 disabled:opacity-40">{isSavingImage ? '生成中…' : '画像保存'}</button><button type="button" disabled={!complete || isSharing} onClick={() => void handleShare()} className="min-h-11 flex-1 rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 disabled:opacity-40">{isSharing ? '共有中…' : 'X共有'}</button></div></div>
 
-    {mobilePreviewOpen && <div role="presentation" className="fixed inset-0 z-50 overflow-auto bg-black/90 p-3" onMouseDown={event => { if (event.currentTarget === event.target) setMobilePreviewOpen(false) }}><div className="mx-auto max-w-xl"><div className="mb-2 flex justify-end"><button type="button" onClick={() => setMobilePreviewOpen(false)} aria-label="プレビューを閉じる" className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl">×</button></div><ScaledResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} /></div></div>}
+    {mobilePreviewOpen && <div role="presentation" className="fixed inset-0 z-50 overflow-auto bg-black/90 p-3" onMouseDown={event => { if (event.currentTarget === event.target) setMobilePreviewOpen(false) }}><div className="mx-auto max-w-xl"><div className="mb-2 flex items-center justify-between gap-2"><div className="flex-1 rounded-xl bg-white/95 p-2"><ResumeLayoutToggle value={data.layoutType} onChange={next => update('layoutType', next)} heading={null} compact /></div><button type="button" onClick={() => setMobilePreviewOpen(false)} aria-label="プレビューを閉じる" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-2xl">×</button></div><ScaledResumeRenderer data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} /></div></div>}
 
-    {pngPreview && <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center overscroll-contain bg-black/75 p-3" onMouseDown={event => { if (event.currentTarget === event.target) setPngPreview(null) }}><section role="dialog" aria-modal="true" aria-labelledby="resume-png-preview-title" className="relative flex max-h-[calc(100dvh-24px)] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"><div className="flex items-center justify-between border-b px-4 py-2"><div><h2 id="resume-png-preview-title" className="font-black text-slate-900">デュエマ履歴書</h2><p className="text-xs text-slate-500">iPhoneは下のボタンから「画像を保存」を選べます</p></div><button type="button" onClick={() => setPngPreview(null)} aria-label="画像プレビューを閉じる" className="flex h-11 w-11 items-center justify-center rounded-full text-2xl text-slate-700 hover:bg-slate-100">×</button></div><div className="min-h-0 overscroll-contain overflow-auto bg-slate-100 p-2 sm:p-4"><img src={pngPreview.src} alt="デュエマ履歴書の保存用画像" className="mx-auto h-auto max-w-full shadow" /></div><div className="border-t bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"><button type="button" onClick={() => void savePreviewImage()} className="flex min-h-11 w-full items-center justify-center rounded-xl bg-blue-700 px-4 font-bold text-white">画像を保存</button></div></section></div>}
+    {pngPreview && <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center overscroll-contain bg-black/75 p-3" onMouseDown={event => { if (event.currentTarget === event.target) setPngPreview(null) }}><section role="dialog" aria-modal="true" aria-labelledby="resume-png-preview-title" className="relative flex max-h-[calc(100dvh-24px)] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"><div className="flex items-center justify-between border-b px-4 py-2"><div><h2 id="resume-png-preview-title" className="font-black text-slate-900">デュエマ履歴書</h2><p className="text-xs text-slate-500">iPhoneは下のボタンから「画像を保存」を選べます</p></div><button type="button" onClick={() => setPngPreview(null)} aria-label="画像プレビューを閉じる" className="flex h-11 w-11 items-center justify-center rounded-full text-2xl text-slate-700 hover:bg-slate-100">×</button></div><div className="border-b px-4 py-2"><ResumeLayoutToggle value={data.layoutType} onChange={next => void handlePngPreviewLayoutChange(next)} heading={null} compact /></div><div className="min-h-0 overscroll-contain overflow-auto bg-slate-100 p-2 sm:p-4">{isSavingImage ? <div className="flex h-40 items-center justify-center text-sm font-bold text-slate-500">画像を作り直しています…</div> : <img src={pngPreview.src} alt="デュエマ履歴書の保存用画像" className="mx-auto h-auto max-w-full shadow" />}</div><div className="border-t bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"><button type="button" disabled={isSavingImage} onClick={() => void savePreviewImage()} className="flex min-h-11 w-full items-center justify-center rounded-xl bg-blue-700 px-4 font-bold text-white disabled:opacity-50">画像を保存</button></div></section></div>}
   </div>
 }

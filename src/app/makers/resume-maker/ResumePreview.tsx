@@ -4,22 +4,17 @@ import { useEffect, useRef, useState, type Ref } from 'react'
 import { exactCardImageUrl } from '@/lib/card-catalog-shared'
 import { RESUME_MAKER_SLUG, type ResumeData } from '@/lib/maker-resume'
 import { formatResumeDate, RESUME_DEFAULT_AVATAR_PATH, RESUME_LAYOUT as L, RESUME_SECTION_ORDER, type ResumeSection } from '@/lib/maker-resume-layout'
-import { getResumeSectionContent } from '@/lib/maker-resume-render'
+import { estimateWrappedLines, getResumeSectionContent } from '@/lib/maker-resume-render'
 
 function Chip({ children }: { children: React.ReactNode }) {
   return <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border font-sans font-bold" style={{ height: L.chipHeight, paddingInline: L.chipPaddingX, borderColor: L.colors.lightLine, background: L.colors.chip, fontSize: L.font.chip }}>{children}</span>
 }
 
-function DefaultAvatarGlyph() {
-  return <svg className="h-1/2 w-1/2" style={{ color: L.colors.lightLine }} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={RESUME_DEFAULT_AVATAR_PATH} /></svg>
+export function DefaultAvatarGlyph({ color = L.colors.lightLine }: { color?: string }) {
+  return <svg className="h-1/2 w-1/2" style={{ color }} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={RESUME_DEFAULT_AVATAR_PATH} /></svg>
 }
 
 type FieldCell = [label: string, value: string]
-
-function estimateWrappedLines(value: string, charactersPerLine: number) {
-  if (!value.trim()) return 1
-  return value.split('\n').reduce((total, line) => total + Math.max(1, Math.ceil(Array.from(line).length / charactersPerLine)), 0)
-}
 
 function getRowLines(cells: FieldCell[], charactersPerLine: number, maxLines = 3) {
   return Math.min(maxLines, Math.max(1, ...cells.map(([, value]) => estimateWrappedLines(value, charactersPerLine))))
