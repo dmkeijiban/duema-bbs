@@ -57,18 +57,22 @@ export default async function PublicDeckListPage({ searchParams }: { searchParam
           <h1 className="text-2xl font-black text-slate-950">{tab === 'mine' ? '自分のデッキ' : 'みんなのデッキリスト'}</h1>
           <p className="mt-1 text-sm text-slate-600">{tab === 'mine' ? 'あなたが保存したデッキを新着順で表示しています。' : 'オリジナルの公開デッキを新着順で表示しています。'}</p>
         </div>
-        <nav className="mt-4 inline-flex shrink-0 rounded-xl border border-slate-300 bg-white p-1 text-sm font-bold sm:mt-0">
-          <Link href="/makers/deck-maker/submissions/ranking" className="rounded-lg px-4 py-2 text-blue-700">集計結果</Link>
-          <Link href="/makers/deck-maker/submissions" className={`rounded-lg px-4 py-2 ${tab === 'all' ? 'bg-blue-700 text-white' : 'text-blue-700'}`}>みんなのデッキ</Link>
-          <Link href="/makers/deck-maker/submissions?tab=mine" className={`rounded-lg px-4 py-2 ${tab === 'mine' ? 'bg-blue-700 text-white' : 'text-blue-700'}`}>自分のデッキ</Link>
+        <nav className="mt-4 grid w-full shrink-0 grid-cols-4 rounded-xl border border-slate-300 bg-white p-1 text-center text-sm font-bold sm:mt-0 sm:w-auto">
+          <Link href="/makers/deck-maker/submissions/ranking" className="flex min-h-10 items-center justify-center rounded-lg px-2 py-2 text-blue-700 sm:px-4">集計結果</Link>
+          <Link href="/makers/deck-maker/submissions" className={`flex min-h-10 items-center justify-center rounded-lg px-2 py-2 sm:px-4 ${tab === 'all' ? 'bg-blue-700 text-white' : 'text-blue-700'}`}>みんなのデッキ</Link>
+          <Link href="/makers/deck-maker/submissions?tab=mine" className={`flex min-h-10 items-center justify-center rounded-lg px-2 py-2 sm:px-4 ${tab === 'mine' ? 'bg-blue-700 text-white' : 'text-blue-700'}`}>自分のデッキ</Link>
+          <details className="group relative" open={Boolean(query)}>
+            <summary className={`flex min-h-10 cursor-pointer list-none items-center justify-center rounded-lg px-2 py-2 marker:content-none sm:px-4 ${query ? 'bg-blue-50 text-blue-700' : 'text-blue-700'}`}>検索</summary>
+            <div className="absolute right-0 top-[calc(100%+0.5rem)] z-20 w-[min(28rem,calc(100vw-1.5rem))] rounded-xl border border-slate-300 bg-white p-3 shadow-lg">
+              <form className="flex gap-2" action="/makers/deck-maker/submissions">
+                {tab === 'mine' && <input type="hidden" name="tab" value="mine" />}
+                <input name="q" defaultValue={query} maxLength={60} placeholder="デッキ名で検索" className="min-h-12 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 text-base font-normal text-slate-950 outline-none focus:border-blue-600" />
+                <button className="min-h-12 rounded-xl bg-blue-700 px-5 font-bold text-white active:bg-blue-900">検索</button>
+              </form>
+            </div>
+          </details>
         </nav>
       </div>
-
-      <form className="mt-5 flex gap-2" action="/makers/deck-maker/submissions">
-        {tab === 'mine' && <input type="hidden" name="tab" value="mine" />}
-        <input name="q" defaultValue={query} maxLength={60} placeholder="デッキ名で検索" className="min-h-12 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 text-base text-slate-950 outline-none focus:border-blue-600" />
-        <button className="min-h-12 rounded-xl bg-blue-700 px-5 font-bold text-white active:bg-blue-900">検索</button>
-      </form>
 
       {visibleDecks.length ? <div className="mt-5 grid gap-4 md:grid-cols-2">
         {visibleDecks.map(deck => <PublicDeckCard key={deck.id} deck={deck} authorName={deck.user_id ? String(profileById.get(deck.user_id)?.display_name || 'デュエマプレイヤー') : '名無しのデュエリスト'} />)}
