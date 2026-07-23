@@ -4,10 +4,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { printingKey, type DeckCard } from '@/lib/deck-maker'
 
 export const CARD_PRINTING_CHANGE_EVENT = 'duema-bbs:card-printing-change'
-const PRINTING_SELECTOR_RESTORE_KEY = 'duema-bbs:card-printing-selector-restore'
 
 const printingOptionsCache = new Map<string, DeckCard[]>()
 const printingOptionsRequests = new Map<string, Promise<DeckCard[]>>()
+let preservedSelectedCard: DeckCard | null = null
 
 function loadPrintingOptions(card: DeckCard, normalizeCard: (card: DeckCard) => DeckCard) {
   const cached = printingOptionsCache.get(card.id)
@@ -38,14 +38,15 @@ export function useCardPrintingSelector({ normalizeCard = (card: DeckCard) => ca
   onLoadError?: () => void
   onOptionsLoaded?: (cards: DeckCard[]) => void
 } = {}) {
-  const [selectedCard, setSelectedCard] = useState<DeckCard | null>(null)
-  const [printingOptions, setPrintingOptions] = useState<DeckCard[]>([])
-  const [loading, setLoading] = useState(false)
+  const initialCard = preservedSelectedCard ? normalizeCard(preservedSelectedCard) : null
+  const [selectedCard, setSelectedCard] = useState<DeckCard | null>(initialCard)
+  const [printingOptions, setPrintingOptions] = useState<DeckCard[]>(() => initialCard ? printingOptionsCache.get(initialCard.id) ?? [initialCard] : [])
+  const [loading, setLoading] = useState(() => Boolean(initialCard && !printingOptionsCache.has(initialCard.id)))
   const requestId = useRef(0)
 
   const closeCard = useCallback(() => {
     requestId.current += 1
-    try { sessionStorage.removeItem(PRINTING_SELECTOR_RESTORE_KEY) } catch {}
+    preservedSelectedCard = null
     setSelectedCard(null)
     setPrintingOptions([])
     setLoading(false)
@@ -59,46 +60,45 @@ export function useCardPrintingSelector({ normalizeCard = (card: DeckCard) => ca
   }, [closeCard, selectedCard])
 
   const openCard = useCallback((card: DeckCard) => {
+    const normalizedCard = normalizeCard(card)
     const currentRequestId = requestId.current + 1
     requestId.current = currentRequestId
-    const cached = printingOptionsCache.get(card.id)
-    setSelectedCard(card)
-    setPrintingOptions(cached ?? [card])
+    preservedSelectedCard = normalizedCard
+    const cached = printingOptionsCache.get(normalizedCard.id)
+    setSelectedCard(normalizedCard)
+    setPrintingOptions(cached ?? [normalizedCard])
     setLoading(!cached)
     if (cached) { onOptionsLoaded?.(cached); return }
 
-    loadPrintingOptions(card, normalizeCard)
+    loadPrintingOptions(normalizedCard, normalizeCard)
       .then(options => {
         if (requestId.current !== currentRequestId) return
         onOptionsLoaded?.(options)
         setPrintingOptions(options)
-        setSelectedCard(options.find(option => printingKey(option) === printingKey(card)) ?? card)
+        const nextSelected = options.find(option => printingKey(option) === printingKey(normalizedCard)) ?? normalizedCard
+        preservedSelectedCard = nextSelected
+        setSelectedCard(nextSelected)
       })
       .catch(() => { if (requestId.current === currentRequestId) onLoadError?.() })
       .finally(() => { if (requestId.current === currentRequestId) setLoading(false) })
   }, [normalizeCard, onLoadError, onOptionsLoaded])
 
   useEffect(() => {
-    try {
-      const restored = sessionStorage.getItem(PRINTING_SELECTOR_RESTORE_KEY)
-      if (!restored) return
-      sessionStorage.removeItem(PRINTING_SELECTOR_RESTORE_KEY)
-      const card = JSON.parse(restored) as DeckCard
-      if (card && typeof card.id === 'string') openCard(normalizeCard(card))
-    } catch {
-      try { sessionStorage.removeItem(PRINTING_SELECTOR_RESTORE_KEY) } catch {}
-    }
-  }, [normalizeCard, openCard])
+    if (!initialCard || printingOptionsCache.has(initialCard.id)) return
+    openCard(initialCard)
+  }, [initialCard, openCard])
 
   const selectPrinting = useCallback((card: DeckCard) => {
-    if (selectedCard && printingKey(selectedCard) !== printingKey(card)) {
-      try { sessionStorage.setItem(PRINTING_SELECTOR_RESTORE_KEY, JSON.stringify(card)) } catch {}
+    const normalizedCard = normalizeCard(card)
+    if (selectedCard && printingKey(selectedCard) !== printingKey(normalizedCard)) {
+      preservedSelectedCard = normalizedCard
       window.dispatchEvent(new CustomEvent(CARD_PRINTING_CHANGE_EVENT, {
-        detail: { previousCard: selectedCard, nextCard: card },
+        detail: { previousCard: selectedCard, nextCard: normalizedCard },
       }))
     }
-    setSelectedCard(card)
-  }, [selectedCard])
+    preservedSelectedCard = normalizedCard
+    setSelectedCard(normalizedCard)
+  }, [normalizeCard, selectedCard])
 
   return { selectedCard, printingOptions, loading, openCard, closeCard, selectPrinting }
 }
