@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import MakerSubmissionBoard from '@/components/MakerSubmissionBoard'
 import SelectSubmissionBoard from '@/components/SelectSubmissionBoard'
+import { AdstirBannerClient } from '@/components/AdstirBannerClient'
 import { getPublicMakerProject, getPublicSubmission, makerSubmissionView } from '@/lib/maker-submissions'
 import { formatJapanDateTime } from '@/lib/date-time'
 import { createClient } from '@/lib/supabase-server'
@@ -38,6 +39,7 @@ export default async function MakerSubmissionDetailPage({ params }: { params: Pr
     <h1 className="mt-5 break-words text-2xl font-black">{submission.title}</h1>
     <p className="mt-2 text-sm text-gray-600">{prediction ? '表示名' : '制作者'}: {submission.authorName}</p>
     <time className="mt-1 block text-xs text-gray-400">{formatJapanDateTime(submission.created_at)}</time>
+    {isSelect && <AdstirBannerClient slot="sp_list_top" className="mb-0 mt-3" />}
     {submission.comment && <p className="mt-4 whitespace-pre-wrap break-words rounded-xl border bg-white p-4 leading-7">{submission.comment}</p>}
     <div className="mt-5">
       {isSelect
