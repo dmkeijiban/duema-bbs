@@ -36,7 +36,7 @@ export function CardDetailModal({
   renderCardArt,
 }: CardDetailModalProps) {
   const versionScroller = useRef<HTMLDivElement | null>(null)
-  const versionDrag = useRef({ active: false, pointerId: -1, startX: 0, scrollLeft: 0 })
+  const versionDrag = useRef({ active: false, pointerId: -1, startX: 0, scrollLeft: 0, dragging: false })
   const suppressVersionClick = useRef(false)
 
   if (!card) return null
@@ -47,24 +47,30 @@ export function CardDetailModal({
 
   function startVersionDrag(event: React.PointerEvent<HTMLDivElement>) {
     if (event.pointerType !== 'mouse' || !versionScroller.current) return
-    versionDrag.current = { active: true, pointerId: event.pointerId, startX: event.clientX, scrollLeft: versionScroller.current.scrollLeft }
-    versionScroller.current.setPointerCapture(event.pointerId)
+    versionDrag.current = { active: true, pointerId: event.pointerId, startX: event.clientX, scrollLeft: versionScroller.current.scrollLeft, dragging: false }
   }
 
   function moveVersionDrag(event: React.PointerEvent<HTMLDivElement>) {
     const drag = versionDrag.current
     if (!drag.active || drag.pointerId !== event.pointerId || !versionScroller.current) return
     const distance = event.clientX - drag.startX
-    if (Math.abs(distance) > 4) suppressVersionClick.current = true
+    if (!drag.dragging && Math.abs(distance) <= 4) return
+    if (!drag.dragging) {
+      drag.dragging = true
+      suppressVersionClick.current = true
+      versionScroller.current.setPointerCapture(event.pointerId)
+    }
+    event.preventDefault()
     versionScroller.current.scrollLeft = drag.scrollLeft - distance
   }
 
   function endVersionDrag(event: React.PointerEvent<HTMLDivElement>) {
     const drag = versionDrag.current
     if (!drag.active || drag.pointerId !== event.pointerId) return
-    versionDrag.current.active = false
-    if (versionScroller.current?.hasPointerCapture(event.pointerId)) versionScroller.current.releasePointerCapture(event.pointerId)
-    window.setTimeout(() => { suppressVersionClick.current = false }, 0)
+    const wasDragging = drag.dragging
+    versionDrag.current = { active: false, pointerId: -1, startX: 0, scrollLeft: 0, dragging: false }
+    if (wasDragging && versionScroller.current?.hasPointerCapture(event.pointerId)) versionScroller.current.releasePointerCapture(event.pointerId)
+    if (wasDragging) window.setTimeout(() => { suppressVersionClick.current = false }, 0)
   }
 
   return <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-2 sm:p-3" onMouseDown={event => { if (event.currentTarget === event.target) onClose() }}>
