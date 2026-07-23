@@ -40,7 +40,7 @@ export function CreatedContentSection({ resume, avatarUrl, resumeUpdatedAtLabel,
             {deck.items.map((item) => {
               const keyCard = item.deck_data[0]
               return <Link key={item.id} href={`/makers/deck-maker/submissions/${item.id}`} className="grid min-h-0 grid-cols-[72px_1fr] overflow-hidden rounded-lg border border-slate-200 transition active:scale-[0.99]">
-                <div className="min-h-0 bg-slate-800">{keyCard?.imageUrl ? <img src={keyCard.imageUrl} alt={keyCard.name} className="h-full w-full object-cover object-top" /> : null}</div>
+                <div className="flex min-h-0 items-center justify-center bg-slate-100 p-1">{keyCard?.imageUrl ? <img src={keyCard.imageUrl} alt={keyCard.name} className="max-h-full max-w-full object-contain" /> : null}</div>
                 <div className="flex min-w-0 items-center p-3"><p className="line-clamp-2 font-bold text-slate-900">{item.title}</p></div>
               </Link>
             })}
