@@ -38,10 +38,7 @@ export default function HallReleaseMaker(props: { cards: MakerCard[]; draft: Mak
         display: none;
       }
       .hall-release-maker > div > section > div:nth-of-type(2) > label {
-        display: grid;
-        grid-template-columns: minmax(110px, max-content) minmax(0, 1fr);
-        align-items: center;
-        gap: 0.75rem;
+        display: block;
         margin-top: 0;
       }
       .hall-release-maker > div > section > div:nth-of-type(2) > label + label {
@@ -49,7 +46,7 @@ export default function HallReleaseMaker(props: { cards: MakerCard[]; draft: Mak
       }
       .hall-release-maker > div > section > div:nth-of-type(2) input,
       .hall-release-maker > div > section > div:nth-of-type(2) textarea {
-        margin-top: 0;
+        margin-top: 0.375rem;
         min-width: 0;
         min-height: 2.75rem;
         box-sizing: border-box;
