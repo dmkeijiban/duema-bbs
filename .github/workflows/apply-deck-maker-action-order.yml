@@ -1,0 +1,47 @@
+name: Apply deck maker action order
+
+on:
+  push:
+    branches:
+      - fix/deck-maker-action-order
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/deck-maker-action-order
+          fetch-depth: 0
+      - name: Move cost sort button
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/app/makers/deck-maker/DeckMaker.tsx')
+          text = path.read_text(encoding='utf-8')
+          button = '''          <button onClick={sortDeckByCost} disabled={entries.length < 2} aria-label="コストが小さい順に並べ替え" className="flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40">コスト順</button>\n'''
+          if text.count(button) != 1:
+              raise SystemExit(f'expected one header cost button, found {text.count(button)}')
+          text = text.replace(button, '', 1)
+
+          marker = '''        </div>\n        {format === 'advance' && <div className="flex min-w-0 flex-1 flex-wrap gap-1 sm:justify-end">'''
+          replacement = '''        </div>\n        <button onClick={sortDeckByCost} disabled={entries.length < 2} aria-label="コストが小さい順に並べ替え" className="min-h-10 shrink-0 whitespace-nowrap rounded-lg border border-slate-300 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40">コスト順</button>\n        {format === 'advance' && <div className="flex min-w-0 flex-1 flex-wrap gap-1 sm:justify-end">'''
+          if text.count(marker) != 1:
+              raise SystemExit(f'expected one format marker, found {text.count(marker)}')
+          text = text.replace(marker, replacement, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Remove temporary workflow
+        run: rm .github/workflows/apply-deck-maker-action-order.yml
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app/makers/deck-maker/DeckMaker.tsx .github/workflows/apply-deck-maker-action-order.yml
+          git commit -m "デッキメーカーの操作ボタン配置を整理"
+          git push origin HEAD:fix/deck-maker-action-order
