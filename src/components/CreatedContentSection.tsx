@@ -8,6 +8,12 @@ type Resume = { data: ResumeData; isPublic: boolean; updatedAt: string } | null
 
 const actionClass = 'inline-flex min-h-10 items-center justify-center rounded-lg border border-blue-300 px-3 text-sm font-bold text-blue-700 transition active:scale-[0.98]'
 
+function getDeckKeyCard(deck: PublicDeckCardData) {
+  return deck.deck_data.find(card => card.id === deck.key_card_id && (!deck.key_card_printing_id || card.printingId === deck.key_card_printing_id))
+    ?? deck.deck_data.find(card => card.id === deck.key_card_id)
+    ?? deck.deck_data[0]
+}
+
 export function CreatedContentSection({ resume, avatarUrl, resumeUpdatedAtLabel, nine, deck }: {
   resume: Resume
   avatarUrl: string | null
@@ -38,10 +44,10 @@ export function CreatedContentSection({ resume, avatarUrl, resumeUpdatedAtLabel,
         {deck.items.length > 0 ? <div className="flex flex-1 flex-col">
           <div className="mt-3 grid flex-1 grid-rows-4 gap-2">
             {deck.items.map((item) => {
-              const keyCard = item.deck_data[0]
-              return <Link key={item.id} href={`/makers/deck-maker/submissions/${item.id}`} className="grid min-h-0 grid-cols-[72px_1fr] overflow-hidden rounded-lg border border-slate-200 transition active:scale-[0.99]">
-                <div className="flex min-h-0 items-center justify-center bg-slate-100 p-1">{keyCard?.imageUrl ? <img src={keyCard.imageUrl} alt={keyCard.name} className="max-h-full max-w-full object-contain" /> : null}</div>
-                <div className="flex min-w-0 items-center p-3"><p className="line-clamp-2 font-bold text-slate-900">{item.title}</p></div>
+              const keyCard = getDeckKeyCard(item)
+              return <Link key={item.id} href={`/makers/deck-maker/submissions/${item.id}`} className="grid min-h-0 grid-cols-[82px_1fr] overflow-hidden rounded-lg border border-slate-200 transition active:scale-[0.99]">
+                <div className="relative min-h-0 bg-slate-100">{keyCard?.imageUrl ? <img src={keyCard.imageUrl} alt={keyCard.name} className="absolute inset-0 h-full w-full object-contain" /> : null}</div>
+                <div className="flex min-w-0 items-center px-3 py-0"><p className="line-clamp-2 font-bold text-slate-900">{item.title}</p></div>
               </Link>
             })}
           </div>
