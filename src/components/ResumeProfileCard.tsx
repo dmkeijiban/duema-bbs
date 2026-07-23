@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { FullscreenResumeRenderer, ResumeRenderer, ScaledResumeRenderer } from '@/app/makers/resume-maker/ResumeRenderer'
 import { renderResumeExportImage, resumePngFileName } from '@/lib/maker-resume-export'
 import { RESUME_SHARE_TEXT } from '@/app/makers/resume-maker/constants'
+import { PublicProfileCreatedContent } from '@/components/PublicProfileCreatedContent'
 import type { ResumeData } from '@/lib/maker-resume'
 
 type PngPreview = { src: string; fileName: string; file: File }
@@ -24,6 +25,17 @@ export function ResumeProfileCard({ data, avatarUrl, resumeDate, isOwner, isPubl
     window.addEventListener('keydown', close)
     return () => { document.body.style.overflow = previous; window.removeEventListener('keydown', close) }
   }, [zoomed, pngPreview])
+
+  if (!showActions) {
+    return (
+      <PublicProfileCreatedContent
+        data={data}
+        avatarUrl={avatarUrl}
+        resumeDate={resumeDate}
+        isPublic={isPublic}
+      />
+    )
+  }
 
   async function handleSaveImage() {
     if (isSavingImage) return
