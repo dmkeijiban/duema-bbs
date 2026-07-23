@@ -5,7 +5,7 @@ import type { PublicDeckCardData } from '@/components/deck/PublicDeckCard'
 
 export async function getMyCreatedContent(userId: string): Promise<{
   nine: { representative: PublicSubmission | null; count: number }
-  deck: { representative: PublicDeckCardData | null; count: number }
+  deck: { representative: PublicDeckCardData | null; items: PublicDeckCardData[]; count: number }
 }> {
   const project = await getPublicMakerProject('my-duema-9')
   const admin = createAdminClient()
@@ -17,13 +17,19 @@ export async function getMyCreatedContent(userId: string): Promise<{
   ])
   const ownedNineRows = nineRows.filter(item => item.user_id === userId)
   const decks = (deckResult.data ?? []) as PublicDeckCardData[]
+  const representativeDeck = decks.find(item => item.id === deckRepresentativeId) ?? decks[0] ?? null
+  const deckItems = representativeDeck
+    ? [representativeDeck, ...decks.filter(item => item.id !== representativeDeck.id)].slice(0, 3)
+    : []
+
   return {
     nine: {
       representative: ownedNineRows.find(item => item.id === nineRepresentativeId) ?? ownedNineRows[0] ?? null,
       count: ownedNineRows.length,
     },
     deck: {
-      representative: decks.find(item => item.id === deckRepresentativeId) ?? decks[0] ?? null,
+      representative: representativeDeck,
+      items: deckItems,
       count: decks.length,
     },
   }

@@ -13,9 +13,8 @@ export function CreatedContentSection({ resume, avatarUrl, resumeUpdatedAtLabel,
   avatarUrl: string | null
   resumeUpdatedAtLabel: string
   nine: { representative: PublicSubmission | null; count: number }
-  deck: { representative: PublicDeckCardData | null; count: number }
+  deck: { representative: PublicDeckCardData | null; items: PublicDeckCardData[]; count: number }
 }) {
-  const keyCard = deck.representative?.deck_data[0]
   return <section className="rounded border border-gray-200 bg-white">
     <div className="border-b border-blue-100 bg-blue-50 px-4 py-3"><h2 className="text-sm font-bold text-blue-900">作成したコンテンツ</h2></div>
     <div className="grid gap-3 p-3 md:grid-cols-3">
@@ -36,11 +35,16 @@ export function CreatedContentSection({ resume, avatarUrl, resumeUpdatedAtLabel,
 
       <article className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
         <div className="flex items-center justify-between gap-2"><h3 className="font-bold text-slate-900">マイデッキ</h3><span className="text-xs text-slate-500">{deck.count}件</span></div>
-        {deck.representative ? <>
-          <Link href={`/makers/deck-maker/submissions/${deck.representative.id}`} className="mt-3 grid grid-cols-[96px_1fr] overflow-hidden rounded-lg border border-slate-200 transition active:scale-[0.99]">
-            <div className="aspect-[63/88] bg-slate-800">{keyCard?.imageUrl ? <img src={keyCard.imageUrl} alt={keyCard.name} className="h-full w-full object-cover object-top" /> : null}</div>
-            <div className="flex min-w-0 items-center p-3"><p className="line-clamp-3 font-bold text-slate-900">{deck.representative.title}</p></div>
-          </Link>
+        {deck.items.length > 0 ? <>
+          <div className="mt-3 space-y-2">
+            {deck.items.map((item) => {
+              const keyCard = item.deck_data[0]
+              return <Link key={item.id} href={`/makers/deck-maker/submissions/${item.id}`} className="grid grid-cols-[72px_1fr] overflow-hidden rounded-lg border border-slate-200 transition active:scale-[0.99]">
+                <div className="aspect-[63/88] bg-slate-800">{keyCard?.imageUrl ? <img src={keyCard.imageUrl} alt={keyCard.name} className="h-full w-full object-cover object-top" /> : null}</div>
+                <div className="flex min-w-0 items-center p-3"><p className="line-clamp-3 font-bold text-slate-900">{item.title}</p></div>
+              </Link>
+            })}
+          </div>
           <Link href="/makers/deck-maker/submissions?tab=mine" className={`${actionClass} mt-3 w-full`}>すべて見る</Link>
         </> : <div className="py-5 text-center"><p className="text-sm text-slate-500">まだ作成していません</p><Link href="/makers/deck-maker" className={`${actionClass} mt-3`}>作成する</Link></div>}
       </article>
