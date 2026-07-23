@@ -42,7 +42,7 @@ export async function fetchProjectSummaries(period: AnalyticsPeriod): Promise<Pr
     const { data } = await admin.rpc('maker_event_stats_v2', { p_project_id: summary.id, p_today_start: getJstTodayCutoffUtcIso() })
     for (const row of (data ?? []) as { event_type: string; total_count: number }[]) if (row.event_type in summary.events) summary.events[row.event_type as MakerEventType] = Number(row.total_count)
   }))
-  return summaries
+  return summaries.sort((a, b) => Number(b.isPublic) - Number(a.isPublic))
 }
 
 export async function fetchProjectDetail(slug: string, period: AnalyticsPeriod): Promise<ProjectDetail | null> {
