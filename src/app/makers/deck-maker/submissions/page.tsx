@@ -78,17 +78,6 @@ export default async function PublicDeckListPage({ searchParams }: { searchParam
       </div>}
 
       <div className="mt-7"><Pagination currentPage={page} totalPages={totalPages} basePath="/makers/deck-maker/submissions" searchParams={{ q: query || undefined, tab: tab === 'mine' ? 'mine' : undefined }} /></div>
-
-      <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
-        <h2 className="text-xl font-black text-slate-950">みんなのデッキリストについて</h2>
-        <p className="mt-2 text-sm leading-7 text-slate-600">デッキメーカーで40枚完成したデッキを保存すると、ここに新着順で掲載されます。気になるデッキを開いて、採用カードや収録版を確認できます。</p>
-        <h2 className="mt-7 text-xl font-black text-slate-950">よくある質問</h2>
-        <dl className="mt-3 divide-y divide-slate-200">
-          <div className="py-4"><dt className="font-bold text-slate-900">どのフォーマットが表示されますか？</dt><dd className="mt-1 text-sm leading-6 text-slate-600">現在はオリジナルのみです。アドバンスは対応後に追加します。</dd></div>
-          <div className="py-4"><dt className="font-bold text-slate-900">並び順は変えられますか？</dt><dd className="mt-1 text-sm leading-6 text-slate-600">新着順固定です。デッキ名検索で絞り込めます。</dd></div>
-          <div className="py-4"><dt className="font-bold text-slate-900">公開後に変更できますか？</dt><dd className="mt-1 text-sm leading-6 text-slate-600">保存した本人は、デッキメーカーから同じデッキを保存し直すと内容を更新できます。</dd></div>
-        </dl>
-      </section>
     </div>
   </main>
 }
