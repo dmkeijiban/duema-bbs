@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react'
 import { ADSTIR_APP_ID, ADSTIR_SCRIPT_URL, ADSTIR_SLOTS, type AdstirSlotName } from '@/lib/adstir'
 
 const LIST_BOTTOM_MARKER = 'adstir-list-bottom-before-nav'
+const TOP_LIST_TENTH_MARKER = 'adstir-top-list-after-tenth-row'
 const LIST_PAGE_PATHS = new Set(['/', '/update', '/new', '/ranking', '/random', '/kakolog'])
 
 function createAdstirIframe(adSpot: number, width: number, height: number) {
@@ -26,14 +27,38 @@ function createAdstirIframe(adSpot: number, width: number, height: number) {
   return iframe
 }
 
+function createAdHost(marker: string, slotName: string, adSpot: number, width: number, height: number) {
+  const host = document.createElement('div')
+  host.className = 'md:hidden mx-auto flex w-full max-w-full flex-col items-center justify-center overflow-hidden bg-white'
+  host.dataset.adPlacement = marker
+  host.dataset.adProvider = 'adstir'
+  host.dataset.adSlot = slotName
+  host.setAttribute('aria-label', '広告')
+
+  const label = document.createElement('span')
+  label.className = 'mb-1 block text-[10px] leading-none text-gray-400'
+  label.textContent = '広告'
+
+  const content = document.createElement('div')
+  content.className = 'mx-auto overflow-hidden'
+  content.style.width = `${width}px`
+  content.style.height = `${height}px`
+  content.style.maxWidth = '100%'
+  content.appendChild(createAdstirIframe(adSpot, width, height))
+
+  host.append(label, content)
+  return host
+}
+
 export function AdstirBannerClient({ slot, className = '' }: { slot: AdstirSlotName; className?: string }) {
   const pathname = usePathname()
   const { adSpot, width, height } = ADSTIR_SLOTS[slot]
   const containerRef = useRef<HTMLDivElement>(null)
   const hidePrimaryListTop = slot === 'sp_list_top' && LIST_PAGE_PATHS.has(pathname)
+  const moveTopListMiddleAfterTenth = slot === 'sp_list_middle' && pathname === '/'
 
   useEffect(() => {
-    if (hidePrimaryListTop) return
+    if (hidePrimaryListTop || moveTopListMiddleAfterTenth) return
 
     const container = containerRef.current
     if (!container) return
@@ -47,7 +72,43 @@ export function AdstirBannerClient({ slot, className = '' }: { slot: AdstirSlotN
     return () => {
       container.replaceChildren()
     }
-  }, [adSpot, height, hidePrimaryListTop, width])
+  }, [adSpot, height, hidePrimaryListTop, moveTopListMiddleAfterTenth, width])
+
+  useEffect(() => {
+    // トップのカード型スレ一覧では、横長広告を10段目（スマホ3列なので30件目）の直後に表示する。
+    if (!moveTopListMiddleAfterTenth || window.matchMedia('(min-width: 768px)').matches) return
+
+    let insertedHost: HTMLDivElement | null = null
+
+    const insert = () => {
+      if (document.querySelector(`[data-ad-placement="${TOP_LIST_TENTH_MARKER}"]`)) return true
+
+      const grid = document.querySelector<HTMLElement>('div.grid.grid-cols-3.md\\:grid-cols-5.border-l.border-t.border-gray-300')
+      if (!grid) return false
+
+      const threadCards = Array.from(grid.children).filter(element => !element.hasAttribute('data-ad-provider'))
+      const tenthRowLastCard = threadCards[29]
+      if (!tenthRowLastCard) return false
+
+      const host = createAdHost(TOP_LIST_TENTH_MARKER, 'sp_list_middle_tenth_row', adSpot, width, height)
+      host.classList.add('col-span-3', 'border-b', 'border-r', 'border-gray-300', 'py-3', 'md:col-span-5')
+      tenthRowLastCard.after(host)
+      insertedHost = host
+      return true
+    }
+
+    if (insert()) return () => insertedHost?.remove()
+
+    const observer = new MutationObserver(() => {
+      if (insert()) observer.disconnect()
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+
+    return () => {
+      observer.disconnect()
+      insertedHost?.remove()
+    }
+  }, [adSpot, height, moveTopListMiddleAfterTenth, width])
 
   useEffect(() => {
     // 一覧上部と同じ320×100枠を、一覧末尾のページ送りと共通ナビの間にも表示する。
@@ -61,25 +122,8 @@ export function AdstirBannerClient({ slot, className = '' }: { slot: AdstirSlotN
       const nav = document.querySelector<HTMLElement>('nav[aria-label="共通スレッド一覧ナビ"]')
       if (!nav) return false
 
-      const host = document.createElement('div')
-      host.className = 'md:hidden mx-auto my-3 flex w-full max-w-full flex-col items-center justify-center overflow-hidden'
-      host.dataset.adPlacement = LIST_BOTTOM_MARKER
-      host.dataset.adProvider = 'adstir'
-      host.dataset.adSlot = 'sp_list_top_bottom'
-      host.setAttribute('aria-label', '広告')
-
-      const label = document.createElement('span')
-      label.className = 'mb-1 block text-[10px] leading-none text-gray-400'
-      label.textContent = '広告'
-
-      const content = document.createElement('div')
-      content.className = 'mx-auto overflow-hidden'
-      content.style.width = `${width}px`
-      content.style.height = `${height}px`
-      content.style.maxWidth = '100%'
-
-      content.appendChild(createAdstirIframe(adSpot, width, height))
-      host.append(label, content)
+      const host = createAdHost(LIST_BOTTOM_MARKER, 'sp_list_top_bottom', adSpot, width, height)
+      host.classList.add('my-3')
       nav.before(host)
       insertedHost = host
       return true
@@ -100,7 +144,7 @@ export function AdstirBannerClient({ slot, className = '' }: { slot: AdstirSlotN
     }
   }, [adSpot, height, pathname, slot, width])
 
-  if (hidePrimaryListTop) return null
+  if (hidePrimaryListTop || moveTopListMiddleAfterTenth) return null
 
   return (
     <div
