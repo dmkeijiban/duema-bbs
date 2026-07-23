@@ -43,6 +43,12 @@ export default function SelectMakerSubmissionTabs({
           </Link>
         )
       })}
+      <Link
+        href="/makers"
+        className="flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap rounded border border-blue-100 bg-white px-3 text-xs font-medium text-blue-700 hover:bg-blue-50 sm:text-sm"
+      >
+        他の9選を作る
+      </Link>
     </nav>
   )
 }
