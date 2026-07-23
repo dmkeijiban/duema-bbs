@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { AdstirBannerClient } from '@/components/AdstirBannerClient'
 
 const TOP_MARKER = 'nine-selection-tabs-ad'
+const MOBILE_ONLY_HOST_CLASS = 'mt-3 sm:hidden'
 
 function isNineSelectionSubmissionsPage(pathname: string) {
   return /^\/makers\/[^/]+\/submissions\/?$/.test(pathname)
@@ -45,11 +46,12 @@ export function NineSelectionListAds() {
 
       const existingTop = document.querySelector<HTMLDivElement>(`[data-ad-placement="${TOP_MARKER}"]`)
       if (existingTop) {
+        existingTop.className = MOBILE_ONLY_HOST_CLASS
         setTopHost(existingTop)
       } else {
         const host = document.createElement('div')
         host.dataset.adPlacement = TOP_MARKER
-        host.className = 'mt-3'
+        host.className = MOBILE_ONLY_HOST_CLASS
         tabWrapper.after(host)
         insertedTop = host
         setTopHost(host)
