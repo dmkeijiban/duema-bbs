@@ -367,6 +367,11 @@ export async function renderThreadPage(threadId: number, page: number) {
         </div>
       </div>
 
+      {/* スレ一覧上部と同じadstir 320×100を、タイトル直下・新商品予約リンクの直前に表示 */}
+      {page === 1 && adstirVisibility.listTop && (
+        <AdstirBannerClient slot="sp_list_top" className="mt-0 mb-3" />
+      )}
+
       {visibleThreadNotices.map(n => (
         <NoticeBlock key={n.id} notice={n} />
       ))}
