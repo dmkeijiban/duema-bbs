@@ -24,10 +24,10 @@ export default async function ResumeSubmissionsPage({ searchParams }: { searchPa
   const pageHref = (targetPage: number) => `?sort=${sort}&page=${targetPage}#submissions-list`
 
   return (
-    <main className="min-h-screen bg-slate-50 px-3 py-6">
+    <main className="min-h-screen bg-slate-50 px-3 pb-6 pt-1">
       <div className="mx-auto max-w-6xl">
-        <Link href="/makers/resume-maker" className="text-sm font-bold text-blue-700">← 履歴書メーカーへ戻る</Link>
-        <div className="mt-3 sm:flex sm:items-end sm:justify-between sm:gap-4">
+        <Link href="/makers/resume-maker" className="inline-flex h-8 items-center text-sm font-bold text-blue-700">← 履歴書メーカーへ戻る</Link>
+        <div className="mt-1 sm:flex sm:items-end sm:justify-between sm:gap-4">
           <div className="min-w-0">
             <h1 className="text-2xl font-black">みんなのデュエマ履歴書</h1>
             <p className="mt-1 text-sm text-gray-500">デュエマプレイヤーのみんなが作った履歴書を見てみよう。</p>
