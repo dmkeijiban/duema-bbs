@@ -11,7 +11,7 @@ export async function getMyCreatedContent(userId: string): Promise<{
   const admin = createAdminClient()
   const [nineRows, deckResult, nineRepresentativeId, deckRepresentativeId] = await Promise.all([
     project ? getOwnedPublicSubmissions(project.id, userId) : Promise.resolve([]),
-    admin.from('deck_submissions').select('id,user_id,title,format,deck_data,created_at').eq('user_id', userId).eq('format', 'original').order('created_at', { ascending: false }),
+    admin.from('deck_submissions').select('id,user_id,title,format,deck_data,key_card_id,key_card_printing_id,created_at').eq('user_id', userId).eq('format', 'original').order('created_at', { ascending: false }),
     getRepresentativeId(userId, 'my_duema_9'),
     getRepresentativeId(userId, 'deck'),
   ])
