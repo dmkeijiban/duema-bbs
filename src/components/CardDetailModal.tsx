@@ -24,7 +24,6 @@ type CardDetailModalProps = {
 export function CardDetailModal({
   card,
   versions,
-  loading = false,
   count,
   maxReached = false,
   onClose,
@@ -92,7 +91,6 @@ export function CardDetailModal({
       </div>
 
       <div className="shrink-0 border-t border-slate-200 bg-white px-3 pb-2 pt-2 sm:px-5 sm:pb-3">
-        {loading && <p className="mb-1 text-center text-xs font-bold text-slate-500">別イラストを読み込み中…</p>}
         <div ref={versionScroller} className="flex cursor-grab touch-pan-x select-none gap-2 overflow-x-auto overscroll-x-contain pb-1 active:cursor-grabbing" onPointerDown={startVersionDrag} onPointerMove={moveVersionDrag} onPointerUp={endVersionDrag} onPointerCancel={endVersionDrag}>
           {versions.map(version => {
             const active = printingKey(version) === printingKey(card)
