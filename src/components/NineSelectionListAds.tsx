@@ -1,13 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { usePathname } from 'next/navigation'
 import { AdstirBannerClient } from '@/components/AdstirBannerClient'
-import { GOODLIFE_SCRIPT_URL } from '@/lib/ads'
 
 const TOP_MARKER = 'nine-selection-tabs-ad'
-const BETWEEN_MARKER = 'nine-selection-between-first-second-ad'
 
 function isNineSelectionSubmissionsPage(pathname: string) {
   return /^\/makers\/[^/]+\/submissions\/?$/.test(pathname)
@@ -30,55 +28,15 @@ function findVisibleTabWrapper() {
   return overflowWrapper ?? visible
 }
 
-function findSubmissionGrid() {
-  const marker = document.getElementById('submissions-list')
-  if (!marker) return null
-
-  let sibling = marker.nextElementSibling
-  while (sibling) {
-    if (sibling instanceof HTMLElement && sibling.querySelector(':scope > article')) return sibling
-    sibling = sibling.nextElementSibling
-  }
-  return null
-}
-
-function GoodlifeNineSelectionAd() {
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    const script = document.createElement('script')
-    script.type = 'text/javascript'
-    script.charset = 'utf-8'
-    script.src = GOODLIFE_SCRIPT_URL
-    script.async = true
-    container.appendChild(script)
-
-    return () => container.replaceChildren()
-  }, [])
-
-  return (
-    <aside className="my-3 w-full max-w-full overflow-hidden text-center" data-ad-provider="goodlife" data-ad-slot="nine_selection_between" aria-label="広告">
-      <span className="mb-1 block text-[10px] leading-none text-gray-400">広告</span>
-      <div ref={containerRef} className="mx-auto max-w-full overflow-hidden" />
-    </aside>
-  )
-}
-
 export function NineSelectionListAds() {
   const pathname = usePathname()
   const [topHost, setTopHost] = useState<HTMLDivElement | null>(null)
-  const [betweenHost, setBetweenHost] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
     setTopHost(null)
-    setBetweenHost(null)
     if (!isNineSelectionSubmissionsPage(pathname)) return
 
     let insertedTop: HTMLDivElement | null = null
-    let insertedBetween: HTMLDivElement | null = null
 
     const insert = () => {
       const tabWrapper = findVisibleTabWrapper()
@@ -97,22 +55,6 @@ export function NineSelectionListAds() {
         setTopHost(host)
       }
 
-      const grid = findSubmissionGrid()
-      const firstArticle = grid?.querySelector<HTMLElement>(':scope > article')
-      if (grid && firstArticle) {
-        const existingBetween = document.querySelector<HTMLDivElement>(`[data-ad-placement="${BETWEEN_MARKER}"]`)
-        if (existingBetween) {
-          setBetweenHost(existingBetween)
-        } else {
-          const host = document.createElement('div')
-          host.dataset.adPlacement = BETWEEN_MARKER
-          host.className = 'col-span-full min-w-0'
-          firstArticle.after(host)
-          insertedBetween = host
-          setBetweenHost(host)
-        }
-      }
-
       return true
     }
 
@@ -124,20 +66,15 @@ export function NineSelectionListAds() {
       return () => {
         observer.disconnect()
         insertedTop?.remove()
-        insertedBetween?.remove()
       }
     }
 
     return () => {
       insertedTop?.remove()
-      insertedBetween?.remove()
     }
   }, [pathname])
 
-  return (
-    <>
-      {topHost && createPortal(<AdstirBannerClient slot="sp_list_top" className="my-0" />, topHost)}
-      {betweenHost && createPortal(<GoodlifeNineSelectionAd />, betweenHost)}
-    </>
-  )
+  return topHost
+    ? createPortal(<AdstirBannerClient slot="sp_list_top" className="my-0" />, topHost)
+    : null
 }
