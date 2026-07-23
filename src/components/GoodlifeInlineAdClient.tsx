@@ -63,11 +63,12 @@ export function GoodlifeInlineAdClient({
         grid.classList.contains('grid-cols-3')
         && grid.classList.contains('border-l')
         && grid.classList.contains('border-t')
-        && grid.children.length >= 30,
+        && grid.querySelectorAll(':scope > .thread-card').length >= 30,
       )
       if (!threadGrid) return false
 
-      const anchor = threadGrid.children.item(29)
+      const threadCards = threadGrid.querySelectorAll<HTMLElement>(':scope > .thread-card')
+      const anchor = threadCards.item(29)
       if (!anchor) return false
 
       const host = document.createElement('div')
