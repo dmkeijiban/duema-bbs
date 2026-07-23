@@ -20,6 +20,10 @@ type StoredDeckDraft = {
   [key: string]: unknown
 }
 
+type ViewTransitionDocument = Document & {
+  startViewTransition?: (update: () => void) => { finished: Promise<void> }
+}
+
 export default function DeckMakerTemplate({ children }: { children: ReactNode }) {
   const [revision, setRevision] = useState(0)
 
@@ -73,7 +77,11 @@ export default function DeckMakerTemplate({ children }: { children: ReactNode })
         }
 
         localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ ...stored, entries }))
-        setRevision(current => current + 1)
+
+        const refreshDeck = () => setRevision(current => current + 1)
+        const transitionDocument = document as ViewTransitionDocument
+        if (transitionDocument.startViewTransition) transitionDocument.startViewTransition(refreshDeck)
+        else refreshDeck()
       } catch {
         // 保存データが壊れている場合は、通常の収録版プレビュー切替だけを続行する。
       }
@@ -83,5 +91,14 @@ export default function DeckMakerTemplate({ children }: { children: ReactNode })
     return () => window.removeEventListener(CARD_PRINTING_CHANGE_EVENT, replacePrinting)
   }, [])
 
-  return <Fragment key={revision}>{children}</Fragment>
+  return <>
+    <Fragment key={revision}>{children}</Fragment>
+    <style jsx global>{`
+      ::view-transition-old(root),
+      ::view-transition-new(root) {
+        animation-duration: 90ms;
+        animation-timing-function: ease-out;
+      }
+    `}</style>
+  </>
 }
