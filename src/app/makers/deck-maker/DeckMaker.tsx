@@ -556,7 +556,6 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
           <button onClick={savePng} aria-label="デッキ画像を出力" className="flex min-h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 hover:bg-slate-50 [&>svg]:h-4 [&>svg]:w-4">
             <Icon name="download" /><span>画像出力</span>
           </button>
-          <button onClick={sortDeckByCost} disabled={entries.length < 2} aria-label="コストが小さい順に並べ替え" className="flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-lg border border-slate-300 px-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40">コスト順</button>
           <button onClick={() => entries.length ? setResetConfirm(true) : resetDeck()} aria-label="デッキをリセット" className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-red-50 hover:text-red-700 [&>svg]:h-4 [&>svg]:w-4">
             <Icon name="trash" />
           </button>
@@ -568,6 +567,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
         <div className="inline-flex rounded-xl bg-slate-100 p-1 text-sm font-bold">
           {(['original', 'advance'] as const).map(value => <button key={value} type="button" onClick={() => { setFormat(value); setActiveZone('main') }} className={`min-h-10 rounded-lg px-4 ${format === value ? 'bg-blue-700 text-white shadow-sm' : 'text-slate-700 active:bg-slate-200'}`}>{value === 'original' ? 'オリジナル' : 'アドバンス'}</button>)}
         </div>
+        <button onClick={sortDeckByCost} disabled={entries.length < 2} aria-label="コストが小さい順に並べ替え" className="min-h-10 shrink-0 whitespace-nowrap rounded-lg border border-slate-300 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40">コスト順</button>
         {format === 'advance' && <div className="flex min-w-0 flex-1 flex-wrap gap-1 sm:justify-end">
           {(['main', 'gr', 'hyperspatial'] as DeckZone[]).map(zone => <button key={zone} type="button" onClick={() => setActiveZone(zone)} className={`min-h-10 rounded-lg border px-3 text-xs font-bold ${activeZone === zone ? 'border-blue-700 bg-blue-50 text-blue-800' : 'border-slate-200 text-slate-600 active:bg-slate-100'}`}>{ZONE_LABELS[zone]} {zoneDeckSize(entries, zone)} / {DECK_ZONE_LIMITS[zone]}</button>)}
         </div>}
