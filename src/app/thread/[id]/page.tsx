@@ -15,7 +15,8 @@ import { NextReadNav } from '@/components/NextReadNav'
 import { ThreadFloatingActions } from '@/components/ThreadFloatingActions'
 import { AdBanner } from '@/components/AdBanner'
 import { GamAd } from '@/components/GamAd'
-import { AdstirBanner } from '@/components/AdstirBanner'
+import { AdstirBannerClient } from '@/components/AdstirBannerClient'
+import { getAdstirVisibility } from '@/lib/adstir-server'
 import { getDisplayCategory } from '@/lib/categories'
 import { isThinThreadForAdSenseReview, isPrNoticeForAdSenseReview } from '@/lib/adsense-review-mode'
 import { getThreadCommentClosedMessage } from '@/lib/thread-auto-close'
@@ -161,11 +162,12 @@ export default async function ThreadPage({ params }: Props) {
 }
 
 export async function renderThreadPage(threadId: number, page: number) {
-  const [threadRules, threadNotices, postGuidanceSettings, threadPoll] = await Promise.all([
+  const [threadRules, threadNotices, postGuidanceSettings, threadPoll, adstirVisibility] = await Promise.all([
     getCachedSetting('thread_rules', THREAD_RULES_DEFAULT),
     getCachedThreadNotices(),
     getCachedPostGuidanceSettings(),
     getCachedThreadPoll(threadId),
+    getAdstirVisibility(),
   ])
 
   // スレ・レスはキャッシュ済みクエリで取得（30秒TTL）
@@ -389,7 +391,7 @@ export async function renderThreadPage(threadId: number, page: number) {
         showAfterCommentThreadPrompt={postGuidanceSettings.showAfterCommentThreadPrompt}
         showCommentFormHint={postGuidanceSettings.showCommentFormHint}
         poll={threadPoll}
-        inlineAdSlot={<AdstirBanner slot="sp_thread_inline" />}
+        inlineAdSlot={adstirVisibility.threadInline ? <AdstirBannerClient slot="sp_thread_inline" /> : null}
         recommendSlot={
           <Suspense fallback={<RecommendSectionSkeleton />}>
             <RecommendSection
