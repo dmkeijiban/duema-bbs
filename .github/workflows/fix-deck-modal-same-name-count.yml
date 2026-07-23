@@ -1,0 +1,39 @@
+name: Fix deck modal same-name count
+
+on:
+  push:
+    branches:
+      - fix/deck-modal-same-name-count
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/deck-modal-same-name-count
+          fetch-depth: 0
+      - name: Show same-name total in card modal
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/app/makers/deck-maker/DeckMaker.tsx')
+          text = path.read_text()
+          old = '        count={selectedCount}\n'
+          new = '        count={selectedNameCount}\n'
+          if old not in text:
+              raise SystemExit('target line not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          rm .github/workflows/fix-deck-modal-same-name-count.yml
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app/makers/deck-maker/DeckMaker.tsx .github/workflows/fix-deck-modal-same-name-count.yml
+          git commit -m "fix: 同名カード枚数を収録版合計で表示"
+          git push origin HEAD:fix/deck-modal-same-name-count
