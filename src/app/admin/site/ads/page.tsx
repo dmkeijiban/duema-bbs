@@ -5,9 +5,11 @@ import { ADMIN_COOKIE, verifyAdminCookie } from '@/lib/admin-auth'
 import { getAllSettings } from '@/lib/settings'
 import { readGoodlifeAdSettings } from '@/lib/ads'
 import { readGamAdSettings } from '@/lib/gam'
-import { updateGamAdSettingsAction, updateGoodlifeAdSettingsAction } from './actions'
+import { readAdstirAdSettings } from '@/lib/adstir'
+import { updateGamAdSettingsAction, updateGoodlifeAdSettingsAction, updateAdstirAdSettingsAction } from './actions'
 import { AdSettingsForm } from './AdSettingsForm'
 import { GamSettingsForm } from './GamSettingsForm'
+import { AdstirSettingsForm } from './AdstirSettingsForm'
 
 export default async function Page({
   searchParams,
@@ -21,6 +23,7 @@ export default async function Page({
   ])
   const ads = readGoodlifeAdSettings(allSettings)
   const gamAds = readGamAdSettings(allSettings)
+  const adstirAds = readAdstirAdSettings(allSettings)
 
   return (
     <main className="mx-auto max-w-3xl px-3 py-5">
@@ -37,6 +40,8 @@ export default async function Page({
       <AdSettingsForm action={updateGoodlifeAdSettingsAction} ads={ads} />
 
       <GamSettingsForm action={updateGamAdSettingsAction} ads={gamAds} />
+
+      <AdstirSettingsForm action={updateAdstirAdSettingsAction} ads={adstirAds} />
     </main>
   )
 }

@@ -7,6 +7,7 @@ import { ADMIN_COOKIE, verifyAdminCookie } from '@/lib/admin-auth'
 import { createAdminClient } from '@/lib/supabase-admin'
 
 import { GAM_SETTING_KEYS } from '@/lib/gam'
+import { ADSTIR_SETTING_KEYS } from '@/lib/adstir'
 
 const GOODLIFE_BOOLEAN_SETTING_KEYS = [
   'goodlife_inline_enabled',
@@ -58,6 +59,30 @@ export async function updateGamAdSettingsAction(formData: FormData) {
     .upsert(rows, { onConflict: 'key' })
 
   if (error) throw new Error(`GAM広告設定の保存に失敗しました: ${error.message}`)
+
+  revalidateTag('site_settings', { expire: 0 })
+  revalidatePath('/', 'layout')
+  revalidatePath('/admin/site/ads')
+  redirect('/admin/site/ads?saved=1')
+}
+
+export async function updateAdstirAdSettingsAction(formData: FormData) {
+  const cookieStore = await cookies()
+  if (!verifyAdminCookie(cookieStore.get(ADMIN_COOKIE)?.value)) throw new Error('Unauthorized')
+
+  const updatedAt = new Date().toISOString()
+  const rows = ADSTIR_SETTING_KEYS.map(key => ({
+    key,
+    value: formData.get(key) === 'on' ? 'true' : 'false',
+    updated_at: updatedAt,
+  }))
+
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('site_settings')
+    .upsert(rows, { onConflict: 'key' })
+
+  if (error) throw new Error(`adstir広告設定の保存に失敗しました: ${error.message}`)
 
   revalidateTag('site_settings', { expire: 0 })
   revalidatePath('/', 'layout')
