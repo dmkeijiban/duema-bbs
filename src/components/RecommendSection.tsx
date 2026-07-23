@@ -4,6 +4,8 @@ import { seededShuffle } from '@/lib/stable-shuffle'
 import { DEFAULT_THREAD_THUMBNAIL } from '@/lib/thumbnail'
 import { SafeThumbnail } from '@/components/SafeThumbnail'
 import { isAdSenseRiskyThreadTitle } from '@/lib/adsense-review-mode'
+import { AdstirBannerClient } from '@/components/AdstirBannerClient'
+import { getAdstirVisibility } from '@/lib/adstir-server'
 import type { ReactNode } from 'react'
 
 /** CLS防止用スケルトン — fallback={null}の代わりに使う */
@@ -67,38 +69,46 @@ export async function RecommendSection({ threadId, title, categoryId = null, hea
 
   if (threads.length === 0) return null
 
-  return (
-    <div className="mb-2 border border-gray-300 bg-white">
-      <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-gray-300" style={{ background: '#fff' }}>
-        <div className="flex min-w-0 items-center gap-1.5">
-          <span style={{ color: '#004085', fontSize: 13 }}>🔖</span>
-          <span className="font-bold text-sm" style={{ color: '#004085' }}>おすすめ</span>
-        </div>
-        {headerAction}
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 border-l border-t border-gray-300">
-        {threads.map((thread, idx) => {
-          const imgSrc = thread.thumbnail_url ?? thread.image_url ?? DEFAULT_THREAD_THUMBNAIL
-          return (
-            <Link
-              key={thread.id}
-              href={`/thread/${thread.id}`}
-              prefetch={false}
-              className="flex bg-white hover:bg-gray-50 border-b border-r border-gray-300 overflow-hidden"
-            >
-              <div className="relative shrink-0 bg-gray-100 overflow-hidden w-11 h-11 md:w-16 md:h-16">
-                <SafeThumbnail src={imgSrc} alt="" priority={idx === 0} />
-              </div>
-              <div className="px-1 py-0.5 flex-1 min-w-0 flex flex-col justify-center">
-                <p className="text-[10px] md:text-[13px] leading-snug text-gray-800 line-clamp-2 break-all">
-                  {thread.title}
-                </p>
+  const showThreadBottomAd = Boolean(threadId && title) && (await getAdstirVisibility()).listTop
 
-              </div>
-            </Link>
-          )
-        })}
+  return (
+    <>
+      <div className="mb-2 border border-gray-300 bg-white">
+        <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-gray-300" style={{ background: '#fff' }}>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span style={{ color: '#004085', fontSize: 13 }}>🔖</span>
+            <span className="font-bold text-sm" style={{ color: '#004085' }}>おすすめ</span>
+          </div>
+          {headerAction}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 border-l border-t border-gray-300">
+          {threads.map((thread, idx) => {
+            const imgSrc = thread.thumbnail_url ?? thread.image_url ?? DEFAULT_THREAD_THUMBNAIL
+            return (
+              <Link
+                key={thread.id}
+                href={`/thread/${thread.id}`}
+                prefetch={false}
+                className="flex bg-white hover:bg-gray-50 border-b border-r border-gray-300 overflow-hidden"
+              >
+                <div className="relative shrink-0 bg-gray-100 overflow-hidden w-11 h-11 md:w-16 md:h-16">
+                  <SafeThumbnail src={imgSrc} alt="" priority={idx === 0} />
+                </div>
+                <div className="px-1 py-0.5 flex-1 min-w-0 flex flex-col justify-center">
+                  <p className="text-[10px] md:text-[13px] leading-snug text-gray-800 line-clamp-2 break-all">
+                    {thread.title}
+                  </p>
+
+                </div>
+              </Link>
+            )
+          })}
+        </div>
       </div>
-    </div>
+
+      {showThreadBottomAd && (
+        <AdstirBannerClient slot="sp_list_top" className="mt-3 mb-0" />
+      )}
+    </>
   )
 }
