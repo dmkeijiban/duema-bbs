@@ -5,7 +5,6 @@ import { useEffect, useRef } from 'react'
 import { ADSTIR_APP_ID, ADSTIR_SCRIPT_URL, ADSTIR_SLOTS, type AdstirSlotName } from '@/lib/adstir'
 
 const LIST_BOTTOM_MARKER = 'adstir-list-bottom-before-nav'
-const TOP_LIST_TENTH_MARKER = 'adstir-top-list-after-tenth-row'
 const LIST_PAGE_PATHS = new Set(['/update', '/new', '/ranking', '/random', '/kakolog'])
 
 function createAdstirIframe(adSpot: number, width: number, height: number) {
@@ -55,10 +54,9 @@ export function AdstirBannerClient({ slot, className = '' }: { slot: AdstirSlotN
   const { adSpot, width, height } = ADSTIR_SLOTS[slot]
   const containerRef = useRef<HTMLDivElement>(null)
   const hidePrimaryListTop = slot === 'sp_list_top' && LIST_PAGE_PATHS.has(pathname)
-  const moveTopListMiddleAfterTenth = slot === 'sp_list_middle' && pathname === '/'
 
   useEffect(() => {
-    if (hidePrimaryListTop || moveTopListMiddleAfterTenth) return
+    if (hidePrimaryListTop) return
 
     const container = containerRef.current
     if (!container) return
@@ -72,43 +70,7 @@ export function AdstirBannerClient({ slot, className = '' }: { slot: AdstirSlotN
     return () => {
       container.replaceChildren()
     }
-  }, [adSpot, height, hidePrimaryListTop, moveTopListMiddleAfterTenth, width])
-
-  useEffect(() => {
-    // トップのカード型スレ一覧では、横長広告を10段目（スマホ3列なので30件目）の直後に表示する。
-    if (!moveTopListMiddleAfterTenth || window.matchMedia('(min-width: 768px)').matches) return
-
-    let insertedHost: HTMLDivElement | null = null
-
-    const insert = () => {
-      if (document.querySelector(`[data-ad-placement="${TOP_LIST_TENTH_MARKER}"]`)) return true
-
-      const grid = document.querySelector<HTMLElement>('div.grid.grid-cols-3.md\\:grid-cols-5.border-l.border-t.border-gray-300')
-      if (!grid) return false
-
-      const threadCards = Array.from(grid.children).filter(element => !element.hasAttribute('data-ad-provider'))
-      const tenthRowLastCard = threadCards[29]
-      if (!tenthRowLastCard) return false
-
-      const host = createAdHost(TOP_LIST_TENTH_MARKER, 'sp_list_middle_tenth_row', adSpot, width, height)
-      host.classList.add('col-span-3', 'border-b', 'border-r', 'border-gray-300', 'py-3', 'md:col-span-5')
-      tenthRowLastCard.after(host)
-      insertedHost = host
-      return true
-    }
-
-    if (insert()) return () => insertedHost?.remove()
-
-    const observer = new MutationObserver(() => {
-      if (insert()) observer.disconnect()
-    })
-    observer.observe(document.body, { childList: true, subtree: true })
-
-    return () => {
-      observer.disconnect()
-      insertedHost?.remove()
-    }
-  }, [adSpot, height, moveTopListMiddleAfterTenth, width])
+  }, [adSpot, height, hidePrimaryListTop, width])
 
   useEffect(() => {
     // 一覧上部と同じ320×100枠を、一覧末尾のページ送りと共通ナビの間にも表示する。
@@ -144,7 +106,7 @@ export function AdstirBannerClient({ slot, className = '' }: { slot: AdstirSlotN
     }
   }, [adSpot, height, pathname, slot, width])
 
-  if (hidePrimaryListTop || moveTopListMiddleAfterTenth) return null
+  if (hidePrimaryListTop) return null
 
   return (
     <div
