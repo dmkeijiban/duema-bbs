@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { makerRequiresLogin } from '@/lib/maker-auth-requirements'
-import DeckMaker from './DeckMaker'
+import DeckMakerClientShell from './DeckMakerClientShell'
 import DeckKeyCardSelector from './DeckKeyCardSelector'
 import DeckMakerNewDeckUx from './DeckMakerNewDeckUx'
 import DeckMakerInitialDraftGuard from './DeckMakerInitialDraftGuard'
@@ -76,7 +76,7 @@ export default async function DeckMakerPage({ searchParams }: { searchParams: Pr
     <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4">
       <DeckMakerInitialDraftGuard enabled={Boolean(initialDeck)} />
       <DeckMakerNewDeckUx />
-      <DeckMaker initialDeck={initialDeck} dbDecks={dbDecks} />
+      <DeckMakerClientShell initialDeck={initialDeck} dbDecks={dbDecks} />
       <DeckKeyCardSelector initialCardId={initialDeck?.keyCardId} initialPrintingId={initialDeck?.keyCardPrintingId} />
     </main>
   )
