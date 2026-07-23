@@ -195,6 +195,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           strategy="afterInteractive"
         />
 
+        {/* スレ一覧途中のadstir枠は一覧の列欠けを起こすため停止。上部枠だけを表示する。 */}
+        <style>{`[data-ad-provider="adstir"][data-ad-slot="sp_list_middle"]{display:none!important}`}</style>
       </head>
       <body className="min-h-screen antialiased" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
           <Header />
