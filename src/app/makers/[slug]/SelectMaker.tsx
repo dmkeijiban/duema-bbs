@@ -18,6 +18,31 @@ type Draft = { cards: DeckCard[]; title: string; comment: string; listPublic?: b
 type PngPreview = { src: string; title: string; fileName: string; file: File }
 
 const printingKey = cardPrintingKey
+const versionCache = new Map<string, DeckCard[]>()
+const versionRequests = new Map<string, Promise<DeckCard[]>>()
+
+function getVersionOptions(card: DeckCard) {
+  const cached = versionCache.get(card.id)
+  if (cached) return Promise.resolve(cached)
+
+  const pending = versionRequests.get(card.id)
+  if (pending) return pending
+
+  const request = fetch(`/api/cards/${encodeURIComponent(card.id)}/printings`)
+    .then(response => response.ok ? response.json() : Promise.reject(new Error('収録版を取得できませんでした')))
+    .then((payload: { cards?: DeckCard[] }) => {
+      const cards = payload.cards?.length ? payload.cards : [card]
+      const unique = new Map(cards.map(option => [printingKey(option), option]))
+      if (!unique.has(printingKey(card))) unique.set(printingKey(card), card)
+      const options = [...unique.values()]
+      versionCache.set(card.id, options)
+      return options
+    })
+    .finally(() => versionRequests.delete(card.id))
+
+  versionRequests.set(card.id, request)
+  return request
+}
 
 export default function SelectMaker({ slug, config, initialDraft, loggedIn }: { slug: string; config: SelectMakerConfig; initialDraft?: Draft; loggedIn?: boolean }) {
   const storageKey = `select-maker:${slug}:v2`
@@ -38,7 +63,7 @@ export default function SelectMaker({ slug, config, initialDraft, loggedIn }: { 
   const [isSharing, setIsSharing] = useState(false)
   const [pngPreview, setPngPreview] = useState<PngPreview | null>(null)
   const hydrated = useRef(false)
-  const versionAbort = useRef<AbortController | null>(null)
+  const versionRequestId = useRef(0)
 
   useEffect(() => {
     const viewId = crypto.randomUUID()
@@ -87,8 +112,6 @@ export default function SelectMaker({ slug, config, initialDraft, loggedIn }: { 
     return () => { document.body.style.overflow = previousOverflow }
   }, [pngPreview, versionCard])
 
-  useEffect(() => () => versionAbort.current?.abort(), [])
-
   useEffect(() => {
     if (!query.trim()) return
     const timer = setTimeout(() => void recordMakerEvent({ slug, eventType: 'card_searched', anonymousId: getMakerAnonymousId() }), 300)
@@ -109,29 +132,35 @@ export default function SelectMaker({ slug, config, initialDraft, loggedIn }: { 
   }
 
   async function openVersionPicker(card: DeckCard) {
-    versionAbort.current?.abort()
-    const controller = new AbortController()
-    versionAbort.current = controller
+    const currentRequestId = versionRequestId.current + 1
+    versionRequestId.current = currentRequestId
+    const cached = versionCache.get(card.id)
     setVersionCard(card)
-    setVersionOptions([card])
-    setVersionsLoading(true)
+    setVersionOptions(cached ?? [card])
+    setVersionsLoading(!cached)
+    if (cached) return
+
     try {
-      const response = await fetch(`/api/cards/${encodeURIComponent(card.id)}/printings`, { signal: controller.signal, cache: 'no-store' })
-      if (!response.ok) throw new Error('収録版を取得できませんでした')
-      const payload = await response.json() as { cards?: DeckCard[] }
-      const options = payload.cards?.length ? payload.cards : [card]
-      setVersionOptions([...new Map(options.map(option => [printingKey(option), option])).values()])
-    } catch (error) {
-      if (!(error instanceof DOMException && error.name === 'AbortError')) setMessage('収録版の取得に失敗しました。表示中の版は選択できます')
+      const options = await getVersionOptions(card)
+      if (versionRequestId.current !== currentRequestId) return
+      setVersionOptions(options)
+    } catch {
+      if (versionRequestId.current === currentRequestId) setMessage('収録版の取得に失敗しました。表示中の版は選択できます')
     } finally {
-      if (!controller.signal.aborted) setVersionsLoading(false)
+      if (versionRequestId.current === currentRequestId) setVersionsLoading(false)
     }
+  }
+
+  function closeVersionPicker() {
+    versionRequestId.current += 1
+    setVersionCard(null)
+    setVersionOptions([])
+    setVersionsLoading(false)
   }
 
   function selectVersion(card: DeckCard) {
     add(card)
-    setVersionCard(null)
-    setVersionOptions([])
+    closeVersionPicker()
   }
 
   function remove(index: number) {
@@ -241,7 +270,7 @@ export default function SelectMaker({ slug, config, initialDraft, loggedIn }: { 
   }
 
   function reset() {
-    versionAbort.current?.abort()
+    versionRequestId.current += 1
     localStorage.removeItem(storageKey)
     setSelected([])
     setTitle('')
@@ -294,7 +323,7 @@ export default function SelectMaker({ slug, config, initialDraft, loggedIn }: { 
       </section>
       <CardCatalogSearchPanel cards={results} query={query} loading={resultsLoading} hasMore={hasMore} onLoadMore={loadMore} onSelect={card => void openVersionPicker(card)} onQueryChange={setQuery} selectedCount={card => selected.filter(item => item.id === card.id).length}/>
       {zoom && <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={() => setZoom(null)}><img src={zoom.imageUrl ?? '/images/card-placeholder.svg'} alt={zoom.name} className="max-h-[90vh] max-w-[90vw] object-contain"/></div>}
-      {versionCard && <div role="presentation" className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-3" onMouseDown={event => { if (event.currentTarget === event.target) setVersionCard(null) }}><section role="dialog" aria-modal="true" aria-labelledby="select-version-title" className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl"><div className="flex items-center justify-between border-b px-4 py-3"><div><h2 id="select-version-title" className="font-black">カードのバージョンを選択</h2><p className="mt-0.5 text-xs text-slate-500">選んだ画像をそのまま作品と保存画像に使用します</p></div><button type="button" onClick={() => setVersionCard(null)} aria-label="閉じる" className="flex h-11 w-11 items-center justify-center rounded-full text-2xl hover:bg-slate-100">×</button></div><div className="max-h-[72dvh] overflow-auto p-3"><div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">{versionOptions.map(option => <button key={printingKey(option)} type="button" onClick={() => selectVersion(option)} className="overflow-hidden rounded-lg border border-slate-200 bg-slate-100 text-left hover:ring-2 hover:ring-emerald-600"><div className="aspect-[5/7] bg-slate-800">{option.imageUrl ? <img src={option.imageUrl} alt={option.name} className="h-full w-full object-contain"/> : <div className="flex h-full items-center justify-center p-2 text-xs font-bold text-white">画像なし</div>}</div></button>)}</div>{versionsLoading && <p className="py-4 text-center text-sm text-slate-500">読み込み中…</p>}</div></section></div>}
+      {versionCard && <div role="presentation" className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-3" onMouseDown={event => { if (event.currentTarget === event.target) closeVersionPicker() }}><section role="dialog" aria-modal="true" aria-labelledby="select-version-title" className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl"><div className="flex items-center justify-between border-b px-4 py-3"><h2 id="select-version-title" className="font-black">カードのバージョンを選択</h2><button type="button" onClick={closeVersionPicker} aria-label="閉じる" className="flex h-11 w-11 items-center justify-center rounded-full text-2xl hover:bg-slate-100">×</button></div><div className="max-h-[72dvh] overflow-auto p-3"><div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">{versionOptions.map(option => <button key={printingKey(option)} type="button" onClick={() => selectVersion(option)} className="overflow-hidden rounded-lg border border-slate-200 bg-slate-100 text-left hover:ring-2 hover:ring-emerald-600"><div className="aspect-[5/7] bg-slate-800">{option.imageUrl ? <img src={option.imageUrl} alt={option.name} className="h-full w-full object-contain"/> : <div className="flex h-full items-center justify-center p-2 text-xs font-bold text-white">画像なし</div>}</div></button>)}</div>{versionsLoading && <p className="py-4 text-center text-sm text-slate-500">読み込み中…</p>}</div></section></div>}
       {pngPreview && <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center overscroll-contain bg-black/75 p-3" onMouseDown={(event) => { if (event.currentTarget === event.target) setPngPreview(null) }}><section role="dialog" aria-modal="true" aria-labelledby="select-png-preview-title" className="relative flex max-h-[calc(100dvh-24px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"><div className="flex items-center justify-between border-b px-4 py-2"><div><h2 id="select-png-preview-title" className="font-black text-slate-900">{pngPreview.title}</h2><p className="text-xs text-slate-500">iPhoneは下のボタンから「画像を保存」を選べます</p></div><button type="button" onClick={() => setPngPreview(null)} aria-label="画像プレビューを閉じる" className="flex h-11 w-11 items-center justify-center rounded-full text-2xl text-slate-700 hover:bg-slate-100">×</button></div><div className="min-h-0 overscroll-contain overflow-auto bg-slate-100 p-2 sm:p-4"><img src={pngPreview.src} alt={`${pngPreview.title}の保存用画像`} className="mx-auto h-auto max-w-full shadow" /></div><div className="border-t bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"><button type="button" onClick={() => void savePreviewImage()} className="flex min-h-11 w-full items-center justify-center rounded-xl bg-blue-700 px-4 font-bold text-white">画像を保存</button></div></section></div>}
     </div>
   </>
