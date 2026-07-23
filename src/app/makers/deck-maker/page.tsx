@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { makerRequiresLogin } from '@/lib/maker-auth-requirements'
+import { AdstirBannerClient } from '@/components/AdstirBannerClient'
 import DeckMakerClientShell from './DeckMakerClientShell'
 import DeckKeyCardSelector from './DeckKeyCardSelector'
 import DeckMakerNewDeckUx from './DeckMakerNewDeckUx'
@@ -75,6 +76,7 @@ export default async function DeckMakerPage({ searchParams }: { searchParams: Pr
 
   return (
     <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4">
+      <AdstirBannerClient slot="sp_list_top" className="mb-2 mt-0" />
       <DeckMakerInitialDraftGuard enabled={Boolean(initialDeck)} />
       <DeckMakerNewDeckUx />
       <DeckMakerMobileAdvanceLayoutFix />
