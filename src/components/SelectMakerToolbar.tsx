@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect } from 'react'
+import { useEffect, type CSSProperties } from 'react'
 import { useMakerDefaultTitle } from '@/components/MakerDefaultTitleContext'
 
 export function SelectMakerToolbar({
@@ -91,7 +91,7 @@ export function SelectMakerToolbar({
           {showTitle && (
             <label
               className="min-w-0 shrink-0 text-xs font-bold text-slate-700 md:w-[var(--title-width)]"
-              style={{ '--title-width': `${titlePreferredWidth}px` } as React.CSSProperties}
+              style={{ '--title-width': `${titlePreferredWidth}px` } as CSSProperties}
             >
               投稿タイトル（任意）
               <input data-select-maker-title value={title} maxLength={40} onChange={(event) => onTitleChange(event.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base font-bold text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" />
