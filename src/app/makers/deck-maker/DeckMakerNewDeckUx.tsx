@@ -5,28 +5,29 @@ import { useEffect } from 'react'
 export default function DeckMakerNewDeckUx() {
   useEffect(() => {
     const applyLabels = () => {
-      const newDeckButton = document.querySelector<HTMLButtonElement>('button[aria-label="デッキをリセット"], button[aria-label="新しいデッキを作る"]')
+      const newDeckButton = Array.from(document.querySelectorAll<HTMLButtonElement>('button[aria-label="デッキをリセット"], button[aria-label="新しいデッキを作る"]'))
+        .find(button => !button.closest('[role="alertdialog"]'))
       if (newDeckButton) {
-        newDeckButton.dataset.newDeckButton = 'true'
-        newDeckButton.setAttribute('aria-label', '新しいデッキを作る')
+        if (newDeckButton.dataset.newDeckButton !== 'true') newDeckButton.dataset.newDeckButton = 'true'
+        if (newDeckButton.getAttribute('aria-label') !== '新しいデッキを作る') newDeckButton.setAttribute('aria-label', '新しいデッキを作る')
       }
 
       const heading = document.getElementById('reset-dialog-title')
-      if (heading) heading.dataset.newDeckHeading = 'true'
+      if (heading && heading.dataset.newDeckHeading !== 'true') heading.dataset.newDeckHeading = 'true'
 
       const description = document.getElementById('reset-dialog-description')
-      if (description) description.dataset.newDeckDescription = 'true'
+      if (description && description.dataset.newDeckDescription !== 'true') description.dataset.newDeckDescription = 'true'
 
-      const confirmButton = document.querySelector<HTMLButtonElement>('button[aria-label="デッキをすべて削除"], button[aria-label="新しいデッキを作る"]')
-      if (confirmButton && confirmButton.closest('[role="alertdialog"]')) {
-        confirmButton.dataset.newDeckConfirm = 'true'
-        confirmButton.setAttribute('aria-label', '新しいデッキを作る')
+      const confirmButton = document.querySelector<HTMLButtonElement>('[role="alertdialog"] button[aria-label="デッキをすべて削除"], [role="alertdialog"] button[aria-label="新しいデッキを作る"]')
+      if (confirmButton) {
+        if (confirmButton.dataset.newDeckConfirm !== 'true') confirmButton.dataset.newDeckConfirm = 'true'
+        if (confirmButton.getAttribute('aria-label') !== '新しいデッキを作る') confirmButton.setAttribute('aria-label', '新しいデッキを作る')
       }
     }
 
     applyLabels()
     const observer = new MutationObserver(applyLabels)
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-label'] })
+    observer.observe(document.body, { childList: true, subtree: true })
     return () => observer.disconnect()
   }, [])
 
