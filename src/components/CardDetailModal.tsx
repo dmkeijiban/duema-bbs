@@ -38,6 +38,9 @@ export function CardDetailModal({
   const [visibleCount, setVisibleCount] = useState(count ?? 0)
   const pendingDelta = useRef(0)
   const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const versionScroller = useRef<HTMLDivElement | null>(null)
+  const versionDrag = useRef({ active: false, pointerId: -1, startX: 0, scrollLeft: 0, moved: false })
+  const suppressVersionClick = useRef(false)
 
   function flushPending() {
     if (flushTimer.current) {
@@ -96,6 +99,37 @@ export function CardDetailModal({
     onClose()
   }
 
+  function startVersionDrag(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== 'mouse' || !versionScroller.current) return
+    versionDrag.current = {
+      active: true,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      scrollLeft: versionScroller.current.scrollLeft,
+      moved: false,
+    }
+    versionScroller.current.setPointerCapture(event.pointerId)
+  }
+
+  function moveVersionDrag(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = versionDrag.current
+    if (!drag.active || drag.pointerId !== event.pointerId || !versionScroller.current) return
+    const distance = event.clientX - drag.startX
+    if (Math.abs(distance) > 4) {
+      drag.moved = true
+      suppressVersionClick.current = true
+    }
+    versionScroller.current.scrollLeft = drag.scrollLeft - distance
+  }
+
+  function endVersionDrag(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = versionDrag.current
+    if (!drag.active || drag.pointerId !== event.pointerId) return
+    versionDrag.current.active = false
+    if (versionScroller.current?.hasPointerCapture(event.pointerId)) versionScroller.current.releasePointerCapture(event.pointerId)
+    window.setTimeout(() => { suppressVersionClick.current = false }, 0)
+  }
+
   return <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-2 sm:p-3" onMouseDown={event => { if (event.currentTarget === event.target) closeModal() }}>
     <section role="dialog" aria-modal="true" aria-label={`${card.name}のカード操作`} className="relative flex h-[calc(100dvh-16px)] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-24px)]">
       <button type="button" onClick={closeModal} aria-label="カード操作を閉じる" className="absolute right-2 top-2 z-10 flex h-11 w-11 touch-manipulation items-center justify-center rounded-full bg-white/95 text-xl font-bold text-slate-800 shadow active:scale-95">×</button>
@@ -116,10 +150,21 @@ export function CardDetailModal({
 
       <div className="shrink-0 border-t border-slate-200 bg-white px-3 pb-2 pt-2 sm:px-5 sm:pb-3">
         {loading && <p className="mb-1 text-center text-xs font-bold text-slate-500">別イラストを読み込み中…</p>}
-        <div className="flex gap-2 overflow-x-auto overscroll-x-contain pb-1">
+        <div
+          ref={versionScroller}
+          className="flex cursor-grab touch-pan-x select-none gap-2 overflow-x-auto overscroll-x-contain pb-1 active:cursor-grabbing"
+          onPointerDown={startVersionDrag}
+          onPointerMove={moveVersionDrag}
+          onPointerUp={endVersionDrag}
+          onPointerCancel={endVersionDrag}
+        >
           {versions.map(version => {
             const active = printingKey(version) === printingKey(card)
-            return <button key={printingKey(version)} type="button" onClick={() => { flushPending(); onSelectVersion(version) }} aria-pressed={active} className={`w-20 shrink-0 touch-manipulation overflow-hidden rounded-lg transition sm:w-24 ${active ? 'ring-2 ring-blue-600' : 'opacity-55 ring-1 ring-slate-300 hover:opacity-100'}`}>
+            return <button key={printingKey(version)} type="button" draggable={false} onClick={() => {
+              if (suppressVersionClick.current) return
+              flushPending()
+              onSelectVersion(version)
+            }} aria-pressed={active} className={`w-20 shrink-0 touch-manipulation overflow-hidden rounded-lg ring-1 ring-slate-300 transition sm:w-24 ${active ? 'ring-2 ring-blue-600' : 'hover:ring-2 hover:ring-slate-500'}`}>
               {renderCardArt(version)}
             </button>
           })}
