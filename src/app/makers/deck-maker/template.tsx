@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import {
   DECK_STORAGE_KEY,
   entryZone,
@@ -9,6 +9,8 @@ import {
   type DeckEntry,
 } from '@/lib/deck-maker'
 import { CARD_PRINTING_CHANGE_EVENT } from '@/hooks/use-card-printing-selector'
+
+export const DECK_DRAFT_REFRESH_EVENT = 'duema-bbs:deck-draft-refresh'
 
 type PrintingChangeDetail = {
   previousCard?: DeckCard
@@ -20,13 +22,7 @@ type StoredDeckDraft = {
   [key: string]: unknown
 }
 
-type ViewTransitionDocument = Document & {
-  startViewTransition?: (update: () => void) => { finished: Promise<void> }
-}
-
 export default function DeckMakerTemplate({ children }: { children: ReactNode }) {
-  const [revision, setRevision] = useState(0)
-
   useEffect(() => {
     const replacePrinting = (event: Event) => {
       const { previousCard, nextCard } = (event as CustomEvent<PrintingChangeDetail>).detail ?? {}
@@ -77,11 +73,7 @@ export default function DeckMakerTemplate({ children }: { children: ReactNode })
         }
 
         localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ ...stored, entries }))
-
-        const refreshDeck = () => setRevision(current => current + 1)
-        const transitionDocument = document as ViewTransitionDocument
-        if (transitionDocument.startViewTransition) transitionDocument.startViewTransition(refreshDeck)
-        else refreshDeck()
+        window.dispatchEvent(new Event(DECK_DRAFT_REFRESH_EVENT))
       } catch {
         // 保存データが壊れている場合は、通常の収録版プレビュー切替だけを続行する。
       }
@@ -91,14 +83,5 @@ export default function DeckMakerTemplate({ children }: { children: ReactNode })
     return () => window.removeEventListener(CARD_PRINTING_CHANGE_EVENT, replacePrinting)
   }, [])
 
-  return <>
-    <Fragment key={revision}>{children}</Fragment>
-    <style jsx global>{`
-      ::view-transition-old(root),
-      ::view-transition-new(root) {
-        animation-duration: 90ms;
-        animation-timing-function: ease-out;
-      }
-    `}</style>
-  </>
+  return children
 }
