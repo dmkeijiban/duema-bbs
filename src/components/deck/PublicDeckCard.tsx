@@ -7,11 +7,14 @@ export type PublicDeckCardData = {
   user_id: string | null
   created_at: string
   key_card_id?: string | null
-  deck_data: Array<{ id: string; name: string; imageUrl: string | null; sourceKey: string | null; count: number }>
+  key_card_printing_id?: string | null
+  deck_data: Array<{ id: string; printingId?: string | null; name: string; imageUrl: string | null; sourceKey: string | null; count: number }>
 }
 
 export function PublicDeckCard({ deck, authorName }: { deck: PublicDeckCardData; authorName: string }) {
-  const keyCard = deck.deck_data.find(card => card.id === deck.key_card_id) ?? deck.deck_data[0]
+  const keyCard = deck.deck_data.find(card => card.id === deck.key_card_id && (!deck.key_card_printing_id || card.printingId === deck.key_card_printing_id))
+    ?? deck.deck_data.find(card => card.id === deck.key_card_id)
+    ?? deck.deck_data[0]
   const uniqueCards = deck.deck_data.length
   const totalCards = deck.deck_data.reduce((sum, card) => sum + card.count, 0)
 
