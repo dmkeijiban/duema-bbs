@@ -42,8 +42,7 @@ export default async function PublicDeckPage({ params }: { params: Promise<{ id:
         <article className="mt-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-6">
           <div className="grid gap-5 sm:grid-cols-[180px_1fr]">
             <div className="relative mx-auto aspect-[5/7] w-full max-w-[180px] overflow-hidden rounded-xl bg-slate-800">
-              {keyCard?.imageUrl ? <img src={keyCard.imageUrl} alt={`${deck.title}のキーカード ${keyCard.name}`} className="h-full w-full object-cover object-top" /> : <span className="flex h-full items-center justify-center p-3 text-center text-sm font-bold text-white">{keyCard?.name ?? '画像なし'}</span>}
-              <span className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-bold text-white">キーカード</span>
+              {keyCard?.imageUrl ? <img src={keyCard.imageUrl} alt={`${deck.title}の代表カード ${keyCard.name}`} className="h-full w-full object-cover object-top" /> : <span className="flex h-full items-center justify-center p-3 text-center text-sm font-bold text-white">{keyCard?.name ?? '画像なし'}</span>}
             </div>
             <div>
               <p className="text-xs font-bold text-blue-700">{deck.format === 'original' ? 'オリジナル' : 'アドバンス'}</p>
