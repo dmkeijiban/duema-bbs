@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   DECK_STORAGE_KEY,
@@ -137,16 +137,16 @@ async function resolveStoredEntries(entries: DeckEntry[]) {
   })
 }
 
-function CardArt({ card, className = '', full = false, eager = false }: { card: DeckCard; className?: string; full?: boolean; eager?: boolean }) {
+const CardArt = memo(function CardArt({ card, className = '', full = false, eager = false }: { card: DeckCard; className?: string; full?: boolean; eager?: boolean }) {
   const [useOriginal, setUseOriginal] = useState(full)
   const source = useOriginal ? card.imageUrl : thumbnailUrl(card)
 
   return <CardArtImage key={source ?? `missing:${card.id}`} card={card} className={className} eager={eager} source={source} onThumbnailError={() => {
     if (!useOriginal && card.imageUrl && source !== card.imageUrl) setUseOriginal(true)
   }} canFallback={!useOriginal && Boolean(card.imageUrl && source !== card.imageUrl)} />
-}
+})
 
-function CardArtImage({ card, className, eager, source, canFallback, onThumbnailError }: { card: DeckCard; className: string; eager: boolean; source: string | null; canFallback: boolean; onThumbnailError: () => void }) {
+const CardArtImage = memo(function CardArtImage({ card, className, eager, source, canFallback, onThumbnailError }: { card: DeckCard; className: string; eager: boolean; source: string | null; canFallback: boolean; onThumbnailError: () => void }) {
   const [status, setStatus] = useState<'loading' | 'loaded' | 'failed'>(() => source && loadedImageUrls.has(source) ? 'loaded' : 'loading')
 
   return (
@@ -178,7 +178,18 @@ function CardArtImage({ card, className, eager, source, canFallback, onThumbnail
       )}
     </div>
   )
-}
+})
+
+const DeckGridCell = memo(function DeckGridCell({ entry, onSelect }: { entry: DeckCard; onSelect: (card: DeckCard) => void }) {
+  return <button
+    type="button"
+    aria-label={`${entry.name}を編集`}
+    onClick={() => onSelect(entry)}
+    className="min-w-0 rounded-[3px] outline-none ring-emerald-600 focus-visible:ring-2"
+  >
+    <CardArt card={entry} className="rounded-[3px]" />
+  </button>
+})
 
 function prefetchCardImages(cards: DeckCard[]) {
   for (const card of cards.slice(0, 4)) {
@@ -261,6 +272,9 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   const selectedCount = selected ? byPrinting.get(zonedPrintingKey(selected, selectedZone))?.count ?? 0 : 0
   const selectedNameCount = selected ? countsByCard.get(selected.id) ?? 0 : 0
   const deckCards = useMemo(() => entries.filter(entry => entryZone(entry) === activeZone).flatMap((entry) => Array.from({ length: entry.count }, (_, copy) => ({ entry, copy }))), [activeZone, entries])
+  const renderSearchCardArt = useCallback((card: DeckCard, index: number) => <CardArt card={card} eager={index < 4} />, [])
+  const renderModalCardArt = useCallback((card: DeckCard, full?: boolean) => <CardArt key={printingKey(card)} card={card} full={full} eager className="w-full rounded-xl shadow-lg" />, [])
+  const renderSelectedBadge = useCallback((count: number) => `${count}/4`, [])
 
   useEffect(() => {
     try {
@@ -582,15 +596,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
           </div>
           <div data-testid="deck-list" className={`rounded-xl bg-slate-100 ${deckCards.length ? 'grid grid-cols-8 gap-0.5' : 'flex h-[220px] items-center justify-center'}`}>
             {deckCards.length ? deckCards.map(({ entry, copy }) => (
-              <button
-                key={`${printingKey(entry)}-${copy}`}
-                type="button"
-                aria-label={`${entry.name}を編集`}
-                onClick={() => openCard(entry)}
-                className="min-w-0 rounded-[3px] outline-none ring-emerald-600 focus-visible:ring-2"
-              >
-                <CardArt card={entry} className="rounded-[3px]" />
-              </button>
+              <DeckGridCell key={`${printingKey(entry)}-${copy}`} entry={entry} onSelect={openCard} />
             )) : (
               <div className="px-5 text-center text-sm text-slate-500">
                 <p className="font-bold text-slate-700">カードがありません</p>
@@ -600,7 +606,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
           </div>
         </section>
 
-        <CardCatalogSearchPanel cards={results} query={query} loading={resultsLoading} hasMore={hasMoreResults} onLoadMore={loadMore} onSelect={openCard} onQueryChange={setQuery} onClear={() => { setQuery(''); searchInput.current?.focus() }} inputRef={searchInput} clearIcon={<Icon name="close" />} filterIcon={<Icon name="filter" />} selectedCount={card => countsByCard.get(card.id) ?? 0} selectedBadge={count => `${count}/4`} renderCardArt={(card, index) => <CardArt card={card} eager={index < 4} />} filters={filters} onRemoveFilter={removeFilter} onClearFilters={clearFilters} />
+        <CardCatalogSearchPanel cards={results} query={query} loading={resultsLoading} hasMore={hasMoreResults} onLoadMore={loadMore} onSelect={openCard} onQueryChange={setQuery} onClear={() => { setQuery(''); searchInput.current?.focus() }} inputRef={searchInput} clearIcon={<Icon name="close" />} filterIcon={<Icon name="filter" />} selectedCount={card => countsByCard.get(card.id) ?? 0} selectedBadge={renderSelectedBadge} renderCardArt={renderSearchCardArt} filters={filters} onRemoveFilter={removeFilter} onClearFilters={clearFilters} />
       </div>
 
       {libraryOpen && (
@@ -683,7 +689,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
         onRemove={remove}
         onMove={moveSelectedEntry}
         onAddFilter={(filter) => { addFilter(filter); closeCard() }}
-        renderCardArt={(card, full) => <CardArt key={printingKey(card)} card={card} full={full} eager className="w-full rounded-xl shadow-lg" />}
+        renderCardArt={renderModalCardArt}
       />
 
       {resetConfirm && (
