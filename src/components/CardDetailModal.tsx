@@ -62,7 +62,7 @@ export function CardDetailModal({
   return <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3" onMouseDown={event => { if (event.currentTarget === event.target) onClose() }}>
     <section role="dialog" aria-modal="true" aria-label={`${card.name}のカード操作`} className="relative flex max-h-[calc(100dvh-24px)] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
       <button type="button" onClick={onClose} aria-label="カード操作を閉じる" className="absolute right-2 top-2 z-10 flex h-11 w-11 touch-manipulation items-center justify-center rounded-full bg-white/95 text-xl font-bold text-slate-800 shadow active:scale-95">×</button>
-      <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
         <h2 className="sr-only">{card.name}</h2>
         <div className="mx-auto w-full max-w-[330px]">{renderCardArt(card, true)}</div>
 
@@ -73,17 +73,17 @@ export function CardDetailModal({
         </div>}
 
         {onChoose && <button type="button" onClick={() => onChoose(card)} className="mt-3 min-h-11 w-full rounded-xl bg-emerald-700 px-4 font-black text-white">{chooseLabel}</button>}
+      </div>
 
-        <div className="mt-5">
-          {loading && <p className="mb-2 text-center text-xs font-bold text-slate-500">別イラストを読み込み中…</p>}
-          <div className="flex gap-3 overflow-x-auto overscroll-x-contain pb-2">
-            {versions.map(version => {
-              const active = printingKey(version) === printingKey(card)
-              return <button key={printingKey(version)} type="button" onClick={() => onSelectVersion(version)} aria-pressed={active} className={`w-24 shrink-0 touch-manipulation overflow-hidden rounded-lg transition ${active ? 'ring-2 ring-blue-600' : 'opacity-55 ring-1 ring-slate-300 hover:opacity-100'}`}>
-                {renderCardArt(version)}
-              </button>
-            })}
-          </div>
+      <div className="shrink-0 border-t border-slate-200 bg-white px-4 pb-3 pt-3 sm:px-5">
+        {loading && <p className="mb-2 text-center text-xs font-bold text-slate-500">別イラストを読み込み中…</p>}
+        <div className="flex gap-3 overflow-x-auto overscroll-x-contain pb-2">
+          {versions.map(version => {
+            const active = printingKey(version) === printingKey(card)
+            return <button key={printingKey(version)} type="button" onClick={() => onSelectVersion(version)} aria-pressed={active} className={`w-24 shrink-0 touch-manipulation overflow-hidden rounded-lg transition ${active ? 'ring-2 ring-blue-600' : 'opacity-55 ring-1 ring-slate-300 hover:opacity-100'}`}>
+              {renderCardArt(version)}
+            </button>
+          })}
         </div>
       </div>
     </section>
