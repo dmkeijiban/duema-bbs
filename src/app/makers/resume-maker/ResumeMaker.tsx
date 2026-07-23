@@ -37,7 +37,7 @@ import {
 import { ResumeRenderer, ScaledResumeRenderer } from './ResumeRenderer'
 import { ResumeLayoutToggle } from './ResumeLayoutToggle'
 import { ResumeAvatarUploader } from './ResumeAvatarUploader'
-import { RESUME_STEPS, RESUME_SHARE_TEXT } from './constants'
+import { RESUME_SHARE_TEXT } from './constants'
 import type { ResumeInitialState } from './types'
 import { saveResumeSubmission, setResumeVisibility } from './actions'
 
@@ -258,20 +258,17 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
   }
 
   return <div className="pb-28">
-    <CardDetailModal card={cardSelector.selectedCard} versions={cardSelector.printingOptions} loading={cardSelector.loading} onClose={cardSelector.closeCard} onSelectVersion={cardSelector.selectPrinting} onChoose={card => { update('photo', favoritePhoto(card)); cardSelector.closeCard() }} onAddFilter={filter => { cardSearch.addFilter(filter); cardSelector.closeCard() }} renderCardArt={card => card.imageUrl ? <img src={card.imageUrl} alt={card.name} className="aspect-[5/7] w-full object-contain" /> : <div className="flex aspect-[5/7] items-center justify-center rounded-xl bg-slate-800 p-3 text-center text-sm font-bold text-white">{card.name}</div>} />
+    <CardDetailModal card={cardSelector.selectedCard} versions={cardSelector.printingOptions} loading={cardSelector.loading} onClose={cardSelector.closeCard} onSelectVersion={cardSelector.selectPrinting} onChoose={card => { update('photo', favoritePhoto(card)); cardSelector.closeCard() }} onAddFilter={filter => { cardSearch.addFilter(filter); cardSelector.closeCard() }} renderCardArt={card => card.imageUrl ? <img src={card.imageUrl} alt={card.name} className="aspect-[5/7] w-full object-contain" /> : <div className="flex aspect-[5/7] w-full items-center justify-center rounded-xl bg-slate-800 p-3 text-center text-sm font-bold text-white">{card.name}</div>} />
     <div aria-hidden="true" className="pointer-events-none fixed left-[-10000px] top-0"><ResumeRenderer data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} exportRef={exportPreviewRef} /></div>
 
     <header className="mb-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <h1 className="text-lg font-black text-slate-900">デュエマ履歴書メーカー</h1>
       <p className="mt-1 text-xs text-slate-500">あなたのデュエマ自己紹介を、本物の履歴書風にまとめよう。</p>
-      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold text-blue-700">
-        {loggedIn ? <Link href="/mypage" className="hover:underline">マイページに戻る</Link> : <Link href="/login?mode=signup&next=/makers/resume-maker" className="hover:underline">登録すると履歴書を公開・管理できます</Link>}
-        <Link href="/makers/resume-maker/submissions" className="hover:underline">みんなの履歴書を見る</Link>
-        {initial.profileSlug && <Link href={`/u/${initial.profileSlug}`} className="hover:underline">公開プロフィールを見る</Link>}
-      </div>
-      <nav className="mt-3 flex gap-2">{RESUME_STEPS.map(item => <button key={item.id} type="button" onClick={() => setStep(item.id)} className={`min-h-9 flex-1 rounded-lg border px-2 text-sm font-bold transition-colors ${step === item.id ? 'border-emerald-700 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'}`}>STEP{item.id} {item.label}</button>)}</nav>
+      <nav className="mt-3 grid grid-cols-2 gap-2">
+        <button type="button" onClick={() => setStep(1)} className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-700 bg-emerald-50 px-3 text-sm font-black text-emerald-800 transition-colors hover:bg-emerald-100">新しく作る</button>
+        <Link href="/makers/resume-maker/submissions" className="flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 text-center text-sm font-black text-slate-700 transition-colors hover:bg-slate-50">みんなの履歴書を見る</Link>
+      </nav>
       {message && <p role="status" className="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">{message}</p>}
-      <button type="button" onClick={() => setMobilePreviewOpen(true)} className="mt-3 min-h-10 w-full rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 lg:hidden">プレビューを見る</button>
     </header>
 
     <div className="grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)] lg:items-start">
