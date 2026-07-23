@@ -25,6 +25,7 @@ import {
 } from '@/lib/thread-archive'
 import { GoodlifeInlineAd } from '@/components/GoodlifeInlineAd'
 import { GamAd } from '@/components/GamAd'
+import { AdstirBanner } from '@/components/AdstirBanner'
 
 const PAGE_SIZE = 60
 
@@ -220,10 +221,16 @@ async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
       />
       <GoodlifeInlineAd slot="thread_list_inline" />
       <GamAd slot="list_top" />
+      <AdstirBanner slot="sp_list_top" />
       <div className="border border-gray-300 bg-white">
         {typedThreads.map((thread, i) => (
           <Fragment key={thread.id}>
             <ThreadRow thread={thread} />
+            {i === Math.min(1, typedThreads.length - 1) && (
+              <div className="border-b border-gray-200">
+                <AdstirBanner slot="sp_list_middle" />
+              </div>
+            )}
             {i === 9 && (
               <div className="border-b border-gray-200">
                 <GamAd slot="list_infeed" />
