@@ -8,26 +8,32 @@ const ATTRIBUTES = [
   'data-deck-format-toggle',
   'data-deck-cost-sort',
   'data-deck-zone-tabs',
+  'data-deck-zone-heading',
 ] as const
 
 export default function DeckMakerMobileAdvanceLayoutFix() {
   useEffect(() => {
     const applyLayoutMarkers = () => {
       const sortButton = document.querySelector<HTMLButtonElement>('button[aria-label="コストが小さい順に並べ替え"]')
-      const toolbar = sortButton?.parentElement
-      if (!sortButton || !toolbar) return
+      const formatLabel = Array.from(document.querySelectorAll<HTMLElement>('span')).find(element => element.textContent?.trim() === 'フォーマット')
+      const toolbar = formatLabel?.parentElement
+      const deckHeading = document.getElementById('deck-heading')
+      const deckHeadingRow = deckHeading?.parentElement
+      if (!sortButton || !toolbar || !deckHeadingRow) return
 
       toolbar.setAttribute('data-deck-format-toolbar', '')
+      formatLabel.setAttribute('data-deck-format-label', '')
       sortButton.setAttribute('data-deck-cost-sort', '')
+      deckHeadingRow.setAttribute('data-deck-zone-heading', '')
 
       const directChildren = Array.from(toolbar.children) as HTMLElement[]
-      const label = directChildren.find(element => element.tagName === 'SPAN')
-      const toggle = directChildren.find(element => element !== sortButton && element.tagName === 'DIV' && element.querySelector('button'))
+      const toggle = directChildren.find(element => element.tagName === 'DIV' && element.querySelectorAll('button').length === 2)
       const zoneTabs = directChildren.find(element => element !== toggle && element.tagName === 'DIV' && element.querySelectorAll('button').length >= 3)
 
-      label?.setAttribute('data-deck-format-label', '')
       toggle?.setAttribute('data-deck-format-toggle', '')
       zoneTabs?.setAttribute('data-deck-zone-tabs', '')
+
+      if (sortButton.parentElement !== deckHeadingRow) deckHeadingRow.appendChild(sortButton)
     }
 
     applyLayoutMarkers()
@@ -43,10 +49,33 @@ export default function DeckMakerMobileAdvanceLayoutFix() {
   }, [])
 
   return <style jsx global>{`
+    button[aria-label="デッキをマイデッキに保存"] > svg,
+    button[aria-label="マイデッキを開く"] > svg,
+    button[aria-label="デッキ画像を出力"] > svg {
+      display: none !important;
+    }
+
+    button[aria-label="デッキをマイデッキに保存"],
+    button[aria-label="マイデッキを開く"],
+    button[aria-label="デッキ画像を出力"] {
+      gap: 0 !important;
+    }
+
+    [data-deck-zone-heading] {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    [data-deck-cost-sort] {
+      margin-left: auto;
+    }
+
     @media (max-width: 639px) {
       [data-deck-format-toolbar] {
         display: grid !important;
-        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-columns: auto minmax(0, 1fr);
         align-items: center !important;
         gap: 0.5rem !important;
         min-height: 0 !important;
@@ -70,10 +99,6 @@ export default function DeckMakerMobileAdvanceLayoutFix() {
         padding-right: 0.75rem !important;
       }
 
-      [data-deck-cost-sort] {
-        grid-column: 3;
-      }
-
       [data-deck-zone-tabs] {
         grid-column: 1 / -1;
         display: grid !important;
@@ -91,6 +116,12 @@ export default function DeckMakerMobileAdvanceLayoutFix() {
         padding-right: 0.375rem !important;
         white-space: normal;
         line-height: 1.2;
+      }
+
+      [data-deck-cost-sort] {
+        min-height: 2.25rem !important;
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
       }
     }
   `}</style>
