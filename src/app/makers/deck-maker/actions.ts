@@ -107,6 +107,10 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
       updateQuery = user ? updateQuery.eq('user_id', user.id) : updateQuery.is('user_id', null).eq('anonymous_edit_token_hash', hashMakerAnonymousOwner(anonymousId!, 'edit'))
       const { data, error } = await updateQuery.select('id').single()
       if (error || !data) return { ok: false, message: '公開デッキを更新できませんでした' }
+      revalidatePath('/makers/deck-maker')
+      revalidatePath('/makers/deck-maker/submissions')
+      revalidatePath(`/makers/deck-maker/submissions/${data.id}`)
+      revalidatePath('/mypage')
       return { ok: true, submissionId: data.id }
     }
 
@@ -118,6 +122,10 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
     }
 
     if (!user) cookieStore.set(MAKER_ANONYMOUS_COOKIE, anonymousId!, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 31536000 })
+    revalidatePath('/makers/deck-maker')
+    revalidatePath('/makers/deck-maker/submissions')
+    revalidatePath(`/makers/deck-maker/submissions/${data.id}`)
+    revalidatePath('/mypage')
     return { ok: true, submissionId: data.id }
   } catch (error) {
     console.error('savePublishedDeck failed', { message: error instanceof Error ? error.message : String(error) })

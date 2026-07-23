@@ -381,6 +381,8 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
       format,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
+      keyCardId: existing?.keyCardId,
+      keyCardPrintingId: existing?.keyCardPrintingId,
       ...(existing?.submissionId ? { submissionId: existing.submissionId } : {}),
     }
     let nextSavedDecks = existing
@@ -635,7 +637,6 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
                               {deck.id === activeSavedDeckId && <span className="shrink-0 rounded-full bg-blue-100 px-2 py-1 text-[10px] font-bold text-blue-700">編集中</span>}
                             </div>
                             <p className="mt-2 text-xs text-slate-500">更新 {new Date(deck.updatedAt).toLocaleDateString('ja-JP')}</p>
-                            {deck.submissionId && <p className="mt-1 text-[10px] font-bold text-emerald-700">DB保存済み</p>}
                             {deck.entries.length > 0 && <label className="mt-2 block text-xs font-bold text-slate-600">キーカード
                               <select value={`${cover?.id ?? ''}:${cover?.printingId ?? ''}`} onChange={event => changeKeyCard(deck.id, event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs font-normal text-slate-800">
                                 {deck.entries.map(entry => <option key={printingKey(entry)} value={`${entry.id}:${entry.printingId ?? ''}`}>{entry.name}</option>)}
