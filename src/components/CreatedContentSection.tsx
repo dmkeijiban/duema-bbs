@@ -29,7 +29,7 @@ export function CreatedContentSection({ resume, avatarUrl, resumeUpdatedAtLabel,
           <Link href={`/makers/my-duema-9/submissions/${nine.representative.id}`} className="mt-3 grid grid-cols-3 overflow-hidden rounded-lg border border-slate-200 transition active:scale-[0.99]">
             {nine.representative.items.slice(0, 9).map(item => item.card.image_url ? <img key={`${item.card_id}:${item.position}`} src={item.card.image_url} alt={item.card.name} className="aspect-[63/88] h-full w-full object-cover" /> : <span key={`${item.card_id}:${item.position}`} className="flex aspect-[63/88] items-center justify-center bg-slate-100 p-1 text-center text-[9px]">{item.card.name}</span>)}
           </Link>
-          <Link href="/makers/my-duema-9/submissions?tab=mine" className={`${actionClass} mt-auto pt-3 w-full`}>すべて見る</Link>
+          <div className="mt-auto pt-3"><Link href="/makers/my-duema-9/submissions?tab=mine" className={`${actionClass} w-full`}>すべて見る</Link></div>
         </div> : <div className="py-5 text-center"><p className="text-sm text-slate-500">まだ作成していません</p><Link href="/makers/my-duema-9" className={`${actionClass} mt-3`}>作成する</Link></div>}
       </article>
 
