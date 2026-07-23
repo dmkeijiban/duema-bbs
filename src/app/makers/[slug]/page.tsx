@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase-server'
 import { ADMIN_COOKIE, verifyAdminCookie } from '@/lib/admin-auth'
 import { cookies } from 'next/headers'
 import SelectMaker from './SelectMaker'
+import MyDuema9CrossLinkFix from './MyDuema9CrossLinkFix'
 import { isMakerProjectPageAccessible } from '@/lib/maker-catalog'
 import { MakerDefaultTitleProvider } from '@/components/MakerDefaultTitleContext'
 import { resolveSelectPrintingImages, selectPrintingRefKey } from '@/lib/maker-select-printing'
@@ -59,5 +60,5 @@ export default async function GenericMakerPage({ params, searchParams }: { param
       title: submission.title, comment: submission.comment ?? '', sessionId: submission.creation_session_id, submissionId: submission.id, completedEventSent: true,
     }
   }
-  return <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4"><div className="mx-auto max-w-[1440px] overflow-x-hidden"><MakerDefaultTitleProvider title={config.resultTitle}><SelectMaker slug={slug} config={config} initialDraft={initialDraft} loggedIn={Boolean(currentUser)}/></MakerDefaultTitleProvider></div></main>
+  return <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4"><div className="mx-auto max-w-[1440px] overflow-x-hidden"><MakerDefaultTitleProvider title={config.resultTitle}>{slug === 'my-duema-9' && <MyDuema9CrossLinkFix />}<SelectMaker slug={slug} config={config} initialDraft={initialDraft} loggedIn={Boolean(currentUser)}/></MakerDefaultTitleProvider></div></main>
 }
