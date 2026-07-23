@@ -32,6 +32,7 @@ import {
   type ResumeData,
 } from '@/lib/maker-resume'
 import { ResumePreview, ScaledResumePreview } from './ResumePreview'
+import { ResumeAvatarUploader } from './ResumeAvatarUploader'
 import { RESUME_STEPS, RESUME_SHARE_TEXT } from './constants'
 import type { ResumeInitialState } from './types'
 import { saveResumeSubmission, setResumeVisibility } from './actions'
@@ -39,6 +40,7 @@ import { saveResumeSubmission, setResumeVisibility } from './actions'
 type PngPreview = { src: string; fileName: string; file: File }
 type SaveState = 'dirty' | 'saving' | 'saved' | 'error'
 const ANONYMOUS_RESUME_STORAGE_KEY = 'duema-bbs:resume-maker:anonymous-draft:v1'
+const RESUME_AVATAR_STORAGE_KEY = 'duema-bbs:resume-maker:avatar:v1'
 
 function favoritePhoto(card: DeckCard): ResumeData['photo'] {
   return {
@@ -54,6 +56,7 @@ function favoritePhoto(card: DeckCard): ResumeData['photo'] {
 export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInitialState; loggedIn: boolean }) {
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [data, setData] = useState<ResumeData>(emptyResumeData())
+  const [resumeAvatarUrl, setResumeAvatarUrl] = useState<string | null>(initial.profileDefaults?.avatarUrl ?? null)
   const [isPublic, setIsPublic] = useState(initial.isPublic)
   const [submissionId, setSubmissionId] = useState<string | null>(initial.submissionId)
   const [message, setMessage] = useState('')
@@ -77,6 +80,10 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
         if (stored) { setData(sanitizeResumeData(JSON.parse(stored))); setSaveState('saved') }
       } catch { localStorage.removeItem(ANONYMOUS_RESUME_STORAGE_KEY) }
     }
+    try {
+      const storedAvatar = localStorage.getItem(RESUME_AVATAR_STORAGE_KEY)
+      if (storedAvatar) setResumeAvatarUrl(storedAvatar)
+    } catch { localStorage.removeItem(RESUME_AVATAR_STORAGE_KEY) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -99,12 +106,23 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
   }, [saveState])
 
   const complete = isResumeComplete(data)
-  const avatarUrl = initial.profileDefaults?.avatarUrl ?? null
+  const avatarUrl = resumeAvatarUrl
   const favoriteCard = data.photo?.type === 'card' ? data.photo : null
 
   function update<K extends keyof ResumeData>(key: K, value: ResumeData[K]) {
     setData(current => ({ ...current, [key]: value }))
     setSaveState(current => current === 'saving' ? current : 'dirty')
+  }
+
+  function updateResumeAvatar(value: string | null) {
+    setResumeAvatarUrl(value)
+    setSaveState(current => current === 'saving' ? current : 'dirty')
+    try {
+      if (value) localStorage.setItem(RESUME_AVATAR_STORAGE_KEY, value)
+      else localStorage.removeItem(RESUME_AVATAR_STORAGE_KEY)
+    } catch {
+      setMessage('画像を端末に保存できませんでした。容量の小さい画像で試してください。')
+    }
   }
 
   function toggleAchievement(key: string) {
@@ -120,6 +138,8 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
     if (!loggedIn) {
       try {
         localStorage.setItem(ANONYMOUS_RESUME_STORAGE_KEY, JSON.stringify(data))
+        if (resumeAvatarUrl) localStorage.setItem(RESUME_AVATAR_STORAGE_KEY, resumeAvatarUrl)
+        else localStorage.removeItem(RESUME_AVATAR_STORAGE_KEY)
         setMessage('この端末に履歴書を保存しました')
         setSaveState('saved')
       } catch {
@@ -244,7 +264,7 @@ export default function ResumeMaker({ initial, loggedIn }: { initial: ResumeInit
             <label className="text-xs font-bold text-slate-700">活動地域<select value={data.region} onChange={e => update('region', e.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base text-slate-900"><option value="">選択しない</option>{RESUME_REGIONS.map(region => <option key={region} value={region}>{region}</option>)}</select></label>
             <label className="text-xs font-bold text-slate-700">デュエプレ<select value={data.duelMastersPlayStatus} onChange={e => update('duelMastersPlayStatus', e.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-base text-slate-900"><option value="">選択しない</option>{RESUME_DUEL_MASTERS_PLAY_STATUSES.map(option => <option key={option} value={option}>{option}</option>)}</select></label>
           </div>
-          <div className="mt-5 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-300 bg-white">{avatarUrl ? <img src={avatarUrl} alt="プロフィールアイコン" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-400">未設定</div>}</div><p className="min-w-0 flex-1 text-xs text-slate-600">{loggedIn ? '証明写真にはプロフィールアイコンが使われます。' : 'アカウント登録後はプロフィールアイコンを証明写真に使えます。'}{loggedIn && <Link href="/mypage/edit" className="ml-1 font-bold text-blue-700 hover:underline">アイコンを変更する</Link>}</p></div>
+          <ResumeAvatarUploader value={avatarUrl} onChange={updateResumeAvatar} />
         </section>}
 
         {step === 2 && <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
