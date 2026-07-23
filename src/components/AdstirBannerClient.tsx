@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { ADSTIR_APP_ID, ADSTIR_SCRIPT_URL, ADSTIR_SLOTS, type AdstirSlotName } from '@/lib/adstir'
 
-export function AdstirBannerClient({ slot }: { slot: AdstirSlotName }) {
+export function AdstirBannerClient({ slot, className = '' }: { slot: AdstirSlotName; className?: string }) {
   const { adSpot, width, height } = ADSTIR_SLOTS[slot]
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -40,7 +40,7 @@ export function AdstirBannerClient({ slot }: { slot: AdstirSlotName }) {
 
   return (
     <div
-      className="md:hidden mx-auto my-3 flex w-full max-w-full flex-col items-center justify-center overflow-hidden"
+      className={`md:hidden mx-auto my-3 flex w-full max-w-full flex-col items-center justify-center overflow-hidden ${className}`}
       data-ad-provider="adstir"
       data-ad-slot={slot}
       aria-label="広告"

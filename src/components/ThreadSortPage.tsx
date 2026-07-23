@@ -25,7 +25,8 @@ import {
 } from '@/lib/thread-archive'
 import { GoodlifeInlineAd } from '@/components/GoodlifeInlineAd'
 import { GamAd } from '@/components/GamAd'
-import { AdstirBanner } from '@/components/AdstirBanner'
+import { AdstirBannerClient } from '@/components/AdstirBannerClient'
+import { getAdstirVisibility } from '@/lib/adstir-server'
 
 const PAGE_SIZE = 60
 
@@ -197,6 +198,7 @@ async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
 
   const listName = sort === 'new' ? '新着スレッド一覧' : '更新順スレッド一覧'
   const typedThreads = threads as (Thread & { categories: Category | null })[]
+  const adstirVisibility = await getAdstirVisibility()
 
   return (
     <>
@@ -221,15 +223,13 @@ async function ThreadList({ sort, page = 1 }: { sort: string; page: number }) {
       />
       <GoodlifeInlineAd slot="thread_list_inline" />
       <GamAd slot="list_top" />
-      <AdstirBanner slot="sp_list_top" />
+      {adstirVisibility.listTop && <AdstirBannerClient slot="sp_list_top" />}
       <div className="border border-gray-300 bg-white">
         {typedThreads.map((thread, i) => (
           <Fragment key={thread.id}>
             <ThreadRow thread={thread} />
-            {i === Math.min(1, typedThreads.length - 1) && (
-              <div className="border-b border-gray-200">
-                <AdstirBanner slot="sp_list_middle" />
-              </div>
+            {adstirVisibility.listMiddle && i === Math.min(1, typedThreads.length - 1) && (
+              <AdstirBannerClient slot="sp_list_middle" className="border-b border-gray-200" />
             )}
             {i === 9 && (
               <div className="border-b border-gray-200">
