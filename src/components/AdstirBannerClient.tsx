@@ -6,7 +6,7 @@ import { ADSTIR_APP_ID, ADSTIR_SCRIPT_URL, ADSTIR_SLOTS, type AdstirSlotName } f
 
 const LIST_BOTTOM_MARKER = 'adstir-list-bottom-before-nav'
 const TOP_LIST_TENTH_MARKER = 'adstir-top-list-after-tenth-row'
-const LIST_PAGE_PATHS = new Set(['/', '/update', '/new', '/ranking', '/random', '/kakolog'])
+const LIST_PAGE_PATHS = new Set(['/update', '/new', '/ranking', '/random', '/kakolog'])
 
 function createAdstirIframe(adSpot: number, width: number, height: number) {
   const iframe = document.createElement('iframe')
