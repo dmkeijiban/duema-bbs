@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, type ReactNode } from 'react'
+import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import {
   DECK_STORAGE_KEY,
   entryZone,
@@ -21,6 +21,8 @@ type StoredDeckDraft = {
 }
 
 export default function DeckMakerTemplate({ children }: { children: ReactNode }) {
+  const [revision, setRevision] = useState(0)
+
   useEffect(() => {
     const replacePrinting = (event: Event) => {
       const { previousCard, nextCard } = (event as CustomEvent<PrintingChangeDetail>).detail ?? {}
@@ -71,7 +73,7 @@ export default function DeckMakerTemplate({ children }: { children: ReactNode })
         }
 
         localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ ...stored, entries }))
-        window.location.reload()
+        setRevision(current => current + 1)
       } catch {
         // 保存データが壊れている場合は、通常の収録版プレビュー切替だけを続行する。
       }
@@ -81,5 +83,5 @@ export default function DeckMakerTemplate({ children }: { children: ReactNode })
     return () => window.removeEventListener(CARD_PRINTING_CHANGE_EVENT, replacePrinting)
   }, [])
 
-  return children
+  return <Fragment key={revision}>{children}</Fragment>
 }
