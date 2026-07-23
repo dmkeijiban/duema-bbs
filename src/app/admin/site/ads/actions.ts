@@ -11,6 +11,7 @@ import { ADSTIR_SETTING_KEYS } from '@/lib/adstir'
 
 const GOODLIFE_BOOLEAN_SETTING_KEYS = [
   'goodlife_inline_enabled',
+  'goodlife_wipe_enabled',
   'goodlife_inline_thread_list',
   'goodlife_inline_thread_detail',
   'goodlife_inline_footer',
