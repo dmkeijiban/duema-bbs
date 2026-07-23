@@ -49,7 +49,7 @@ export default async function PublicDeckListPage({ searchParams }: { searchParam
   })
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
 
-  return <main className="min-h-screen bg-slate-100 px-3 py-3 sm:py-5">
+  return <main className="min-h-screen bg-slate-100 px-3 pb-3 pt-1 sm:pb-5 sm:pt-1">
     <div className="mx-auto max-w-6xl">
       <Link href="/makers/deck-maker" className="inline-flex h-8 items-center text-sm font-bold text-blue-700 active:opacity-60">← デッキを作る</Link>
       <div className="mt-1 sm:flex sm:items-end sm:justify-between sm:gap-4">
