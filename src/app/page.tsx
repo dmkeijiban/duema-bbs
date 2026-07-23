@@ -29,6 +29,8 @@ import type { Metadata } from 'next'
 import { AdBanner } from '@/components/AdBanner'
 import { GoodlifeInlineAd } from '@/components/GoodlifeInlineAd'
 import { GamAd } from '@/components/GamAd'
+import { AdstirBannerClient } from '@/components/AdstirBannerClient'
+import { getAdstirVisibility } from '@/lib/adstir-server'
 import { getCategoryIdsForSlug } from '@/lib/categories'
 import { ADSENSE_REVIEW_MODE, isAdSenseRiskyThreadTitle, isPrNoticeForAdSenseReview } from '@/lib/adsense-review-mode'
 import { GreenCtaBanner } from '@/components/GreenCtaBanner'
@@ -234,7 +236,10 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
     )
   }
 
-  const result = await getCachedThreadList(sort, page, categoryIds.length > 0 ? categoryIds : null, isArchived, TOP_THREAD_PAGE_SIZE)
+  const [result, adstirVisibility] = await Promise.all([
+    getCachedThreadList(sort, page, categoryIds.length > 0 ? categoryIds : null, isArchived, TOP_THREAD_PAGE_SIZE),
+    getAdstirVisibility(),
+  ])
   const allThreads = result.threads as unknown as (Thread & { categories: Category | null })[]
   const threads = ADSENSE_REVIEW_MODE ? allThreads.filter(t => !isAdSenseRiskyThreadTitle(t.title)) : allThreads
 
@@ -271,6 +276,7 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
       )}
       <GoodlifeInlineAd slot="thread_list_inline" />
       <GamAd slot="list_top" />
+      {adstirVisibility.listTop && <AdstirBannerClient slot="sp_list_top" />}
       <div className="grid grid-cols-3 md:grid-cols-5 border-l border-t border-gray-300">
         {threads.map((thread, i) => (
           <Fragment key={thread.id}>
@@ -279,6 +285,9 @@ async function ThreadList({ searchParams }: { searchParams: SearchParams }) {
               rank={sort === 'popular' ? i + 1 + (page - 1) * POPULAR_PAGE_SIZE : undefined}
               priority={i === 0}
             />
+            {adstirVisibility.listMiddle && i === Math.min(1, threads.length - 1) && (
+              <AdstirBannerClient slot="sp_list_middle" className="col-span-3 md:col-span-5 border-b border-r border-gray-300 bg-white" />
+            )}
             {i === 14 && (
               <div className="col-span-3 border-b border-r border-gray-300 bg-white md:col-span-5">
                 <GamAd slot="list_infeed" />

@@ -2,7 +2,11 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { makerRequiresLogin } from '@/lib/maker-auth-requirements'
-import DeckMaker from './DeckMaker'
+import DeckMakerClientShell from './DeckMakerClientShell'
+import DeckKeyCardSelector from './DeckKeyCardSelector'
+import DeckMakerNewDeckUx from './DeckMakerNewDeckUx'
+import DeckMakerInitialDraftGuard from './DeckMakerInitialDraftGuard'
+import DeckMakerMobileAdvanceLayoutFix from './DeckMakerMobileAdvanceLayoutFix'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getMakerAnonymousEditHash } from '@/lib/maker-anonymous-owner'
 import type { DeckEntry, DeckFormat } from '@/lib/deck-maker'
@@ -52,19 +56,30 @@ export default async function DeckMakerPage({ searchParams }: { searchParams: Pr
     format: row.format === 'advance' ? 'advance' as const : 'original' as const,
   }))
   const requestedId = params.edit ?? params.copy
-  let initialDeck: { name: string; entries: DeckEntry[]; submissionId?: string; format?: DeckFormat } | undefined
+  let initialDeck: { name: string; entries: DeckEntry[]; submissionId?: string; format?: DeckFormat; keyCardId?: string | null; keyCardPrintingId?: string | null } | undefined
   if (requestedId && /^[0-9a-f-]{36}$/i.test(requestedId)) {
-    const { data } = await admin.from('deck_submissions').select('id,user_id,anonymous_edit_token_hash,title,format,deck_data,is_public').eq('id', requestedId).maybeSingle()
+    const { data } = await admin.from('deck_submissions').select('id,user_id,anonymous_edit_token_hash,title,format,deck_data,key_card_id,key_card_printing_id,is_public').eq('id', requestedId).maybeSingle()
     if (data?.is_public) {
       const editHash = params.edit ? await getMakerAnonymousEditHash() : null
       const canEdit = params.edit && ((user && data.user_id === user.id) || (!user && data.user_id === null && editHash && data.anonymous_edit_token_hash === editHash))
-      if (!params.edit || canEdit) initialDeck = { name: params.copy ? `${data.title}のコピー` : data.title, entries: data.deck_data as DeckEntry[], format: data.format === 'advance' ? 'advance' : 'original', ...(canEdit ? { submissionId: data.id } : {}) }
+      if (!params.edit || canEdit) initialDeck = {
+        name: params.copy ? `${data.title}のコピー` : data.title,
+        entries: data.deck_data as DeckEntry[],
+        format: data.format === 'advance' ? 'advance' : 'original',
+        keyCardId: data.key_card_id,
+        keyCardPrintingId: data.key_card_printing_id,
+        ...(canEdit ? { submissionId: data.id } : {}),
+      }
     }
   }
 
   return (
     <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4">
-      <DeckMaker initialDeck={initialDeck} dbDecks={dbDecks} />
+      <DeckMakerInitialDraftGuard enabled={Boolean(initialDeck)} />
+      <DeckMakerNewDeckUx />
+      <DeckMakerMobileAdvanceLayoutFix />
+      <DeckMakerClientShell initialDeck={initialDeck} dbDecks={dbDecks} />
+      <DeckKeyCardSelector initialCardId={initialDeck?.keyCardId} initialPrintingId={initialDeck?.keyCardPrintingId} />
     </main>
   )
 }

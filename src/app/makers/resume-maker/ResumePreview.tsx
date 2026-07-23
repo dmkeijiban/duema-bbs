@@ -65,6 +65,8 @@ export function ResumePreview({ data, avatarUrl, resumeDate, exportRef }: { data
   const sectionContent = getResumeSectionContent(data)
   const favoriteCard = data.photo?.type === 'card' ? data.photo : null
   const freeSpaceHeight = getFreeSpaceHeight(sectionContent.freeSpace.text)
+  const favoriteCardHeight = Math.max(360, 504 - (freeSpaceHeight - L.freeSpaceHeight))
+  const favoriteCardWidth = favoriteCardHeight * (360 / 504)
   const renderSection = (section: ResumeSection) => {
     switch (section) {
       case 'interaction':
@@ -79,11 +81,11 @@ export function ResumePreview({ data, avatarUrl, resumeDate, exportRef }: { data
         return <section key={section} style={{ marginTop: 30 }}>
           <div className="flex items-end justify-between" style={{ gap: L.outerBorderInset }}>
             <SectionTitle>フリースペース</SectionTitle>
-            {favoriteCard && <h2 className="font-black text-center" style={{ width: 360, height: L.sectionTitleHeight, fontSize: L.font.section, lineHeight: 1 }}>好きなカード</h2>}
+            {favoriteCard && <h2 className="font-black text-center" style={{ width: favoriteCardWidth, height: L.sectionTitleHeight, fontSize: L.font.section, lineHeight: 1 }}>好きなカード</h2>}
           </div>
           <div className="flex items-start" style={{ marginTop: L.sectionContentGap, gap: L.outerBorderInset }}>
             <div className="min-w-0 flex-1 overflow-hidden whitespace-pre-wrap break-words border-2 p-4 font-sans" style={{ height: freeSpaceHeight, borderColor: L.colors.line, fontSize: L.font.freeSpace, lineHeight: '28px' }}>{sectionContent.freeSpace.text}</div>
-            {favoriteCard && <div className="flex h-[504px] w-[360px] shrink-0 items-start justify-center overflow-visible">
+            {favoriteCard && <div className="flex shrink-0 items-start justify-center overflow-visible" style={{ width: favoriteCardWidth, height: favoriteCardHeight }}>
               {favoriteCard.imageUrl ? <img src={exactCardImageUrl({ id: favoriteCard.cardId, imageUrl: favoriteCard.imageUrl }, RESUME_MAKER_SLUG)} alt={favoriteCard.name || '好きなカード'} className="h-full w-full object-contain" /> : <div className="flex h-full w-full items-center justify-center border-2 font-sans text-slate-400" style={{ borderColor: L.colors.line, fontSize: L.font.body }}>画像なし</div>}
             </div>}
           </div>

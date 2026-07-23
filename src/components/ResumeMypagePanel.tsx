@@ -8,8 +8,8 @@ import type { ResumeData } from '@/lib/maker-resume'
 export function ResumeMypagePanel({
   data,
   avatarUrl,
-  isPublic: initialIsPublic,
-  updatedAtLabel,
+  isPublic: _initialIsPublic,
+  updatedAtLabel: _updatedAtLabel,
   resumeDate,
 }: {
   data: ResumeData
@@ -36,17 +36,14 @@ export function ResumeMypagePanel({
 
   return (
     <>
-      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start">
-        <button type="button" aria-label="履歴書を拡大表示" onClick={() => setIsPreviewOpen(true)} className="w-28 shrink-0 cursor-zoom-in overflow-hidden rounded border border-gray-200 text-left">
-          <ScaledResumeRenderer data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} />
+      <div className="mt-3 flex h-full flex-col">
+        <button type="button" aria-label="履歴書を拡大表示" onClick={() => setIsPreviewOpen(true)} className="block w-full cursor-zoom-in overflow-hidden rounded-lg border border-gray-200 bg-white text-left transition active:scale-[0.99]">
+          <ScaledResumeRenderer data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} className="w-full" />
         </button>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-gray-900">{initialIsPublic ? '公開中' : '非公開'}</p>
-          <p className="mt-1 text-xs text-gray-500">最終更新日: {updatedAtLabel}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Link href="/makers/resume-maker" className="inline-flex items-center justify-center rounded border border-blue-300 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50">履歴書を編集する</Link>
-            <Link href="/makers/resume-maker/submissions" className="inline-flex items-center justify-center rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">みんなの履歴書を見る</Link>
-          </div>
+
+        <div className="mt-auto grid grid-cols-2 gap-2 pt-3">
+          <Link href="/makers/resume-maker" className="inline-flex min-h-10 items-center justify-center rounded-lg border border-blue-300 px-2 text-center text-xs font-bold text-blue-700 hover:bg-blue-50">履歴書を編集する</Link>
+          <Link href="/makers/resume-maker/submissions" className="inline-flex min-h-10 items-center justify-center rounded-lg border border-blue-300 px-2 text-center text-xs font-bold text-blue-700 hover:bg-blue-50">みんなの履歴書を見る</Link>
         </div>
       </div>
 

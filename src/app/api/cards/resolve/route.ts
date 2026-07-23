@@ -3,7 +3,7 @@ import { canAccessDeckMaker } from '@/lib/deck-maker-access'
 import { type DeckCard } from '@/lib/deck-maker'
 import { createAdminClient } from '@/lib/supabase-admin'
 
-type Printing = { id: string; source_key: string; official_page_url: string | null; image_url: string | null; is_representative: boolean; is_search_visible: boolean }
+type Printing = { id: string; source_key: string; official_page_url: string | null; image_url: string | null; is_representative: boolean; is_search_visible: boolean; card_id?: string }
 type Row = { id: string; name: string; name_kana: string | null; image_url: string | null; cost: number | null; civilization: string[] | null; card_type: string | null; card_printings?: Printing[] }
 
 function mapCard(row: Row, printing?: Printing): DeckCard {
@@ -26,25 +26,38 @@ export async function POST(request: NextRequest) {
     ])
     if (cardError) throw cardError
     if (aliasError) throw aliasError
+
     const officialKeys = (aliases ?? []).map((alias) => alias.official_source_key)
-    const printingResult = officialKeys.length
-      ? await admin.from('card_printings').select('id,source_key,official_page_url,image_url,is_representative,is_search_visible,card_id').in('source_key', officialKeys)
+    const requestedPrintingKeys = [...new Set([...sourceKeys, ...officialKeys])]
+    const printingResult = requestedPrintingKeys.length
+      ? await admin.from('card_printings').select('id,source_key,official_page_url,image_url,is_representative,is_search_visible,card_id').in('source_key', requestedPrintingKeys)
       : { data: [], error: null }
     if (printingResult.error) throw printingResult.error
+
     const aliasCardIds = [...new Set((printingResult.data ?? []).map((printing) => printing.card_id))]
     const aliasRowsResult = aliasCardIds.length
       ? await admin.from('cards').select('id,name,name_kana,image_url,cost,civilization,card_type,card_printings(id,source_key,official_page_url,image_url,is_representative,is_search_visible)').in('id', aliasCardIds).eq('is_active', true)
       : { data: [], error: null }
     if (aliasRowsResult.error) throw aliasRowsResult.error
+
     const rowById = new Map(
       ([...((rows ?? []) as Row[]), ...((aliasRowsResult.data ?? []) as Row[])]).map((row) => [row.id, row]),
     )
     const printingByKey = new Map((printingResult.data ?? []).map((printing) => [printing.source_key, printing]))
-    const resolvedAliases = (aliases ?? []).flatMap((alias) => {
+    const resolvedBySourceKey = new Map<string, DeckCard>()
+
+    for (const sourceKey of sourceKeys) {
+      const printing = printingByKey.get(sourceKey)
+      const row = printing ? rowById.get(printing.card_id) : null
+      if (row && printing) resolvedBySourceKey.set(sourceKey, mapCard(row, printing))
+    }
+    for (const alias of aliases ?? []) {
       const printing = printingByKey.get(alias.official_source_key)
       const row = printing ? rowById.get(printing.card_id) : null
-      return row && printing ? [{ oldSourceKey: alias.old_source_key, card: mapCard(row, printing) }] : []
-    })
+      if (row && printing) resolvedBySourceKey.set(alias.old_source_key, mapCard(row, printing))
+    }
+
+    const resolvedAliases = [...resolvedBySourceKey].map(([oldSourceKey, card]) => ({ oldSourceKey, card }))
     return NextResponse.json({ cards: [...rowById.values()].map((row) => mapCard(row)), aliases: resolvedAliases }, { headers: { 'Cache-Control': 'private, max-age=0, no-store' } })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

@@ -27,6 +27,7 @@ interface Props {
   page: number
   totalPages: number
   recommendSlot?: React.ReactNode
+  inlineAdSlot?: React.ReactNode
   threadRules?: string
   showAfterCommentThreadPrompt?: boolean
   showCommentFormHint?: boolean
@@ -106,6 +107,7 @@ export function ThreadContent({
   page,
   totalPages,
   recommendSlot,
+  inlineAdSlot,
   threadRules,
   showAfterCommentThreadPrompt = true,
   showCommentFormHint = true,
@@ -279,6 +281,8 @@ export function ThreadContent({
             <ThreadPoll threadId={threadId} poll={poll} onWriteReason={handleWritePollReason} />
           )}
         </div>
+
+        {inlineAdSlot}
 
         {visiblePosts.map(post => (
           <Fragment key={post.optimisticId ?? post.id}>
