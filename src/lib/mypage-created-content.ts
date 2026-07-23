@@ -19,7 +19,7 @@ export async function getMyCreatedContent(userId: string): Promise<{
   const decks = (deckResult.data ?? []) as PublicDeckCardData[]
   const representativeDeck = decks.find(item => item.id === deckRepresentativeId) ?? decks[0] ?? null
   const deckItems = representativeDeck
-    ? [representativeDeck, ...decks.filter(item => item.id !== representativeDeck.id)].slice(0, 3)
+    ? [representativeDeck, ...decks.filter(item => item.id !== representativeDeck.id)].slice(0, 4)
     : []
 
   return {
