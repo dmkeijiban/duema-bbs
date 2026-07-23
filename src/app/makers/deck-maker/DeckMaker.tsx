@@ -699,7 +699,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
         card={selected}
         versions={printingOptions}
         loading={printingsLoading}
-        count={selectedCount}
+        count={selectedNameCount}
         maxReached={selectedNameCount >= MAX_SAME_CARD}
         onClose={closeCard}
         onSelectVersion={selectPrinting}
