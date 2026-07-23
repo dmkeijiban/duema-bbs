@@ -11,14 +11,14 @@ import DeckCardGrid from './DeckCardGrid'
 export const dynamic = 'force-dynamic'
 
 type DeckCard = { id: string; printingId?: string | null; name: string; imageUrl: string | null; sourceKey: string | null; faceSideIndex?: number; zone?: string; count: number }
-type DeckRow = { id: string; user_id: string | null; anonymous_edit_token_hash: string | null; title: string; format: string; deck_data: DeckCard[]; created_at: string; updated_at: string; view_count: number; copy_count: number; key_card_id: string | null }
+type DeckRow = { id: string; user_id: string | null; anonymous_edit_token_hash: string | null; title: string; format: string; deck_data: DeckCard[]; created_at: string; updated_at: string; view_count: number; copy_count: number; key_card_id: string | null; key_card_printing_id: string | null }
 
 export default async function PublicDeckPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
   const admin = createAdminClient()
   const { data } = await admin.from('deck_submissions')
-    .select('id,user_id,anonymous_edit_token_hash,title,format,deck_data,created_at,updated_at,view_count,copy_count,key_card_id')
+    .select('id,user_id,anonymous_edit_token_hash,title,format,deck_data,created_at,updated_at,view_count,copy_count,key_card_id,key_card_printing_id')
     .eq('id', id)
     .eq('is_public', true)
     .maybeSingle()
@@ -33,7 +33,9 @@ export default async function PublicDeckPage({ params }: { params: Promise<{ id:
   const editHash = await getMakerAnonymousEditHash()
   const canEdit = (user && deck.user_id === user.id) || (!user && deck.user_id === null && editHash && deck.anonymous_edit_token_hash === editHash)
   const cards = deck.deck_data.flatMap((card, entryIndex) => Array.from({ length: card.count }, (_, copy) => ({ ...card, entryIndex, copy })))
-  const keyCard = deck.deck_data.find(card => card.id === deck.key_card_id) ?? deck.deck_data[0]
+  const keyCard = deck.deck_data.find(card => card.id === deck.key_card_id && (!deck.key_card_printing_id || card.printingId === deck.key_card_printing_id))
+    ?? deck.deck_data.find(card => card.id === deck.key_card_id)
+    ?? deck.deck_data[0]
 
   return (
     <main className="min-h-screen bg-slate-100 px-3 py-6">
