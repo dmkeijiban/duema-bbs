@@ -82,9 +82,7 @@ export const RESUME_SOCIAL_TAG_PRESETS = [
   { key: 'remote_ok', label: 'リモート対戦可能' },
   { key: 'deck_advice_ok', label: 'デッキ相談歓迎' },
   { key: 'beginner', label: '初心者です' },
-  { key: 'casual', label: 'カジュアル中心' },
-  { key: 'cs_active', label: 'CS参加中' },
-  { key: 'x_casual', label: 'Xで気軽に絡んでください' },
+  { key: 'x_casual', label: '気軽に絡んで下さい' },
 ] as const
 
 export const RESUME_REGIONS = [
