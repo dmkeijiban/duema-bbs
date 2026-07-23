@@ -345,11 +345,17 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   }
 
   function sortDeckByCost() {
-    setEntries(list => list.map((entry, index) => ({ entry, index })).sort((a, b) => {
-      const costA = a.entry.cost ?? Number.MAX_SAFE_INTEGER
-      const costB = b.entry.cost ?? Number.MAX_SAFE_INTEGER
-      return costA - costB || a.entry.name.localeCompare(b.entry.name, 'ja') || a.index - b.index
-    }).map(item => item.entry))
+    setEntries(list => {
+      const zoneSlots = list.map((entry, index) => ({ entry, index })).filter(({ entry }) => entryZone(entry) === activeZone)
+      const sorted = [...zoneSlots].sort((a, b) => {
+        const costA = a.entry.cost ?? Number.MAX_SAFE_INTEGER
+        const costB = b.entry.cost ?? Number.MAX_SAFE_INTEGER
+        return costA - costB || a.entry.name.localeCompare(b.entry.name, 'ja') || a.index - b.index
+      })
+      const next = [...list]
+      zoneSlots.forEach(({ index }, position) => { next[index] = sorted[position].entry })
+      return next
+    })
     setNotice('コストが小さい順に並べ替えました')
   }
 
@@ -567,18 +573,35 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
         <div className="inline-flex rounded-xl bg-slate-100 p-1 text-sm font-bold">
           {(['original', 'advance'] as const).map(value => <button key={value} type="button" onClick={() => { setFormat(value); setActiveZone('main') }} className={`min-h-10 rounded-lg px-4 ${format === value ? 'bg-blue-700 text-white shadow-sm' : 'text-slate-700 active:bg-slate-200'}`}>{value === 'original' ? 'オリジナル' : 'アドバンス'}</button>)}
         </div>
-        <button onClick={sortDeckByCost} disabled={entries.length < 2} aria-label="コストが小さい順に並べ替え" className="min-h-10 shrink-0 whitespace-nowrap rounded-lg border border-slate-300 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40">コスト順</button>
-        {format === 'advance' && <div className="flex min-w-0 flex-1 flex-wrap gap-1 sm:justify-end">
-          {(['main', 'gr', 'hyperspatial'] as DeckZone[]).map(zone => <button key={zone} type="button" onClick={() => setActiveZone(zone)} className={`min-h-10 rounded-lg border px-3 text-xs font-bold ${activeZone === zone ? 'border-blue-700 bg-blue-50 text-blue-800' : 'border-slate-200 text-slate-600 active:bg-slate-100'}`}>{ZONE_LABELS[zone]} {zoneDeckSize(entries, zone)} / {DECK_ZONE_LIMITS[zone]}</button>)}
-        </div>}
       </div>
 
       {notice && <div role="status" className="fixed left-1/2 top-20 z-[60] -translate-x-1/2 rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white shadow-xl">{notice}</div>}
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.85fr)_minmax(320px,1fr)] lg:items-start">
         <section aria-labelledby="deck-heading" className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm sm:p-3">
-          <div className="mb-2 px-1">
-            <h2 id="deck-heading" className="text-sm font-black text-slate-800">{ZONE_LABELS[activeZone]} <span data-testid="deck-count">{activeTotal}/{DECK_ZONE_LIMITS[activeZone]}</span></h2>
+          {format === 'advance' && (
+            <div className="mb-2 grid grid-cols-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+              {(['main', 'gr', 'hyperspatial'] as DeckZone[]).map(zone => (
+                <button
+                  key={zone}
+                  type="button"
+                  onClick={() => setActiveZone(zone)}
+                  aria-current={activeZone === zone}
+                  className={`flex min-w-0 flex-col items-center justify-center gap-0.5 border-b-2 px-1 py-2 text-center text-[11px] font-bold leading-tight sm:text-xs ${activeZone === zone ? 'border-blue-700 bg-white text-blue-800' : 'border-transparent text-slate-500 hover:bg-slate-100'}`}
+                >
+                  <span className="truncate">{ZONE_LABELS[zone]}</span>
+                  <span>{zoneDeckSize(entries, zone)} / {DECK_ZONE_LIMITS[zone]}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="mb-2 flex items-center justify-between gap-2 px-1">
+            {format === 'advance' ? (
+              <span id="deck-heading" className="sr-only">{ZONE_LABELS[activeZone]} {activeTotal}/{DECK_ZONE_LIMITS[activeZone]}</span>
+            ) : (
+              <h2 id="deck-heading" className="text-sm font-black text-slate-800">{ZONE_LABELS.main} <span data-testid="deck-count">{mainTotal}/{DECK_ZONE_LIMITS.main}</span></h2>
+            )}
+            <button onClick={sortDeckByCost} disabled={activeTotal < 2} aria-label="コストが小さい順に並べ替え" className="ml-auto min-h-9 shrink-0 whitespace-nowrap rounded-lg border border-slate-300 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40">コスト順</button>
           </div>
           <div data-testid="deck-list" className={`rounded-xl bg-slate-100 ${deckCards.length ? 'grid grid-cols-8 gap-0.5' : 'flex h-[220px] items-center justify-center'}`}>
             {deckCards.length ? deckCards.map(({ entry, copy }) => (
