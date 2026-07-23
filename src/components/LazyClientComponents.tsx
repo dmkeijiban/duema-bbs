@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic'
 import type { SnsUrls } from '@/lib/sns'
 import { GlobalInteractionFeedback } from './GlobalInteractionFeedback'
 import { MyPageSignupAd } from './MyPageSignupAd'
+import { FixedAndRankingTopAd } from './FixedAndRankingTopAd'
 
 // スクロールリスナーを持つ SnsFloatingBar を初期バンドルから除外
 const SnsFloatingBarInner = dynamic(
@@ -37,6 +38,7 @@ export function LazyPostHogBridge() {
     <>
       <GlobalInteractionFeedback />
       <MyPageSignupAd />
+      <FixedAndRankingTopAd />
       <PostHogEventBridgeInner />
     </>
   )
