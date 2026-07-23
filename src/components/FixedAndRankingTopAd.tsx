@@ -5,7 +5,8 @@ import { createPortal } from 'react-dom'
 import { usePathname } from 'next/navigation'
 import { AdstirBannerClient } from '@/components/AdstirBannerClient'
 
-const HOST_MARKER = 'fixed-ranking-top-ad'
+const TOP_HOST_MARKER = 'fixed-ranking-top-ad'
+const BOTTOM_HOST_MARKER = 'ranking-bottom-nav-ad'
 
 const EXCLUDED_FIXED_PAGE_PREFIXES = [
   '/admin',
@@ -27,7 +28,7 @@ function normalizedText(element: Element) {
   return (element.textContent ?? '').replace(/\s+/g, ' ').trim()
 }
 
-function findRankingAnchor() {
+function findRankingRecommendAnchor() {
   const candidates = Array.from(document.querySelectorAll<HTMLElement>('main section, main div'))
   return candidates.find(element => {
     const text = normalizedText(element)
@@ -37,6 +38,23 @@ function findRankingAnchor() {
     return !Array.from(element.children).some(child => {
       const childText = normalizedText(child)
       return childText.startsWith('おすすめ') && childText.includes('ランキングはこちら')
+    })
+  }) ?? null
+}
+
+function findRankingBottomNavAnchor() {
+  const candidates = Array.from(document.querySelectorAll<HTMLElement>('main nav, main div'))
+  return candidates.find(element => {
+    const text = normalizedText(element)
+    if (!text.includes('更新順一覧') || !text.includes('ランキング')) return false
+    if (!text.includes('ランダム') || !text.includes('過去ログ')) return false
+
+    return !Array.from(element.children).some(child => {
+      const childText = normalizedText(child)
+      return childText.includes('更新順一覧')
+        && childText.includes('ランキング')
+        && childText.includes('ランダム')
+        && childText.includes('過去ログ')
     })
   }) ?? null
 }
@@ -61,39 +79,71 @@ function findFixedPageBreadcrumb(pathname: string) {
 
 export function FixedAndRankingTopAd() {
   const pathname = usePathname()
-  const [host, setHost] = useState<HTMLDivElement | null>(null)
+  const [topHost, setTopHost] = useState<HTMLDivElement | null>(null)
+  const [bottomHost, setBottomHost] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    setHost(null)
+    setTopHost(null)
+    setBottomHost(null)
 
-    let insertedHost: HTMLDivElement | null = null
+    const insertedHosts: HTMLDivElement[] = []
 
-    const insert = () => {
-      const existing = document.querySelector<HTMLDivElement>(`[data-ad-placement="${HOST_MARKER}"]`)
+    const ensureHost = (
+      marker: string,
+      anchor: HTMLElement | null,
+      position: 'before' | 'after',
+      className: string,
+      setHost: (host: HTMLDivElement) => void,
+    ) => {
+      const existing = document.querySelector<HTMLDivElement>(`[data-ad-placement="${marker}"]`)
       if (existing) {
         setHost(existing)
         return true
       }
-
-      const anchor = pathname === '/ranking'
-        ? findRankingAnchor()
-        : findFixedPageBreadcrumb(pathname)
       if (!anchor) return false
 
       const container = document.createElement('div')
-      container.dataset.adPlacement = HOST_MARKER
-      container.className = pathname === '/ranking' ? 'my-2' : 'my-3'
+      container.dataset.adPlacement = marker
+      container.className = className
 
-      if (pathname === '/ranking') anchor.before(container)
+      if (position === 'before') anchor.before(container)
       else anchor.after(container)
 
-      insertedHost = container
+      insertedHosts.push(container)
       setHost(container)
       return true
     }
 
+    const insert = () => {
+      if (pathname === '/ranking') {
+        const topReady = ensureHost(
+          TOP_HOST_MARKER,
+          findRankingRecommendAnchor(),
+          'before',
+          'my-2',
+          setTopHost,
+        )
+        const bottomReady = ensureHost(
+          BOTTOM_HOST_MARKER,
+          findRankingBottomNavAnchor(),
+          'before',
+          'my-2',
+          setBottomHost,
+        )
+        return topReady && bottomReady
+      }
+
+      return ensureHost(
+        TOP_HOST_MARKER,
+        findFixedPageBreadcrumb(pathname),
+        'after',
+        'my-3',
+        setTopHost,
+      )
+    }
+
     if (insert()) {
-      return () => insertedHost?.remove()
+      return () => insertedHosts.forEach(host => host.remove())
     }
 
     const observer = new MutationObserver(() => {
@@ -103,14 +153,20 @@ export function FixedAndRankingTopAd() {
 
     return () => {
       observer.disconnect()
-      insertedHost?.remove()
+      insertedHosts.forEach(host => host.remove())
     }
   }, [pathname])
 
-  if (!host) return null
-
-  return createPortal(
-    <AdstirBannerClient slot="sp_list_top" className="my-0" />,
-    host,
+  return (
+    <>
+      {topHost && createPortal(
+        <AdstirBannerClient slot="sp_list_top" className="my-0" />,
+        topHost,
+      )}
+      {bottomHost && createPortal(
+        <AdstirBannerClient slot="sp_list_middle" className="my-0" />,
+        bottomHost,
+      )}
+    </>
   )
 }
