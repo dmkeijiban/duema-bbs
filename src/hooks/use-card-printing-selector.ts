@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { printingKey, type DeckCard } from '@/lib/deck-maker'
 
 export const CARD_PRINTING_CHANGE_EVENT = 'duema-bbs:card-printing-change'
+const PRINTING_SELECTOR_RESTORE_KEY = 'duema-bbs:card-printing-selector-restore'
 
 const printingOptionsCache = new Map<string, DeckCard[]>()
 const printingOptionsRequests = new Map<string, Promise<DeckCard[]>>()
@@ -44,6 +45,7 @@ export function useCardPrintingSelector({ normalizeCard = (card: DeckCard) => ca
 
   const closeCard = useCallback(() => {
     requestId.current += 1
+    try { sessionStorage.removeItem(PRINTING_SELECTOR_RESTORE_KEY) } catch {}
     setSelectedCard(null)
     setPrintingOptions([])
     setLoading(false)
@@ -76,8 +78,21 @@ export function useCardPrintingSelector({ normalizeCard = (card: DeckCard) => ca
       .finally(() => { if (requestId.current === currentRequestId) setLoading(false) })
   }, [normalizeCard, onLoadError, onOptionsLoaded])
 
+  useEffect(() => {
+    try {
+      const restored = sessionStorage.getItem(PRINTING_SELECTOR_RESTORE_KEY)
+      if (!restored) return
+      sessionStorage.removeItem(PRINTING_SELECTOR_RESTORE_KEY)
+      const card = JSON.parse(restored) as DeckCard
+      if (card && typeof card.id === 'string') openCard(normalizeCard(card))
+    } catch {
+      try { sessionStorage.removeItem(PRINTING_SELECTOR_RESTORE_KEY) } catch {}
+    }
+  }, [normalizeCard, openCard])
+
   const selectPrinting = useCallback((card: DeckCard) => {
     if (selectedCard && printingKey(selectedCard) !== printingKey(card)) {
+      try { sessionStorage.setItem(PRINTING_SELECTOR_RESTORE_KEY, JSON.stringify(card)) } catch {}
       window.dispatchEvent(new CustomEvent(CARD_PRINTING_CHANGE_EVENT, {
         detail: { previousCard: selectedCard, nextCard: card },
       }))
