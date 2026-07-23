@@ -7,6 +7,7 @@ const ATTRIBUTES = [
   'data-deck-format-label',
   'data-deck-format-toggle',
   'data-deck-cost-sort',
+  'data-deck-new-button',
   'data-deck-zone-tabs',
   'data-deck-zone-heading',
 ] as const
@@ -15,15 +16,18 @@ export default function DeckMakerMobileAdvanceLayoutFix() {
   useEffect(() => {
     const applyLayoutMarkers = () => {
       const sortButton = document.querySelector<HTMLButtonElement>('button[aria-label="コストが小さい順に並べ替え"]')
+      const newDeckButton = Array.from(document.querySelectorAll<HTMLButtonElement>('button[aria-label="デッキをリセット"], button[aria-label="新しいデッキを作る"]'))
+        .find(button => !button.closest('[role="alertdialog"]'))
       const formatLabel = Array.from(document.querySelectorAll<HTMLElement>('span')).find(element => element.textContent?.trim() === 'フォーマット')
       const toolbar = formatLabel?.parentElement
       const deckHeading = document.getElementById('deck-heading')
       const deckHeadingRow = deckHeading?.parentElement
-      if (!sortButton || !toolbar || !deckHeadingRow) return
+      if (!sortButton || !newDeckButton || !toolbar || !deckHeadingRow) return
 
       toolbar.setAttribute('data-deck-format-toolbar', '')
       formatLabel.setAttribute('data-deck-format-label', '')
       sortButton.setAttribute('data-deck-cost-sort', '')
+      newDeckButton.setAttribute('data-deck-new-button', '')
       deckHeadingRow.setAttribute('data-deck-zone-heading', '')
 
       const directChildren = Array.from(toolbar.children) as HTMLElement[]
@@ -33,6 +37,9 @@ export default function DeckMakerMobileAdvanceLayoutFix() {
       toggle?.setAttribute('data-deck-format-toggle', '')
       zoneTabs?.setAttribute('data-deck-zone-tabs', '')
 
+      if (newDeckButton.parentElement !== deckHeadingRow || newDeckButton.nextElementSibling !== sortButton) {
+        deckHeadingRow.insertBefore(newDeckButton, sortButton)
+      }
       if (sortButton.parentElement !== deckHeadingRow) deckHeadingRow.appendChild(sortButton)
     }
 
@@ -68,8 +75,12 @@ export default function DeckMakerMobileAdvanceLayoutFix() {
       gap: 0.5rem;
     }
 
-    [data-deck-cost-sort] {
+    [data-deck-new-button] {
       margin-left: auto;
+    }
+
+    [data-deck-cost-sort] {
+      margin-left: 0;
     }
 
     @media (max-width: 639px) {
@@ -118,6 +129,7 @@ export default function DeckMakerMobileAdvanceLayoutFix() {
         line-height: 1.2;
       }
 
+      [data-deck-new-button],
       [data-deck-cost-sort] {
         min-height: 2.25rem !important;
         padding-left: 0.75rem !important;
