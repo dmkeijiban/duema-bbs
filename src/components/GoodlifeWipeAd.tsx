@@ -4,22 +4,27 @@ import { useEffect } from 'react'
 import { GOODLIFE_WIPE_SCRIPT_URL } from '@/lib/ads'
 
 const SCRIPT_ID = 'goodlife-wipe-ad-script'
-const DISMISSED_AT_KEY = 'goodlife_wipe_dismissed_at'
-const DISMISS_TTL_MS = 24 * 60 * 60 * 1000
-const AD_NODE_TRACKING_MS = 15_000
+const SHOWN_DATE_KEY = 'goodlife_wipe_shown_date'
 
-function wasRecentlyDismissed() {
+function getLocalDateKey() {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function wasShownToday() {
   try {
-    const dismissedAt = Number(window.localStorage.getItem(DISMISSED_AT_KEY))
-    return Number.isFinite(dismissedAt) && Date.now() - dismissedAt < DISMISS_TTL_MS
+    return window.localStorage.getItem(SHOWN_DATE_KEY) === getLocalDateKey()
   } catch {
     return false
   }
 }
 
-function rememberDismissal() {
+function rememberShownToday() {
   try {
-    window.localStorage.setItem(DISMISSED_AT_KEY, String(Date.now()))
+    window.localStorage.setItem(SHOWN_DATE_KEY, getLocalDateKey())
   } catch {
     // localStorageが利用できない環境では、広告側の通常動作を維持する。
   }
@@ -28,49 +33,10 @@ function rememberDismissal() {
 export function GoodlifeWipeAd({ enabled }: { enabled: boolean }) {
   useEffect(() => {
     if (!enabled || !window.matchMedia('(max-width: 767px)').matches) return
-    if (wasRecentlyDismissed() || document.getElementById(SCRIPT_ID)) return
+    if (wasShownToday() || document.getElementById(SCRIPT_ID)) return
 
-    const adNodes = new Set<HTMLElement>()
-    let trackingFinished = false
-
-    const observer = new MutationObserver(mutations => {
-      if (trackingFinished) return
-
-      for (const mutation of mutations) {
-        for (const node of mutation.addedNodes) {
-          if (!(node instanceof HTMLElement) || node.id === SCRIPT_ID) continue
-          adNodes.add(node)
-          node.querySelectorAll<HTMLElement>('*').forEach(element => adNodes.add(element))
-        }
-      }
-    })
-
-    observer.observe(document.body, { childList: true, subtree: true })
-
-    const handleClick = (event: MouseEvent) => {
-      const path = event.composedPath()
-      const clickedAdNode = path.find(
-        item => item instanceof HTMLElement && adNodes.has(item),
-      ) as HTMLElement | undefined
-
-      if (!clickedAdNode) return
-
-      const trackedAncestors = path.filter(
-        item => item instanceof HTMLElement && adNodes.has(item),
-      ) as HTMLElement[]
-
-      window.setTimeout(() => {
-        const adWasClosed = trackedAncestors.some(element => {
-          if (!element.isConnected) return true
-          const style = window.getComputedStyle(element)
-          return style.display === 'none' || style.visibility === 'hidden'
-        })
-
-        if (adWasClosed) rememberDismissal()
-      }, 500)
-    }
-
-    document.addEventListener('click', handleClick, true)
+    // その日の初回表示時点で記録し、ページ遷移・再読み込み後は同日中に再表示しない。
+    rememberShownToday()
 
     const script = document.createElement('script')
     script.id = SCRIPT_ID
@@ -80,15 +46,7 @@ export function GoodlifeWipeAd({ enabled }: { enabled: boolean }) {
     script.async = true
     document.body.appendChild(script)
 
-    const trackingTimer = window.setTimeout(() => {
-      trackingFinished = true
-      observer.disconnect()
-    }, AD_NODE_TRACKING_MS)
-
     return () => {
-      window.clearTimeout(trackingTimer)
-      observer.disconnect()
-      document.removeEventListener('click', handleClick, true)
       script.remove()
     }
   }, [enabled])
