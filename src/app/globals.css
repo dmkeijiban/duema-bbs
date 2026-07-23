@@ -77,6 +77,25 @@ ins.adsbygoogle:not([data-ad-status="filled"]) {
   display: none !important;
 }
 
+/* 配信会社や設置場所に関係なく、広告枠と広告本体を常に中央へ揃える */
+:where([data-ad-provider], [aria-label="広告"], .adsbygoogle) {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  text-align: center !important;
+}
+
+:where([data-ad-provider], [aria-label="広告"]) > :where(div, ins, iframe, script + *) {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+:where([data-ad-provider], [aria-label="広告"]) iframe,
+ins.adsbygoogle {
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
 @media (max-width: 768px) {
   input[type="text"],
   input[type="email"],
