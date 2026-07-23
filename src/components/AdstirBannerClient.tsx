@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react'
 import { ADSTIR_APP_ID, ADSTIR_SCRIPT_URL, ADSTIR_SLOTS, type AdstirSlotName } from '@/lib/adstir'
 
 const LIST_BOTTOM_MARKER = 'adstir-list-bottom-before-nav'
+const LIST_PAGE_PATHS = new Set(['/', '/update', '/new', '/ranking', '/random', '/kakolog'])
 
 function createAdstirIframe(adSpot: number, width: number, height: number) {
   const iframe = document.createElement('iframe')
@@ -29,8 +30,11 @@ export function AdstirBannerClient({ slot, className = '' }: { slot: AdstirSlotN
   const pathname = usePathname()
   const { adSpot, width, height } = ADSTIR_SLOTS[slot]
   const containerRef = useRef<HTMLDivElement>(null)
+  const hidePrimaryListTop = slot === 'sp_list_top' && LIST_PAGE_PATHS.has(pathname)
 
   useEffect(() => {
+    if (hidePrimaryListTop) return
+
     const container = containerRef.current
     if (!container) return
     // PC/タブレット幅では配信しない（既存のmd:768pxブレークポイントに合わせる）
@@ -43,7 +47,7 @@ export function AdstirBannerClient({ slot, className = '' }: { slot: AdstirSlotN
     return () => {
       container.replaceChildren()
     }
-  }, [adSpot, width, height])
+  }, [adSpot, height, hidePrimaryListTop, width])
 
   useEffect(() => {
     // 一覧上部と同じ320×100枠を、一覧末尾のページ送りと共通ナビの間にも表示する。
@@ -95,6 +99,8 @@ export function AdstirBannerClient({ slot, className = '' }: { slot: AdstirSlotN
       insertedHost?.remove()
     }
   }, [adSpot, height, pathname, slot, width])
+
+  if (hidePrimaryListTop) return null
 
   return (
     <div
