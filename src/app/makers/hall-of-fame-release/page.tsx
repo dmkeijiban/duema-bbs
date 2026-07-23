@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import { getCurrentHallCards, getHallCardOfficialId } from '@/lib/hall-of-fame'
 import type { MakerCard, MakerDraft } from '@/lib/maker'
+import { AdstirBannerClient } from '@/components/AdstirBannerClient'
 import HallReleaseMaker from './HallReleaseMaker'
 import { makerRequiresLogin } from '@/lib/maker-auth-requirements'
 
@@ -50,5 +51,5 @@ export default async function Page() {
   if (user && projectReady && project && admin) { const { data: submissions } = await admin.from('maker_submissions').select('id').eq('project_id', project.id).eq('user_id', user.id).eq('is_valid', true).order('created_at', { ascending: false }).limit(1); const submission = submissions?.[0]; if (submission) { saved = true; const { data: items } = await admin.from('maker_submission_items').select('card_id').eq('submission_id', submission.id).eq('group_key', 'release').order('position'); draft.release = (items ?? []).map(item => item.card_id) } }
   const { data: rows } = projectReady && project && admin ? await admin.from('maker_selection_aggregates').select('card_id,selection_count,submission_count,selection_rate').eq('project_id', project.id) : { data: [] }
   const aggregates = (rows ?? []).map(row => ({ cardId: row.card_id, counts: { release: row.selection_count }, ratingCount: row.submission_count, averageTier: Number(row.selection_rate) }))
-  return <main className="min-h-screen bg-slate-50 px-3 py-5"><div className="mx-auto max-w-7xl"><h1 className="text-2xl font-black">殿堂解除選手権</h1><p className="mt-1 text-sm text-gray-600">次に殿堂解除されると思うカードを選ぼう！</p>{unavailableMessage && <p className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">{unavailableMessage}</p>}<HallReleaseMaker cards={cards} draft={draft} canSave={projectReady} saved={saved} aggregates={aggregates} /></div></main>
+  return <main className="min-h-screen bg-slate-50 px-3 py-5"><div className="mx-auto max-w-7xl"><AdstirBannerClient slot="sp_list_top" className="mb-3 mt-0" /><h1 className="text-2xl font-black">殿堂解除選手権</h1><p className="mt-1 text-sm text-gray-600">次に殿堂解除されると思うカードを選ぼう！</p>{unavailableMessage && <p className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">{unavailableMessage}</p>}<HallReleaseMaker cards={cards} draft={draft} canSave={projectReady} saved={saved} aggregates={aggregates} /></div></main>
 }
