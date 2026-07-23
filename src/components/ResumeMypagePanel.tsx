@@ -8,8 +8,8 @@ import type { ResumeData } from '@/lib/maker-resume'
 export function ResumeMypagePanel({
   data,
   avatarUrl,
-  isPublic: initialIsPublic,
-  updatedAtLabel,
+  isPublic: _initialIsPublic,
+  updatedAtLabel: _updatedAtLabel,
   resumeDate,
 }: {
   data: ResumeData
@@ -37,16 +37,11 @@ export function ResumeMypagePanel({
   return (
     <>
       <div className="mt-3 flex h-full flex-col">
-        <div className="mb-2 flex items-center justify-between gap-2 text-xs text-gray-500">
-          <span className="font-bold text-gray-900">{initialIsPublic ? '公開中' : '非公開'}</span>
-          <span className="truncate">最終更新日: {updatedAtLabel}</span>
-        </div>
-
         <button type="button" aria-label="履歴書を拡大表示" onClick={() => setIsPreviewOpen(true)} className="block w-full cursor-zoom-in overflow-hidden rounded-lg border border-gray-200 bg-white text-left transition active:scale-[0.99]">
           <ScaledResumePreview data={data} avatarUrl={avatarUrl} resumeDate={resumeDate} className="w-full" />
         </button>
 
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-auto grid grid-cols-2 gap-2 pt-3">
           <Link href="/makers/resume-maker" className="inline-flex min-h-10 items-center justify-center rounded-lg border border-blue-300 px-2 text-center text-xs font-bold text-blue-700 hover:bg-blue-50">履歴書を編集する</Link>
           <Link href="/makers/resume-maker/submissions" className="inline-flex min-h-10 items-center justify-center rounded-lg border border-blue-300 px-2 text-center text-xs font-bold text-blue-700 hover:bg-blue-50">みんなの履歴書を見る</Link>
         </div>
