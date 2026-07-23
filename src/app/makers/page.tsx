@@ -21,8 +21,11 @@ type MakerProject = {
 }
 type CatalogEntry = { id: string; title: string; href: string; category: MakerCategory; sortOrder: number; description: string; featured?: boolean; isNew?: boolean; isLimited?: boolean; thumbnailUrl?: string }
 
+const NINE_SELECTION_MAKER_IDS = new Set(['my-duema-9', 'childhood-trump-card-9'])
+
 const MAKER_DESCRIPTION_OVERRIDES: Record<string, string> = {
   'my-duema-9': '自分を象徴するカード9枚で、3×3画像を作れます。',
+  'childhood-trump-card-9': '子どもの頃に使っていたデッキの切り札を9枚選べます。',
   'dm26-ex2-charisma-best-tier': '全カードをS〜Dで評価してTier表を作れます。',
   'hall-of-fame-release': '殿堂・プレミアム殿堂から、解除予想カードを選べます。',
 }
@@ -58,8 +61,9 @@ export default async function MakersPage() {
     topFeaturedProjectSlug
   )
   const featuredEntries = entries.filter(entry =>
-    entry.category !== 'archive' && (entry.featured || entry.id === playgroundRecommendedSlug)
+    entry.category !== 'archive' && !NINE_SELECTION_MAKER_IDS.has(entry.id) && (entry.featured || entry.id === playgroundRecommendedSlug)
   )
+  const nineSelectionEntries = entries.filter(entry => NINE_SELECTION_MAKER_IDS.has(entry.id))
 
   const ProjectCard = ({ entry }: { entry: typeof entries[number] }) => (
     <Link href={entry.href} className="block overflow-hidden rounded-xl border bg-white transition hover:border-blue-400 hover:shadow-sm">
@@ -76,7 +80,8 @@ export default async function MakersPage() {
         <h1 className="text-2xl font-black sm:text-3xl">デュエマあそびば</h1>
         <p className="mt-2 text-sm leading-6 text-gray-600">カードを選んだり、診断したり、投票したり、<br className="sm:hidden" />みんなで遊べるデュエマコンテンツ集。</p>
         {featuredEntries.length > 0 && <section data-testid="featured-makers" className="mt-7 rounded-2xl border border-amber-200 bg-amber-50/60 p-3 sm:p-4"><h2 className="text-lg font-black">おすすめ</h2><div className="mt-3 grid gap-3 sm:grid-cols-2">{featuredEntries.map(entry => <ProjectCard key={entry.id} entry={entry} />)}</div></section>}
-        {MAKER_CATEGORIES.map(category => { const categoryEntries = entries.filter(entry => entry.category === category && !entry.featured); return categoryEntries.length > 0 && <section data-category={category} key={category} className="mt-7"><h2 className="text-lg font-black">{MAKER_CATEGORY_LABELS[category as MakerCategory]}</h2><div className="mt-3 grid gap-3 sm:grid-cols-2">{categoryEntries.map(entry => <ProjectCard key={entry.id} entry={entry} />)}</div></section> })}
+        {nineSelectionEntries.length > 0 && <section data-category="nine-selection" className="mt-7"><h2 className="text-lg font-black">9選</h2><p className="mt-1 text-sm text-gray-500">テーマを選んで、自分だけのカード9選を作ろう。</p><div className="mt-3 grid gap-3 sm:grid-cols-2">{nineSelectionEntries.map(entry => <ProjectCard key={entry.id} entry={entry} />)}</div></section>}
+        {MAKER_CATEGORIES.map(category => { const categoryEntries = entries.filter(entry => entry.category === category && !entry.featured && !NINE_SELECTION_MAKER_IDS.has(entry.id)); return categoryEntries.length > 0 && <section data-category={category} key={category} className="mt-7"><h2 className="text-lg font-black">{MAKER_CATEGORY_LABELS[category as MakerCategory]}</h2><div className="mt-3 grid gap-3 sm:grid-cols-2">{categoryEntries.map(entry => <ProjectCard key={entry.id} entry={entry} />)}</div></section> })}
       </div>
     </main>
   )
