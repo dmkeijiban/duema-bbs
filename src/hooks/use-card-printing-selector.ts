@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { printingKey, type DeckCard } from '@/lib/deck-maker'
 
+export const CARD_PRINTING_CHANGE_EVENT = 'duema-bbs:card-printing-change'
+
 const printingOptionsCache = new Map<string, DeckCard[]>()
 const printingOptionsRequests = new Map<string, Promise<DeckCard[]>>()
 
@@ -74,5 +76,14 @@ export function useCardPrintingSelector({ normalizeCard = (card: DeckCard) => ca
       .finally(() => { if (requestId.current === currentRequestId) setLoading(false) })
   }, [normalizeCard, onLoadError, onOptionsLoaded])
 
-  return { selectedCard, printingOptions, loading, openCard, closeCard, selectPrinting: setSelectedCard }
+  const selectPrinting = useCallback((card: DeckCard) => {
+    if (selectedCard && printingKey(selectedCard) !== printingKey(card)) {
+      window.dispatchEvent(new CustomEvent(CARD_PRINTING_CHANGE_EVENT, {
+        detail: { previousCard: selectedCard, nextCard: card },
+      }))
+    }
+    setSelectedCard(card)
+  }, [selectedCard])
+
+  return { selectedCard, printingOptions, loading, openCard, closeCard, selectPrinting }
 }
