@@ -50,7 +50,9 @@ export default function HallReleaseMaker(props: { cards: MakerCard[]; draft: Mak
       .hall-release-maker > div > section > div:nth-of-type(2) input,
       .hall-release-maker > div > section > div:nth-of-type(2) textarea {
         margin-top: 0;
+        min-width: 0;
         min-height: 2.75rem;
+        box-sizing: border-box;
       }
       .hall-release-maker > div > section > div:nth-of-type(2) textarea {
         height: 2.75rem;
@@ -64,9 +66,21 @@ export default function HallReleaseMaker(props: { cards: MakerCard[]; draft: Mak
         font-size: 0.875rem;
       }
       @media (max-width: 639px) {
+        .hall-release-maker > div > section > div:nth-of-type(2) {
+          padding: 1rem;
+        }
         .hall-release-maker > div > section > div:nth-of-type(2) > label {
-          grid-template-columns: 100px minmax(0, 1fr);
-          gap: 0.5rem;
+          display: block;
+          width: 100%;
+        }
+        .hall-release-maker > div > section > div:nth-of-type(2) input,
+        .hall-release-maker > div > section > div:nth-of-type(2) textarea {
+          display: block;
+          width: 100%;
+          margin-top: 0.375rem;
+        }
+        .hall-release-maker > div > section > div:nth-of-type(2) textarea {
+          height: 4.5rem;
         }
       }
     `}</style>
