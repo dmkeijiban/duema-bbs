@@ -5,6 +5,7 @@ import { makerRequiresLogin } from '@/lib/maker-auth-requirements'
 import DeckMaker from './DeckMaker'
 import DeckKeyCardSelector from './DeckKeyCardSelector'
 import DeckMakerNewDeckUx from './DeckMakerNewDeckUx'
+import DeckMakerInitialDraftGuard from './DeckMakerInitialDraftGuard'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getMakerAnonymousEditHash } from '@/lib/maker-anonymous-owner'
 import type { DeckEntry, DeckFormat } from '@/lib/deck-maker'
@@ -73,6 +74,7 @@ export default async function DeckMakerPage({ searchParams }: { searchParams: Pr
 
   return (
     <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4">
+      <DeckMakerInitialDraftGuard enabled={Boolean(initialDeck)} />
       <DeckMakerNewDeckUx />
       <DeckMaker initialDeck={initialDeck} dbDecks={dbDecks} />
       <DeckKeyCardSelector initialCardId={initialDeck?.keyCardId} initialPrintingId={initialDeck?.keyCardPrintingId} />
