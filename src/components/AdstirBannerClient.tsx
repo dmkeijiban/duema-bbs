@@ -15,12 +15,13 @@ function createAdstirIframe(adSpot: number, width: number, height: number) {
   iframe.scrolling = 'no'
   iframe.style.border = '0'
   iframe.style.display = 'block'
+  iframe.style.marginInline = 'auto'
   iframe.setAttribute(
     'sandbox',
     'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation',
   )
-  iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;overflow:hidden;background:transparent;}</style></head><body>` +
-    `<script type="text/javascript">var adstir_vars={ver:"4.0",app_id:"${ADSTIR_APP_ID}",ad_spot:${adSpot},center:false};</script>` +
+  iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;overflow:hidden;background:transparent;text-align:center;}body>*{margin-left:auto!important;margin-right:auto!important;}</style></head><body>` +
+    `<script type="text/javascript">var adstir_vars={ver:"4.0",app_id:"${ADSTIR_APP_ID}",ad_spot:${adSpot},center:true};</script>` +
     `<script type="text/javascript" src="${ADSTIR_SCRIPT_URL}"></script>` +
     `</body></html>`
   return iframe
