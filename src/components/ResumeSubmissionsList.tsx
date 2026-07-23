@@ -11,7 +11,15 @@ function excerpt(value: string, max = 40) {
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'Asia/Tokyo' }).format(new Date(value))
+  return new Intl.DateTimeFormat('ja-JP', {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'Asia/Tokyo',
+  }).format(new Date(value))
 }
 
 export function ResumeSubmissionsList({ submissions }: { submissions: PublicResumeSubmission[] }) {
