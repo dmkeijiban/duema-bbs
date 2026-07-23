@@ -31,7 +31,7 @@ export default async function PublicDeckListPage({ searchParams }: { searchParam
 
   const admin = createAdminClient()
   let deckQuery = admin.from('deck_submissions')
-    .select('id,user_id,title,format,deck_data,created_at', { count: 'exact' })
+    .select('id,user_id,title,format,deck_data,key_card_id,key_card_printing_id,created_at', { count: 'exact' })
     .eq('format', 'original')
     .order('created_at', { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
