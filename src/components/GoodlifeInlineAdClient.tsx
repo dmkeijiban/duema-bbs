@@ -1,7 +1,6 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { createPortal } from 'react-dom'
 import { useEffect, useRef, useState } from 'react'
 import { GOODLIFE_SCRIPT_URL, type AdSlotName } from '@/lib/ads'
 
@@ -22,7 +21,7 @@ function GoodlifeAdUnit({
   desktopEnabled,
   mobileEnabled,
 }: {
-  slot: AdSlotName | 'home_middle_row_10'
+  slot: AdSlotName
   visibilityClass: string
   desktopEnabled: boolean
   mobileEnabled: boolean
@@ -57,6 +56,30 @@ function GoodlifeAdUnit({
   )
 }
 
+function GoodlifeHomeMiddleAd() {
+  const srcDoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;overflow:hidden;background:transparent;text-align:center;}body>*{margin-left:auto!important;margin-right:auto!important;}</style></head><body><script type="text/javascript" charset="utf-8" src="${GOODLIFE_SCRIPT_URL}"></script></body></html>`
+
+  return (
+    <aside
+      className="mx-auto box-border flex min-h-[250px] w-full max-w-full flex-col items-center justify-center overflow-hidden px-3 text-center md:hidden"
+      data-ad-provider="goodlife"
+      data-ad-slot="home_middle_row_10"
+      aria-label="広告"
+    >
+      <span className="mb-1 block text-[10px] leading-none text-gray-400">広告</span>
+      <iframe
+        title="広告"
+        srcDoc={srcDoc}
+        width="300"
+        height="250"
+        scrolling="no"
+        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+        className="block max-w-full border-0"
+      />
+    </aside>
+  )
+}
+
 export function GoodlifeInlineAdClient({
   slot,
   visibilityClass,
@@ -75,8 +98,7 @@ export function GoodlifeInlineAdClient({
 
   useEffect(() => {
     // フッター上と同じ許可済みタグを、スマホTOPの10段目（30件目直後）にも表示する。
-    // 広告本体はReact Portalで描画し、App Router遷移時のMutationObserverと
-    // imperativeなscript挿入の競合による「出たり出なかったり」を避ける。
+    // 同一ページ内でフッター広告と競合しないよう、中段は独立したiframe文書内でタグを実行する。
     if (slot !== 'footer_inline' || pathname !== '/' || footerRouteExcluded || !mobileEnabled) {
       setMiddleHost(null)
       return
@@ -147,15 +169,7 @@ export function GoodlifeInlineAdClient({
         desktopEnabled={desktopEnabled}
         mobileEnabled={mobileEnabled}
       />
-      {middleHost && createPortal(
-        <GoodlifeAdUnit
-          slot="home_middle_row_10"
-          visibilityClass="md:hidden"
-          desktopEnabled={false}
-          mobileEnabled={true}
-        />,
-        middleHost,
-      )}
+      {middleHost && <GoodlifeHomeMiddleAd />}
     </>
   )
 }
