@@ -12,6 +12,7 @@ import { GlobalInteractionFeedback } from './GlobalInteractionFeedback'
 import { MyPageSignupAd } from './MyPageSignupAd'
 import { FixedAndRankingTopAd } from './FixedAndRankingTopAd'
 import { NineSelectionListAds } from './NineSelectionListAds'
+import { ThreadCommentIntervalAds } from './ThreadCommentIntervalAds'
 
 // スクロールリスナーを持つ SnsFloatingBar を初期バンドルから除外
 const SnsFloatingBarInner = dynamic(
@@ -41,6 +42,7 @@ export function LazyPostHogBridge({ adstirListTop, adstirListMiddle }: { adstirL
       <MyPageSignupAd />
       <FixedAndRankingTopAd enableListTop={adstirListTop} enableListMiddle={adstirListMiddle} />
       <NineSelectionListAds enabled={adstirListTop} />
+      <ThreadCommentIntervalAds adstirEnabled={adstirListTop} />
       <PostHogEventBridgeInner />
     </>
   )
