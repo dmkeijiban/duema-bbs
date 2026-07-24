@@ -109,10 +109,10 @@ export function SelectMakerToolbar({
             )}
           </div>
           <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4 xl:w-auto xl:grid-cols-[repeat(4,max-content)]">
-            <button type="button" disabled={!complete || isSaving} onClick={onSave} className="min-h-10 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white hover:bg-blue-800 disabled:bg-slate-300">{isSaving ? '保存中...' : '保存'}</button>
-            <Link href={mineUrl} className="flex min-h-10 items-center justify-center rounded-lg border border-slate-300 px-4 text-center text-sm font-bold text-slate-700 hover:bg-slate-50">自分の9選</Link>
-            <Link href={allUrl} className="flex min-h-10 items-center justify-center rounded-lg border border-slate-300 px-4 text-center text-sm font-bold text-slate-700 hover:bg-slate-50">みんなの9選</Link>
-            <button type="button" disabled={!complete || isSavingImage} onClick={handleSaveImage} className="min-h-10 rounded-lg bg-slate-900 px-4 text-sm font-bold text-white hover:bg-slate-700 disabled:bg-slate-300">{isSavingImage ? '画像生成中...' : '画像出力'}</button>
+            <button type="button" disabled={!complete || isSaving} onClick={onSave} className="order-1 min-h-10 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white hover:bg-blue-800 disabled:bg-slate-300">{isSaving ? '保存中...' : '保存'}</button>
+            <Link href={mineUrl} className="order-3 flex min-h-10 items-center justify-center rounded-lg border border-slate-300 px-4 text-center text-sm font-bold text-slate-700 hover:bg-slate-50 sm:order-2">自分の9選</Link>
+            <Link href={allUrl} className="order-4 flex min-h-10 items-center justify-center rounded-lg border border-slate-300 px-4 text-center text-sm font-bold text-slate-700 hover:bg-slate-50 sm:order-3">みんなの9選</Link>
+            <button type="button" disabled={!complete || isSavingImage} onClick={handleSaveImage} className="order-2 min-h-10 rounded-lg bg-slate-900 px-4 text-sm font-bold text-white hover:bg-slate-700 disabled:bg-slate-300 sm:order-4">{isSavingImage ? '画像生成中...' : '画像出力'}</button>
           </div>
         </div>
         {message && <p role="status" className="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">{message}</p>}
