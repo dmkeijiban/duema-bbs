@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import Link from 'next/link'
 import { RecommendSection, RecommendSectionSkeleton } from '@/components/RecommendSection'
 import { GreenCtaBanner } from '@/components/GreenCtaBanner'
+import { RankingGoodlifeAd } from '@/components/RankingGoodlifeAd'
 
 function HomeBannerFallback() {
   return <GreenCtaBanner />
@@ -17,6 +18,7 @@ export async function ThreadListTopContent({ showPopularThreads = false }: { sho
       <Suspense fallback={<RecommendSectionSkeleton />}>
         <RecommendSection />
       </Suspense>
+      <RankingGoodlifeAd />
       <Suspense fallback={<HomeBannerFallback />}>
         <HomeBannerServer />
       </Suspense>
