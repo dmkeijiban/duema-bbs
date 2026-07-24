@@ -6,6 +6,8 @@ import { resolveSelectPrintingImages, selectPrintingRefKey } from '@/lib/maker-s
 import ResumeMaker from './ResumeMaker'
 import type { ResumeInitialState } from './types'
 import { makerRequiresLogin } from '@/lib/maker-auth-requirements'
+import { AdstirBannerClient } from '@/components/AdstirBannerClient'
+import { getAdstirVisibility } from '@/lib/adstir-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,10 +20,15 @@ export default async function ResumeMakerPage() {
 
   const { data: project } = await admin.from('maker_projects').select('id').eq('slug', RESUME_MAKER_SLUG).eq('is_public', true).eq('status', 'published').maybeSingle()
 
-  const [{ data: profile }, { data: submission }] = user ? await Promise.all([
-    admin.from('profiles').select('display_name, avatar_url, profile_slug').eq('id', user.id).maybeSingle(),
-    project ? admin.from('maker_submissions').select('id, resume_data, is_public, updated_at').eq('project_id', project.id).eq('user_id', user.id).eq('is_overwrite_slot', true).eq('is_valid', true).maybeSingle() : Promise.resolve({ data: null }),
-  ]) : [{ data: null }, { data: null }]
+  const [{ data: profile }, { data: submission }, adstirVisibility] = await Promise.all([
+    user
+      ? admin.from('profiles').select('display_name, avatar_url, profile_slug').eq('id', user.id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    user && project
+      ? admin.from('maker_submissions').select('id, resume_data, is_public, updated_at').eq('project_id', project.id).eq('user_id', user.id).eq('is_overwrite_slot', true).eq('is_valid', true).maybeSingle()
+      : Promise.resolve({ data: null }),
+    getAdstirVisibility(),
+  ])
 
   let data = submission?.resume_data ? sanitizeResumeData(submission.resume_data) : null
   if (data?.photo?.type === 'card') {
@@ -42,6 +49,9 @@ export default async function ResumeMakerPage() {
   return (
     <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4">
       <div className="mx-auto max-w-[1200px] overflow-x-hidden [&_section:empty]:hidden">
+        {adstirVisibility.listTop && (
+          <AdstirBannerClient slot="sp_list_top" className="mt-0 mb-3" />
+        )}
         <ResumeMaker initial={initial} loggedIn={Boolean(user)} />
       </div>
     </main>
