@@ -35,6 +35,25 @@ function parseRawBoardLog(raw: string): ParsedBulkThread | null {
   return { title, body: posts[0], comments: posts.slice(1).filter(Boolean).slice(0, BULK_THREAD_COMMENT_LIMIT) }
 }
 
+function parsePlainCleanedDraft(raw: string): ParsedBulkThread | null {
+  const blocks = raw
+    .replace(/\r\n?/g, '\n')
+    .trim()
+    .split(/\n[\t ]*\n+/)
+    .map(block => block.trim())
+    .filter(Boolean)
+
+  if (blocks.length < 2) return null
+  const [title, body, ...comments] = blocks
+  if (!title || !body || title.length > BULK_THREAD_TITLE_MAX) return null
+
+  return {
+    title,
+    body,
+    comments: comments.slice(0, BULK_THREAD_COMMENT_LIMIT),
+  }
+}
+
 export function parseBulkThreadDraft(raw: string): ParsedBulkThread | null {
   const rawLog = parseRawBoardLog(raw)
   if (rawLog) return rawLog
@@ -43,21 +62,23 @@ export function parseBulkThreadDraft(raw: string): ParsedBulkThread | null {
   const titleIndex = lines.findIndex(line => heading(line, 'タイトル'))
   const bodyIndex = lines.findIndex((line, index) => index > titleIndex && heading(line, '本文'))
   const commentsIndex = lines.findIndex((line, index) => index > bodyIndex && heading(line, 'コメント'))
-  if (titleIndex < 0 || bodyIndex < 0 || commentsIndex < 0) return null
-
-  const clean = (part: string[]) => part.join('\n').trim()
-  const title = clean(lines.slice(titleIndex + 1, bodyIndex))
-  const body = clean(lines.slice(bodyIndex + 1, commentsIndex))
-  const comments: string[] = []
-  let current: string[] = []
-  for (const line of lines.slice(commentsIndex + 1)) {
-    if (numberLine.test(line)) {
-      const value = clean(current)
-      if (value) comments.push(value)
-      current = []
-    } else current.push(line)
+  if (titleIndex >= 0 && bodyIndex >= 0 && commentsIndex >= 0) {
+    const clean = (part: string[]) => part.join('\n').trim()
+    const title = clean(lines.slice(titleIndex + 1, bodyIndex))
+    const body = clean(lines.slice(bodyIndex + 1, commentsIndex))
+    const comments: string[] = []
+    let current: string[] = []
+    for (const line of lines.slice(commentsIndex + 1)) {
+      if (numberLine.test(line)) {
+        const value = clean(current)
+        if (value) comments.push(value)
+        current = []
+      } else current.push(line)
+    }
+    const value = clean(current)
+    if (value) comments.push(value)
+    return { title, body, comments: comments.slice(0, BULK_THREAD_COMMENT_LIMIT) }
   }
-  const value = clean(current)
-  if (value) comments.push(value)
-  return { title, body, comments: comments.slice(0, BULK_THREAD_COMMENT_LIMIT) }
+
+  return parsePlainCleanedDraft(raw)
 }
