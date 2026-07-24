@@ -62,7 +62,7 @@ function GoodlifeHomeMiddleAd() {
 
   return (
     <aside
-      className="mx-auto box-border flex min-h-[250px] w-full max-w-full flex-col items-center justify-center overflow-hidden px-3 text-center md:hidden"
+      className="mx-auto box-border flex min-h-[250px] w-full max-w-full flex-col items-center justify-center overflow-hidden px-3 py-2 text-center md:hidden"
       data-ad-provider="goodlife"
       data-ad-slot="home_middle_row_10"
       aria-label="広告"
