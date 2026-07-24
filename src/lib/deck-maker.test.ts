@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { resolveAutoZone, isSpecialSlotCard, persistedSpecialCardId, shouldShowSpecialSlot, sameCardLimit, DECK_ZONE_LIMITS, entryZone, zoneDeckSize, type DeckEntry } from './deck-maker'
+import { resolveAutoZone, isSpecialSlotCard, persistedSpecialCardId, shouldShowSpecialSlot, sameCardLimit, DECK_ZONE_LIMITS, entryZone, zoneDeckSize, consumeMountOnce, type DeckEntry } from './deck-maker'
 
 test('resolveAutoZone: outside advance format everything collapses to main', () => {
   assert.equal(resolveAutoZone('gr', 'original'), 'main')
@@ -75,4 +75,26 @@ test('zoneDeckSize: sums only the requested zone, defaulting missing zone to mai
   assert.equal(zoneDeckSize(entries, 'gr'), 2)
   assert.equal(zoneDeckSize(entries, 'hyperspatial'), 0)
   assert.equal(entryZone(entries[2]), 'main')
+})
+
+test('consumeMountOnce: true exactly once per ref, then always false (regression guard)', () => {
+  // DeckMaker.tsx's mount effect restores entries/format/specialCardId from
+  // initialDeck. That effect's dependency array includes dbDecks/initialDeck,
+  // which get new object identities whenever savePublishedDeck's
+  // revalidatePath triggers a background refresh of this route's server
+  // props — without this guard, the effect would re-run on every such
+  // refresh and silently overwrite whatever format/specialCardId the user
+  // just changed and saved back to the original ?copy=/?edit= snapshot.
+  const ref = { current: false }
+  assert.equal(consumeMountOnce(ref), true)
+  assert.equal(consumeMountOnce(ref), false)
+  assert.equal(consumeMountOnce(ref), false)
+})
+
+test('consumeMountOnce: independent refs (independent component instances) are independent', () => {
+  const a = { current: false }
+  const b = { current: false }
+  assert.equal(consumeMountOnce(a), true)
+  assert.equal(consumeMountOnce(b), true)
+  assert.equal(consumeMountOnce(a), false)
 })

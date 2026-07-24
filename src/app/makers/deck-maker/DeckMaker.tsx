@@ -14,6 +14,7 @@ import {
   entryZone,
   zoneDeckSize,
   printingKey,
+  consumeMountOnce,
   type DeckCard,
   type DeckEntry,
   type DeckFormat,
@@ -291,7 +292,21 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
     return () => { cancelled = true }
   }, [])
 
+  // Saving a deck calls the savePublishedDeck server action, which calls
+  // revalidatePath('/makers/deck-maker'). Next.js responds to a completed
+  // Server Action by refreshing the current route's server-rendered props —
+  // dbDecks and initialDeck get freshly re-fetched and passed into this
+  // already-mounted component with new object identities, even though the
+  // user never navigated. If the restore-from-initialDeck logic below re-ran
+  // on every such refresh, it would silently overwrite whatever the user just
+  // changed (format, specialCardId, entries, deckName) with the *original*
+  // snapshot the page loaded with — e.g. saving a ?copy=<id> deck after
+  // switching to advance and picking a special card would immediately get
+  // reverted back to the source deck's original/no-special state. So this
+  // must run exactly once per mount, not once per prop identity change.
+  const appliedInitialDeckRef = useRef(false)
   useEffect(() => {
+    if (!consumeMountOnce(appliedInitialDeckRef)) return
     try {
       const saved = JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) ?? 'null') as { version?: number; entries?: DeckEntry[]; deckName?: string; savedDeckId?: string | null; format?: DeckFormat; specialCardId?: string | null } | null
       if (saved && saved.version === DECK_STORAGE_VERSION && Array.isArray(saved.entries)) {
@@ -334,7 +349,21 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
       localStorage.removeItem(SAVED_DECKS_STORAGE_KEY)
     }
     setReady(true)
-  }, [dbDecks, initialDeck])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Keeps the "マイデッキ" list in sync with the server whenever dbDecks is
+  // refreshed (e.g. after the revalidatePath triggered by a successful save) —
+  // safe to re-run repeatedly because it never touches the actively-edited
+  // deck state (entries/format/specialCardId/deckName/activeSavedDeckId).
+  useEffect(() => {
+    if (!appliedInitialDeckRef.current) return
+    setSavedDecks(current => {
+      const dbIds = new Set(dbDecks.map(deck => deck.id))
+      const localOnly = current.filter(deck => !deck.submissionId && !dbIds.has(deck.id))
+      return [...dbDecks.map(deck => ({ ...deck, entries: safeEntries(deck.entries) })), ...localOnly]
+    })
+  }, [dbDecks])
 
   useEffect(() => {
     if (ready) localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ version: DECK_STORAGE_VERSION, entries, deckName, savedDeckId: activeSavedDeckId, format, specialCardId }))
