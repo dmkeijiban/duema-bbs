@@ -78,7 +78,7 @@ export default function HallReleaseMaker(props: { cards: MakerCard[]; draft: Mak
           flex: none;
         }
         .hall-release-maker > div > aside {
-          padding-top: 8.25rem;
+          margin-top: 8.25rem;
         }
       }
       @media (max-width: 639px) {
