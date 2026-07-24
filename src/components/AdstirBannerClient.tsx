@@ -50,11 +50,19 @@ function createAdHost(marker: string, slotName: string, adSpot: number, width: n
   return host
 }
 
-export function AdstirBannerClient({ slot, className = '' }: { slot: AdstirSlotName; className?: string }) {
+export function AdstirBannerClient({
+  slot,
+  className = '',
+  allowOnListPage = false,
+}: {
+  slot: AdstirSlotName
+  className?: string
+  allowOnListPage?: boolean
+}) {
   const pathname = usePathname()
   const { adSpot, width, height } = ADSTIR_SLOTS[slot]
   const containerRef = useRef<HTMLDivElement>(null)
-  const hidePrimaryListTop = slot === 'sp_list_top' && LIST_PAGE_PATHS.has(pathname)
+  const hidePrimaryListTop = slot === 'sp_list_top' && LIST_PAGE_PATHS.has(pathname) && !allowOnListPage
   const hideHomeListMiddle = slot === 'sp_list_middle' && pathname === '/'
   const hidePrimarySlot = hidePrimaryListTop || hideHomeListMiddle
 

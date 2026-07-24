@@ -154,7 +154,7 @@ export function FixedAndRankingTopAd({ enableListTop, enableListMiddle }: { enab
   return (
     <>
       {topHost && createPortal(
-        <AdstirBannerClient slot="sp_list_top" className="my-0" />,
+        <AdstirBannerClient slot="sp_list_top" className="my-0" allowOnListPage />,
         topHost,
       )}
       {bottomHost && createPortal(
