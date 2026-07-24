@@ -55,9 +55,11 @@ export function AdstirBannerClient({ slot, className = '' }: { slot: AdstirSlotN
   const { adSpot, width, height } = ADSTIR_SLOTS[slot]
   const containerRef = useRef<HTMLDivElement>(null)
   const hidePrimaryListTop = slot === 'sp_list_top' && LIST_PAGE_PATHS.has(pathname)
+  const hideHomeListMiddle = slot === 'sp_list_middle' && pathname === '/'
+  const hidePrimarySlot = hidePrimaryListTop || hideHomeListMiddle
 
   useEffect(() => {
-    if (hidePrimaryListTop) return
+    if (hidePrimarySlot) return
 
     const container = containerRef.current
     if (!container) return
@@ -71,7 +73,7 @@ export function AdstirBannerClient({ slot, className = '' }: { slot: AdstirSlotN
     return () => {
       container.replaceChildren()
     }
-  }, [adSpot, height, hidePrimaryListTop, width])
+  }, [adSpot, height, hidePrimarySlot, width])
 
   useEffect(() => {
     // 一覧上部と同じ320×100枠を、一覧末尾のページ送りと共通ナビの間にも表示する。
@@ -107,7 +109,7 @@ export function AdstirBannerClient({ slot, className = '' }: { slot: AdstirSlotN
     }
   }, [adSpot, height, pathname, slot, width])
 
-  if (hidePrimaryListTop) return null
+  if (hidePrimarySlot) return null
 
   return (
     <div
