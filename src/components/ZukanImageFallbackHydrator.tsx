@@ -2,14 +2,23 @@
 
 import { useEffect } from 'react'
 
-const PLACEHOLDER_SELECTOR = '[aria-label$=" のカード画像（準備中）"]'
-const PLACEHOLDER_SUFFIX = ' のカード画像（準備中）'
+const PLACEHOLDER_SUFFIXES = [
+  ' のカード画像（準備中）',
+  ' の擬似カード',
+] as const
+const PLACEHOLDER_SELECTOR = PLACEHOLDER_SUFFIXES
+  .map(suffix => `[aria-label$="${suffix}"]`)
+  .join(',')
 const MAX_NAMES = 200
 
 function getCardName(element: Element): string | null {
   const label = element.getAttribute('aria-label')
-  if (!label?.endsWith(PLACEHOLDER_SUFFIX)) return null
-  const name = label.slice(0, -PLACEHOLDER_SUFFIX.length).trim()
+  if (!label) return null
+
+  const suffix = PLACEHOLDER_SUFFIXES.find(candidate => label.endsWith(candidate))
+  if (!suffix) return null
+
+  const name = label.slice(0, -suffix.length).trim()
   return name || null
 }
 
@@ -71,7 +80,7 @@ export function ZukanImageFallbackHydrator() {
           }
         }
       } catch {
-        // 画像補完に失敗しても既存の「画像準備中」表示を維持する。
+        // 画像補完に失敗しても既存のプレースホルダー表示を維持する。
       }
     }
 
