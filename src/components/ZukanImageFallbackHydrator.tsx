@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { getZukanPackThumbnailByCode } from '@/lib/zukan-pack-thumbnails'
 
 const PLACEHOLDER_SUFFIXES = [
   ' のカード画像（準備中）',
@@ -9,6 +10,8 @@ const PLACEHOLDER_SUFFIXES = [
 const PLACEHOLDER_SELECTOR = PLACEHOLDER_SUFFIXES
   .map(suffix => `[aria-label$="${suffix}"]`)
   .join(',')
+const PACK_PLACEHOLDER_SUFFIX = ' 商品画像（擬似表示）'
+const PACK_PLACEHOLDER_SELECTOR = `[aria-label$="${PACK_PLACEHOLDER_SUFFIX}"]`
 const MAX_NAMES = 200
 
 function getCardName(element: Element): string | null {
@@ -38,6 +41,33 @@ function applyImage(element: Element, name: string, imageUrl: string) {
   element.dataset.zukanImageFallbackApplied = 'true'
 }
 
+function applyPackImages() {
+  const placeholders = Array.from(document.querySelectorAll(PACK_PLACEHOLDER_SELECTOR))
+  for (const element of placeholders) {
+    if (!(element instanceof HTMLElement) || element.dataset.zukanPackImageApplied === 'true') continue
+
+    const label = element.getAttribute('aria-label')
+    const packCode = label?.endsWith(PACK_PLACEHOLDER_SUFFIX)
+      ? label.slice(0, -PACK_PLACEHOLDER_SUFFIX.length).trim()
+      : ''
+    const imageUrl = packCode ? getZukanPackThumbnailByCode(packCode) : null
+    if (!imageUrl) continue
+
+    const image = document.createElement('img')
+    image.src = imageUrl
+    image.alt = `${packCode} パック画像`
+    image.loading = 'eager'
+    image.fetchPriority = 'high'
+    image.decoding = 'async'
+    image.className = 'pointer-events-none h-full w-full object-contain p-3'
+
+    element.replaceChildren(image)
+    element.className = 'bg-white'
+    element.setAttribute('aria-label', `${packCode} パック画像`)
+    element.dataset.zukanPackImageApplied = 'true'
+  }
+}
+
 export function ZukanImageFallbackHydrator() {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null
@@ -45,6 +75,8 @@ export function ZukanImageFallbackHydrator() {
 
     const hydrate = async () => {
       timer = null
+      applyPackImages()
+
       const placeholders = Array.from(document.querySelectorAll(PLACEHOLDER_SELECTOR))
         .filter(element => element.getAttribute('data-zukan-image-fallback-checked') !== 'true')
 
