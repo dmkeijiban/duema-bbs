@@ -60,6 +60,8 @@ export default async function GenericMakerPage({ params, searchParams }: { param
       title: submission.title, comment: submission.comment ?? '', sessionId: submission.creation_session_id, submissionId: submission.id, completedEventSent: true,
     }
   }
+  const showNineSelectionCrossLinks = slug === 'my-duema-9' || slug === 'childhood-trump-card-9'
+
   return (
     <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4">
       <style>{`
@@ -71,7 +73,7 @@ export default async function GenericMakerPage({ params, searchParams }: { param
       `}</style>
       <div className="nine-selection-width mx-auto max-w-7xl overflow-x-hidden">
         <MakerDefaultTitleProvider title={config.resultTitle}>
-          {slug === 'my-duema-9' && <MyDuema9CrossLinkFix />}
+          {showNineSelectionCrossLinks && <MyDuema9CrossLinkFix />}
           <SelectMaker slug={slug} config={config} initialDraft={initialDraft} loggedIn={Boolean(currentUser)}/>
         </MakerDefaultTitleProvider>
       </div>
