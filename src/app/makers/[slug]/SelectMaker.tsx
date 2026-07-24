@@ -120,7 +120,7 @@ export default function SelectMaker({ slug, config, initialDraft, loggedIn }: { 
 
   function add(card: DeckCard) {
     if (selected.length >= config.maxChoices) return setMessage(`選べるのは最大${config.maxChoices}枚です`)
-    if (selected.some(item => config.duplicateRule === 'card_name' ? item.name === card.name : item.id === card.id)) return setMessage('同じカード名は重複して選べません')
+    if (selected.some(item => printingKey(item) === printingKey(card))) return setMessage('同じバージョンのカードは重複して選べません')
     const next = [...selected, card]
     setSelected(next)
     setMessage('')
