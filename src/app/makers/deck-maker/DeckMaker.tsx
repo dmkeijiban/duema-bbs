@@ -314,14 +314,36 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   }, [ready, savedDecks])
 
   useEffect(() => {
-    const refreshChangedPrinting = () => {
-      try {
-        const stored = JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) ?? 'null') as { entries?: DeckEntry[] } | null
-        if (!stored || !Array.isArray(stored.entries)) return
-        setEntries(safeEntries(stored.entries))
-      } catch {
-        // 収録版変更後の保存データが壊れている場合は、現在の表示を維持する。
-      }
+    const refreshChangedPrinting = (event: Event) => {
+      const { previousCard, nextCard } = (event as CustomEvent<{ previousCard?: DeckCard; nextCard?: DeckCard }>).detail ?? {}
+      if (!previousCard || !nextCard || previousCard.id !== nextCard.id) return
+
+      setEntries(list => {
+        const previousKey = printingKey(previousCard)
+        const nextKey = printingKey(nextCard)
+        const currentIndex = list.findIndex(entry => printingKey(entry) === previousKey)
+        if (currentIndex < 0) return list
+
+        const currentEntry = list[currentIndex]
+        const zone = entryZone(currentEntry)
+        const targetIndex = list.findIndex((entry, index) =>
+          index !== currentIndex && entryZone(entry) === zone && printingKey(entry) === nextKey
+        )
+        const entries = [...list]
+
+        if (targetIndex >= 0) {
+          entries[targetIndex] = { ...entries[targetIndex], count: entries[targetIndex].count + 1 }
+          if (currentEntry.count === 1) entries.splice(currentIndex, 1)
+          else entries[currentIndex] = { ...currentEntry, count: currentEntry.count - 1 }
+        } else if (currentEntry.count === 1) {
+          entries[currentIndex] = { ...nextCard, count: 1, zone }
+        } else {
+          entries[currentIndex] = { ...currentEntry, count: currentEntry.count - 1 }
+          entries.splice(currentIndex + 1, 0, { ...nextCard, count: 1, zone })
+        }
+
+        return entries
+      })
     }
 
     window.addEventListener(DECK_DRAFT_REFRESH_EVENT, refreshChangedPrinting)
