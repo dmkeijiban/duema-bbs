@@ -9,6 +9,19 @@ const printingOptionsCache = new Map<string, DeckCard[]>()
 const printingOptionsRequests = new Map<string, Promise<DeckCard[]>>()
 let preservedSelectedCard: DeckCard | null = null
 
+function mergePrintingSelection(current: DeckCard, next: DeckCard): DeckCard {
+  return {
+    ...current,
+    ...next,
+    id: current.id,
+    name: current.name,
+    nameKana: current.nameKana,
+    deckZoneClass: current.deckZoneClass,
+    cardType: current.cardType ?? next.cardType,
+    matchedFace: next.matchedFace ?? current.matchedFace,
+  }
+}
+
 function loadPrintingOptions(card: DeckCard, normalizeCard: (card: DeckCard) => DeckCard) {
   const cached = printingOptionsCache.get(card.id)
   if (cached) return Promise.resolve(cached)
@@ -90,14 +103,15 @@ export function useCardPrintingSelector({ normalizeCard = (card: DeckCard) => ca
 
   const selectPrinting = useCallback((card: DeckCard) => {
     const normalizedCard = normalizeCard(card)
+    const nextSelectedCard = selectedCard ? mergePrintingSelection(selectedCard, normalizedCard) : normalizedCard
     if (selectedCard && printingKey(selectedCard) !== printingKey(normalizedCard)) {
-      preservedSelectedCard = normalizedCard
+      preservedSelectedCard = nextSelectedCard
       window.dispatchEvent(new CustomEvent(CARD_PRINTING_CHANGE_EVENT, {
-        detail: { previousCard: selectedCard, nextCard: normalizedCard },
+        detail: { previousCard: selectedCard, nextCard: nextSelectedCard },
       }))
     }
-    preservedSelectedCard = normalizedCard
-    setSelectedCard(normalizedCard)
+    preservedSelectedCard = nextSelectedCard
+    setSelectedCard(nextSelectedCard)
   }, [normalizeCard, selectedCard])
 
   return { selectedCard, printingOptions, loading, openCard, closeCard, selectPrinting }

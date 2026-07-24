@@ -39,6 +39,16 @@ export default function DeckMakerTemplate({ children }: { children: ReactNode })
 
         const currentEntry = stored.entries[currentIndex]
         const zone = entryZone(currentEntry)
+        const mergedNextCard = {
+          ...currentEntry,
+          ...nextCard,
+          id: currentEntry.id,
+          name: currentEntry.name,
+          nameKana: currentEntry.nameKana,
+          deckZoneClass: currentEntry.deckZoneClass,
+          cardType: currentEntry.cardType ?? nextCard.cardType,
+          matchedFace: nextCard.matchedFace ?? currentEntry.matchedFace,
+        }
         const targetIndex = stored.entries.findIndex((entry, index) =>
           index !== currentIndex && entryZone(entry) === zone && printingKey(entry) === nextKey
         )
@@ -55,21 +65,13 @@ export default function DeckMakerTemplate({ children }: { children: ReactNode })
           }
           if (entries[currentIndex].count <= 0) entries.splice(currentIndex, 1)
         } else if (currentEntry.count === 1) {
-          entries[currentIndex] = {
-            ...nextCard,
-            count: 1,
-            zone,
-          }
+          entries[currentIndex] = { ...mergedNextCard, count: 1, zone }
         } else {
           entries[currentIndex] = {
             ...entries[currentIndex],
             count: entries[currentIndex].count - 1,
           }
-          entries.splice(currentIndex + 1, 0, {
-            ...nextCard,
-            count: 1,
-            zone,
-          })
+          entries.splice(currentIndex + 1, 0, { ...mergedNextCard, count: 1, zone })
         }
 
         localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ ...stored, entries }))
