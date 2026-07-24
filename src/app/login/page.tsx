@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { logout } from '@/app/auth/actions'
 import { LoginClient } from './LoginClient'
 import { safeNextPath } from '@/lib/safe-next-path'
+import { AdstirBannerClient } from '@/components/AdstirBannerClient'
 
 type LoginPageProps = {
   searchParams?: Promise<{
@@ -76,6 +77,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
+      <AdstirBannerClient slot="sp_list_top" className="mb-4 mt-0" />
       <div className="border border-gray-300 bg-white">
         <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
           <h1 className="text-lg font-bold text-gray-900">ログイン / アカウント作成</h1>
