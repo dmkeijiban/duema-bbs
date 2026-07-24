@@ -11,6 +11,7 @@ import { isMakerProjectPageAccessible } from '@/lib/maker-catalog'
 import { MakerDefaultTitleProvider } from '@/components/MakerDefaultTitleContext'
 import { resolveSelectPrintingImages, selectPrintingRefKey } from '@/lib/maker-select-printing'
 import { makerRequiresLogin } from '@/lib/maker-auth-requirements'
+import { getAdstirVisibility } from '@/lib/adstir-server'
 
 export const dynamic = 'force-dynamic'
 export default async function GenericMakerPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ edit?: string }> }) {
@@ -61,6 +62,7 @@ export default async function GenericMakerPage({ params, searchParams }: { param
     }
   }
   const showNineSelectionCrossLinks = slug === 'my-duema-9' || slug === 'childhood-trump-card-9'
+  const adstirVisibility = await getAdstirVisibility()
 
   return (
     <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4">
@@ -74,7 +76,7 @@ export default async function GenericMakerPage({ params, searchParams }: { param
       <div className="nine-selection-width mx-auto max-w-7xl overflow-x-hidden">
         <MakerDefaultTitleProvider title={config.resultTitle}>
           {showNineSelectionCrossLinks && <MyDuema9CrossLinkFix />}
-          <SelectMaker slug={slug} config={config} initialDraft={initialDraft} loggedIn={Boolean(currentUser)}/>
+          <SelectMaker slug={slug} config={config} initialDraft={initialDraft} loggedIn={Boolean(currentUser)} showAd={adstirVisibility.listTop}/>
         </MakerDefaultTitleProvider>
       </div>
     </main>

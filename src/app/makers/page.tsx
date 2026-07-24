@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { AdstirBannerClient } from '@/components/AdstirBannerClient'
+import { getAdstirVisibility } from '@/lib/adstir-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { isMakerProjectArchived, isMakerProjectVisible, MAKER_CATEGORIES, MAKER_CATEGORY_LABELS, parseMakerCatalogConfig, STATIC_MAKER_ENTRIES, type MakerCategory } from '@/lib/maker-catalog'
 import { getAllSettings } from '@/lib/settings'
@@ -37,12 +38,13 @@ const MAKER_DESCRIPTION_FALLBACKS: Record<string, string> = {
 }
 
 export default async function MakersPage() {
-  const [{ data }, settings] = await Promise.all([
+  const [{ data }, settings, adstirVisibility] = await Promise.all([
     createAdminClient()
       .from('maker_projects')
       .select('slug,title,type,status,is_public,config')
       .order('created_at', { ascending: false }),
     getAllSettings(),
+    getAdstirVisibility(),
   ])
 
   const projects = (data ?? []) as MakerProject[]
@@ -80,7 +82,7 @@ export default async function MakersPage() {
       <div className="mx-auto max-w-5xl">
         <h1 className="text-2xl font-black sm:text-3xl">デュエマあそびば</h1>
         <p className="mt-2 text-sm leading-6 text-gray-600">カードを選んだり、診断したり、投票したり、<br className="sm:hidden" />みんなで遊べるデュエマコンテンツ集。</p>
-        <AdstirBannerClient slot="sp_list_top" className="mb-3 mt-3" />
+        {adstirVisibility.listTop && <AdstirBannerClient slot="sp_list_top" className="mb-3 mt-3" />}
         {featuredEntries.length > 0 && <section data-testid="featured-makers" className="mt-7 rounded-2xl border border-amber-200 bg-amber-50/60 p-3 sm:p-4"><h2 className="text-lg font-black">おすすめ</h2><div className="mt-3 grid gap-3 sm:grid-cols-2">{featuredEntries.map(entry => <ProjectCard key={entry.id} entry={entry} />)}</div></section>}
         {nineSelectionEntries.length > 0 && <section data-category="nine-selection" className="mt-7"><h2 className="text-lg font-black">9選</h2><div className="mt-3 grid gap-3 sm:grid-cols-2">{nineSelectionEntries.map(entry => <ProjectCard key={entry.id} entry={entry} />)}</div></section>}
         {MAKER_CATEGORIES.map(category => { const categoryEntries = entries.filter(entry => entry.category === category && !entry.featured && !NINE_SELECTION_MAKER_IDS.has(entry.id)); return categoryEntries.length > 0 && <section data-category={category} key={category} className="mt-7"><h2 className="text-lg font-black">{MAKER_CATEGORY_LABELS[category as MakerCategory]}</h2><div className="mt-3 grid gap-3 sm:grid-cols-2">{categoryEntries.map(entry => <ProjectCard key={entry.id} entry={entry} />)}</div></section> })}

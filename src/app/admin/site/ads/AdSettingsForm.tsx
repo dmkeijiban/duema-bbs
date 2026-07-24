@@ -25,7 +25,6 @@ export function AdSettingsForm({
   ads: GoodlifeAdSettings
 }) {
   const [enabled, setEnabled] = useState(ads.enabled)
-  const [wipeEnabled, setWipeEnabled] = useState(ads.wipeEnabled)
   const [threadList, setThreadList] = useState(ads.threadList)
   const [threadDetail, setThreadDetail] = useState(ads.threadDetail)
   const [footer, setFooter] = useState(ads.footer)
@@ -42,7 +41,6 @@ export function AdSettingsForm({
 
   const rows = [
     ['goodlife_inline_enabled', 'Goodlifeインライン広告', enabled, setEnabled],
-    ['goodlife_wipe_enabled', 'Goodlifeワイプ広告（スマホのみ）', wipeEnabled, setWipeEnabled],
     ['goodlife_inline_thread_list', 'スレッド一覧・1件目の上', threadList, (value: boolean) => enablePlacement(setThreadList, value)],
     ['goodlife_inline_thread_detail', 'スレッド詳細に表示', threadDetail, (value: boolean) => enablePlacement(setThreadDetail, value)],
     ['goodlife_inline_footer', 'フッターの上に表示', footer, (value: boolean) => enablePlacement(setFooter, value)],
@@ -54,7 +52,7 @@ export function AdSettingsForm({
 
   return (
     <form action={action} className="mt-5 space-y-3 rounded-lg border border-gray-200 bg-white p-4">
-      <p className="text-xs text-gray-500">許可済みの固定広告タグだけを読み込みます。ワイプ広告はスマホ幅（768px未満）でのみ読み込みます。</p>
+      <p className="text-xs text-gray-500">許可済みの固定広告タグだけを読み込みます。</p>
       {rows.map(([name, label, checked, setter]) => (
         <label key={name} className="flex items-center gap-2 text-sm">
           <input

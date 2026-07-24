@@ -6,6 +6,7 @@ import { GoodlifeInlineAd } from '@/components/GoodlifeInlineAd'
 import { GamAd } from '@/components/GamAd'
 import { getSnsUrls } from '@/lib/sns-server'
 import { getCachedCategories } from '@/lib/cached-queries'
+import { getAdstirVisibility } from '@/lib/adstir-server'
 import Link from 'next/link'
 import { SITE_URL, SITE_NAME } from '@/lib/site-config'
 // TBT削減: Client Component ラッパー経由で ssr:false dynamic import を使用
@@ -49,7 +50,7 @@ export const metadata: Metadata = {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [snsUrls, categories] = await Promise.all([getSnsUrls(), getCachedCategories()])
+  const [snsUrls, categories, adstirVisibility] = await Promise.all([getSnsUrls(), getCachedCategories(), getAdstirVisibility()])
   return (
     <html lang="ja" suppressHydrationWarning>
       <head>
@@ -194,16 +195,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
-
-        {/* スレ一覧途中のadstir枠は一覧の列欠けを起こすため停止。上部枠だけを表示する。 */}
-        <style>{`[data-ad-provider="adstir"][data-ad-slot="sp_list_middle"]{display:none!important}`}</style>
       </head>
       <body className="min-h-screen antialiased" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
           <Header />
           <main>{children}</main>
           <LazyDesktopFloatingActions />
           <LazyFloatingBar snsUrls={snsUrls} />
-          <LazyPostHogBridge />
+          <LazyPostHogBridge adstirListTop={adstirVisibility.listTop} adstirListMiddle={adstirVisibility.listMiddle} />
           <GoodlifeInlineAd slot="footer_inline" />
           <GamAd slot="footer" />
           <footer className="bg-white border-t border-gray-200 py-4 mt-0">

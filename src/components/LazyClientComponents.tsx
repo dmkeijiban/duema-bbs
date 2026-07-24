@@ -34,13 +34,13 @@ export function LazyFloatingBar({ snsUrls }: { snsUrls: SnsUrls }) {
   return <SnsFloatingBarInner snsUrls={snsUrls} />
 }
 
-export function LazyPostHogBridge() {
+export function LazyPostHogBridge({ adstirListTop, adstirListMiddle }: { adstirListTop: boolean; adstirListMiddle: boolean }) {
   return (
     <>
       <GlobalInteractionFeedback />
       <MyPageSignupAd />
-      <FixedAndRankingTopAd />
-      <NineSelectionListAds />
+      <FixedAndRankingTopAd enableListTop={adstirListTop} enableListMiddle={adstirListMiddle} />
+      <NineSelectionListAds enabled={adstirListTop} />
       <PostHogEventBridgeInner />
     </>
   )

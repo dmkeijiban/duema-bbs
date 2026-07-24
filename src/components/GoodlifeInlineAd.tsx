@@ -1,7 +1,6 @@
 import { getGoodlifeAdSettings } from '@/lib/ads-server'
 import { readGoodlifeAdSettings, type AdSlotName } from '@/lib/ads'
 import { GoodlifeInlineAdClient } from '@/components/GoodlifeInlineAdClient'
-import { GoodlifeWipeAd } from '@/components/GoodlifeWipeAd'
 
 export async function GoodlifeInlineAd({ slot }: { slot: AdSlotName }) {
   const settings = readGoodlifeAdSettings(await getGoodlifeAdSettings())
@@ -28,7 +27,6 @@ export async function GoodlifeInlineAd({ slot }: { slot: AdSlotName }) {
           mobileEnabled={settings.mobile}
         />
       )}
-      {slot === 'footer_inline' && <GoodlifeWipeAd enabled={settings.wipeEnabled} />}
     </>
   )
 }
