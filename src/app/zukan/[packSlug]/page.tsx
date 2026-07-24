@@ -9,6 +9,7 @@ import PackShareButtons from '../dm-01/PackShareButtons'
 import { SITE_URL } from '@/lib/site-config'
 
 const PAGE_SIZE = 60
+const EAGER_CARD_IMAGE_COUNT = 12
 const SHOW_FEATURED_PACK_CARDS = false
 
 const PACK_CARD_SECTIONS: Record<string, Array<{ key: string; label: string; from: number; to: number }>> = {
@@ -31,14 +32,21 @@ function cardImageUrl(card: ZukanCard) {
   return card.official_image_url ?? card.image_url
 }
 
-function CardFace({ card }: { card: ZukanCard }) {
+function CardFace({ card, priority = false }: { card: ZukanCard; priority?: boolean }) {
   const imageUrl = cardImageUrl(card)
 
   if (imageUrl) {
     return (
       <div className="bg-gray-100" style={{ aspectRatio: '63 / 88' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={imageUrl} alt={`${card.name} カード画像`} loading="lazy" decoding="async" className="pointer-events-none h-full w-full object-cover" />
+        <img
+          src={imageUrl}
+          alt={`${card.name} カード画像`}
+          loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : 'auto'}
+          decoding="async"
+          className="pointer-events-none h-full w-full object-cover"
+        />
       </div>
     )
   }
@@ -77,9 +85,7 @@ function sectionForCard(packSlug: string, card: ZukanCard) {
 
 function groupCardsBySection(packSlug: string, cards: ZukanCard[]) {
   const sections = PACK_CARD_SECTIONS[packSlug]
-  if (!sections) {
-    return [{ key: 'all', label: null, cards }]
-  }
+  if (!sections) return [{ key: 'all', label: null, cards }]
 
   return sections
     .map(section => ({
@@ -129,11 +135,7 @@ export async function generateMetadata({
 }) {
   const { packSlug } = await params
   const pack = await fetchPack(packSlug)
-  if (!pack?.is_published) {
-    return {
-      title: '思い出図鑑 | デュエマ掲示板',
-    }
-  }
+  if (!pack?.is_published) return { title: '思い出図鑑 | デュエマ掲示板' }
 
   const title = `${pack.code} ${pack.name} | デュエマ思い出図鑑`
   const description = pack.description ?? `${pack.code} ${pack.name}の収録カード一覧。デュエマ思い出図鑑で当時のカードを振り返るページです。`
@@ -194,6 +196,7 @@ export default async function ZukanPackPage({
   const from = customPageRange?.from ?? (page - 1) * PAGE_SIZE + 1
   const to = customPageRange?.to ?? Math.min((page - 1) * PAGE_SIZE + sortedCards.length, total)
   const featuredCards = SHOW_FEATURED_PACK_CARDS && page === 1 ? sortedCards.slice(0, 5) : []
+  const eagerCardSlugs = new Set(sortedCards.slice(0, EAGER_CARD_IMAGE_COUNT).map(card => card.slug))
   const cardGroups = groupCardsBySection(pack.slug, sortedCards)
 
   return (
@@ -240,7 +243,7 @@ export default async function ZukanPackPage({
           <div className="flex snap-x gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
             {featuredCards.map(card => (
               <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="relative block w-[46%] flex-shrink-0 snap-start overflow-hidden border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 sm:w-auto [-webkit-tap-highlight-color:transparent]">
-                <CardFace card={card} />
+                <CardFace card={card} priority />
                 <div className="px-1.5 py-1.5">
                   {card.civilization && <ZukanCivilizationBadge civilization={card.civilization} />}
                   <div className="mt-1 truncate text-xs font-bold text-blue-700">{card.name}</div>
@@ -272,7 +275,7 @@ export default async function ZukanPackPage({
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
                 {group.cards.map(card => (
                   <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="relative block overflow-hidden border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 [-webkit-tap-highlight-color:transparent]">
-                    <CardFace card={card} />
+                    <CardFace card={card} priority={eagerCardSlugs.has(card.slug)} />
                     <div className="px-1.5 py-1.5">
                       <div className="flex items-center gap-1">
                         {card.civilization && <ZukanCivilizationBadge civilization={card.civilization} />}
