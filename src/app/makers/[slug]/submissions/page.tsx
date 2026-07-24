@@ -5,6 +5,7 @@ import SelectSubmissionBoard from '@/components/SelectSubmissionBoard'
 import MakerCommunityTier, { type MakerAggregate } from '@/components/MakerCommunityTier'
 import SelectMakerSubmissionTabs, { parseSelectSubmissionTab, type SelectSubmissionTab } from '@/components/SelectMakerSubmissionTabs'
 import SelectMakerAggregateGrid from '@/components/SelectMakerAggregateGrid'
+import { AdstirBannerClient } from '@/components/AdstirBannerClient'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 import type { MakerCard } from '@/lib/maker'
@@ -116,6 +117,7 @@ export default async function MakerSubmissionsPage({ params, searchParams }: { p
     </article>
   return <main className="min-h-screen bg-slate-50 px-3 pb-3 pt-1 sm:pb-5 sm:pt-1"><div className="mx-auto max-w-6xl">
     <Link href={`/makers/${slug}`} className="inline-flex h-8 items-center text-sm font-bold text-blue-700">{backLabel}</Link>
+    {slug === 'hall-of-fame-release' && <AdstirBannerClient slot="sp_list_top" className="mb-3 mt-1" />}
     <div className="mt-1 sm:flex sm:items-end sm:justify-between sm:gap-4">
       <div className="min-w-0">
         <h1 className="text-2xl font-black">{heading}</h1>
