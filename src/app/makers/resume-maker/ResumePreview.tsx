@@ -65,7 +65,7 @@ export function ResumePreview({ data, avatarUrl, resumeDate, exportRef }: { data
   const sectionContent = getResumeSectionContent(data)
   const favoriteCard = data.photo?.type === 'card' ? data.photo : null
   const freeSpaceHeight = getFreeSpaceHeight(sectionContent.freeSpace.text)
-  const favoriteCardHeight = Math.max(360, 504 - (freeSpaceHeight - L.freeSpaceHeight))
+  const favoriteCardHeight = Math.max(240, 504 - (freeSpaceHeight - L.freeSpaceHeight))
   const favoriteCardWidth = favoriteCardHeight * (360 / 504)
   const renderSection = (section: ResumeSection) => {
     switch (section) {
@@ -85,8 +85,8 @@ export function ResumePreview({ data, avatarUrl, resumeDate, exportRef }: { data
           </div>
           <div className="flex items-start" style={{ marginTop: L.sectionContentGap, gap: L.outerBorderInset }}>
             <div className="min-w-0 flex-1 overflow-hidden whitespace-pre-wrap break-words border-2 p-4 font-sans" style={{ height: freeSpaceHeight, borderColor: L.colors.line, fontSize: L.font.freeSpace, lineHeight: '28px' }}>{sectionContent.freeSpace.text}</div>
-            {favoriteCard && <div className="flex shrink-0 items-start justify-center overflow-visible" style={{ width: favoriteCardWidth, height: favoriteCardHeight }}>
-              {favoriteCard.imageUrl ? <img src={exactCardImageUrl({ id: favoriteCard.cardId, imageUrl: favoriteCard.imageUrl }, RESUME_MAKER_SLUG)} alt={favoriteCard.name || '好きなカード'} className="h-full w-full object-contain" /> : <div className="flex h-full w-full items-center justify-center border-2 font-sans text-slate-400" style={{ borderColor: L.colors.line, fontSize: L.font.body }}>画像なし</div>}
+            {favoriteCard && <div className="flex shrink-0 items-start justify-center overflow-hidden" style={{ width: favoriteCardWidth, height: favoriteCardHeight }}>
+              {favoriteCard.imageUrl ? <img src={exactCardImageUrl({ id: favoriteCard.cardId, imageUrl: favoriteCard.imageUrl }, RESUME_MAKER_SLUG)} alt={favoriteCard.name || '好きなカード'} className="block h-auto max-h-full w-auto max-w-full object-contain" /> : <div className="flex h-full w-full items-center justify-center border-2 font-sans text-slate-400" style={{ borderColor: L.colors.line, fontSize: L.font.body }}>画像なし</div>}
             </div>}
           </div>
         </section>
