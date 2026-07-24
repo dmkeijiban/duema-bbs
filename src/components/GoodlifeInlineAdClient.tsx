@@ -181,14 +181,7 @@ export function GoodlifeInlineAdClient({
         return true
       }
 
-      const candidates = Array.from(document.querySelectorAll<HTMLElement>('main div'))
-      const greenBanner = candidates.find(element => {
-        const text = (element.textContent ?? '').replace(/\s+/g, ' ').trim()
-        if (!text.startsWith('初めての方はスレッドの立て方')) return false
-        return !Array.from(element.children).some(child =>
-          (child.textContent ?? '').replace(/\s+/g, ' ').trim().startsWith('初めての方はスレッドの立て方'),
-        )
-      })
+      const greenBanner = document.querySelector<HTMLElement>('[data-top-green-banner]')
       if (!greenBanner) return false
 
       const host = document.createElement('div')
