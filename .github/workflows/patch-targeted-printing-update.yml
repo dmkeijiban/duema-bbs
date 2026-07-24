@@ -1,0 +1,52 @@
+name: Apply targeted deck printing update
+
+on:
+  push:
+    branches:
+      - fix/deck-maker-targeted-printing-update
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[skip patch workflow]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/deck-maker-targeted-printing-update
+          fetch-depth: 0
+
+      - name: Patch deck maker
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          deck = Path('src/app/makers/deck-maker/DeckMaker.tsx')
+          text = deck.read_text()
+
+          old_import = "import { deleteMyDeck, savePublishedDeck } from './actions'\n"
+          new_import = old_import + "import { DECK_DRAFT_REFRESH_EVENT } from './template'\n"
+          if old_import not in text:
+              raise SystemExit('DeckMaker import anchor not found')
+          text = text.replace(old_import, new_import, 1)
+
+          anchor = "  useEffect(() => {\n    if (ready) localStorage.setItem(SAVED_DECKS_STORAGE_KEY, JSON.stringify(savedDecks))\n  }, [ready, savedDecks])\n\n"
+          addition = anchor + "  useEffect(() => {\n    const refreshChangedPrinting = () => {\n      try {\n        const stored = JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) ?? 'null') as { entries?: DeckEntry[] } | null\n        if (!stored || !Array.isArray(stored.entries)) return\n        setEntries(safeEntries(stored.entries))\n      } catch {\n        // 収録版変更後の保存データが壊れている場合は、現在の表示を維持する。\n      }\n    }\n\n    window.addEventListener(DECK_DRAFT_REFRESH_EVENT, refreshChangedPrinting)\n    return () => window.removeEventListener(DECK_DRAFT_REFRESH_EVENT, refreshChangedPrinting)\n  }, [])\n\n"
+          if anchor not in text:
+              raise SystemExit('DeckMaker effect anchor not found')
+          text = text.replace(anchor, addition, 1)
+          deck.write_text(text)
+
+          shell = Path('src/app/makers/deck-maker/DeckMakerClientShell.tsx')
+          shell.write_text("""'use client'\n\nimport type { DeckEntry, DeckFormat } from '@/lib/deck-maker'\nimport DeckMaker from './DeckMaker'\n\ntype SavedDeck = {\n  id: string\n  name: string\n  entries: DeckEntry[]\n  createdAt: string\n  updatedAt: string\n  submissionId?: string\n  keyCardId?: string | null\n  keyCardPrintingId?: string | null\n  format?: DeckFormat\n}\n\ntype InitialDeck = {\n  name: string\n  entries: DeckEntry[]\n  submissionId?: string\n  format?: DeckFormat\n  keyCardId?: string | null\n  keyCardPrintingId?: string | null\n}\n\nexport default function DeckMakerClientShell({ initialDeck, dbDecks }: { initialDeck?: InitialDeck; dbDecks: SavedDeck[] }) {\n  return <DeckMaker initialDeck={initialDeck} dbDecks={dbDecks} />\n}\n""")
+
+          Path('.github/workflows/patch-targeted-printing-update.yml').unlink()
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app/makers/deck-maker/DeckMaker.tsx src/app/makers/deck-maker/DeckMakerClientShell.tsx .github/workflows/patch-targeted-printing-update.yml
+          git commit -m "fix: update only changed deck printing [skip patch workflow]"
+          git push origin HEAD:fix/deck-maker-targeted-printing-update
