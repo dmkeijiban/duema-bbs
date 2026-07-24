@@ -96,6 +96,10 @@ export function ThreadBulkCreateClient({ categories }: Props) {
   const submit = async () => {
     if (!parsed || busy || !title.trim() || !categoryId) return
     if (!confirm(`スレッド1件とコメント${items.filter(item => item.body.trim()).length}件を登録します。`)) return
+
+    const createdThreadTab = window.open('', '_blank')
+    if (createdThreadTab) createdThreadTab.opener = null
+
     setBusy(true)
     setMessage('')
     const fd = new FormData()
@@ -107,7 +111,15 @@ export function ThreadBulkCreateClient({ categories }: Props) {
     const result = await createConsentedBulkThread(fd)
     setBusy(false)
     setMessage(result.message)
-    if (result.threadId) location.href = `/thread/${result.threadId}`
+
+    if (result.threadId) {
+      const threadUrl = `/thread/${result.threadId}`
+      if (createdThreadTab) createdThreadTab.location.href = threadUrl
+      else window.open(threadUrl, '_blank', 'noopener,noreferrer')
+      return
+    }
+
+    createdThreadTab?.close()
   }
 
   return <div onPaste={onPaste} className="space-y-4">
