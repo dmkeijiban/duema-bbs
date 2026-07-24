@@ -150,6 +150,7 @@ export async function createConsentedBulkThread(formData: FormData): Promise<Bul
   await requireAdmin()
   const title = String(formData.get('title') ?? '').trim()
   const body = String(formData.get('body') ?? '').trim()
+  const categoryId = Number(formData.get('category_id'))
   let parsedComments: unknown
   try { parsedComments = JSON.parse(String(formData.get('comments') ?? '[]')) } catch { return { ok: false, message: 'コメント形式が不正です。' } }
   if (!Array.isArray(parsedComments)) return { ok: false, message: 'コメント形式が不正です。' }
@@ -162,11 +163,19 @@ export async function createConsentedBulkThread(formData: FormData): Promise<Bul
   })
   comments = comments.filter(item => item.body?.trim()).slice(0, BULK_THREAD_COMMENT_LIMIT)
   if (!title) return { ok: false, message: 'タイトルは必須です。' }
+  if (!Number.isInteger(categoryId) || categoryId <= 0) return { ok: false, message: 'カテゴリを選択してください。' }
   if (title.length > BULK_THREAD_TITLE_MAX || body.length > BULK_THREAD_BODY_MAX) return { ok: false, message: 'タイトルまたは本文が文字数上限を超えています。' }
   if (comments.some(item => item.body.trim().length > BULK_THREAD_COMMENT_MAX)) return { ok: false, message: '文字数上限を超えたコメントがあります。' }
   if (comments.some(item => !/^\d{4}-\d{2}-\d{2}$/.test(item.permissionConfirmedOn))) return { ok: false, message: '全コメントの許可確認日を入力してください。' }
 
   const supabase = createAdminClient()
+  const { data: category, error: categoryError } = await supabase
+    .from('categories')
+    .select('id')
+    .eq('id', categoryId)
+    .maybeSingle()
+  if (categoryError || !category) return { ok: false, message: '選択したカテゴリが見つかりません。' }
+
   const image = formData.get('image') as File | null
   let uploaded: { url: string; thumbnailUrl: string | null; width: number; height: number } | null = null
   if (image?.size) {
@@ -191,6 +200,15 @@ export async function createConsentedBulkThread(formData: FormData): Promise<Bul
     return { ok: false, message: `登録に失敗しました: ${error?.message ?? 'unknown error'}` }
   }
   const threadId = Number(data)
+  const { error: categoryUpdateError } = await supabase
+    .from('threads')
+    .update({ category_id: categoryId })
+    .eq('id', threadId)
+  if (categoryUpdateError) {
+    console.error('Bulk thread category update failed', threadId, categoryUpdateError)
+    return { ok: false, message: `スレッドは作成されましたが、カテゴリ設定に失敗しました。スレッドID: ${threadId}`, threadId }
+  }
+
   revalidateTag('threads', { expire: 0 }); revalidateTag(`thread-${threadId}`, { expire: 0 })
   revalidatePath('/'); revalidatePath('/category', 'layout'); revalidatePath('/ranking'); revalidatePath(`/thread/${threadId}`); revalidatePath('/admin')
   return { ok: true, message: `スレッド1件とコメント${comments.length}件を登録しました。`, threadId }

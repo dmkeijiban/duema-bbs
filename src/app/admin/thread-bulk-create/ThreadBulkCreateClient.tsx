@@ -13,6 +13,10 @@ type Item = {
   textState: 'original' | 'lightly_edited'
 }
 
+type CategoryOption = { id: number; name: string }
+
+type Props = { categories: CategoryOption[] }
+
 const today = () => new Date().toISOString().slice(0, 10)
 const makeItem = (body = ''): Item => ({
   id: crypto.randomUUID(),
@@ -22,10 +26,11 @@ const makeItem = (body = ''): Item => ({
   textState: 'original',
 })
 
-export function ThreadBulkCreateClient() {
+export function ThreadBulkCreateClient({ categories }: Props) {
   const [raw, setRaw] = useState('')
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  const [categoryId, setCategoryId] = useState(categories[0]?.id ? String(categories[0].id) : '')
   const [items, setItems] = useState<Item[]>([])
   const [parsed, setParsed] = useState(false)
   const [image, setImage] = useState<File | null>(null)
@@ -58,7 +63,7 @@ export function ThreadBulkCreateClient() {
     const value = parseBulkThreadDraft(raw)
     if (!value) {
       setParsed(false)
-      setMessage('先頭タイトルと、日時・「報告」を含む投稿番号1以降の生ログを確認してください。')
+      setMessage('先頭タイトルと、投稿日時を含む生ログを確認してください。')
       return
     }
     setTitle(value.title)
@@ -89,13 +94,14 @@ export function ThreadBulkCreateClient() {
     })))
   }
   const submit = async () => {
-    if (!parsed || busy || !title.trim()) return
+    if (!parsed || busy || !title.trim() || !categoryId) return
     if (!confirm(`スレッド1件とコメント${items.filter(item => item.body.trim()).length}件を登録します。`)) return
     setBusy(true)
     setMessage('')
     const fd = new FormData()
     fd.set('title', title)
     fd.set('body', body)
+    fd.set('category_id', categoryId)
     fd.set('comments', JSON.stringify(items))
     if (image) fd.set('image', image)
     const result = await createConsentedBulkThread(fd)
@@ -151,6 +157,15 @@ export function ThreadBulkCreateClient() {
         <label className="block font-bold">タイトル
           <input value={title} maxLength={100} onChange={event => setTitle(event.target.value)} className="mt-1 w-full rounded border p-2 font-normal"/>
         </label>
+        <label className="block font-bold">カテゴリ
+          <select
+            value={categoryId}
+            onChange={event => setCategoryId(event.target.value)}
+            className="mt-1 w-full rounded border bg-white p-2 font-normal"
+          >
+            {categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
+          </select>
+        </label>
         <label className="block font-bold">本文
           <textarea value={body} maxLength={5000} onChange={event => setBody(event.target.value)} rows={5} className="mt-1 w-full rounded border p-2 font-normal"/>
         </label>
@@ -190,6 +205,7 @@ export function ThreadBulkCreateClient() {
 
       <section className="rounded border-2 border-blue-200 bg-white p-3">
         <h2 className="mb-3 text-lg font-bold">公開プレビュー</h2>
+        <div className="mb-2 text-xs font-bold text-gray-500">{categories.find(category => String(category.id) === categoryId)?.name}</div>
         <h3 className="text-xl font-bold">{title}</h3>
         <p className="mt-2 whitespace-pre-wrap">{body}</p>
         {image && <img src={imageUrl} alt="" className="mt-3 max-h-80 object-contain"/>}
@@ -200,7 +216,7 @@ export function ThreadBulkCreateClient() {
         </div>)}
       </section>
 
-      <button disabled={busy || rewriting || !title.trim()} onClick={submit} className="w-full rounded bg-green-700 px-4 py-3 font-bold text-white disabled:opacity-50">
+      <button disabled={busy || rewriting || !title.trim() || !categoryId} onClick={submit} className="w-full rounded bg-green-700 px-4 py-3 font-bold text-white disabled:opacity-50">
         {busy ? '登録中…' : '登録する'}
       </button>
     </>}
