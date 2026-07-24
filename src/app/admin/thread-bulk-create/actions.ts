@@ -43,8 +43,8 @@ export async function rewriteBulkThreadDraft(input: {
 }): Promise<BulkRewriteResult> {
   await requireAdmin()
 
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return { ok: false, message: 'OPENAI_API_KEY が設定されていません。' }
+  const apiKey = process.env.OPENAI_THREAD_REWRITE_API_KEY
+  if (!apiKey) return { ok: false, message: 'OPENAI_THREAD_REWRITE_API_KEY が設定されていません。' }
 
   const title = input.title.trim().slice(0, BULK_THREAD_TITLE_MAX)
   const body = input.body.trim().slice(0, BULK_THREAD_BODY_MAX)
