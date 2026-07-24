@@ -60,5 +60,21 @@ export default async function GenericMakerPage({ params, searchParams }: { param
       title: submission.title, comment: submission.comment ?? '', sessionId: submission.creation_session_id, submissionId: submission.id, completedEventSent: true,
     }
   }
-  return <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4"><div className="mx-auto max-w-[1440px] overflow-x-hidden"><MakerDefaultTitleProvider title={config.resultTitle}>{slug === 'my-duema-9' && <MyDuema9CrossLinkFix />}<SelectMaker slug={slug} config={config} initialDraft={initialDraft} loggedIn={Boolean(currentUser)}/></MakerDefaultTitleProvider></div></main>
+  return (
+    <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4">
+      <style>{`
+        @media (min-width: 1024px) {
+          .nine-selection-width > .grid {
+            grid-template-columns: minmax(0, 1fr) minmax(320px, 480px);
+          }
+        }
+      `}</style>
+      <div className="nine-selection-width mx-auto max-w-7xl overflow-x-hidden">
+        <MakerDefaultTitleProvider title={config.resultTitle}>
+          {slug === 'my-duema-9' && <MyDuema9CrossLinkFix />}
+          <SelectMaker slug={slug} config={config} initialDraft={initialDraft} loggedIn={Boolean(currentUser)}/>
+        </MakerDefaultTitleProvider>
+      </div>
+    </main>
+  )
 }
