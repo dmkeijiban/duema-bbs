@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import { createPortal } from 'react-dom'
 import { useEffect, useRef, useState } from 'react'
 import { GOODLIFE_SCRIPT_URL, type AdSlotName } from '@/lib/ads'
 
@@ -169,7 +170,7 @@ export function GoodlifeInlineAdClient({
         desktopEnabled={desktopEnabled}
         mobileEnabled={mobileEnabled}
       />
-      {middleHost && <GoodlifeHomeMiddleAd />}
+      {middleHost && createPortal(<GoodlifeHomeMiddleAd />, middleHost)}
     </>
   )
 }
