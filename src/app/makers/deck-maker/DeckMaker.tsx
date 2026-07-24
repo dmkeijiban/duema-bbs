@@ -21,6 +21,7 @@ import { CardDetailModal } from '@/components/CardDetailModal'
 import { useCardCatalogSearch } from '@/hooks/use-card-catalog-search'
 import { useCardPrintingSelector } from '@/hooks/use-card-printing-selector'
 import { deleteMyDeck, savePublishedDeck } from './actions'
+import { DECK_DRAFT_REFRESH_EVENT } from './template'
 
 const OFFICIAL_ORIGIN = 'https://dm.takaratomy.co.jp'
 const DEFAULT_DECK_NAME = 'メインデッキ'
@@ -311,6 +312,43 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   useEffect(() => {
     if (ready) localStorage.setItem(SAVED_DECKS_STORAGE_KEY, JSON.stringify(savedDecks))
   }, [ready, savedDecks])
+
+  useEffect(() => {
+    const refreshChangedPrinting = (event: Event) => {
+      const { previousCard, nextCard } = (event as CustomEvent<{ previousCard?: DeckCard; nextCard?: DeckCard }>).detail ?? {}
+      if (!previousCard || !nextCard || previousCard.id !== nextCard.id) return
+
+      setEntries(list => {
+        const previousKey = printingKey(previousCard)
+        const nextKey = printingKey(nextCard)
+        const currentIndex = list.findIndex(entry => printingKey(entry) === previousKey)
+        if (currentIndex < 0) return list
+
+        const currentEntry = list[currentIndex]
+        const zone = entryZone(currentEntry)
+        const targetIndex = list.findIndex((entry, index) =>
+          index !== currentIndex && entryZone(entry) === zone && printingKey(entry) === nextKey
+        )
+        const entries = [...list]
+
+        if (targetIndex >= 0) {
+          entries[targetIndex] = { ...entries[targetIndex], count: entries[targetIndex].count + 1 }
+          if (currentEntry.count === 1) entries.splice(currentIndex, 1)
+          else entries[currentIndex] = { ...currentEntry, count: currentEntry.count - 1 }
+        } else if (currentEntry.count === 1) {
+          entries[currentIndex] = { ...nextCard, count: 1, zone }
+        } else {
+          entries[currentIndex] = { ...currentEntry, count: currentEntry.count - 1 }
+          entries.splice(currentIndex + 1, 0, { ...nextCard, count: 1, zone })
+        }
+
+        return entries
+      })
+    }
+
+    window.addEventListener(DECK_DRAFT_REFRESH_EVENT, refreshChangedPrinting)
+    return () => window.removeEventListener(DECK_DRAFT_REFRESH_EVENT, refreshChangedPrinting)
+  }, [])
 
   useEffect(() => {
     if (!notice) return

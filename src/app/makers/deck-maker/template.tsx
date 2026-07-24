@@ -73,7 +73,7 @@ export default function DeckMakerTemplate({ children }: { children: ReactNode })
         }
 
         localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ ...stored, entries }))
-        window.dispatchEvent(new Event(DECK_DRAFT_REFRESH_EVENT))
+        window.dispatchEvent(new CustomEvent<PrintingChangeDetail>(DECK_DRAFT_REFRESH_EVENT, { detail: { previousCard, nextCard } }))
       } catch {
         // 保存データが壊れている場合は、通常の収録版プレビュー切替だけを続行する。
       }
