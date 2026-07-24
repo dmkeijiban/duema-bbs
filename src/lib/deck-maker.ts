@@ -44,6 +44,24 @@ export function resolveAutoZone(deckZoneClass: DeckZoneClass | null | undefined,
 export function isSpecialSlotCard(deckZoneClass: DeckZoneClass | null | undefined) {
   return deckZoneClass === 'special'
 }
+// Regression guard: it's tempting to gate specialCardId by format the same way
+// GR/hyperspatial cards-array entries are gated when saving outside advance
+// format, but that's the wrong behavior here — the special slot must survive a
+// save made while viewing 'original', so switching back to advance (even after
+// a reload) restores it. This function is intentionally the identity function;
+// its only job is to be the single place both the client (DeckMaker.tsx) and
+// the server (actions.ts) call, so "don't null this based on format" stays
+// encoded in one obviously-named spot instead of being re-derived ad hoc.
+export function persistedSpecialCardId(specialCardId: string | null): string | null {
+  return specialCardId
+}
+// Display-only gate for the special slot (public deck detail page, PNG export):
+// shown exactly when the format is advance AND a card is actually selected.
+// This is deliberately separate from persistedSpecialCardId above — the value
+// itself is never cleared by format, only its visibility is.
+export function shouldShowSpecialSlot(format: string, specialCardId: string | null | undefined): boolean {
+  return format === 'advance' && Boolean(specialCardId)
+}
 export function printingKey(card: DeckCard) {
   return `${card.id}:${card.printingId ?? card.sourceKey ?? 'base'}:${card.matchedFace?.sideIndex ?? 0}`
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { shouldShowSpecialSlot } from '@/lib/deck-maker'
 
 type DeckCard = {
   id: string
@@ -82,7 +83,7 @@ function DeckSections({ cards, format, specialCard, enlarged, onOpen }: { cards:
         <DeckGrid cards={section.cards} enlarged={enlarged} onOpen={onOpen} />
       </div>
     ))}
-    {format === 'advance' && specialCard && <SpecialSlotSection specialCard={specialCard} enlarged={enlarged} />}
+    {shouldShowSpecialSlot(format, specialCard?.id) && specialCard && <SpecialSlotSection specialCard={specialCard} enlarged={enlarged} />}
   </>
 }
 

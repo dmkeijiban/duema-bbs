@@ -7,7 +7,8 @@ import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 import { hashMakerAnonymousOwner, MAKER_ANONYMOUS_COOKIE } from '@/lib/maker-anonymous-owner'
-import { sameCardLimit, resolveAutoZone, type DeckZone, type DeckZoneClass } from '@/lib/deck-maker'
+import { sameCardLimit, resolveAutoZone, persistedSpecialCardId, type DeckZone, type DeckZoneClass } from '@/lib/deck-maker'
+import { getSpecialSlotOptions, isAllowedSpecialCardId } from '@/lib/special-slot-options'
 
 const SOURCE_KEY_PATTERN = /^[a-zA-Z0-9._-]{1,100}$/
 const KEY_CARD_COOKIE = 'duema_deck_key_card'
@@ -51,16 +52,19 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
       if (entry.faceSideIndex != null && (!Number.isInteger(entry.faceSideIndex) || entry.faceSideIndex < 0)) return { ok: false, message: 'カードの面情報が不正です' }
     }
 
-    // The special slot only exists in the advance format; anything else is ignored
-    // rather than rejected, so switching format away and back doesn't force the
-    // user to re-pick it (the client is expected to keep it in local state either
-    // way — see resolveAutoZone/isSpecialSlotCard in @/lib/deck-maker for why this
-    // is a deck-level field and not a cards-array entry).
-    const requestedSpecialCardId = format === 'advance' ? (input.specialCardId ?? null) : null
+    // The special slot is NEVER nulled based on format here: it survives a save
+    // made while viewing 'original' exactly like it survives the in-session
+    // format toggle in the client, so switching back to advance later (even
+    // after a reload) restores it. Only an explicit deck reset clears it.
+    // Display (public detail page, PNG) gates on format === 'advance'
+    // separately from this persistence — see resolveAutoZone/isSpecialSlotCard
+    // in @/lib/deck-maker for why this is a deck-level field, not a cards-array
+    // entry.
+    const requestedSpecialCardId = persistedSpecialCardId(input.specialCardId ?? null)
 
     const cookieStore = await cookies()
     const selectedByMaker = parseSelectedKeyCard(cookieStore.get(KEY_CARD_COOKIE)?.value)
-    const cardIds = [...new Set([...input.entries.map(entry => entry.id), ...(requestedSpecialCardId ? [requestedSpecialCardId] : [])])]
+    const cardIds = [...new Set(input.entries.map(entry => entry.id))]
     const requestedKeyCardId = selectedByMaker?.cardId ?? input.keyCardId
     const requestedPrintingId = selectedByMaker?.printingId ?? input.keyCardPrintingId
     const keyCardId = requestedKeyCardId && cardIds.includes(requestedKeyCardId) ? requestedKeyCardId : input.entries[0]?.id ?? null
@@ -81,10 +85,12 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
     const cardById = new Map((cards ?? []).map(card => [card.id, card]))
     const printingByKey = new Map((printings ?? []).map(printing => [printing.source_key, printing]))
 
-    // Never trust the client on which card is special-slot-eligible: only cards
-    // whose own deck_zone_class classifies them 'special' (currently exactly
-    // 最終禁断フィールド / 零龍クリーチャー) may be stored as the special slot.
-    if (requestedSpecialCardId && cardById.get(requestedSpecialCardId)?.deck_zone_class !== 'special') {
+    // Never trust the client on which card is special-slot-eligible: validate
+    // against the exact same reduced candidate list the /api/cards/special-options
+    // endpoint offers in the UI (one representative per special card_type — see
+    // @/lib/special-slot-options), not just "any card classified special".
+    const specialSlotOptions = await getSpecialSlotOptions(admin)
+    if (!isAllowedSpecialCardId(specialSlotOptions, requestedSpecialCardId)) {
       return { ok: false, message: '特殊カードとして選択できないカードです' }
     }
     const specialCardId = requestedSpecialCardId

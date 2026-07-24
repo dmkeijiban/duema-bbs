@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { resolveAutoZone, isSpecialSlotCard, sameCardLimit, DECK_ZONE_LIMITS, entryZone, zoneDeckSize, type DeckEntry } from './deck-maker'
+import { resolveAutoZone, isSpecialSlotCard, persistedSpecialCardId, shouldShowSpecialSlot, sameCardLimit, DECK_ZONE_LIMITS, entryZone, zoneDeckSize, type DeckEntry } from './deck-maker'
 
 test('resolveAutoZone: outside advance format everything collapses to main', () => {
   assert.equal(resolveAutoZone('gr', 'original'), 'main')
@@ -34,6 +34,24 @@ test('isSpecialSlotCard: only cards classified special are eligible for the sing
   assert.equal(isSpecialSlotCard('normal'), false)
   assert.equal(isSpecialSlotCard(null), false)
   assert.equal(isSpecialSlotCard(undefined), false)
+})
+
+test('persistedSpecialCardId: never nulled based on format (regression guard)', () => {
+  // A save made while viewing 'original' must not clear the special-slot pick —
+  // switching back to advance (even after a reload) has to restore it. This is
+  // the opposite of how gr/hyperspatial cards-array entries are handled (those
+  // ARE stripped outside advance format), so it's tempting to copy that pattern
+  // here — this test exists specifically to catch that regression.
+  assert.equal(persistedSpecialCardId('11111111-1111-4111-8111-111111111111'), '11111111-1111-4111-8111-111111111111')
+  assert.equal(persistedSpecialCardId(null), null)
+})
+
+test('shouldShowSpecialSlot: shown only for advance format with a value selected', () => {
+  assert.equal(shouldShowSpecialSlot('advance', '11111111-1111-4111-8111-111111111111'), true)
+  assert.equal(shouldShowSpecialSlot('original', '11111111-1111-4111-8111-111111111111'), false)
+  assert.equal(shouldShowSpecialSlot('advance', null), false)
+  assert.equal(shouldShowSpecialSlot('advance', undefined), false)
+  assert.equal(shouldShowSpecialSlot('original', null), false)
 })
 
 test('sameCardLimit: GR is a hard 2-of-a-kind zone, every other zone keeps 4', () => {

@@ -9,6 +9,8 @@ import {
   DECK_ZONE_LIMITS,
   sameCardLimit,
   resolveAutoZone,
+  persistedSpecialCardId,
+  shouldShowSpecialSlot,
   entryZone,
   zoneDeckSize,
   printingKey,
@@ -452,12 +454,17 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
     const now = new Date().toISOString()
     const existing = activeSavedDeckId ? savedDecks.find((deck) => deck.id === activeSavedDeckId) : undefined
     const id = existing?.id ?? crypto.randomUUID()
+    // specialCardId is never nulled based on format at save time — it survives a
+    // save made while viewing 'original' exactly like it survives the in-session
+    // format toggle, so switching back to advance later (even after a reload)
+    // restores it. Only resetDeck() clears it. Display (public detail page, PNG)
+    // still gates on format === 'advance' separately from this persistence.
     const savedDeck: SavedDeck = {
       id,
       name: effectiveDeckName,
       entries: entries.map((entry) => ({ ...entry })),
       format,
-      specialCardId: format === 'advance' ? specialCardId : null,
+      specialCardId: persistedSpecialCardId(specialCardId),
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
       keyCardId: existing?.keyCardId,
@@ -470,7 +477,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
 
     try {
       localStorage.setItem(SAVED_DECKS_STORAGE_KEY, JSON.stringify(nextSavedDecks))
-      localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ version: DECK_STORAGE_VERSION, entries, deckName, savedDeckId: id, format }))
+      localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify({ version: DECK_STORAGE_VERSION, entries, deckName, savedDeckId: id, format, specialCardId }))
       setSavedDecks(nextSavedDecks)
       setActiveSavedDeckId(id)
     } catch {
@@ -494,7 +501,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
         format,
         keyCardId: existing?.keyCardId,
         keyCardPrintingId: existing?.keyCardPrintingId,
-        specialCardId: format === 'advance' ? specialCardId : null,
+        specialCardId: persistedSpecialCardId(specialCardId),
         entries: entries.filter(entry => format === 'advance' || entryZone(entry) === 'main').map(entry => ({
           id: entry.id,
           printingId: entry.printingId,
@@ -574,7 +581,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
         // 特殊 is the single specialCardId pick, never a cards-array zone, so it's
         // built from `specialCard` (resolved via /api/cards/special-options)
         // rather than filtered out of `entries` like the other three sections.
-        ...(specialCard ? [{ label: ZONE_LABELS.special, cards: [{ ...specialCard, count: 1 } as DeckEntry] }] : []),
+        ...(shouldShowSpecialSlot(format, specialCardId) && specialCard ? [{ label: ZONE_LABELS.special, cards: [{ ...specialCard, count: 1 } as DeckEntry] }] : []),
       ].filter(section => section.cards.length > 0)
       : [{ label: null as string | null, cards: entries.flatMap((entry) => Array.from({ length: entry.count }, () => entry)) }]
     const allCards = sections.flatMap(section => section.cards)
