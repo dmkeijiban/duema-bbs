@@ -1,7 +1,11 @@
 import { normalizeCardSearch } from '@/lib/card-name'
 
 export type CardFace = { name: string; imageUrl: string | null; sideIndex: number; sideKind: string | null }
-export type DeckCard = { id: string; printingId?: string | null; name: string; nameKana: string | null; imageUrl: string | null; officialPageUrl: string | null; sourceKey: string | null; cost?: number | null; civilization?: string[]; cardType?: string | null; race?: string | null; abilityText?: string | null; setName?: string | null; cardNumber?: string | null; matchedFace?: CardFace | null }
+// Server-computed classification (cards.deck_zone_class) that drives automatic zone
+// placement. 'normal' means "no special zone" (goes to main). Never inferred from
+// the card's name client-side — always trust this value when present.
+export type DeckZoneClass = 'normal' | 'gr' | 'hyperspatial' | 'special'
+export type DeckCard = { id: string; printingId?: string | null; name: string; nameKana: string | null; imageUrl: string | null; officialPageUrl: string | null; sourceKey: string | null; cost?: number | null; civilization?: string[]; cardType?: string | null; race?: string | null; abilityText?: string | null; setName?: string | null; cardNumber?: string | null; matchedFace?: CardFace | null; deckZoneClass?: DeckZoneClass | null; usageCount?: number | null }
 export type DeckFormat = 'original' | 'advance'
 export type DeckZone = 'main' | 'gr' | 'hyperspatial' | 'special'
 export type DeckEntry = DeckCard & { count: number; zone?: DeckZone }
@@ -10,6 +14,22 @@ export const DECK_STORAGE_VERSION = 1
 export const MAX_DECK_CARDS = 40
 export const DECK_ZONE_LIMITS: Record<DeckZone, number> = { main: 40, gr: 12, hyperspatial: 8, special: 1 }
 export const MAX_SAME_CARD = 4
+// GR is a hard 2-of-a-kind zone under current official rules; every other zone
+// keeps the standard 4-of-a-kind limit.
+const SAME_CARD_LIMITS: Record<DeckZone, number> = { main: MAX_SAME_CARD, gr: 2, hyperspatial: MAX_SAME_CARD, special: 1 }
+export function sameCardLimit(zone: DeckZone) {
+  return SAME_CARD_LIMITS[zone] ?? MAX_SAME_CARD
+}
+// Automatic zone placement from the server-classified deck_zone_class, not from
+// whichever tab the user currently has open. Outside the advance format there is
+// only one zone, so everything collapses to 'main'.
+export function resolveAutoZone(deckZoneClass: DeckZoneClass | null | undefined, format: DeckFormat): DeckZone {
+  if (format !== 'advance') return 'main'
+  if (deckZoneClass === 'gr') return 'gr'
+  if (deckZoneClass === 'hyperspatial') return 'hyperspatial'
+  if (deckZoneClass === 'special') return 'special'
+  return 'main'
+}
 export function printingKey(card: DeckCard) {
   return `${card.id}:${card.printingId ?? card.sourceKey ?? 'base'}:${card.matchedFace?.sideIndex ?? 0}`
 }
