@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { getPublicResumeSubmissions, type ResumeListingSort } from '@/lib/maker-resume-queries'
 import { ResumeSubmissionsList } from '@/components/ResumeSubmissionsList'
+import { AdstirBannerClient } from '@/components/AdstirBannerClient'
+import { getAdstirVisibility } from '@/lib/adstir-server'
 
 export const dynamic = 'force-dynamic'
 export const metadata = {
@@ -19,7 +21,10 @@ export default async function ResumeSubmissionsPage({ searchParams }: { searchPa
   const page = Math.max(1, Number.parseInt(pageValue ?? '1', 10) || 1)
   const sort = parseSort(sortValue)
 
-  const { submissions, total } = await getPublicResumeSubmissions(page, PAGE_SIZE, sort)
+  const [{ submissions, total }, adstirVisibility] = await Promise.all([
+    getPublicResumeSubmissions(page, PAGE_SIZE, sort),
+    getAdstirVisibility(),
+  ])
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const pageHref = (targetPage: number) => `?sort=${sort}&page=${targetPage}#submissions-list`
 
@@ -37,6 +42,10 @@ export default async function ResumeSubmissionsPage({ searchParams }: { searchPa
             <Link href="?sort=updated#submissions-list" className={`rounded-lg border px-3 py-1.5 text-sm font-bold ${sort === 'updated' ? 'border-blue-700 bg-blue-50 text-blue-800' : 'border-slate-200 text-slate-500'}`}>更新順</Link>
           </div>
         </div>
+
+        {adstirVisibility.listTop && (
+          <AdstirBannerClient slot="sp_list_top" className="mt-3 mb-0" allowOnListPage />
+        )}
 
         <div id="submissions-list" className="scroll-mt-4" />
 
