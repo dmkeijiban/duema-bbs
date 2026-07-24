@@ -10,7 +10,7 @@ import DeckCardGrid from './DeckCardGrid'
 
 export const dynamic = 'force-dynamic'
 
-type DeckCard = { id: string; printingId?: string | null; name: string; imageUrl: string | null; sourceKey: string | null; faceSideIndex?: number; zone?: string; count: number }
+type DeckCard = { id: string; printingId?: string | null; name: string; imageUrl: string | null; sourceKey: string | null; faceSideIndex?: number; zone?: 'main' | 'gr' | 'hyperspatial' | 'special'; count: number }
 type DeckRow = { id: string; user_id: string | null; anonymous_edit_token_hash: string | null; title: string; format: string; deck_data: DeckCard[]; created_at: string; updated_at: string; view_count: number; copy_count: number; key_card_id: string | null; key_card_printing_id: string | null }
 
 export default async function PublicDeckPage({ params }: { params: Promise<{ id: string }> }) {
@@ -62,8 +62,8 @@ export default async function PublicDeckPage({ params }: { params: Promise<{ id:
             </div>
           </div>
 
-          <h2 className="mt-7 text-lg font-black text-slate-950">デッキ内容（40枚）</h2>
-          <DeckCardGrid cards={cards} />
+          <h2 className="mt-7 text-lg font-black text-slate-950">デッキ内容{deck.format === 'original' ? '（40枚）' : ''}</h2>
+          <DeckCardGrid cards={cards} format={deck.format} />
         </article>
       </div>
     </main>

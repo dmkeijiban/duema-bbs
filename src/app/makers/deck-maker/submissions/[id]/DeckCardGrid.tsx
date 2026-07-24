@@ -9,8 +9,19 @@ type DeckCard = {
   imageUrl: string | null
   sourceKey: string | null
   faceSideIndex?: number
+  zone?: string
   entryIndex: number
   copy: number
+}
+
+const ZONE_ORDER = ['main', 'gr', 'hyperspatial', 'special'] as const
+const ZONE_LABELS: Record<string, string> = { main: 'メインデッキ', gr: 'GRゾーン', hyperspatial: '超次元ゾーン', special: '特殊' }
+
+function groupByZone(cards: DeckCard[], format: string) {
+  if (format !== 'advance') return [{ label: null as string | null, cards }]
+  return ZONE_ORDER
+    .map(zone => ({ label: ZONE_LABELS[zone], cards: cards.filter(card => (card.zone ?? 'main') === zone) }))
+    .filter(section => section.cards.length > 0)
 }
 
 function DeckGrid({ cards, enlarged = false, onOpen }: { cards: DeckCard[]; enlarged?: boolean; onOpen?: () => void }) {
@@ -41,7 +52,19 @@ function DeckGrid({ cards, enlarged = false, onOpen }: { cards: DeckCard[]; enla
   </div>
 }
 
-export default function DeckCardGrid({ cards }: { cards: DeckCard[] }) {
+function DeckSections({ cards, format, enlarged, onOpen }: { cards: DeckCard[]; format: string; enlarged?: boolean; onOpen?: () => void }) {
+  const sections = groupByZone(cards, format)
+  return <>
+    {sections.map((section, index) => (
+      <div key={section.label ?? index}>
+        {section.label && <p className="mb-1 mt-4 text-xs font-black text-slate-600 first:mt-0">{section.label}（{section.cards.length}枚）</p>}
+        <DeckGrid cards={section.cards} enlarged={enlarged} onOpen={onOpen} />
+      </div>
+    ))}
+  </>
+}
+
+export default function DeckCardGrid({ cards, format = 'original' }: { cards: DeckCard[]; format?: string }) {
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
@@ -54,15 +77,15 @@ export default function DeckCardGrid({ cards }: { cards: DeckCard[] }) {
   }, [isOpen])
 
   return <>
-    <DeckGrid cards={cards} onOpen={() => setIsOpen(true)} />
+    <DeckSections cards={cards} format={format} onOpen={() => setIsOpen(true)} />
 
     {isOpen && <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2 sm:p-4" onMouseDown={event => { if (event.currentTarget === event.target) setIsOpen(false) }}>
       <section role="dialog" aria-modal="true" aria-label="デッキ全体の拡大表示" className="relative max-h-[calc(100dvh-16px)] w-full max-w-5xl overflow-auto rounded-2xl bg-white p-2 shadow-2xl sm:max-h-[calc(100dvh-32px)] sm:p-4">
         <button type="button" onClick={() => setIsOpen(false)} aria-label="拡大表示を閉じる" className="absolute right-2 top-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-xl font-bold text-slate-800 shadow">×</button>
         <div className="pr-12">
-          <p className="mb-2 text-sm font-black text-slate-900 sm:text-base">デッキ全体（40枚）</p>
+          <p className="mb-2 text-sm font-black text-slate-900 sm:text-base">デッキ全体{format === 'original' ? '（40枚）' : ''}</p>
         </div>
-        <DeckGrid cards={cards} enlarged />
+        <DeckSections cards={cards} format={format} enlarged />
       </section>
     </div>}
   </>
