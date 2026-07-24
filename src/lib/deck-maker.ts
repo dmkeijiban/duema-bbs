@@ -23,12 +23,26 @@ export function sameCardLimit(zone: DeckZone) {
 // Automatic zone placement from the server-classified deck_zone_class, not from
 // whichever tab the user currently has open. Outside the advance format there is
 // only one zone, so everything collapses to 'main'.
+//
+// 'special' is NOT a cards-array zone: adding a card classified 'special' through
+// normal search+add always lands it in main, same as any other card that isn't
+// GR/hyperspatial. The special slot is a single deck-level `specialCardId` pick
+// (see isSpecialSlotCard below), entirely separate from this array — confirmed by
+// the research doc (a searched-and-added 零龍/FORBIDDEN-STAR-equivalent card lands
+// in main; the special-slot pick is a different, independent mechanism that can
+// reference the very same card id).
 export function resolveAutoZone(deckZoneClass: DeckZoneClass | null | undefined, format: DeckFormat): DeckZone {
   if (format !== 'advance') return 'main'
   if (deckZoneClass === 'gr') return 'gr'
   if (deckZoneClass === 'hyperspatial') return 'hyperspatial'
-  if (deckZoneClass === 'special') return 'special'
   return 'main'
+}
+// A card is eligible for the special slot (the single ドルマゲドン/零龍-equivalent
+// pick) exactly when deck_zone_class classifies it 'special' — currently only
+// 最終禁断フィールド and 零龍クリーチャー card types. This never affects where the
+// card lands if added to the deck via normal search (see resolveAutoZone above).
+export function isSpecialSlotCard(deckZoneClass: DeckZoneClass | null | undefined) {
+  return deckZoneClass === 'special'
 }
 export function printingKey(card: DeckCard) {
   return `${card.id}:${card.printingId ?? card.sourceKey ?? 'base'}:${card.matchedFace?.sideIndex ?? 0}`

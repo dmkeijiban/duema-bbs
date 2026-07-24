@@ -14,8 +14,14 @@ type DeckCard = {
   copy: number
 }
 
-const ZONE_ORDER = ['main', 'gr', 'hyperspatial', 'special'] as const
-const ZONE_LABELS: Record<string, string> = { main: 'メインデッキ', gr: 'GRゾーン', hyperspatial: '超次元ゾーン', special: '特殊' }
+type SpecialCard = { id: string; name: string; imageUrl: string | null }
+
+// 'special' is intentionally excluded here: the special slot is a single
+// deck-level specialCardId pick, never a cards-array entry (see resolveAutoZone/
+// isSpecialSlotCard in @/lib/deck-maker), so it's rendered as its own dedicated
+// block from a `specialCard` prop instead of being grouped out of `cards`.
+const ZONE_ORDER = ['main', 'gr', 'hyperspatial'] as const
+const ZONE_LABELS: Record<string, string> = { main: 'メインデッキ', gr: 'GRゾーン', hyperspatial: '超次元ゾーン' }
 
 function groupByZone(cards: DeckCard[], format: string) {
   if (format !== 'advance') return [{ label: null as string | null, cards }]
@@ -52,7 +58,22 @@ function DeckGrid({ cards, enlarged = false, onOpen }: { cards: DeckCard[]; enla
   </div>
 }
 
-function DeckSections({ cards, format, enlarged, onOpen }: { cards: DeckCard[]; format: string; enlarged?: boolean; onOpen?: () => void }) {
+function SpecialSlotSection({ specialCard, enlarged }: { specialCard: SpecialCard; enlarged?: boolean }) {
+  return (
+    <div>
+      <p className="mb-1 mt-4 text-xs font-black text-slate-600 first:mt-0">特殊</p>
+      <div className={enlarged ? 'w-32' : 'w-20'}>
+        <div className="aspect-[5/7] overflow-hidden rounded-[4px] bg-slate-700" title={specialCard.name}>
+          {specialCard.imageUrl
+            ? <img src={specialCard.imageUrl} alt={specialCard.name} className="h-full w-full object-cover" />
+            : <span className="flex h-full items-center justify-center p-1 text-center text-[9px] font-bold leading-tight text-white">{specialCard.name}</span>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DeckSections({ cards, format, specialCard, enlarged, onOpen }: { cards: DeckCard[]; format: string; specialCard?: SpecialCard | null; enlarged?: boolean; onOpen?: () => void }) {
   const sections = groupByZone(cards, format)
   return <>
     {sections.map((section, index) => (
@@ -61,10 +82,11 @@ function DeckSections({ cards, format, enlarged, onOpen }: { cards: DeckCard[]; 
         <DeckGrid cards={section.cards} enlarged={enlarged} onOpen={onOpen} />
       </div>
     ))}
+    {format === 'advance' && specialCard && <SpecialSlotSection specialCard={specialCard} enlarged={enlarged} />}
   </>
 }
 
-export default function DeckCardGrid({ cards, format = 'original' }: { cards: DeckCard[]; format?: string }) {
+export default function DeckCardGrid({ cards, format = 'original', specialCard = null }: { cards: DeckCard[]; format?: string; specialCard?: SpecialCard | null }) {
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
@@ -77,7 +99,7 @@ export default function DeckCardGrid({ cards, format = 'original' }: { cards: De
   }, [isOpen])
 
   return <>
-    <DeckSections cards={cards} format={format} onOpen={() => setIsOpen(true)} />
+    <DeckSections cards={cards} format={format} specialCard={specialCard} onOpen={() => setIsOpen(true)} />
 
     {isOpen && <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2 sm:p-4" onMouseDown={event => { if (event.currentTarget === event.target) setIsOpen(false) }}>
       <section role="dialog" aria-modal="true" aria-label="デッキ全体の拡大表示" className="relative max-h-[calc(100dvh-16px)] w-full max-w-5xl overflow-auto rounded-2xl bg-white p-2 shadow-2xl sm:max-h-[calc(100dvh-32px)] sm:p-4">
@@ -85,7 +107,7 @@ export default function DeckCardGrid({ cards, format = 'original' }: { cards: De
         <div className="pr-12">
           <p className="mb-2 text-sm font-black text-slate-900 sm:text-base">デッキ全体{format === 'original' ? '（40枚）' : ''}</p>
         </div>
-        <DeckSections cards={cards} format={format} enlarged />
+        <DeckSections cards={cards} format={format} specialCard={specialCard} enlarged />
       </section>
     </div>}
   </>

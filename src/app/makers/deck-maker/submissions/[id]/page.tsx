@@ -11,19 +11,25 @@ import DeckCardGrid from './DeckCardGrid'
 export const dynamic = 'force-dynamic'
 
 type DeckCard = { id: string; printingId?: string | null; name: string; imageUrl: string | null; sourceKey: string | null; faceSideIndex?: number; zone?: 'main' | 'gr' | 'hyperspatial' | 'special'; count: number }
-type DeckRow = { id: string; user_id: string | null; anonymous_edit_token_hash: string | null; title: string; format: string; deck_data: DeckCard[]; created_at: string; updated_at: string; view_count: number; copy_count: number; key_card_id: string | null; key_card_printing_id: string | null }
+type DeckRow = { id: string; user_id: string | null; anonymous_edit_token_hash: string | null; title: string; format: string; deck_data: DeckCard[]; created_at: string; updated_at: string; view_count: number; copy_count: number; key_card_id: string | null; key_card_printing_id: string | null; special_card_id: string | null }
 
 export default async function PublicDeckPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
   const admin = createAdminClient()
   const { data } = await admin.from('deck_submissions')
-    .select('id,user_id,anonymous_edit_token_hash,title,format,deck_data,created_at,updated_at,view_count,copy_count,key_card_id,key_card_printing_id')
+    .select('id,user_id,anonymous_edit_token_hash,title,format,deck_data,created_at,updated_at,view_count,copy_count,key_card_id,key_card_printing_id,special_card_id')
     .eq('id', id)
     .eq('is_public', true)
     .maybeSingle()
   if (!data) notFound()
   const deck = data as DeckRow
+  // The special slot is a deck-level pick (specialCardId), never part of
+  // deck_data's cards array — resolved separately here for its own display block.
+  const { data: specialCardRow } = deck.special_card_id
+    ? await admin.from('cards').select('id,name,image_url').eq('id', deck.special_card_id).maybeSingle()
+    : { data: null }
+  const specialCard = specialCardRow ? { id: specialCardRow.id, name: specialCardRow.name, imageUrl: specialCardRow.image_url } : null
   const { data: profile } = deck.user_id
     ? await admin.from('profiles').select('display_name,profile_hidden,account_suspended,withdrawn_at').eq('id', deck.user_id).maybeSingle()
     : { data: null }
@@ -63,7 +69,7 @@ export default async function PublicDeckPage({ params }: { params: Promise<{ id:
           </div>
 
           <h2 className="mt-7 text-lg font-black text-slate-950">デッキ内容{deck.format === 'original' ? '（40枚）' : ''}</h2>
-          <DeckCardGrid cards={cards} format={deck.format} />
+          <DeckCardGrid cards={cards} format={deck.format} specialCard={specialCard} />
         </article>
       </div>
     </main>
