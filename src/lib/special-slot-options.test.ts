@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { getSpecialSlotOptions, isAllowedSpecialCardId, isAllowedSpecialCardIdWithGrandfather } from './special-slot-options'
+import { resolveRepresentative, type RepresentativeCandidateRow } from './special-slot-representative-rules'
 
 type RepRow = { key: string; card_id: string }
 type CardRow = { id: string; image_url: string | null; is_active: boolean; deck_zone_class: string | null }
@@ -140,4 +141,36 @@ test('isAllowedSpecialCardIdWithGrandfather: a different special-classified card
   // Deck currently has 'a-dolmageddon' saved, but the request tries to switch to
   // an id that is neither the current representative nor the deck's existing value.
   assert.equal(isAllowedSpecialCardIdWithGrandfather(options, '0000-new-smaller-uuid', 'a-dolmageddon'), false)
+})
+
+test('end-to-end: cards resolved from the real catalog rules, once registered, yield exactly 2 options and gate save-time validation correctly', async () => {
+  // Simulates what the migration does at a higher level: resolveRepresentative()
+  // picks the one real catalog card per key, that id gets registered into
+  // special_slot_representatives, and getSpecialSlotOptions/isAllowedSpecialCardId
+  // must then treat exactly those two ids as valid.
+  const catalogRows: RepresentativeCandidateRow[] = [
+    { id: 'forbidden-star-id', card_type: '最終禁断フィールド', deck_zone_class: 'special', is_active: true },
+    { id: 'zeroryu-standalone-id', card_type: '零龍クリーチャー', deck_zone_class: 'special', is_active: true },
+    { id: 'ritual-card-1', card_type: '零龍の儀', deck_zone_class: 'special', is_active: true },
+  ]
+  const dormageddon = resolveRepresentative(catalogRows, 'dormageddon')
+  const zeroryu = resolveRepresentative(catalogRows, 'zeroryu')
+  assert.equal(dormageddon.ok, true)
+  assert.equal(zeroryu.ok, true)
+  if (!dormageddon.ok || !zeroryu.ok) return
+
+  const reps: RepRow[] = [
+    { key: 'dormageddon', card_id: dormageddon.cardId },
+    { key: 'zeroryu', card_id: zeroryu.cardId },
+  ]
+  const cards: CardRow[] = [
+    { id: dormageddon.cardId, image_url: null, is_active: true, deck_zone_class: 'special' },
+    { id: zeroryu.cardId, image_url: null, is_active: true, deck_zone_class: 'special' },
+  ]
+  const options = await getSpecialSlotOptions(makeAdminStub(reps, cards))
+  assert.equal(options.length, 2)
+  assert.deepEqual(options.map(o => o.key).sort(), ['dormageddon', 'zeroryu'])
+  assert.equal(isAllowedSpecialCardId(options, dormageddon.cardId), true)
+  assert.equal(isAllowedSpecialCardId(options, zeroryu.cardId), true)
+  assert.equal(isAllowedSpecialCardId(options, 'ritual-card-1'), false)
 })
