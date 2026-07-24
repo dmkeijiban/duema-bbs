@@ -9,37 +9,36 @@ export function SelectMakerToolbar({
   comment,
   showTitle,
   showComment,
-  listLabel,
   listUrl,
   complete,
+  isSaving,
   isSavingImage,
-  isSharing,
   message,
   onTitleChange,
   onCommentChange,
+  onSave,
   onSaveImage,
-  onShare,
-  onReset,
 }: {
   title: string
   comment: string
   showTitle: boolean
   showComment: boolean
-  listLabel: string
   listUrl: string
   complete: boolean
+  isSaving: boolean
   isSavingImage: boolean
-  isSharing: boolean
   message: string
   onTitleChange: (value: string) => void
   onCommentChange: (value: string) => void
+  onSave: () => void
   onSaveImage: () => void
-  onShare: () => void
-  onReset: () => void
 }) {
   const defaultTitle = useMakerDefaultTitle()
   const defaultTitleLength = Array.from(defaultTitle.trim()).length
   const titlePreferredWidth = Math.min(640, Math.max(260, defaultTitleLength * 18 + 40))
+  const querySeparator = listUrl.includes('?') ? '&' : '?'
+  const mineUrl = `${listUrl}${querySeparator}tab=mine`
+  const allUrl = `${listUrl}${querySeparator}tab=all`
 
   useEffect(() => {
     if (!showTitle || title.trim() || !defaultTitle.trim()) return
@@ -105,13 +104,10 @@ export function SelectMakerToolbar({
           )}
         </div>
         <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4 xl:w-auto xl:grid-cols-[repeat(4,max-content)]">
-          <button type="button" disabled={!complete || isSavingImage} onClick={handleSaveImage} className="min-h-10 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white hover:bg-blue-800 disabled:bg-slate-300">{isSavingImage ? '画像生成中...' : '画像保存'}</button>
-          <button type="button" disabled={!complete || isSharing} onClick={onShare} className="min-h-10 rounded-lg bg-black px-4 text-sm font-bold text-white hover:bg-slate-800 disabled:bg-slate-300">{isSharing ? '共有準備中...' : 'X共有'}</button>
-          <button type="button" onClick={onReset} className="min-h-10 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">新しく作る</button>
-          <Link href={listUrl} className="flex min-h-10 items-center justify-center rounded-lg border border-slate-300 px-4 text-center text-sm font-bold text-slate-700 hover:bg-slate-50">
-            <span className="sm:hidden">みんなの9選を見る</span>
-            <span className="hidden sm:inline">{listLabel}</span>
-          </Link>
+          <button type="button" disabled={!complete || isSaving} onClick={onSave} className="min-h-10 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white hover:bg-blue-800 disabled:bg-slate-300">{isSaving ? '保存中...' : '保存'}</button>
+          <Link href={mineUrl} className="flex min-h-10 items-center justify-center rounded-lg border border-slate-300 px-4 text-center text-sm font-bold text-slate-700 hover:bg-slate-50">自分の9選</Link>
+          <Link href={allUrl} className="flex min-h-10 items-center justify-center rounded-lg border border-slate-300 px-4 text-center text-sm font-bold text-slate-700 hover:bg-slate-50">みんなの9選</Link>
+          <button type="button" disabled={!complete || isSavingImage} onClick={handleSaveImage} className="min-h-10 rounded-lg bg-slate-900 px-4 text-sm font-bold text-white hover:bg-slate-700 disabled:bg-slate-300">{isSavingImage ? '画像生成中...' : '画像出力'}</button>
         </div>
       </div>
       {message && <p role="status" className="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">{message}</p>}
