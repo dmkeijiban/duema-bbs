@@ -62,6 +62,19 @@ export function persistedSpecialCardId(specialCardId: string | null): string | n
 export function shouldShowSpecialSlot(format: string, specialCardId: string | null | undefined): boolean {
   return format === 'advance' && Boolean(specialCardId)
 }
+
+// Guards a state-initializing effect so it applies its snapshot exactly once
+// per component instance, never again on a later re-invocation caused by a
+// prop identity change (e.g. a Server Action's revalidatePath refreshing the
+// page's server-rendered props into an already-mounted client component).
+// Without this, restoring `entries`/`format`/`specialCardId` from the initial
+// deck snapshot on every such refresh would silently clobber whatever the
+// user just changed and saved.
+export function consumeMountOnce(ref: { current: boolean }): boolean {
+  if (ref.current) return false
+  ref.current = true
+  return true
+}
 export function printingKey(card: DeckCard) {
   return `${card.id}:${card.printingId ?? card.sourceKey ?? 'base'}:${card.matchedFace?.sideIndex ?? 0}`
 }
