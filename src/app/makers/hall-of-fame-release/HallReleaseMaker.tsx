@@ -62,6 +62,25 @@ export default function HallReleaseMaker(props: { cards: MakerCard[]; draft: Mak
         content: '新しく作る';
         font-size: 0.875rem;
       }
+      @media (min-width: 1024px) {
+        .hall-release-maker > div {
+          position: relative;
+        }
+        .hall-release-maker > div > section > div:nth-of-type(3) {
+          position: absolute;
+          top: 0;
+          right: 0;
+          z-index: 1;
+          width: 360px;
+          justify-content: flex-end;
+        }
+        .hall-release-maker > div > section > div:nth-of-type(3) > button {
+          flex: none;
+        }
+        .hall-release-maker > div > aside {
+          padding-top: 8.25rem;
+        }
+      }
       @media (max-width: 639px) {
         .hall-release-maker > div > section > div:nth-of-type(2) {
           padding: 1rem;
