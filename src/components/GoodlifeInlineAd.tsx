@@ -2,7 +2,13 @@ import { getGoodlifeAdSettings } from '@/lib/ads-server'
 import { readGoodlifeAdSettings, type AdSlotName } from '@/lib/ads'
 import { GoodlifeInlineAdClient } from '@/components/GoodlifeInlineAdClient'
 
-export async function GoodlifeInlineAd({ slot }: { slot: AdSlotName }) {
+export async function GoodlifeInlineAd({
+  slot,
+  mobileOnly = false,
+}: {
+  slot: AdSlotName
+  mobileOnly?: boolean
+}) {
   const settings = readGoodlifeAdSettings(await getGoodlifeAdSettings())
   const slotEnabled = slot === 'thread_list_inline'
     ? settings.threadList
@@ -10,10 +16,12 @@ export async function GoodlifeInlineAd({ slot }: { slot: AdSlotName }) {
       ? settings.threadDetail
       : settings.footer
 
-  const inlineEnabled = settings.enabled && slotEnabled && (settings.desktop || settings.mobile)
-  const visibilityClass = settings.desktop && settings.mobile
+  const desktopEnabled = mobileOnly ? false : settings.desktop
+  const mobileEnabled = settings.mobile
+  const inlineEnabled = settings.enabled && slotEnabled && (desktopEnabled || mobileEnabled)
+  const visibilityClass = desktopEnabled && mobileEnabled
     ? ''
-    : settings.desktop
+    : desktopEnabled
       ? 'hidden md:flex'
       : 'md:hidden'
 
@@ -23,8 +31,8 @@ export async function GoodlifeInlineAd({ slot }: { slot: AdSlotName }) {
         <GoodlifeInlineAdClient
           slot={slot}
           visibilityClass={visibilityClass}
-          desktopEnabled={settings.desktop}
-          mobileEnabled={settings.mobile}
+          desktopEnabled={desktopEnabled}
+          mobileEnabled={mobileEnabled}
         />
       )}
     </>
