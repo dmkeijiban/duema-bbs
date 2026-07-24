@@ -13,6 +13,8 @@ type CommentInput = { body: string; internalMemo: string; permissionConfirmedOn:
 export type BulkCreateResult = { ok: boolean; message: string; threadId?: number }
 export type BulkRewriteResult = { ok: boolean; message: string; title?: string; body?: string; comments?: string[] }
 
+type RewrittenDraft = { title: string; body: string; comments: string[] }
+
 async function requireAdmin() {
   const store = await cookies()
   if (!verifyAdminCookie(store.get('admin_auth')?.value)) throw new Error('Unauthorized')
@@ -34,6 +36,27 @@ function getResponseText(value: unknown) {
     }
   }
   return ''
+}
+
+function normalizeForComparison(value: string) {
+  return value.replace(/\s+/g, '').replace(/[。．]/g, '').trim()
+}
+
+function hasMeaningfulRewrite(original: string, rewritten: string) {
+  if (original.trim().length < 8) return true
+  return normalizeForComparison(original) !== normalizeForComparison(rewritten)
+}
+
+function validateRewrittenDraft(value: unknown, comments: string[]): RewrittenDraft {
+  if (!value || typeof value !== 'object') throw new Error('Invalid response')
+  const draft = value as { title?: unknown; body?: unknown; comments?: unknown }
+  if (typeof draft.title !== 'string' || typeof draft.body !== 'string' || !Array.isArray(draft.comments)) {
+    throw new Error('Invalid response shape')
+  }
+  if (draft.comments.length !== comments.length || !draft.comments.every(comment => typeof comment === 'string')) {
+    throw new Error('Comment count mismatch')
+  }
+  return { title: draft.title, body: draft.body, comments: draft.comments as string[] }
 }
 
 export async function rewriteBulkThreadDraft(input: {
@@ -73,12 +96,18 @@ export async function rewriteBulkThreadDraft(input: {
     },
   }
 
-  const prompt = `次のスレッド原稿を、意味・ニュアンス・主張・事実関係を維持したまま、複数の匿名利用者が自然に会話している掲示板文体へ軽く整えてください。
+  const basePrompt = `次のスレッド原稿を、意味・ニュアンス・主張・事実関係を維持したまま、複数の匿名利用者が自然に会話している掲示板文体へ書き直してください。
+
+これは単なる誤字修正ではありません。タイトルだけでなく、本文と各コメントの文章表現も必ず見直してください。
+長さが8文字以上ある本文・コメントは、意味を保ったまま語順、語尾、接続、区切り方のいずれかを変え、原文の完全コピーを避けてください。
+短いツッコミや固有の言い回しは無理に壊さなくて構いません。
 
 必須ルール:
 - 元文にない事実、数字、固有名詞、体験談、結論を追加しない
 - コメント数と並び順は変えない
 - 各投稿が担う意見や役割は変えない
+- 本文も必ず整形対象にする。タイトルだけ変えて本文をそのまま返さない
+- 長めのコメントも可能な範囲で自然に言い換える
 - 同じ投稿内の自然な改行は残してよいが、1文ごとに空行を入れない
 - 空行は投稿同士の区切りとして扱い、投稿内に無駄な空行を作らない
 - すべての文末を「。」で統一しない
@@ -86,13 +115,13 @@ export async function rewriteBulkThreadDraft(input: {
 - 語尾、口調、文の長さ、改行、一人称に適度なばらつきを持たせる
 - ネットスラングや「w」を全投稿へ機械的に付けない
 - 意味不明な脱線、無関係な話、過度な煽り、暴言の追加は禁止
-- 元の荒さや温度感は消しすぎず、誤字・読みにくさだけを軽く直す
-- タイトルも意味を変えず、自然な掲示板タイトルに軽く整える
+- 元の荒さや温度感は消しすぎない
+- タイトルも意味を変えず、自然な掲示板タイトルに整える
 
 原稿:
 ${JSON.stringify({ title, body, comments })}`
 
-  try {
+  const requestRewrite = async (retry: boolean): Promise<RewrittenDraft> => {
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
@@ -101,7 +130,7 @@ ${JSON.stringify({ title, body, comments })}`
       },
       body: JSON.stringify({
         model: process.env.OPENAI_TEXT_MODEL || 'gpt-5-mini',
-        input: prompt,
+        input: `${basePrompt}${retry ? '\n\n前回は原文のコピーが多すぎました。本文と8文字以上の各コメントを、情報を増減せずにもっと明確に言い換えてください。' : ''}`,
         text: {
           format: {
             type: 'json_schema',
@@ -117,32 +146,42 @@ ${JSON.stringify({ title, body, comments })}`
     if (!response.ok) {
       const detail = await response.text()
       console.error('OpenAI bulk rewrite failed', response.status, detail)
-      return { ok: false, message: `AI整形に失敗しました（${response.status}）。` }
+      throw new Error(`OPENAI_${response.status}`)
     }
 
     const rawResponse: unknown = await response.json()
-    const outputText = getResponseText(rawResponse)
-    const parsed: unknown = JSON.parse(outputText)
-    if (!parsed || typeof parsed !== 'object') throw new Error('Invalid response')
+    return validateRewrittenDraft(JSON.parse(getResponseText(rawResponse)), comments)
+  }
 
-    const value = parsed as { title?: unknown; body?: unknown; comments?: unknown }
-    if (typeof value.title !== 'string' || typeof value.body !== 'string' || !Array.isArray(value.comments)) {
-      throw new Error('Invalid response shape')
+  try {
+    let value = await requestRewrite(false)
+    const unchangedLongComments = comments.filter((comment, index) => !hasMeaningfulRewrite(comment, value.comments[index] ?? ''))
+    const bodyUnchanged = body.length >= 8 && !hasMeaningfulRewrite(body, value.body)
+
+    if (bodyUnchanged || unchangedLongComments.length > Math.max(1, Math.floor(comments.filter(comment => comment.length >= 8).length / 3))) {
+      value = await requestRewrite(true)
     }
-    if (value.comments.length !== comments.length || !value.comments.every(comment => typeof comment === 'string')) {
-      throw new Error('Comment count mismatch')
+
+    const finalBodyUnchanged = body.length >= 8 && !hasMeaningfulRewrite(body, value.body)
+    const finalUnchangedLongComments = comments.filter((comment, index) => !hasMeaningfulRewrite(comment, value.comments[index] ?? ''))
+    const longCommentCount = comments.filter(comment => comment.length >= 8).length
+    if (finalBodyUnchanged || finalUnchangedLongComments.length > Math.max(1, Math.floor(longCommentCount / 2))) {
+      return { ok: false, message: '文章の書き換え量が足りませんでした。もう一度「掲示板風に整形」を押してください。' }
     }
 
     return {
       ok: true,
-      message: '掲示板らしい文体に整形しました。公開前に内容を確認してください。',
+      message: '本文とコメントを掲示板らしい文体に整形しました。公開前に内容を確認してください。',
       title: value.title.slice(0, BULK_THREAD_TITLE_MAX),
       body: value.body.slice(0, BULK_THREAD_BODY_MAX),
-      comments: value.comments.map(comment => String(comment).slice(0, BULK_THREAD_COMMENT_MAX)),
+      comments: value.comments.map(comment => comment.slice(0, BULK_THREAD_COMMENT_MAX)),
     }
   } catch (error) {
     console.error('Bulk rewrite parse failed', error)
-    return { ok: false, message: 'AIの返答を読み取れませんでした。もう一度お試しください。' }
+    const message = error instanceof Error && error.message.startsWith('OPENAI_')
+      ? `AI整形に失敗しました（${error.message.replace('OPENAI_', '')}）。`
+      : 'AIの返答を読み取れませんでした。もう一度お試しください。'
+    return { ok: false, message }
   }
 }
 
