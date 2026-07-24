@@ -9,7 +9,7 @@ const heading = (value: string, name: string) =>
   new RegExp(`^\\s*${name}(?:\\s*[：:]\\s*)?$`).test(value)
 
 const numberLine = /^(?:\d{1,2}\s*[.：:]?|[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳])\s*$/
-const rawPostHeader = /^\s*(\d{1,3})\S.*?\d{2}\/\d{2}\/\d{2}\([^\n)]*\)\s+\d{1,2}:\d{2}:\d{2}.*報告\s*$/
+const rawPostHeader = /^\s*(?:(\d{1,3})\s*)?\S.*?\d{2}\/\d{2}\/\d{2}\([^\n)]*\)\s+\d{1,2}:\d{2}:\d{2}(?:.*報告)?\s*$/
 const backlinkOnly = /^\s*(?:>>\d+\s*)+$/
 
 function parseRawBoardLog(raw: string): ParsedBulkThread | null {
@@ -17,7 +17,10 @@ function parseRawBoardLog(raw: string): ParsedBulkThread | null {
   const headers = lines
     .map((line, index) => ({ index, match: line.match(rawPostHeader) }))
     .filter((entry): entry is { index: number; match: RegExpMatchArray } => !!entry.match)
-  if (!headers.length || headers[0].match[1] !== '1') return null
+  if (!headers.length) return null
+
+  const numberedHeaders = headers.filter(header => header.match[1])
+  if (numberedHeaders.length && numberedHeaders[0].match[1] !== '1') return null
 
   const title = lines.slice(0, headers[0].index).join('\n').trim()
   if (!title) return null
