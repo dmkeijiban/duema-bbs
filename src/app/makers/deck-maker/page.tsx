@@ -76,12 +76,21 @@ export default async function DeckMakerPage({ searchParams }: { searchParams: Pr
 
   return (
     <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4">
-      <AdstirBannerClient slot="sp_list_top" className="mb-2 mt-0" />
-      <DeckMakerInitialDraftGuard enabled={Boolean(initialDeck)} />
-      <DeckMakerNewDeckUx />
-      <DeckMakerMobileAdvanceLayoutFix />
-      <DeckMakerClientShell initialDeck={initialDeck} dbDecks={dbDecks} />
-      <DeckKeyCardSelector initialCardId={initialDeck?.keyCardId} initialPrintingId={initialDeck?.keyCardPrintingId} />
+      <style>{`
+        @media (min-width: 1024px) {
+          .deck-maker-width > div > .grid {
+            grid-template-columns: minmax(0, 1fr) minmax(320px, 480px);
+          }
+        }
+      `}</style>
+      <div className="deck-maker-width mx-auto max-w-7xl overflow-x-hidden">
+        <AdstirBannerClient slot="sp_list_top" className="mb-2 mt-0" />
+        <DeckMakerInitialDraftGuard enabled={Boolean(initialDeck)} />
+        <DeckMakerNewDeckUx />
+        <DeckMakerMobileAdvanceLayoutFix />
+        <DeckMakerClientShell initialDeck={initialDeck} dbDecks={dbDecks} />
+        <DeckKeyCardSelector initialCardId={initialDeck?.keyCardId} initialPrintingId={initialDeck?.keyCardPrintingId} />
+      </div>
     </main>
   )
 }
