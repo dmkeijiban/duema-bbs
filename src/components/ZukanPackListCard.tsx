@@ -1,7 +1,10 @@
 import Link from 'next/link'
 import type { ZukanPack } from '@/lib/zukan'
+import { getZukanPackThumbnail } from '@/lib/zukan-pack-thumbnails'
 
 export function ZukanPackListCard({ pack }: { pack: ZukanPack }) {
+  const imageUrl = pack.image_url ?? getZukanPackThumbnail(pack.slug)
+
   return (
     <Link
       href={`/zukan/${pack.slug}`}
@@ -9,13 +12,13 @@ export function ZukanPackListCard({ pack }: { pack: ZukanPack }) {
     >
       <div className="flex h-full overflow-hidden border border-gray-300 bg-white transition-colors hover:border-blue-400">
         <div className="w-20 shrink-0 bg-orange-50 sm:w-24">
-          {pack.image_url ? (
+          {imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={pack.image_url}
+              src={imageUrl}
               alt={`${pack.code} ${pack.name} パック画像`}
               width={96}
-              height={96}
+              height={128}
               loading="lazy"
               decoding="async"
               className="h-full w-full object-contain p-1.5"
