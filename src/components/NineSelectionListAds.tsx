@@ -29,13 +29,13 @@ function findVisibleTabWrapper() {
   return overflowWrapper ?? visible
 }
 
-export function NineSelectionListAds() {
+export function NineSelectionListAds({ enabled }: { enabled: boolean }) {
   const pathname = usePathname()
   const [topHost, setTopHost] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
     setTopHost(null)
-    if (!isNineSelectionSubmissionsPage(pathname)) return
+    if (!enabled || !isNineSelectionSubmissionsPage(pathname)) return
 
     let insertedTop: HTMLDivElement | null = null
 
@@ -74,7 +74,7 @@ export function NineSelectionListAds() {
     return () => {
       insertedTop?.remove()
     }
-  }, [pathname])
+  }, [pathname, enabled])
 
   return topHost
     ? createPortal(<AdstirBannerClient slot="sp_list_top" className="my-0" />, topHost)

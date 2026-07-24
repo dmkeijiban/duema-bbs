@@ -44,7 +44,7 @@ function getVersionOptions(card: DeckCard) {
   return request
 }
 
-export default function SelectMaker({ slug, config, initialDraft, loggedIn }: { slug: string; config: SelectMakerConfig; initialDraft?: Draft; loggedIn?: boolean }) {
+export default function SelectMaker({ slug, config, initialDraft, loggedIn, showAd }: { slug: string; config: SelectMakerConfig; initialDraft?: Draft; loggedIn?: boolean; showAd?: boolean }) {
   const storageKey = `select-maker:${slug}:v2`
   const legacyStorageKey = `select-maker:${slug}:v1`
   const [selected, setSelected] = useState<DeckCard[]>([])
@@ -297,6 +297,7 @@ export default function SelectMaker({ slug, config, initialDraft, loggedIn }: { 
       onCommentChange={setComment}
       onSave={() => void save()}
       onSaveImage={() => void saveImage()}
+      showAd={showAd}
     />
     {slug === 'my-duema-9' && (loggedIn || !makerRequiresLogin() ? (
       <Link href="/makers/resume-maker" className="mb-3 block rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-center text-sm font-bold text-indigo-800 hover:bg-indigo-100">デュエマ履歴書を作る</Link>

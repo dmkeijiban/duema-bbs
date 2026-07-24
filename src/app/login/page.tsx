@@ -5,6 +5,7 @@ import { logout } from '@/app/auth/actions'
 import { LoginClient } from './LoginClient'
 import { safeNextPath } from '@/lib/safe-next-path'
 import { AdstirBannerClient } from '@/components/AdstirBannerClient'
+import { getAdstirVisibility } from '@/lib/adstir-server'
 
 type LoginPageProps = {
   searchParams?: Promise<{
@@ -69,7 +70,10 @@ function errorMessage(code?: string) {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams
-  const { user, hasProfile, isWithdrawn } = await getLoginState()
+  const [{ user, hasProfile, isWithdrawn }, adstirVisibility] = await Promise.all([
+    getLoginState(),
+    getAdstirVisibility(),
+  ])
   const message = errorMessage(params?.error)
   const successMsg = successMessage(params?.message)
   const nextPath = safeNextPath(params?.next, '') || undefined
@@ -77,7 +81,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
-      <AdstirBannerClient slot="sp_list_top" className="mb-4 mt-0" />
+      {adstirVisibility.listTop && <AdstirBannerClient slot="sp_list_top" className="mb-4 mt-0" />}
       <div className="border border-gray-300 bg-white">
         <div className="border-b border-gray-300 bg-gray-100 px-4 py-3">
           <h1 className="text-lg font-bold text-gray-900">ログイン / アカウント作成</h1>

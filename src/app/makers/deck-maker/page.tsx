@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { makerRequiresLogin } from '@/lib/maker-auth-requirements'
 import { AdstirBannerClient } from '@/components/AdstirBannerClient'
+import { getAdstirVisibility } from '@/lib/adstir-server'
 import DeckMakerClientShell from './DeckMakerClientShell'
 import DeckKeyCardSelector from './DeckKeyCardSelector'
 import DeckMakerNewDeckUx from './DeckMakerNewDeckUx'
@@ -44,7 +45,7 @@ export default async function DeckMakerPage({ searchParams }: { searchParams: Pr
   if (user) ownedQuery = ownedQuery.eq('user_id', user.id)
   else if (anonymousHash) ownedQuery = ownedQuery.is('user_id', null).eq('anonymous_edit_token_hash', anonymousHash)
   else ownedQuery = ownedQuery.eq('id', '00000000-0000-0000-0000-000000000000')
-  const { data: ownedRows } = await ownedQuery
+  const [{ data: ownedRows }, adstirVisibility] = await Promise.all([ownedQuery, getAdstirVisibility()])
   const dbDecks = (ownedRows ?? []).map(row => ({
     id: row.id,
     submissionId: row.id,
@@ -84,7 +85,7 @@ export default async function DeckMakerPage({ searchParams }: { searchParams: Pr
         }
       `}</style>
       <div className="deck-maker-width mx-auto max-w-7xl overflow-x-hidden">
-        <AdstirBannerClient slot="sp_list_top" className="mb-2 mt-0" />
+        {adstirVisibility.listTop && <AdstirBannerClient slot="sp_list_top" className="mb-2 mt-0" />}
         <DeckMakerInitialDraftGuard enabled={Boolean(initialDeck)} />
         <DeckMakerNewDeckUx />
         <DeckMakerMobileAdvanceLayoutFix />

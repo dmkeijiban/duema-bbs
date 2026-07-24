@@ -77,7 +77,7 @@ function findFixedPageBreadcrumb(pathname: string) {
   }) ?? null
 }
 
-export function FixedAndRankingTopAd() {
+export function FixedAndRankingTopAd({ enableListTop, enableListMiddle }: { enableListTop: boolean; enableListMiddle: boolean }) {
   const pathname = usePathname()
   const [topHost, setTopHost] = useState<HTMLDivElement | null>(null)
   const [bottomHost, setBottomHost] = useState<HTMLDivElement | null>(null)
@@ -114,16 +114,18 @@ export function FixedAndRankingTopAd() {
       return true
     }
 
+    if (!enableListTop && !enableListMiddle) return
+
     const insert = () => {
       if (pathname === '/ranking') {
-        const topReady = ensureHost(
+        const topReady = !enableListTop || ensureHost(
           TOP_HOST_MARKER,
           findRankingRecommendAnchor(),
           'before',
           'my-2',
           setTopHost,
         )
-        const bottomReady = ensureHost(
+        const bottomReady = !enableListMiddle || ensureHost(
           BOTTOM_HOST_MARKER,
           findRankingBottomNavAnchor(),
           'before',
@@ -132,6 +134,8 @@ export function FixedAndRankingTopAd() {
         )
         return topReady && bottomReady
       }
+
+      if (!enableListTop) return true
 
       return ensureHost(
         TOP_HOST_MARKER,
@@ -155,7 +159,7 @@ export function FixedAndRankingTopAd() {
       observer.disconnect()
       insertedHosts.forEach(host => host.remove())
     }
-  }, [pathname])
+  }, [pathname, enableListTop, enableListMiddle])
 
   return (
     <>

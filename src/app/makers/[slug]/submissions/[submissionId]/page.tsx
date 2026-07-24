@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import MakerSubmissionBoard from '@/components/MakerSubmissionBoard'
 import SelectSubmissionBoard from '@/components/SelectSubmissionBoard'
 import { AdstirBannerClient } from '@/components/AdstirBannerClient'
+import { getAdstirVisibility } from '@/lib/adstir-server'
 import { getPublicMakerProject, getPublicSubmission, makerSubmissionView } from '@/lib/maker-submissions'
 import { formatJapanDateTime } from '@/lib/date-time'
 import { createClient } from '@/lib/supabase-server'
@@ -33,13 +34,14 @@ export default async function MakerSubmissionDetailPage({ params }: { params: Pr
   const isAdmin = verifyAdminCookie((await cookies()).get(ADMIN_COOKIE)?.value)
   const prediction = project.type === 'prediction'
   const ownedSubmissionIds = await getOwnedMakerSubmissionIds(project.id, [submissionId], user?.id ?? null)
+  const adstirVisibility = isSelect ? await getAdstirVisibility() : null
   const shareUrl = `https://twitter.com/intent/tweet?${new URLSearchParams({ text: `${submission.title}\n${project.title}`, url })}`
   return <main className="min-h-screen bg-slate-50 px-3 py-6"><article className="mx-auto max-w-5xl">
     <div className="flex flex-wrap gap-3 text-sm font-bold text-blue-700"><Link href={`/makers/${slug}/submissions`}>← {communityLabel}へ戻る</Link><Link href={`/makers/${slug}`}>メーカーへ戻る</Link></div>
     <h1 className="mt-5 break-words text-2xl font-black">{submission.title}</h1>
     <p className="mt-2 text-sm text-gray-600">{prediction ? '表示名' : '制作者'}: {submission.authorName}</p>
     <time className="mt-1 block text-xs text-gray-400">{formatJapanDateTime(submission.created_at)}</time>
-    {isSelect && <AdstirBannerClient slot="sp_list_top" className="mb-0 mt-3" />}
+    {isSelect && adstirVisibility?.listTop && <AdstirBannerClient slot="sp_list_top" className="mb-0 mt-3" />}
     {submission.comment && <p className="mt-4 whitespace-pre-wrap break-words rounded-xl border bg-white p-4 leading-7">{submission.comment}</p>}
     <div className="mt-5">
       {isSelect
