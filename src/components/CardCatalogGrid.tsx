@@ -15,7 +15,7 @@ export function CardCatalogGrid({ cards, query, loading, hasMore, onLoadMore, on
   onLoadMore: () => void
   onSelect: (card: DeckCard) => void
   selectedCount?: (card: DeckCard) => number
-  selectedBadge?: (count: number) => string
+  selectedBadge?: (count: number, card: DeckCard) => string
   renderCardArt?: (card: DeckCard, index: number) => ReactNode
 }) {
   const scroller = useRef<HTMLDivElement>(null)
@@ -45,7 +45,7 @@ export function CardCatalogGrid({ cards, query, loading, hasMore, onLoadMore, on
             {card.imageUrl ? <img src={card.imageUrl} alt={card.name} className="h-full w-full object-contain" loading={index < 4 ? 'eager' : 'lazy'} fetchPriority={index < 4 ? 'high' : 'auto'} decoding="async" /> : <div className="flex h-full items-center justify-center p-1 text-center text-[8px] font-bold text-white sm:text-xs">{card.name}</div>}
           </div>}
         </button>
-        {count > 0 && <span className="absolute left-1 top-1 rounded-full bg-black/80 px-1.5 py-0.5 text-[10px] font-black text-white">{selectedBadge ? selectedBadge(count) : count}</span>}
+        {count > 0 && <span className="absolute left-1 top-1 rounded-full bg-black/80 px-1.5 py-0.5 text-[10px] font-black text-white">{selectedBadge ? selectedBadge(count, card) : count}</span>}
       </article>
     })}
     <div ref={sentinel} aria-hidden="true" className="col-span-4 h-px" />

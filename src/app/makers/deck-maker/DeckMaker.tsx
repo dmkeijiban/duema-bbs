@@ -7,7 +7,8 @@ import {
   DECK_STORAGE_VERSION,
   MAX_DECK_CARDS,
   DECK_ZONE_LIMITS,
-  MAX_SAME_CARD,
+  sameCardLimit,
+  resolveAutoZone,
   entryZone,
   zoneDeckSize,
   printingKey,
@@ -15,6 +16,7 @@ import {
   type DeckEntry,
   type DeckFormat,
   type DeckZone,
+  type DeckZoneClass,
 } from '@/lib/deck-maker'
 import { CardCatalogSearchPanel } from '@/components/CardCatalogSearchPanel'
 import { CardDetailModal } from '@/components/CardDetailModal'
@@ -51,11 +53,15 @@ type SavedDeck = {
   format?: DeckFormat
 }
 
-const ZONE_LABELS: Record<DeckZone, string> = { main: 'メインデッキ', gr: 'GRゾーン', hyperspatial: '超次元ゾーン', special: '特殊カード' }
+const ZONE_LABELS: Record<DeckZone, string> = { main: 'メインデッキ', gr: 'GRゾーン', hyperspatial: '超次元ゾーン', special: '特殊' }
+const ADVANCE_ZONES: DeckZone[] = ['main', 'gr', 'hyperspatial', 'special']
 const zonedPrintingKey = (card: DeckCard, zone: DeckZone) => `${printingKey(card)}:${zone}`
-function cardZone(card: DeckCard, fallback: DeckZone): DeckZone {
+// A card already in the deck carries its own persisted zone; a fresh search
+// candidate has none yet, so fall back to the zone its card_type classifies it
+// into (never to whichever tab the user happens to have open).
+function cardZone(card: DeckCard, format: DeckFormat): DeckZone {
   const zone = (card as Partial<DeckEntry>).zone
-  return zone && zone in DECK_ZONE_LIMITS ? zone : fallback
+  return zone && zone in DECK_ZONE_LIMITS ? zone : resolveAutoZone(card.deckZoneClass, format)
 }
 
 function pngFileName(deckName: string) {
@@ -90,6 +96,7 @@ function safeCard(card: DeckCard): DeckCard {
     abilityText: typeof card.abilityText === 'string' ? card.abilityText.slice(0, 5000) : null,
     setName: typeof card.setName === 'string' ? card.setName.slice(0, 200) : null,
     cardNumber: typeof card.cardNumber === 'string' ? card.cardNumber.slice(0, 100) : null,
+    deckZoneClass: (['normal', 'gr', 'hyperspatial', 'special'] as DeckZoneClass[]).includes(card.deckZoneClass as DeckZoneClass) ? card.deckZoneClass : 'normal',
     imageUrl: safeOfficialUrl(card.imageUrl, 'image'),
     officialPageUrl: safeOfficialUrl(card.officialPageUrl, 'page'),
     matchedFace: card.matchedFace && typeof card.matchedFace.name === 'string' && Number.isInteger(card.matchedFace.sideIndex) ? {
@@ -111,7 +118,7 @@ function safeEntries(values: unknown): DeckEntry[] {
     const zone: DeckZone = ['main', 'gr', 'hyperspatial', 'special'].includes(value.zone ?? '') ? value.zone! : 'main'
     const remaining = remainingByZone.get(zone) ?? 0
     if (remaining <= 0) continue
-    const sameNameRemaining = MAX_SAME_CARD - (countsByCard.get(value.id) ?? 0)
+    const sameNameRemaining = sameCardLimit(zone) - (countsByCard.get(value.id) ?? 0)
     const count = Math.min(sameNameRemaining, Math.max(0, value.count), remaining)
     if (!count) continue
     restored.push({ ...safeCard(value), id: value.id, count, zone })
@@ -227,7 +234,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   initialDeck?: { name: string; entries: DeckEntry[]; submissionId?: string; format?: DeckFormat }
   dbDecks?: SavedDeck[]
 }) {
-  const { query, setQuery, cards: results, loading: resultsLoading, hasMore: hasMoreResults, loadMore, filters, addFilter, removeFilter, clearFilters } = useCardCatalogSearch()
+  const { query, setQuery, cards: results, loading: resultsLoading, hasMore: hasMoreResults, loadMore, filters, addFilter, removeFilter, clearFilters, sort, setSort } = useCardCatalogSearch()
   const [entries, setEntries] = useState<DeckEntry[]>([])
   const [format, setFormat] = useState<DeckFormat>('original')
   const [activeZone, setActiveZone] = useState<DeckZone>('main')
@@ -257,8 +264,8 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
     for (const entry of entries) counts.set(entry.id, (counts.get(entry.id) ?? 0) + entry.count)
     return counts
   }, [entries])
-  const selected = selectedCard ? byPrinting.get(zonedPrintingKey(selectedCard, cardZone(selectedCard, activeZone))) ?? selectedCard : null
-  const selectedZone = selected ? cardZone(selected, activeZone) : activeZone
+  const selected = selectedCard ? byPrinting.get(zonedPrintingKey(selectedCard, cardZone(selectedCard, format))) ?? selectedCard : null
+  const selectedZone = selected ? cardZone(selected, format) : activeZone
   const selectedCount = selected ? byPrinting.get(zonedPrintingKey(selected, selectedZone))?.count ?? 0 : 0
   const selectedNameCount = selected ? countsByCard.get(selected.id) ?? 0 : 0
   const deckCards = useMemo(() => entries.filter(entry => entryZone(entry) === activeZone).flatMap((entry) => Array.from({ length: entry.count }, (_, copy) => ({ entry, copy }))), [activeZone, entries])
@@ -357,17 +364,23 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   }, [notice])
 
   function add(card: DeckCard) {
-    const key = zonedPrintingKey(card, activeZone)
+    // The card's own classification decides its zone, never the tab the user has
+    // open. This also means a card can always be added regardless of which tab is
+    // active; the notice below tells the user where it actually landed.
+    const zone = cardZone(card, format)
+    const key = zonedPrintingKey(card, zone)
     const current = byPrinting.get(key)
-    if (activeTotal >= DECK_ZONE_LIMITS[activeZone]) return setNotice(`${ZONE_LABELS[activeZone]}は${DECK_ZONE_LIMITS[activeZone]}枚までです`)
-    if ((countsByCard.get(card.id) ?? 0) >= MAX_SAME_CARD) return setNotice('同名カードは合計4枚までです')
+    const zoneTotal = zoneDeckSize(entries, zone)
+    if (zoneTotal >= DECK_ZONE_LIMITS[zone]) return setNotice(`${ZONE_LABELS[zone]}は${DECK_ZONE_LIMITS[zone]}枚までです`)
+    if ((countsByCard.get(card.id) ?? 0) >= sameCardLimit(zone)) return setNotice(`同名カードは合計${sameCardLimit(zone)}枚までです`)
     setEntries((list) => current
       ? list.map((entry) => zonedPrintingKey(entry, entryZone(entry)) === key ? { ...entry, count: entry.count + 1 } : entry)
-      : [...list, { ...card, count: 1, zone: activeZone }])
+      : [...list, { ...card, count: 1, zone }])
+    if (zone !== activeZone) setNotice(`${ZONE_LABELS[zone]}に追加しました`)
   }
 
   function remove(card: DeckCard) {
-    const key = zonedPrintingKey(card, cardZone(card, activeZone))
+    const key = zonedPrintingKey(card, cardZone(card, format))
     setEntries((list) => list.flatMap((entry) => zonedPrintingKey(entry, entryZone(entry)) !== key ? [entry] : entry.count > 1 ? [{ ...entry, count: entry.count - 1 }] : []))
   }
 
@@ -524,8 +537,18 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   }
 
   async function savePng() {
-    const cards = entries.flatMap((entry) => Array.from({ length: entry.count }, () => entry))
-    if (!cards.length) return setNotice('カードを追加してください')
+    // Original format never had zones, so it keeps rendering as one flat grid with
+    // no section header (byte-for-byte the same layout as before this feature).
+    // Advance format gets one labeled block per non-empty zone instead of mixing
+    // GR/超次元/特殊 cards into the same main-deck grid.
+    const sections = format === 'advance'
+      ? ADVANCE_ZONES.map(zone => ({
+        label: ZONE_LABELS[zone],
+        cards: entries.filter(entry => entryZone(entry) === zone).flatMap((entry) => Array.from({ length: entry.count }, () => entry)),
+      })).filter(section => section.cards.length > 0)
+      : [{ label: null as string | null, cards: entries.flatMap((entry) => Array.from({ length: entry.count }, () => entry)) }]
+    const allCards = sections.flatMap(section => section.cards)
+    if (!allCards.length) return setNotice('カードを追加してください')
     setNotice('PNGを生成中…')
     const canvas = document.createElement('canvas')
     const context = canvas.getContext('2d')
@@ -534,8 +557,12 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
     const gap = 8
     const columns = 8
     const padding = 44
+    const sectionHeaderHeight = 34
+    const sectionGap = 18
+    const rowHeight = cardHeight + gap
+    const sectionHeights = sections.map(section => (section.label ? sectionHeaderHeight : 0) + Math.ceil(section.cards.length / columns) * rowHeight)
     canvas.width = 1200
-    canvas.height = 166 + Math.ceil(cards.length / columns) * (cardHeight + gap)
+    canvas.height = 166 + sectionHeights.reduce((sum, height) => sum + height, 0) + (sections.length - 1) * sectionGap
     if (!context) return
     context.fillStyle = '#f8fafc'
     context.fillRect(0, 0, canvas.width, canvas.height)
@@ -548,28 +575,41 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
     }
     context.fillText(effectiveDeckName, padding, 58)
     const imageLoads = new Map<string, Promise<HTMLImageElement | null>>()
-    const pendingImages = Promise.all(cards.map((card) => {
+    const pendingImages = Promise.all(allCards.map((card) => {
       const key = card.imageUrl ?? `missing:${card.id}`
       if (!imageLoads.has(key)) imageLoads.set(key, loadImage(card))
       return imageLoads.get(key)!
     }))
     const images = await Promise.race([
       pendingImages,
-      new Promise<null[]>((resolve) => window.setTimeout(() => resolve(cards.map(() => null)), 12_000)),
+      new Promise<null[]>((resolve) => window.setTimeout(() => resolve(allCards.map(() => null)), 12_000)),
     ])
-    cards.forEach((card, index) => {
-      const x = padding + (index % columns) * (cardWidth + gap)
-      const y = 86 + Math.floor(index / columns) * (cardHeight + gap)
-      if (images[index]) {
-        context.drawImage(images[index]!, x, y, cardWidth, cardHeight)
-      } else {
-        context.fillStyle = '#1e293b'
-        context.fillRect(x, y, cardWidth, cardHeight)
-        context.fillStyle = '#fff'
-        context.font = 'bold 13px sans-serif'
-        context.fillText(card.name.slice(0, 12), x + 6, y + cardHeight / 2)
+    let cardIndex = 0
+    let y = 86
+    for (const section of sections) {
+      if (section.label) {
+        context.fillStyle = '#334155'
+        context.font = 'bold 16px sans-serif'
+        context.fillText(`${section.label}（${section.cards.length}枚）`, padding, y + 14)
+        y += sectionHeaderHeight
       }
-    })
+      section.cards.forEach((card, position) => {
+        const index = cardIndex + position
+        const x = padding + (position % columns) * (cardWidth + gap)
+        const cardY = y + Math.floor(position / columns) * rowHeight
+        if (images[index]) {
+          context.drawImage(images[index]!, x, cardY, cardWidth, cardHeight)
+        } else {
+          context.fillStyle = '#1e293b'
+          context.fillRect(x, cardY, cardWidth, cardHeight)
+          context.fillStyle = '#fff'
+          context.font = 'bold 13px sans-serif'
+          context.fillText(card.name.slice(0, 12), x + 6, cardY + cardHeight / 2)
+        }
+      })
+      cardIndex += section.cards.length
+      y += Math.ceil(section.cards.length / columns) * rowHeight + sectionGap
+    }
     const preview = canvas.toDataURL('image/png')
     const fileName = pngFileName(effectiveDeckName)
     setPngPreview({ src: preview, title: effectiveDeckName, fileName })
@@ -620,8 +660,8 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.85fr)_minmax(320px,1fr)] lg:items-start">
         <section aria-labelledby="deck-heading" className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm sm:p-3">
           {format === 'advance' && (
-            <div className="mb-2 grid grid-cols-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-              {(['main', 'gr', 'hyperspatial'] as DeckZone[]).map(zone => (
+            <div className="mb-2 grid grid-cols-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+              {ADVANCE_ZONES.map(zone => (
                 <button
                   key={zone}
                   type="button"
@@ -663,7 +703,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
           </div>
         </section>
 
-        <CardCatalogSearchPanel cards={results} query={query} loading={resultsLoading} hasMore={hasMoreResults} onLoadMore={loadMore} onSelect={openCard} onQueryChange={setQuery} onClear={() => { setQuery(''); searchInput.current?.focus() }} inputRef={searchInput} clearIcon={<Icon name="close" />} filterIcon={<Icon name="filter" />} selectedCount={card => countsByCard.get(card.id) ?? 0} selectedBadge={count => `${count}/4`} renderCardArt={(card, index) => <CardArt card={card} eager={index < 4} />} filters={filters} onRemoveFilter={removeFilter} onClearFilters={clearFilters} />
+        <CardCatalogSearchPanel cards={results} query={query} loading={resultsLoading} hasMore={hasMoreResults} onLoadMore={loadMore} onSelect={openCard} onQueryChange={setQuery} onClear={() => { setQuery(''); searchInput.current?.focus() }} inputRef={searchInput} clearIcon={<Icon name="close" />} filterIcon={<Icon name="filter" />} selectedCount={card => countsByCard.get(card.id) ?? 0} selectedBadge={(count, card) => `${count}/${sameCardLimit(cardZone(card, format))}`} renderCardArt={(card, index) => <CardArt card={card} eager={index < 4} />} filters={filters} onRemoveFilter={removeFilter} onClearFilters={clearFilters} sort={sort} onSortChange={setSort} />
       </div>
 
       {libraryOpen && (
@@ -738,7 +778,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
         versions={printingOptions}
         loading={printingsLoading}
         count={selectedNameCount}
-        maxReached={selectedNameCount >= MAX_SAME_CARD}
+        maxReached={selectedNameCount >= sameCardLimit(selectedZone)}
         onClose={closeCard}
         onSelectVersion={selectPrinting}
         onAdd={add}
