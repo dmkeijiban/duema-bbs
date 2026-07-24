@@ -36,7 +36,7 @@ function createAdHost(marker: string, slotName: string, adSpot: number, width: n
   host.setAttribute('aria-label', '広告')
 
   const label = document.createElement('span')
-  label.className = 'mb-1 block text-[10px] leading-none text-gray-400'
+  label.className = 'mb-[2px] block text-[10px] leading-none text-gray-400'
   label.textContent = '広告'
 
   const content = document.createElement('div')
@@ -116,7 +116,7 @@ export function AdstirBannerClient({ slot, className = '' }: { slot: AdstirSlotN
       data-ad-slot={slot}
       aria-label="広告"
     >
-      <span className="mb-1 block text-[10px] leading-none text-gray-400">広告</span>
+      <span className="mb-[2px] block text-[10px] leading-none text-gray-400">広告</span>
       <div ref={containerRef} style={{ width, height, maxWidth: '100%' }} className="mx-auto overflow-hidden" />
     </div>
   )
