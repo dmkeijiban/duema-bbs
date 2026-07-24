@@ -24,7 +24,6 @@ export async function GreenCtaBanner() {
 
   return (
     <div
-      data-top-green-banner
       className="mb-1.5 flex flex-col gap-1.5 border px-3 py-1.5 text-sm text-green-900 md:flex-row md:items-center md:justify-between"
       style={{ color: '#155724', background: '#d4edda', borderColor: '#c3e6cb' }}
     >
