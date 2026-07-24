@@ -47,7 +47,7 @@ export default async function ResumeMakerPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 px-1 py-2 sm:px-3 sm:py-4">
+    <main className="bg-slate-100 px-1 py-2 sm:px-3 sm:py-4">
       <div className="mx-auto max-w-[1200px] overflow-x-hidden [&_section:empty]:hidden">
         {adstirVisibility.listTop && (
           <AdstirBannerClient slot="sp_list_top" className="mt-0 mb-3" />
