@@ -1,7 +1,8 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import { useEffect, useRef, useState } from 'react'
 import { GOODLIFE_SCRIPT_URL, type AdSlotName } from '@/lib/ads'
 
 const HOME_MIDDLE_MARKER = 'goodlife-home-middle-row-10'
@@ -13,6 +14,47 @@ function appendGoodlifeScript(target: HTMLElement) {
   script.src = GOODLIFE_SCRIPT_URL
   script.async = true
   target.appendChild(script)
+}
+
+function GoodlifeAdUnit({
+  slot,
+  visibilityClass,
+  desktopEnabled,
+  mobileEnabled,
+}: {
+  slot: AdSlotName | 'home_middle_row_10'
+  visibilityClass: string
+  desktopEnabled: boolean
+  mobileEnabled: boolean
+}) {
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const content = contentRef.current
+    if (!content) return
+
+    const isDesktop = window.matchMedia('(min-width: 768px)').matches
+    if ((isDesktop && !desktopEnabled) || (!isDesktop && !mobileEnabled)) return
+
+    content.replaceChildren()
+    appendGoodlifeScript(content)
+
+    return () => {
+      content.replaceChildren()
+    }
+  }, [desktopEnabled, mobileEnabled])
+
+  return (
+    <aside
+      className={`${visibilityClass} mx-auto my-4 box-border flex min-h-[250px] w-full max-w-full flex-col items-center justify-center overflow-hidden px-3 text-center max-md:my-3`}
+      data-ad-provider="goodlife"
+      data-ad-slot={slot}
+      aria-label="広告"
+    >
+      <span className="mb-1 block text-[10px] leading-none text-gray-400">広告</span>
+      <div ref={contentRef} className="mx-auto flex min-h-[250px] max-w-full items-center justify-center overflow-hidden" />
+    </aside>
+  )
 }
 
 export function GoodlifeInlineAdClient({
@@ -27,36 +69,31 @@ export function GoodlifeInlineAdClient({
   mobileEnabled: boolean
 }) {
   const pathname = usePathname()
-  const contentRef = useRef<HTMLDivElement>(null)
+  const [middleHost, setMiddleHost] = useState<HTMLDivElement | null>(null)
   const footerRouteExcluded = slot === 'footer_inline'
     && (pathname.startsWith('/admin') || pathname.startsWith('/auth') || pathname.startsWith('/login'))
 
   useEffect(() => {
-    if (footerRouteExcluded) return
-
-    const content = contentRef.current
-    if (!content) return
-
-    const isDesktop = window.matchMedia('(min-width: 768px)').matches
-    if ((isDesktop && !desktopEnabled) || (!isDesktop && !mobileEnabled)) return
-
-    content.replaceChildren()
-    appendGoodlifeScript(content)
-
-    return () => {
-      content.replaceChildren()
-    }
-  }, [desktopEnabled, footerRouteExcluded, mobileEnabled])
-
-  useEffect(() => {
     // フッター上と同じ許可済みタグを、スマホTOPの10段目（30件目直後）にも表示する。
-    if (slot !== 'footer_inline' || pathname !== '/' || footerRouteExcluded || !mobileEnabled) return
-    if (window.matchMedia('(min-width: 768px)').matches) return
+    // 広告本体はReact Portalで描画し、App Router遷移時のMutationObserverと
+    // imperativeなscript挿入の競合による「出たり出なかったり」を避ける。
+    if (slot !== 'footer_inline' || pathname !== '/' || footerRouteExcluded || !mobileEnabled) {
+      setMiddleHost(null)
+      return
+    }
+    if (window.matchMedia('(min-width: 768px)').matches) {
+      setMiddleHost(null)
+      return
+    }
 
-    let insertedHost: HTMLDivElement | null = null
+    let createdHost: HTMLDivElement | null = null
 
-    const insert = () => {
-      if (document.querySelector(`[data-ad-placement="${HOME_MIDDLE_MARKER}"]`)) return true
+    const attach = () => {
+      const existing = document.querySelector<HTMLDivElement>(`[data-ad-placement="${HOME_MIDDLE_MARKER}"]`)
+      if (existing) {
+        setMiddleHost(existing)
+        return true
+      }
 
       const grids = Array.from(document.querySelectorAll<HTMLDivElement>('div.grid'))
       const threadGrid = grids.find(grid =>
@@ -75,53 +112,50 @@ export function GoodlifeInlineAdClient({
       host.className = 'col-span-3 border-b border-r border-gray-300 bg-white md:hidden'
       host.dataset.adPlacement = HOME_MIDDLE_MARKER
       host.setAttribute('aria-label', '広告')
-
-      const aside = document.createElement('aside')
-      aside.className = 'mx-auto my-3 box-border flex min-h-[250px] w-full max-w-full flex-col items-center justify-center overflow-hidden px-3 text-center'
-      aside.dataset.adProvider = 'goodlife'
-      aside.dataset.adSlot = 'home_middle_row_10'
-
-      const label = document.createElement('span')
-      label.className = 'mb-1 block text-[10px] leading-none text-gray-400'
-      label.textContent = '広告'
-
-      const content = document.createElement('div')
-      content.className = 'mx-auto flex min-h-[250px] max-w-full items-center justify-center overflow-hidden'
-
-      aside.append(label, content)
-      host.appendChild(aside)
       anchor.after(host)
-      appendGoodlifeScript(content)
-      insertedHost = host
+      createdHost = host
+      setMiddleHost(host)
       return true
     }
 
-    if (insert()) {
-      return () => insertedHost?.remove()
+    if (!attach()) {
+      const observer = new MutationObserver(() => {
+        if (attach()) observer.disconnect()
+      })
+      observer.observe(document.body, { childList: true, subtree: true })
+
+      return () => {
+        observer.disconnect()
+        setMiddleHost(null)
+        createdHost?.remove()
+      }
     }
 
-    const observer = new MutationObserver(() => {
-      if (insert()) observer.disconnect()
-    })
-    observer.observe(document.body, { childList: true, subtree: true })
-
     return () => {
-      observer.disconnect()
-      insertedHost?.remove()
+      setMiddleHost(null)
+      createdHost?.remove()
     }
   }, [footerRouteExcluded, mobileEnabled, pathname, slot])
 
   if (footerRouteExcluded) return null
 
   return (
-    <aside
-      className={`${visibilityClass} mx-auto my-4 box-border flex min-h-[250px] w-full max-w-full flex-col items-center justify-center overflow-hidden px-3 text-center max-md:my-3`}
-      data-ad-provider="goodlife"
-      data-ad-slot={slot}
-      aria-label="広告"
-    >
-      <span className="mb-1 block text-[10px] leading-none text-gray-400">広告</span>
-      <div ref={contentRef} className="mx-auto flex min-h-[250px] max-w-full items-center justify-center overflow-hidden" />
-    </aside>
+    <>
+      <GoodlifeAdUnit
+        slot={slot}
+        visibilityClass={visibilityClass}
+        desktopEnabled={desktopEnabled}
+        mobileEnabled={mobileEnabled}
+      />
+      {middleHost && createPortal(
+        <GoodlifeAdUnit
+          slot="home_middle_row_10"
+          visibilityClass="md:hidden"
+          desktopEnabled={false}
+          mobileEnabled={true}
+        />,
+        middleHost,
+      )}
+    </>
   )
 }
