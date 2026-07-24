@@ -12,6 +12,7 @@ import {
   persistedSpecialCardId,
   shouldShowSpecialSlot,
   entryZone,
+  visibleEntriesForFormat,
   zoneDeckSize,
   printingKey,
   consumeMountOnce,
@@ -279,7 +280,8 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   const selectedZone = selected ? cardZone(selected, format) : activeZone
   const selectedCount = selected ? byPrinting.get(zonedPrintingKey(selected, selectedZone))?.count ?? 0 : 0
   const selectedNameCount = selected ? countsByCard.get(selected.id) ?? 0 : 0
-  const deckCards = useMemo(() => entries.filter(entry => entryZone(entry) === activeZone).flatMap((entry) => Array.from({ length: entry.count }, (_, copy) => ({ entry, copy }))), [activeZone, entries])
+  const visibleDeckEntries = useMemo(() => visibleEntriesForFormat(entries, format), [entries, format])
+  const deckCards = useMemo(() => visibleDeckEntries.filter(entry => entryZone(entry) === activeZone).flatMap((entry) => Array.from({ length: entry.count }, (_, copy) => ({ entry, copy }))), [activeZone, visibleDeckEntries])
   const specialOption = specialCardId ? specialOptions.find(option => option.cardId === specialCardId) ?? null : null
   const specialCard = specialOption ? { id: specialOption.cardId, name: specialOption.label, nameKana: null, imageUrl: specialOption.imageUrl, officialPageUrl: null, sourceKey: null } as DeckCard : null
 
@@ -533,13 +535,13 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
         keyCardId: existing?.keyCardId,
         keyCardPrintingId: existing?.keyCardPrintingId,
         specialCardId: persistedSpecialCardId(specialCardId),
-        entries: entries.filter(entry => format === 'advance' || entryZone(entry) === 'main').map(entry => ({
+        entries: entries.map(entry => ({
           id: entry.id,
           printingId: entry.printingId,
           sourceKey: entry.sourceKey,
           faceSideIndex: entry.matchedFace?.sideIndex ?? 0,
           count: entry.count,
-          zone: format === 'advance' ? entryZone(entry) : 'main',
+          zone: entry.zone,
         })),
       })
       if (!result.ok || !result.submissionId) {
@@ -607,14 +609,14 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
       ? [
         ...(['main', 'gr', 'hyperspatial'] as DeckZone[]).map(zone => ({
           label: ZONE_LABELS[zone],
-          cards: entries.filter(entry => entryZone(entry) === zone).flatMap((entry) => Array.from({ length: entry.count }, () => entry)),
+          cards: visibleDeckEntries.filter(entry => entryZone(entry) === zone).flatMap((entry) => Array.from({ length: entry.count }, () => entry)),
         })),
         // 特殊 is the single specialCardId pick, never a cards-array zone, so it's
         // built from `specialCard` (resolved via /api/cards/special-options)
         // rather than filtered out of `entries` like the other three sections.
         ...(shouldShowSpecialSlot(format, specialCardId) && specialCard ? [{ label: ZONE_LABELS.special, cards: [{ ...specialCard, count: 1 } as DeckEntry] }] : []),
       ].filter(section => section.cards.length > 0)
-      : [{ label: null as string | null, cards: entries.flatMap((entry) => Array.from({ length: entry.count }, () => entry)) }]
+      : [{ label: null as string | null, cards: visibleDeckEntries.flatMap((entry) => Array.from({ length: entry.count }, () => entry)) }]
     const allCards = sections.flatMap(section => section.cards)
     if (!allCards.length) return setNotice('カードを追加してください')
     setNotice('PNGを生成中…')
@@ -815,7 +817,8 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
               ) : (
                 <div className="grid gap-3 md:grid-cols-2">
                   {[...savedDecks].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((deck) => {
-                    const cover = deck.entries.find(entry => entry.id === deck.keyCardId && (!deck.keyCardPrintingId || entry.printingId === deck.keyCardPrintingId)) ?? deck.entries[0]
+                    const visibleDeckEntries = visibleEntriesForFormat(deck.entries, deck.format === 'advance' ? 'advance' : 'original')
+                    const cover = visibleDeckEntries.find(entry => entry.id === deck.keyCardId && (!deck.keyCardPrintingId || entry.printingId === deck.keyCardPrintingId)) ?? visibleDeckEntries[0]
                     return (
                       <article key={deck.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                         <div className="flex gap-3 p-3">
@@ -828,9 +831,9 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
                               {deck.id === activeSavedDeckId && <span className="shrink-0 rounded-full bg-blue-100 px-2 py-1 text-[10px] font-bold text-blue-700">編集中</span>}
                             </div>
                             <p className="mt-2 text-xs text-slate-500">更新 {new Date(deck.updatedAt).toLocaleDateString('ja-JP')}</p>
-                            {deck.entries.length > 0 && <label className="mt-2 block text-xs font-bold text-slate-600">キーカード
+                            {visibleDeckEntries.length > 0 && <label className="mt-2 block text-xs font-bold text-slate-600">キーカード
                               <select value={`${cover?.id ?? ''}:${cover?.printingId ?? ''}`} onChange={event => changeKeyCard(deck.id, event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs font-normal text-slate-800">
-                                {deck.entries.map(entry => <option key={printingKey(entry)} value={`${entry.id}:${entry.printingId ?? ''}`}>{entry.name}</option>)}
+                                {visibleDeckEntries.map(entry => <option key={printingKey(entry)} value={`${entry.id}:${entry.printingId ?? ''}`}>{entry.name}</option>)}
                               </select>
                             </label>}
                           </div>

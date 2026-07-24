@@ -1,18 +1,21 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { DECK_STORAGE_KEY, printingKey, type DeckEntry } from '@/lib/deck-maker'
+import { DECK_STORAGE_KEY, printingKey, visibleEntriesForFormat, type DeckEntry, type DeckFormat } from '@/lib/deck-maker'
 
 const KEY_CARD_COOKIE = 'duema_deck_key_card'
 
 type KeyCardValue = { cardId: string; printingId: string | null }
+type DeckStorageState = { entries?: DeckEntry[]; format?: DeckFormat }
 
-function readDeckEntries(): DeckEntry[] {
+function readDeckState(): { entries: DeckEntry[]; format: DeckFormat } {
   try {
-    const stored = JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) ?? 'null') as { entries?: DeckEntry[] } | null
-    return Array.isArray(stored?.entries) ? stored.entries.filter(entry => entry && entry.count > 0) : []
+    const stored = JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) ?? 'null') as DeckStorageState | null
+    const rawEntries = Array.isArray(stored?.entries) ? stored.entries.filter(entry => entry && entry.count > 0) : []
+    const format: DeckFormat = stored?.format === 'advance' ? 'advance' : 'original'
+    return { entries: visibleEntriesForFormat(rawEntries, format), format }
   } catch {
-    return []
+    return { entries: [], format: 'original' }
   }
 }
 
@@ -28,7 +31,10 @@ export default function DeckKeyCardSelector({ initialCardId = null, initialPrint
   const [selection, setSelection] = useState<KeyCardValue | null>(initialCardId ? { cardId: initialCardId, printingId: initialPrintingId } : null)
 
   useEffect(() => {
-    const sync = () => setEntries(readDeckEntries())
+    const sync = () => {
+      const { entries: nextEntries } = readDeckState()
+      setEntries(nextEntries)
+    }
     sync()
     const timer = window.setInterval(sync, 400)
     return () => window.clearInterval(timer)

@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 import { formatJapanDateTime } from '@/lib/date-time'
+import { visibleEntriesForFormat } from '@/lib/deck-maker'
+import type { DeckEntry } from '@/lib/deck-maker'
 import { getMakerAnonymousEditHash } from '@/lib/maker-anonymous-owner'
 import { copyPublishedDeck, deletePublishedDeck } from '../../actions'
 import DeckMetrics from './DeckMetrics'
@@ -34,14 +36,16 @@ export default async function PublicDeckPage({ params }: { params: Promise<{ id:
     ? await admin.from('profiles').select('display_name,profile_hidden,account_suspended,withdrawn_at').eq('id', deck.user_id).maybeSingle()
     : { data: null }
   if (deck.user_id && (!profile || profile.profile_hidden || profile.account_suspended || profile.withdrawn_at)) notFound()
+  const format: 'original' | 'advance' = deck.format === 'advance' ? 'advance' : 'original'
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const editHash = await getMakerAnonymousEditHash()
   const canEdit = (user && deck.user_id === user.id) || (!user && deck.user_id === null && editHash && deck.anonymous_edit_token_hash === editHash)
-  const cards = deck.deck_data.flatMap((card, entryIndex) => Array.from({ length: card.count }, (_, copy) => ({ ...card, entryIndex, copy })))
-  const keyCard = deck.deck_data.find(card => card.id === deck.key_card_id && (!deck.key_card_printing_id || card.printingId === deck.key_card_printing_id))
-    ?? deck.deck_data.find(card => card.id === deck.key_card_id)
-    ?? deck.deck_data[0]
+  const visibleDeckData = visibleEntriesForFormat(deck.deck_data as DeckEntry[], format)
+  const cards = visibleDeckData.flatMap((card, entryIndex) => Array.from({ length: card.count }, (_, copy) => ({ ...card, entryIndex, copy })))
+  const keyCard = visibleDeckData.find(card => card.id === deck.key_card_id && (!deck.key_card_printing_id || card.printingId === deck.key_card_printing_id))
+    ?? visibleDeckData.find(card => card.id === deck.key_card_id)
+    ?? visibleDeckData[0]
 
   return (
     <main className="min-h-screen bg-slate-100 px-3 py-6">
@@ -53,7 +57,7 @@ export default async function PublicDeckPage({ params }: { params: Promise<{ id:
               {keyCard?.imageUrl ? <img src={keyCard.imageUrl} alt={`${deck.title}の代表カード ${keyCard.name}`} className="h-full w-full object-cover object-top" /> : <span className="flex h-full items-center justify-center p-3 text-center text-sm font-bold text-white">{keyCard?.name ?? '画像なし'}</span>}
             </div>
             <div>
-              <p className="text-xs font-bold text-blue-700">{deck.format === 'original' ? 'オリジナル' : 'アドバンス'}</p>
+              <p className="text-xs font-bold text-blue-700">{format === 'original' ? 'オリジナル' : 'アドバンス'}</p>
               <h1 className="mt-1 text-2xl font-black text-slate-950 sm:text-3xl">{deck.title}</h1>
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
                 <span>{deck.user_id ? String(profile?.display_name || 'デュエマプレイヤー') : '名無しのデュエリスト'}</span>
@@ -68,8 +72,8 @@ export default async function PublicDeckPage({ params }: { params: Promise<{ id:
             </div>
           </div>
 
-          <h2 className="mt-7 text-lg font-black text-slate-950">デッキ内容{deck.format === 'original' ? '（40枚）' : ''}</h2>
-          <DeckCardGrid cards={cards} format={deck.format} specialCard={specialCard} />
+          <h2 className="mt-7 text-lg font-black text-slate-950">デッキ内容{format === 'original' ? '（40枚）' : ''}</h2>
+          <DeckCardGrid cards={cards} format={format} specialCard={specialCard} />
         </article>
       </div>
     </main>
