@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 
 export default function DeckMakerNewDeckUx() {
   useEffect(() => {
+    let openedRequestedLibrary = false
     const applyLabels = () => {
       const newDeckButton = Array.from(document.querySelectorAll<HTMLButtonElement>('button[aria-label="デッキをリセット"], button[aria-label="新しいデッキを作る"]'))
         .find(button => !button.closest('[role="alertdialog"]'))
@@ -22,6 +23,15 @@ export default function DeckMakerNewDeckUx() {
       if (confirmButton) {
         if (confirmButton.dataset.newDeckConfirm !== 'true') confirmButton.dataset.newDeckConfirm = 'true'
         if (confirmButton.getAttribute('aria-label') !== '新しいデッキを作る') confirmButton.setAttribute('aria-label', '新しいデッキを作る')
+      }
+
+      if (!openedRequestedLibrary && new URLSearchParams(window.location.search).get('open') === 'my-decks') {
+        const myDecksButton = document.querySelector<HTMLButtonElement>('button[aria-label="マイデッキを開く"]')
+        if (myDecksButton) {
+          openedRequestedLibrary = true
+          myDecksButton.click()
+          window.history.replaceState(null, '', window.location.pathname)
+        }
       }
     }
 
