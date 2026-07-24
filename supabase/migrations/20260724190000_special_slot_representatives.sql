@@ -21,15 +21,24 @@ comment on table special_slot_representatives is
 --
 -- 識別条件（src/lib/special-slot-representative-rules.ts の
 -- SPECIAL_SLOT_REPRESENTATIVE_RULES と完全に一致させること）:
+--
 --   - dormageddon: cards.card_type = '最終禁断フィールド'
 --     「FORBIDDEN STAR ～世界最後の日～／終焉の禁断 ドルマゲドンX」ツインパクトの
---     表面タイプ。cards.normalized_name はユニーク制約があるため、再録があっても
---     同一cards.idに集約される＝この条件だけで一意に絞り込める。
---   - zeroryu: cards.card_type = '零龍クリーチャー'
---     「零龍」単独カタログ登録カードの表面タイプ。"○○の儀"系ツインパクト
---     （零龍の儀／零龍星雲が表面タイプ）は、零龍表記が card_faces 側の裏面にしか
---     存在せず cards.card_type 自体は零龍クリーチャーにならないため、この条件では
---     対象外になる（cards.card_type を直接見ることで裏面重複を意図的に除外している）。
+--     表面タイプ。本番の /api/cards/search を通じた読み取り専用確認
+--     （2026-07-24実施）で、この条件に一致するのは cards.id
+--     c87706ba-a6a1-49da-923f-68bb7c8e681c の1件のみであることを確認済み。
+--
+--   - zeroryu: cards.card_type = '零龍の儀' かつ 対応する card_printings の
+--     source_key = 'dmbd22-001'。
+--     当初は cards.card_type = '零龍クリーチャー' で絞り込める想定だったが、
+--     同じ本番確認で **この条件に一致する行は0件** であることが判明した。
+--     「零龍」は"○○の儀"系ツインパクト5種（dmbd22-001〜005）の裏面としてのみ
+--     存在し、cards自身のcard_typeは表面の零龍の儀／零龍星雲のままで、5件とも
+--     対等な別の論理カード（別cards.id）。スキーマだけからは一意に決定できない
+--     ため、担当者に候補5件を提示して確認した結果、最初のリリースである
+--     dmbd22-001「滅亡の起源 零無」（card_id
+--     d0dab9d1-8c2a-49e0-8837-33d33953e973）を代表として採用することが
+--     確定した。このため zeroryu だけは card_printings.source_key でも絞り込む。
 --
 -- select ... into strict は PL/pgSQL の標準機能で、0件なら no_data_found、
 -- 2件以上なら too_many_rows を自動的に送出する。複数件ヒットした場合に
@@ -46,11 +55,13 @@ begin
      and deck_zone_class = 'special'
      and is_active;
 
-  select id into strict v_zeroryu_id
-    from cards
-   where card_type = '零龍クリーチャー'
-     and deck_zone_class = 'special'
-     and is_active;
+  select c.id into strict v_zeroryu_id
+    from card_printings p
+    join cards c on c.id = p.card_id
+   where p.source_key = 'dmbd22-001'
+     and c.card_type = '零龍の儀'
+     and c.deck_zone_class = 'special'
+     and c.is_active;
 
   insert into special_slot_representatives (key, label, card_id) values
     ('dormageddon', 'ドルマゲドン', v_dormageddon_id),
@@ -58,8 +69,8 @@ begin
   on conflict (key) do update set card_id = excluded.card_id, updated_at = now();
 exception
   when no_data_found then
-    raise exception 'special_slot_representatives: 代表カードの候補が0件でした。cards.card_type が ''最終禁断フィールド'' または ''零龍クリーチャー'' で、is_active=true かつ deck_zone_class=''special'' の行が存在するか確認してください。';
+    raise exception 'special_slot_representatives: 代表カードの候補が0件でした。cards.card_type=''最終禁断フィールド'' の行、または card_printings.source_key=''dmbd22-001'' に対応する cards.card_type=''零龍の儀'' の行が、is_active=true かつ deck_zone_class=''special''で存在するか確認してください。';
   when too_many_rows then
-    raise exception 'special_slot_representatives: 代表カードの候補が複数件ヒットしました。cards.card_type = ''最終禁断フィールド'' または ''零龍クリーチャー'' に一致する行を1件に絞り込めるよう、識別条件を見直すか special_slot_representatives へ手動で登録してください。';
+    raise exception 'special_slot_representatives: 代表カードの候補が複数件ヒットしました。識別条件を見直すか special_slot_representatives へ手動で登録してください。';
 end
 $$;

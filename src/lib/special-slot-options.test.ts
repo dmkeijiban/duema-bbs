@@ -149,9 +149,9 @@ test('end-to-end: cards resolved from the real catalog rules, once registered, y
   // special_slot_representatives, and getSpecialSlotOptions/isAllowedSpecialCardId
   // must then treat exactly those two ids as valid.
   const catalogRows: RepresentativeCandidateRow[] = [
-    { id: 'forbidden-star-id', card_type: '最終禁断フィールド', deck_zone_class: 'special', is_active: true },
-    { id: 'zeroryu-standalone-id', card_type: '零龍クリーチャー', deck_zone_class: 'special', is_active: true },
-    { id: 'ritual-card-1', card_type: '零龍の儀', deck_zone_class: 'special', is_active: true },
+    { id: 'forbidden-star-id', card_type: '最終禁断フィールド', deck_zone_class: 'special', is_active: true, source_key: 'dmbd21-001' },
+    { id: 'zeroryu-dmbd22-001', card_type: '零龍の儀', deck_zone_class: 'special', is_active: true, source_key: 'dmbd22-001' },
+    { id: 'zeroryu-dmbd22-002', card_type: '零龍星雲', deck_zone_class: 'special', is_active: true, source_key: 'dmbd22-002' },
   ]
   const dormageddon = resolveRepresentative(catalogRows, 'dormageddon')
   const zeroryu = resolveRepresentative(catalogRows, 'zeroryu')
@@ -172,5 +172,5 @@ test('end-to-end: cards resolved from the real catalog rules, once registered, y
   assert.deepEqual(options.map(o => o.key).sort(), ['dormageddon', 'zeroryu'])
   assert.equal(isAllowedSpecialCardId(options, dormageddon.cardId), true)
   assert.equal(isAllowedSpecialCardId(options, zeroryu.cardId), true)
-  assert.equal(isAllowedSpecialCardId(options, 'ritual-card-1'), false)
+  assert.equal(isAllowedSpecialCardId(options, 'zeroryu-dmbd22-002'), false)
 })
