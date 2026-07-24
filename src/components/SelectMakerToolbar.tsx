@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, type CSSProperties } from 'react'
 import { useMakerDefaultTitle } from '@/components/MakerDefaultTitleContext'
+import { AdstirBannerClient } from '@/components/AdstirBannerClient'
 
 export function SelectMakerToolbar({
   title,
@@ -85,6 +86,7 @@ export function SelectMakerToolbar({
 
   return (
     <header className="mb-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+      <AdstirBannerClient slot="sp_list_top" className="mb-3 mt-0" />
       <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
         <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-end">
           {showTitle && (
