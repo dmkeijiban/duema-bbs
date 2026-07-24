@@ -53,9 +53,38 @@ async function hydrate(projectId: string, submissionRows: Record<string, unknown
 
 export async function getPublicSubmissions(projectId: string, page = 1, pageSize = 30) {
   const admin = createAdminClient()
-  const from = (Math.max(1, page) - 1) * pageSize
-  const { data, count } = await admin.from('maker_submissions').select('id,user_id,title,comment,thumbnail_url,created_at', { count: 'exact' }).eq('project_id', projectId).eq('is_valid', true).eq('is_public', true).order('created_at', { ascending: false }).range(from, from + pageSize - 1)
-  return { submissions: await hydrate(projectId, (data ?? []) as Record<string, unknown>[]), total: count ?? 0 }
+  const safePage = Math.max(1, page)
+  const from = (safePage - 1) * pageSize
+  const to = from + pageSize
+
+  // 非公開・停止・退会済みプロフィールの投稿をページ取得後に除外すると、
+  // 12件枠なのに11件しか表示されない空白が生まれる。
+  // 先に公開対象だけへ絞り、その結果をページングして常に表示枠を埋める。
+  const { data: candidates } = await admin
+    .from('maker_submissions')
+    .select('id,user_id,title,comment,thumbnail_url,created_at')
+    .eq('project_id', projectId)
+    .eq('is_valid', true)
+    .eq('is_public', true)
+    .order('created_at', { ascending: false })
+
+  const rows = (candidates ?? []) as Record<string, unknown>[]
+  if (!rows.length) return { submissions: [] as PublicSubmission[], total: 0 }
+
+  const userIds = [...new Set(rows.map(row => row.user_id).filter((id): id is string => typeof id === 'string'))]
+  const { data: profiles } = userIds.length
+    ? await admin.from('profiles').select('id,profile_hidden,account_suspended,withdrawn_at').in('id', userIds)
+    : { data: [] }
+  const profilesById = new Map((profiles ?? []).map(profile => [profile.id, profile as Record<string, unknown>]))
+  const visibleRows = rows.filter(row => {
+    const userId = typeof row.user_id === 'string' ? row.user_id : null
+    return !userId || visibleProfile(profilesById.get(userId) ?? null)
+  })
+
+  return {
+    submissions: await hydrate(projectId, visibleRows.slice(from, to)),
+    total: visibleRows.length,
+  }
 }
 
 // 現在の利用者（ログインユーザー or 匿名Cookie所有者）が登録した公開投稿を新着順で返す
