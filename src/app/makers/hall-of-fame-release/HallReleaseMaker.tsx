@@ -65,20 +65,22 @@ export default function HallReleaseMaker(props: { cards: MakerCard[]; draft: Mak
       @media (min-width: 1024px) {
         .hall-release-maker > div {
           position: relative;
+          padding-top: 3.5rem;
         }
         .hall-release-maker > div > section > div:nth-of-type(3) {
           position: absolute;
           top: 0;
           right: 0;
           z-index: 1;
-          width: 360px;
+          width: 100%;
+          flex-wrap: nowrap;
           justify-content: flex-end;
         }
         .hall-release-maker > div > section > div:nth-of-type(3) > button {
           flex: none;
         }
         .hall-release-maker > div > aside {
-          margin-top: 8.25rem;
+          margin-top: 0;
         }
       }
       @media (max-width: 639px) {
