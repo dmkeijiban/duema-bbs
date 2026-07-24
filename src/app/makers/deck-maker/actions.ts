@@ -8,7 +8,7 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 import { hashMakerAnonymousOwner, MAKER_ANONYMOUS_COOKIE } from '@/lib/maker-anonymous-owner'
 import { sameCardLimit, resolveAutoZone, persistedSpecialCardId, type DeckZone, type DeckZoneClass } from '@/lib/deck-maker'
-import { getSpecialSlotOptions, isAllowedSpecialCardId } from '@/lib/special-slot-options'
+import { getSpecialSlotOptions, isAllowedSpecialCardIdWithGrandfather } from '@/lib/special-slot-options'
 
 const SOURCE_KEY_PATTERN = /^[a-zA-Z0-9._-]{1,100}$/
 const KEY_CARD_COOKIE = 'duema_deck_key_card'
@@ -72,6 +72,19 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
     const keyCardPrintingId = keyCardEntry?.printingId ?? null
 
     const admin = createAdminClient()
+
+    // If updating an existing deck, look up its currently-saved special_card_id
+    // before validating the new request: a specialCardId that was already
+    // legitimately saved must keep working even if the representative mapping
+    // (special_slot_representatives) is later repointed to a different card for
+    // the same key — an admin curation change should never silently invalidate
+    // decks that already had a valid pick.
+    let existingSpecialCardId: string | null = null
+    if (input.submissionId) {
+      const { data: existingForSpecial } = await admin.from('deck_submissions').select('special_card_id').eq('id', input.submissionId).maybeSingle()
+      existingSpecialCardId = existingForSpecial?.special_card_id ?? null
+    }
+
     const sourceKeys = input.entries.flatMap(entry => entry.sourceKey ? [entry.sourceKey] : [])
     const [{ data: cards, error: cardsError }, { data: printings, error: printingsError }] = await Promise.all([
       admin.from('cards').select('id,name,image_url,deck_zone_class').in('id', cardIds),
@@ -86,11 +99,13 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
     const printingByKey = new Map((printings ?? []).map(printing => [printing.source_key, printing]))
 
     // Never trust the client on which card is special-slot-eligible: validate
-    // against the exact same reduced candidate list the /api/cards/special-options
-    // endpoint offers in the UI (one representative per special card_type — see
-    // @/lib/special-slot-options), not just "any card classified special".
+    // against the exact same fixed representative mapping the
+    // /api/cards/special-options endpoint offers in the UI (see
+    // @/lib/special-slot-options) — not "any card classified special" and not
+    // an id-ordering heuristic. An unchanged, already-saved specialCardId is
+    // grandfathered in even if it's no longer in the current mapping.
     const specialSlotOptions = await getSpecialSlotOptions(admin)
-    if (!isAllowedSpecialCardId(specialSlotOptions, requestedSpecialCardId)) {
+    if (!isAllowedSpecialCardIdWithGrandfather(specialSlotOptions, requestedSpecialCardId, existingSpecialCardId)) {
       return { ok: false, message: '特殊カードとして選択できないカードです' }
     }
     const specialCardId = requestedSpecialCardId

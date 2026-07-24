@@ -20,6 +20,7 @@ import {
   type DeckZone,
   type DeckZoneClass,
 } from '@/lib/deck-maker'
+import type { SpecialSlotOption } from '@/lib/special-slot-options'
 import { CardCatalogSearchPanel } from '@/components/CardCatalogSearchPanel'
 import { CardDetailModal } from '@/components/CardDetailModal'
 import { useCardCatalogSearch } from '@/hooks/use-card-catalog-search'
@@ -246,7 +247,7 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   // @/lib/deck-maker. It survives format switches exactly like `entries` does
   // (nothing here clears it when leaving advance format).
   const [specialCardId, setSpecialCardId] = useState<string | null>(null)
-  const [specialOptions, setSpecialOptions] = useState<DeckCard[]>([])
+  const [specialOptions, setSpecialOptions] = useState<SpecialSlotOption[]>([])
   const [deckName, setDeckName] = useState(DEFAULT_DECK_NAME)
   const [savedDecks, setSavedDecks] = useState<SavedDeck[]>([])
   const [activeSavedDeckId, setActiveSavedDeckId] = useState<string | null>(null)
@@ -278,13 +279,14 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   const selectedCount = selected ? byPrinting.get(zonedPrintingKey(selected, selectedZone))?.count ?? 0 : 0
   const selectedNameCount = selected ? countsByCard.get(selected.id) ?? 0 : 0
   const deckCards = useMemo(() => entries.filter(entry => entryZone(entry) === activeZone).flatMap((entry) => Array.from({ length: entry.count }, (_, copy) => ({ entry, copy }))), [activeZone, entries])
-  const specialCard = specialCardId ? specialOptions.find(card => card.id === specialCardId) ?? null : null
+  const specialOption = specialCardId ? specialOptions.find(option => option.cardId === specialCardId) ?? null : null
+  const specialCard = specialOption ? { id: specialOption.cardId, name: specialOption.label, nameKana: null, imageUrl: specialOption.imageUrl, officialPageUrl: null, sourceKey: null } as DeckCard : null
 
   useEffect(() => {
     let cancelled = false
     fetch('/api/cards/special-options')
       .then(response => response.ok ? response.json() : Promise.reject(new Error('failed')))
-      .then((data: { cards?: DeckCard[] }) => { if (!cancelled) setSpecialOptions(Array.isArray(data.cards) ? data.cards : []) })
+      .then((data: { options?: SpecialSlotOption[] }) => { if (!cancelled) setSpecialOptions(Array.isArray(data.options) ? data.options : []) })
       .catch(() => {})
     return () => { cancelled = true }
   }, [])
@@ -727,14 +729,14 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
                 <button type="button" onClick={() => setSpecialCardId(null)} aria-pressed={specialCardId === null} className={`flex min-h-11 items-center justify-center rounded-xl border-2 px-3 text-sm font-bold ${specialCardId === null ? 'border-blue-700 bg-white text-blue-800' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`}>なし</button>
                 {specialOptions.map(option => (
                   <button
-                    key={option.id}
+                    key={option.key}
                     type="button"
-                    onClick={() => setSpecialCardId(option.id)}
-                    aria-pressed={specialCardId === option.id}
-                    className={`flex min-h-11 items-center gap-2 rounded-xl border-2 px-2 text-left text-sm font-bold ${specialCardId === option.id ? 'border-blue-700 bg-white text-blue-800' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`}
+                    onClick={() => setSpecialCardId(option.cardId)}
+                    aria-pressed={specialCardId === option.cardId}
+                    className={`flex min-h-11 items-center gap-2 rounded-xl border-2 px-2 text-left text-sm font-bold ${specialCardId === option.cardId ? 'border-blue-700 bg-white text-blue-800' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`}
                   >
-                    <span className="h-9 w-7 shrink-0 overflow-hidden rounded-[3px]"><CardArt card={option} /></span>
-                    <span className="truncate">{option.name}</span>
+                    <span className="h-9 w-7 shrink-0 overflow-hidden rounded-[3px]"><CardArt card={{ id: option.cardId, name: option.label, nameKana: null, imageUrl: option.imageUrl, officialPageUrl: null, sourceKey: null } as DeckCard} /></span>
+                    <span className="truncate">{option.label}</span>
                   </button>
                 ))}
               </div>
