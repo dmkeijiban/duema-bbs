@@ -10,7 +10,7 @@ import { SITE_URL } from '@/lib/site-config'
 
 const PAGE_SIZE = 60
 const EAGER_CARD_IMAGE_COUNT = 12
-const SHOW_FEATURED_PACK_CARDS = false
+const SHOW_FEATURED_PACK_CARDS = true
 
 const PACK_CARD_SECTIONS: Record<string, Array<{ key: string; label: string; from: number; to: number }>> = {
   'dm22-rp1': [
@@ -96,15 +96,7 @@ function groupCardsBySection(packSlug: string, cards: ZukanCard[]) {
     .filter(group => group.cards.length > 0)
 }
 
-function Pager({
-  packSlug,
-  page,
-  totalPages,
-}: {
-  packSlug: string
-  page: number
-  totalPages: number
-}) {
+function Pager({ packSlug, page, totalPages }: { packSlug: string; page: number; totalPages: number }) {
   if (totalPages <= 1) return null
 
   return (
@@ -128,11 +120,7 @@ function Pager({
   )
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ packSlug: string }>
-}) {
+export async function generateMetadata({ params }: { params: Promise<{ packSlug: string }> }) {
   const { packSlug } = await params
   const pack = await fetchPack(packSlug)
   if (!pack?.is_published) return { title: '思い出図鑑 | デュエマ掲示板' }
@@ -153,12 +141,7 @@ export async function generateMetadata({
       type: 'website' as const,
       images: [{ url: imageUrl, width: 1200, height: 630, alt: `${pack.code} ${pack.name} パック画像` }],
     },
-    twitter: {
-      card: 'summary_large_image' as const,
-      title,
-      description,
-      images: [imageUrl],
-    },
+    twitter: { card: 'summary_large_image' as const, title, description, images: [imageUrl] },
   }
 }
 
@@ -261,16 +244,12 @@ export default async function ZukanPackPage({
             <span className="ml-1 font-normal text-gray-500 text-xs">全{total}種中 {from}〜{to}件目</span>
           </h2>
         </div>
-        <div className="mb-2">
-          <Pager packSlug={pack.slug} page={page} totalPages={totalPages} />
-        </div>
+        <div className="mb-2"><Pager packSlug={pack.slug} page={page} totalPages={totalPages} /></div>
         <div className="space-y-4">
           {cardGroups.map(group => (
             <div key={group.key}>
               {group.label && (
-                <h3 className="mb-2 border-l-4 border-blue-500 bg-blue-50 px-2 py-1 text-xs font-bold text-gray-800">
-                  {group.label}
-                </h3>
+                <h3 className="mb-2 border-l-4 border-blue-500 bg-blue-50 px-2 py-1 text-xs font-bold text-gray-800">{group.label}</h3>
               )}
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
                 {group.cards.map(card => (
@@ -290,9 +269,7 @@ export default async function ZukanPackPage({
             </div>
           ))}
         </div>
-        <div className="mt-3">
-          <Pager packSlug={pack.slug} page={page} totalPages={totalPages} />
-        </div>
+        <div className="mt-3"><Pager packSlug={pack.slug} page={page} totalPages={totalPages} /></div>
       </section>
     </div>
   )
