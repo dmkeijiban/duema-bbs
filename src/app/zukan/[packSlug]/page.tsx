@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { fetchCardsByPack, fetchCardsByPackSortRange, fetchPack } from '@/lib/zukan'
 import type { ZukanCard } from '@/lib/zukan'
+import { attachZukanCardImages } from '@/lib/zukan-card-images'
 import ZukanImagePreview from '@/components/ZukanImagePreview'
 import ZukanPseudoCard from '@/components/ZukanPseudoCard'
 import { ZukanCivilizationBadge } from '@/components/ZukanCivilizationBadge'
@@ -10,7 +11,6 @@ import { SITE_URL } from '@/lib/site-config'
 
 const PAGE_SIZE = 60
 const EAGER_CARD_IMAGE_COUNT = 12
-const SHOW_FEATURED_PACK_CARDS = true
 
 const PACK_CARD_SECTIONS: Record<string, Array<{ key: string; label: string; from: number; to: number }>> = {
   'dm22-rp1': [
@@ -166,7 +166,7 @@ export default async function ZukanPackPage({
     : await fetchCardsByPack(pack.id, page)
   if (!cards || (page > 1 && cards.length === 0)) notFound()
 
-  const sortedCards = [...cards].sort((a, b) => a.sort_order - b.sort_order)
+  const sortedCards = await attachZukanCardImages([...cards].sort((a, b) => a.sort_order - b.sort_order))
   const total = pack.card_count ?? sortedCards.length
   const totalPages = customPageRanges?.length ?? Math.max(1, Math.ceil(total / PAGE_SIZE))
   if (page > totalPages) notFound()
@@ -178,7 +178,6 @@ export default async function ZukanPackPage({
 
   const from = customPageRange?.from ?? (page - 1) * PAGE_SIZE + 1
   const to = customPageRange?.to ?? Math.min((page - 1) * PAGE_SIZE + sortedCards.length, total)
-  const featuredCards = SHOW_FEATURED_PACK_CARDS && page === 1 ? sortedCards.slice(0, 5) : []
   const eagerCardSlugs = new Set(sortedCards.slice(0, EAGER_CARD_IMAGE_COUNT).map(card => card.slug))
   const cardGroups = groupCardsBySection(pack.slug, sortedCards)
 
@@ -216,26 +215,6 @@ export default async function ZukanPackPage({
           </div>
         </div>
       </header>
-
-      {featuredCards.length > 0 && (
-        <section className="mb-5">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border border-gray-300 bg-gray-50 px-3 py-2">
-            <h2 className="text-sm font-bold text-gray-800">{pack.code} {pack.name}の代表カード</h2>
-            <Link href="#card-list" className="text-xs text-blue-600 hover:underline">収録カードをもっと見る →</Link>
-          </div>
-          <div className="flex snap-x gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
-            {featuredCards.map(card => (
-              <Link key={card.slug} href={`/zukan/card/${card.slug}`} className="relative block w-[46%] flex-shrink-0 snap-start overflow-hidden border border-gray-300 bg-white transition-all duration-100 hover:border-blue-400 hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 sm:w-auto [-webkit-tap-highlight-color:transparent]">
-                <CardFace card={card} priority />
-                <div className="px-1.5 py-1.5">
-                  {card.civilization && <ZukanCivilizationBadge civilization={card.civilization} />}
-                  <div className="mt-1 truncate text-xs font-bold text-blue-700">{card.name}</div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
 
       <section id="card-list" className="mb-6">
         <div className="mb-2 flex items-center justify-between border border-gray-300 bg-gray-50 px-3 py-2">
