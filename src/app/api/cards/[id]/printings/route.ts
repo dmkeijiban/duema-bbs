@@ -74,6 +74,24 @@ function printingIdentity(printing: Printing, canonicalAliases: Map<string, stri
   return `source:${canonicalAliases.get(sourceKey) ?? sourceKey}`
 }
 
+function uniqueFacesForPrinting(faces: Face[]) {
+  const unique = new Map<string, Face>()
+  for (const face of faces) {
+    const key = `${face.side_index}:${normalizeKey(face.side_kind) || 'front'}`
+    const existing = unique.get(key)
+    if (!existing) {
+      unique.set(key, face)
+      continue
+    }
+
+    // 同一収録版・同一面が二重登録されている場合は、情報が多い方だけを残す。
+    const existingScore = Number(Boolean(existing.image_url)) + Number(Boolean(existing.official_page_url))
+    const currentScore = Number(Boolean(face.image_url)) + Number(Boolean(face.official_page_url))
+    if (currentScore > existingScore) unique.set(key, face)
+  }
+  return [...unique.values()].sort((a, b) => a.side_index - b.side_index)
+}
+
 export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   if (!(await canAccessDeckMaker())) return new NextResponse(null, { status: 404 })
 
@@ -147,7 +165,9 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     const cards: DeckCard[] = [...uniquePrintings.values()]
       .filter((printing) => !supersededKeys.has(normalizeKey(printing.source_key)))
       .flatMap((printing): DeckCard[] => {
-        const faces = (row.card_faces ?? []).filter((face) => face.card_printing_id === printing.id).sort((a, b) => a.side_index - b.side_index)
+        const faces = uniqueFacesForPrinting(
+          (row.card_faces ?? []).filter((face) => face.card_printing_id === printing.id),
+        )
         const singleFrontFace = faces.length === 1
           && faces[0].side_index === 0
           && (faces[0].side_kind === null || faces[0].side_kind === 'front')
