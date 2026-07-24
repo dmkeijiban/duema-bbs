@@ -7,6 +7,8 @@ import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 import { hashMakerAnonymousOwner, MAKER_ANONYMOUS_COOKIE } from '@/lib/maker-anonymous-owner'
+import { sameCardLimit, resolveAutoZone, persistedSpecialCardId, type DeckZone, type DeckZoneClass } from '@/lib/deck-maker'
+import { getSpecialSlotOptions, isAllowedSpecialCardIdWithGrandfather } from '@/lib/special-slot-options'
 
 const SOURCE_KEY_PATTERN = /^[a-zA-Z0-9._-]{1,100}$/
 const KEY_CARD_COOKIE = 'duema_deck_key_card'
@@ -34,36 +36,35 @@ function parseSelectedKeyCard(value: string | undefined): { cardId: string; prin
   }
 }
 
-export async function savePublishedDeck(input: { submissionId?: string | null; title: string; format?: 'original' | 'advance'; entries: PublishEntry[]; keyCardId?: string | null; keyCardPrintingId?: string | null }) {
+export async function savePublishedDeck(input: { submissionId?: string | null; title: string; format?: 'original' | 'advance'; entries: PublishEntry[]; keyCardId?: string | null; keyCardPrintingId?: string | null; specialCardId?: string | null }) {
   try {
     if (typeof input.title !== 'string' || input.title.trim().length > 60) return { ok: false, message: 'デッキ名は60文字以内で入力してください' }
     if (input.submissionId != null && !UUID_PATTERN.test(input.submissionId)) return { ok: false, message: '公開デッキの情報が不正です' }
+    if (input.specialCardId != null && !UUID_PATTERN.test(input.specialCardId)) return { ok: false, message: '特殊カードの情報が不正です' }
     const title = input.title.trim() || 'メインデッキ'
     const format = input.format === 'advance' ? 'advance' : 'original'
     if (!Array.isArray(input.entries) || input.entries.length < 1 || input.entries.length > 61) return { ok: false, message: 'デッキの内容が不正です' }
 
-    const counts = new Map<string, number>()
-    const zoneCounts = new Map<string, number>()
-    let total = 0
     for (const entry of input.entries) {
       if (!UUID_PATTERN.test(entry.id) || !Number.isInteger(entry.count) || entry.count < 1 || entry.count > 4) return { ok: false, message: 'デッキの内容が不正です' }
       if (entry.sourceKey != null && !SOURCE_KEY_PATTERN.test(entry.sourceKey)) return { ok: false, message: 'カードの収録版情報が不正です' }
       if (entry.printingId != null && !UUID_PATTERN.test(entry.printingId)) return { ok: false, message: 'カードの収録版情報が不正です' }
       if (entry.faceSideIndex != null && (!Number.isInteger(entry.faceSideIndex) || entry.faceSideIndex < 0)) return { ok: false, message: 'カードの面情報が不正です' }
-      const next = (counts.get(entry.id) ?? 0) + entry.count
-      if (next > 4) return { ok: false, message: '同名カードは合計4枚までです' }
-      counts.set(entry.id, next)
-      const zone = format === 'advance' && ['main', 'gr', 'hyperspatial', 'special'].includes(entry.zone ?? '') ? entry.zone! : 'main'
-      zoneCounts.set(zone, (zoneCounts.get(zone) ?? 0) + entry.count)
-      total += entry.count
     }
-    if ((zoneCounts.get('main') ?? 0) !== 40) return { ok: false, message: 'メインデッキ40枚をそろえてください' }
-    if ((zoneCounts.get('gr') ?? 0) > 12 || (zoneCounts.get('hyperspatial') ?? 0) > 8 || (zoneCounts.get('special') ?? 0) > 1) return { ok: false, message: 'ゾーンの枚数上限を超えています' }
-    if (format === 'original' && total !== 40) return { ok: false, message: '40枚そろったデッキを登録してください' }
+
+    // The special slot is NEVER nulled based on format here: it survives a save
+    // made while viewing 'original' exactly like it survives the in-session
+    // format toggle in the client, so switching back to advance later (even
+    // after a reload) restores it. Only an explicit deck reset clears it.
+    // Display (public detail page, PNG) gates on format === 'advance'
+    // separately from this persistence — see resolveAutoZone/isSpecialSlotCard
+    // in @/lib/deck-maker for why this is a deck-level field, not a cards-array
+    // entry.
+    const requestedSpecialCardId = persistedSpecialCardId(input.specialCardId ?? null)
 
     const cookieStore = await cookies()
     const selectedByMaker = parseSelectedKeyCard(cookieStore.get(KEY_CARD_COOKIE)?.value)
-    const cardIds = [...counts.keys()]
+    const cardIds = [...new Set(input.entries.map(entry => entry.id))]
     const requestedKeyCardId = selectedByMaker?.cardId ?? input.keyCardId
     const requestedPrintingId = selectedByMaker?.printingId ?? input.keyCardPrintingId
     const keyCardId = requestedKeyCardId && cardIds.includes(requestedKeyCardId) ? requestedKeyCardId : input.entries[0]?.id ?? null
@@ -71,9 +72,22 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
     const keyCardPrintingId = keyCardEntry?.printingId ?? null
 
     const admin = createAdminClient()
+
+    // If updating an existing deck, look up its currently-saved special_card_id
+    // before validating the new request: a specialCardId that was already
+    // legitimately saved must keep working even if the representative mapping
+    // (special_slot_representatives) is later repointed to a different card for
+    // the same key — an admin curation change should never silently invalidate
+    // decks that already had a valid pick.
+    let existingSpecialCardId: string | null = null
+    if (input.submissionId) {
+      const { data: existingForSpecial } = await admin.from('deck_submissions').select('special_card_id').eq('id', input.submissionId).maybeSingle()
+      existingSpecialCardId = existingForSpecial?.special_card_id ?? null
+    }
+
     const sourceKeys = input.entries.flatMap(entry => entry.sourceKey ? [entry.sourceKey] : [])
     const [{ data: cards, error: cardsError }, { data: printings, error: printingsError }] = await Promise.all([
-      admin.from('cards').select('id,name,image_url').in('id', cardIds),
+      admin.from('cards').select('id,name,image_url,deck_zone_class').in('id', cardIds),
       sourceKeys.length ? admin.from('card_printings').select('id,card_id,source_key,image_url').in('source_key', sourceKeys) : Promise.resolve({ data: [], error: null }),
     ])
     if (cardsError || printingsError || (cards ?? []).length !== cardIds.length) {
@@ -83,12 +97,50 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
 
     const cardById = new Map((cards ?? []).map(card => [card.id, card]))
     const printingByKey = new Map((printings ?? []).map(printing => [printing.source_key, printing]))
+
+    // Never trust the client on which card is special-slot-eligible: validate
+    // against the exact same fixed representative mapping the
+    // /api/cards/special-options endpoint offers in the UI (see
+    // @/lib/special-slot-options) — not "any card classified special" and not
+    // an id-ordering heuristic. An unchanged, already-saved specialCardId is
+    // grandfathered in even if it's no longer in the current mapping.
+    const specialSlotOptions = await getSpecialSlotOptions(admin)
+    if (!isAllowedSpecialCardIdWithGrandfather(specialSlotOptions, requestedSpecialCardId, existingSpecialCardId)) {
+      return { ok: false, message: '特殊カードとして選択できないカードです' }
+    }
+    const specialCardId = requestedSpecialCardId
+
+    // The zone is derived server-side from the card's own deck_zone_class, never
+    // trusted from the client payload — otherwise a hand-crafted request could put
+    // an arbitrary card in the GR/hyperspatial/special zone regardless of what it
+    // actually is.
+    const counts = new Map<string, number>()
+    const zoneCounts = new Map<string, number>()
+    let total = 0
+    for (const entry of input.entries) {
+      const card = cardById.get(entry.id)!
+      const zone: DeckZone = resolveAutoZone(card.deck_zone_class as DeckZoneClass | null, format)
+      const limit = sameCardLimit(zone)
+      const next = (counts.get(entry.id) ?? 0) + entry.count
+      if (next > limit) return { ok: false, message: `同名カードは合計${limit}枚までです` }
+      counts.set(entry.id, next)
+      zoneCounts.set(zone, (zoneCounts.get(zone) ?? 0) + entry.count)
+      total += entry.count
+    }
+    if ((zoneCounts.get('main') ?? 0) !== 40) return { ok: false, message: 'メインデッキ40枚をそろえてください' }
+    // 'special' never appears here: resolveAutoZone never routes a card into the
+    // cards array as 'special' (see @/lib/deck-maker) — the special slot is the
+    // deck-level specialCardId column instead, validated separately above.
+    if ((zoneCounts.get('gr') ?? 0) > 12 || (zoneCounts.get('hyperspatial') ?? 0) > 8) return { ok: false, message: 'ゾーンの枚数上限を超えています' }
+    if (format === 'original' && total !== 40) return { ok: false, message: '40枚そろったデッキを登録してください' }
+
     const deckData = input.entries.map(entry => {
       const card = cardById.get(entry.id)!
       const printing = entry.sourceKey ? printingByKey.get(entry.sourceKey) : null
       if (entry.sourceKey && (!printing || printing.card_id !== entry.id)) throw new Error('PRINTING_MISMATCH')
       if (entry.printingId && (!printing || printing.id !== entry.printingId)) throw new Error('PRINTING_ID_MISMATCH')
-      return { id: entry.id, printingId: printing?.id ?? null, name: card.name, imageUrl: printing?.image_url ?? card.image_url ?? null, sourceKey: entry.sourceKey ?? null, faceSideIndex: entry.faceSideIndex ?? 0, zone: format === 'advance' && ['main', 'gr', 'hyperspatial', 'special'].includes(entry.zone ?? '') ? entry.zone : 'main', count: entry.count }
+      const zone = resolveAutoZone(card.deck_zone_class as DeckZoneClass | null, format)
+      return { id: entry.id, printingId: printing?.id ?? null, name: card.name, imageUrl: printing?.image_url ?? card.image_url ?? null, sourceKey: entry.sourceKey ?? null, faceSideIndex: entry.faceSideIndex ?? 0, zone, count: entry.count }
     })
 
     const supabase = await createClient()
@@ -103,7 +155,7 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
       const ownedAnonymously = user == null && existing.user_id === null && hasValidAnonymousId && existing.anonymous_edit_token_hash === hashMakerAnonymousOwner(anonymousId!, 'edit')
       if (!ownedByUser && !ownedAnonymously) return { ok: false, message: 'この公開デッキを更新する権限がありません' }
 
-      let updateQuery = admin.from('deck_submissions').update({ title, format, deck_data: deckData, key_card_id: keyCardId, key_card_printing_id: keyCardPrintingId, is_public: true, updated_at: new Date().toISOString() }).eq('id', input.submissionId)
+      let updateQuery = admin.from('deck_submissions').update({ title, format, deck_data: deckData, key_card_id: keyCardId, key_card_printing_id: keyCardPrintingId, special_card_id: specialCardId, is_public: true, updated_at: new Date().toISOString() }).eq('id', input.submissionId)
       updateQuery = user ? updateQuery.eq('user_id', user.id) : updateQuery.is('user_id', null).eq('anonymous_edit_token_hash', hashMakerAnonymousOwner(anonymousId!, 'edit'))
       const { data, error } = await updateQuery.select('id').single()
       if (error || !data) return { ok: false, message: '公開デッキを更新できませんでした' }
@@ -115,7 +167,7 @@ export async function savePublishedDeck(input: { submissionId?: string | null; t
     }
 
     if (!user && !hasValidAnonymousId) anonymousId = randomBytes(32).toString('base64url')
-    const { data, error } = await admin.from('deck_submissions').insert({ user_id: user?.id ?? null, anonymous_edit_token_hash: user ? null : hashMakerAnonymousOwner(anonymousId!, 'edit'), title, format, deck_data: deckData, key_card_id: keyCardId, key_card_printing_id: keyCardPrintingId, is_public: true }).select('id').single()
+    const { data, error } = await admin.from('deck_submissions').insert({ user_id: user?.id ?? null, anonymous_edit_token_hash: user ? null : hashMakerAnonymousOwner(anonymousId!, 'edit'), title, format, deck_data: deckData, key_card_id: keyCardId, key_card_printing_id: keyCardPrintingId, special_card_id: specialCardId, is_public: true }).select('id').single()
     if (error || !data) {
       console.error('savePublishedDeck insert failed', { code: error?.code, message: error?.message })
       return { ok: false, message: 'みんなのデッキリストへの登録に失敗しました' }

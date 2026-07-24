@@ -38,7 +38,7 @@ export default async function DeckMakerPage({ searchParams }: { searchParams: Pr
   const admin = createAdminClient()
   const anonymousHash = await getMakerAnonymousEditHash()
   let ownedQuery = admin.from('deck_submissions')
-    .select('id,title,format,deck_data,key_card_id,key_card_printing_id,created_at,updated_at')
+    .select('id,title,format,deck_data,key_card_id,key_card_printing_id,special_card_id,created_at,updated_at')
     .eq('is_public', true)
     .order('updated_at', { ascending: false })
     .limit(100)
@@ -55,12 +55,13 @@ export default async function DeckMakerPage({ searchParams }: { searchParams: Pr
     updatedAt: row.updated_at,
     keyCardId: row.key_card_id,
     keyCardPrintingId: row.key_card_printing_id,
+    specialCardId: row.special_card_id,
     format: row.format === 'advance' ? 'advance' as const : 'original' as const,
   }))
   const requestedId = params.edit ?? params.copy
-  let initialDeck: { name: string; entries: DeckEntry[]; submissionId?: string; format?: DeckFormat; keyCardId?: string | null; keyCardPrintingId?: string | null } | undefined
+  let initialDeck: { name: string; entries: DeckEntry[]; submissionId?: string; format?: DeckFormat; keyCardId?: string | null; keyCardPrintingId?: string | null; specialCardId?: string | null } | undefined
   if (requestedId && /^[0-9a-f-]{36}$/i.test(requestedId)) {
-    const { data } = await admin.from('deck_submissions').select('id,user_id,anonymous_edit_token_hash,title,format,deck_data,key_card_id,key_card_printing_id,is_public').eq('id', requestedId).maybeSingle()
+    const { data } = await admin.from('deck_submissions').select('id,user_id,anonymous_edit_token_hash,title,format,deck_data,key_card_id,key_card_printing_id,special_card_id,is_public').eq('id', requestedId).maybeSingle()
     if (data?.is_public) {
       const editHash = params.edit ? await getMakerAnonymousEditHash() : null
       const canEdit = params.edit && ((user && data.user_id === user.id) || (!user && data.user_id === null && editHash && data.anonymous_edit_token_hash === editHash))
@@ -70,6 +71,7 @@ export default async function DeckMakerPage({ searchParams }: { searchParams: Pr
         format: data.format === 'advance' ? 'advance' : 'original',
         keyCardId: data.key_card_id,
         keyCardPrintingId: data.key_card_printing_id,
+        specialCardId: data.special_card_id,
         ...(canEdit ? { submissionId: data.id } : {}),
       }
     }

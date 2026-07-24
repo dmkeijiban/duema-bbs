@@ -6,6 +6,15 @@ import { CARD_CATALOG_CACHE_VERSION, dedupeLogicalCards } from '@/lib/card-catal
 
 export const CARD_SEARCH_PAGE_SIZE = 48
 export type CardSearchFilter = { kind: 'civilization' | 'race' | 'cardType' | 'setName'; value: string }
+export type CardSearchSort = 'relevance' | 'usage_desc' | 'kana_asc' | 'kana_desc' | 'cost_asc' | 'cost_desc'
+export const CARD_SEARCH_SORT_OPTIONS: { value: CardSearchSort; label: string }[] = [
+  { value: 'relevance', label: '関連度順' },
+  { value: 'usage_desc', label: '採用枚数順' },
+  { value: 'kana_asc', label: '50音順（昇順）' },
+  { value: 'kana_desc', label: '50音順（降順）' },
+  { value: 'cost_asc', label: 'コスト順（昇順）' },
+  { value: 'cost_desc', label: 'コスト順（降順）' },
+]
 
 type SearchResponse = {
   cards: DeckCard[]
@@ -21,12 +30,13 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
   const [nextOffset, setNextOffset] = useState(0)
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState<CardSearchFilter[]>([])
+  const [sort, setSort] = useState<CardSearchSort>('relevance')
   const requestId = useRef(0)
   const abort = useRef<AbortController | null>(null)
   const cache = useRef(new Map<string, SearchResponse>())
 
   const filterKey = filters.map(filter => `${filter.kind}:${filter.value}`).sort().join('|')
-  const cacheKey = `${CARD_CATALOG_CACHE_VERSION}:${makerSlug ?? ''}:${query.trim()}:${filterKey}`
+  const cacheKey = `${CARD_CATALOG_CACHE_VERSION}:${makerSlug ?? ''}:${query.trim()}:${filterKey}:${sort}`
 
   const addFilter = useCallback((filter: CardSearchFilter) => {
     setFilters(current => current.some(item => item.kind === filter.kind && item.value === filter.value) ? current : [...current, filter])
@@ -61,9 +71,12 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
       setLoading(true)
       const params = new URLSearchParams({ q: query.trim(), offset: '0', limit: String(CARD_SEARCH_PAGE_SIZE) })
       params.set('order', CARD_CATALOG_CACHE_VERSION)
+      params.set('sort', sort)
       if (makerSlug) params.set('makerSlug', makerSlug)
       applyFilters(params)
-      if (!query.trim()) params.set('fastInitial', '1')
+      // The fast-initial path has its own fixed usage-count fallback ordering; skip
+      // it once the user picks an explicit sort so that choice is respected.
+      if (!query.trim() && sort === 'relevance') params.set('fastInitial', '1')
       fetch(`/api/cards/search?${params}`, { signal: controller.signal })
         .then(response => response.ok ? response.json() : Promise.reject(new Error('search_failed')))
         .then(data => {
@@ -85,7 +98,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
         .finally(() => { if (id === requestId.current) setLoading(false) })
     }, query.trim() ? 70 : 0)
     return () => { clearTimeout(timer); abort.current?.abort() }
-  }, [applyFilters, cacheKey, makerSlug, query])
+  }, [applyFilters, cacheKey, makerSlug, query, sort])
 
   const loadMore = useCallback(() => {
     if (!hasMore || loading) return
@@ -95,6 +108,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
     setLoading(true)
     const params = new URLSearchParams({ q: query.trim(), offset: String(nextOffset), limit: String(CARD_SEARCH_PAGE_SIZE) })
     params.set('order', CARD_CATALOG_CACHE_VERSION)
+    params.set('sort', sort)
     if (makerSlug) params.set('makerSlug', makerSlug)
     applyFilters(params)
     fetch(`/api/cards/search?${params}`, { signal: controller.signal })
@@ -112,7 +126,7 @@ export function useCardCatalogSearch({ makerSlug }: { makerSlug?: string } = {})
       })
       .catch(error => { if (!(error instanceof DOMException && error.name === 'AbortError')) setHasMore(false) })
       .finally(() => { if (id === requestId.current && !controller.signal.aborted) setLoading(false) })
-  }, [applyFilters, cacheKey, hasMore, loading, makerSlug, nextOffset, query])
+  }, [applyFilters, cacheKey, hasMore, loading, makerSlug, nextOffset, query, sort])
 
-  return { query, setQuery, cards, hasMore, loading, loadMore, filters, addFilter, removeFilter, clearFilters }
+  return { query, setQuery, cards, hasMore, loading, loadMore, filters, addFilter, removeFilter, clearFilters, sort, setSort }
 }

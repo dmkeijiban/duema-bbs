@@ -13,6 +13,7 @@ type SavedDeck = {
   keyCardId?: string | null
   keyCardPrintingId?: string | null
   format?: DeckFormat
+  specialCardId?: string | null
 }
 
 type InitialDeck = {
@@ -22,6 +23,7 @@ type InitialDeck = {
   format?: DeckFormat
   keyCardId?: string | null
   keyCardPrintingId?: string | null
+  specialCardId?: string | null
 }
 
 export default function DeckMakerClientShell({ initialDeck, dbDecks }: { initialDeck?: InitialDeck; dbDecks: SavedDeck[] }) {

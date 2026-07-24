@@ -23,7 +23,6 @@ export default async function PublicDeckListPage({ searchParams }: { searchParam
   const admin = createAdminClient()
   let deckQuery = admin.from('deck_submissions')
     .select('id,user_id,title,format,deck_data,key_card_id,key_card_printing_id,created_at', { count: 'exact' })
-    .eq('format', 'original')
     .eq('is_public', true)
     .order('created_at', { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
@@ -48,7 +47,7 @@ export default async function PublicDeckListPage({ searchParams }: { searchParam
       <div className="mt-1 sm:flex sm:items-end sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-black text-slate-950">みんなのデッキリスト</h1>
-          <p className="mt-1 text-sm text-slate-600">オリジナルの公開デッキを新着順で表示しています。</p>
+          <p className="mt-1 text-sm text-slate-600">公開デッキを新着順で表示しています。</p>
         </div>
         <nav className="mt-4 inline-flex shrink-0 rounded-xl border border-slate-300 bg-white p-1 text-sm font-bold sm:mt-0">
           <Link href="/makers/deck-maker/submissions/ranking" className="rounded-lg px-4 py-2 text-blue-700">集計結果</Link>

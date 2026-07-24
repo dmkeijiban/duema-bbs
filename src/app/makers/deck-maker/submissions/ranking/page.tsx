@@ -37,7 +37,6 @@ export default async function DeckCardRankingPage() {
   const { data } = await admin.from('deck_submissions')
     .select('deck_data')
     .eq('is_public', true)
-    .eq('format', 'original')
     .order('created_at', { ascending: false })
     .limit(STATS_DECK_LIMIT)
   const decks = (data ?? []) as StatsDeck[]

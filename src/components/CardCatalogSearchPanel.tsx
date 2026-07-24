@@ -3,7 +3,7 @@
 import type { ReactNode, RefObject } from 'react'
 import type { DeckCard } from '@/lib/deck-maker'
 import { CardCatalogGrid } from '@/components/CardCatalogGrid'
-import type { CardSearchFilter } from '@/hooks/use-card-catalog-search'
+import { CARD_SEARCH_SORT_OPTIONS, type CardSearchFilter, type CardSearchSort } from '@/hooks/use-card-catalog-search'
 
 export function CardCatalogSearchPanel({
   cards,
@@ -23,6 +23,8 @@ export function CardCatalogSearchPanel({
   filters = [],
   onRemoveFilter,
   onClearFilters,
+  sort,
+  onSortChange,
 }: {
   cards: DeckCard[]
   query: string
@@ -33,7 +35,7 @@ export function CardCatalogSearchPanel({
   onQueryChange: (query: string) => void
   onClear?: () => void
   selectedCount?: (card: DeckCard) => number
-  selectedBadge?: (count: number) => string
+  selectedBadge?: (count: number, card: DeckCard) => string
   renderCardArt?: (card: DeckCard, index: number) => ReactNode
   clearIcon?: ReactNode
   filterIcon?: ReactNode
@@ -41,6 +43,8 @@ export function CardCatalogSearchPanel({
   filters?: CardSearchFilter[]
   onRemoveFilter?: (filter: CardSearchFilter) => void
   onClearFilters?: () => void
+  sort?: CardSearchSort
+  onSortChange?: (sort: CardSearchSort) => void
 }) {
   return (
     <section aria-labelledby="card-catalog-search-heading" className="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm lg:sticky lg:top-3">
@@ -71,6 +75,12 @@ export function CardCatalogSearchPanel({
         {filters.length > 0 && <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {filters.map(filter => <button key={`${filter.kind}:${filter.value}`} type="button" onClick={() => onRemoveFilter?.(filter)} className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-800" aria-label={`${filter.value}を解除`}>{filter.value} ×</button>)}
           <button type="button" onClick={onClearFilters} className="px-2 py-1 text-xs font-bold text-slate-600">すべて解除</button>
+        </div>}
+        {onSortChange && <div className="mt-2 flex items-center gap-1.5">
+          <label htmlFor="card-search-sort" className="text-xs font-bold text-slate-500">並び替え</label>
+          <select id="card-search-sort" value={sort ?? 'relevance'} onChange={(event) => onSortChange(event.target.value as CardSearchSort)} className="h-8 rounded-lg border border-slate-300 bg-white px-2 text-xs font-bold text-slate-700">
+            {CARD_SEARCH_SORT_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
         </div>}
       </div>
       <CardCatalogGrid
