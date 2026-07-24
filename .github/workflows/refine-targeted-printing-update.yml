@@ -1,0 +1,49 @@
+name: Refine targeted deck printing update
+
+on:
+  push:
+    branches:
+      - fix/deck-maker-targeted-printing-update
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[skip refine workflow]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/deck-maker-targeted-printing-update
+          fetch-depth: 0
+
+      - name: Refine targeted update
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          template = Path('src/app/makers/deck-maker/template.tsx')
+          text = template.read_text()
+          old = "        window.dispatchEvent(new Event(DECK_DRAFT_REFRESH_EVENT))"
+          new = "        window.dispatchEvent(new CustomEvent<PrintingChangeDetail>(DECK_DRAFT_REFRESH_EVENT, { detail: { previousCard, nextCard } }))"
+          if old not in text:
+              raise SystemExit('Template dispatch anchor not found')
+          template.write_text(text.replace(old, new, 1))
+
+          deck = Path('src/app/makers/deck-maker/DeckMaker.tsx')
+          text = deck.read_text()
+          old_block = """  useEffect(() => {\n    const refreshChangedPrinting = () => {\n      try {\n        const stored = JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) ?? 'null') as { entries?: DeckEntry[] } | null\n        if (!stored || !Array.isArray(stored.entries)) return\n        setEntries(safeEntries(stored.entries))\n      } catch {\n        // 収録版変更後の保存データが壊れている場合は、現在の表示を維持する。\n      }\n    }\n\n    window.addEventListener(DECK_DRAFT_REFRESH_EVENT, refreshChangedPrinting)\n    return () => window.removeEventListener(DECK_DRAFT_REFRESH_EVENT, refreshChangedPrinting)\n  }, [])\n"""
+          new_block = """  useEffect(() => {\n    const refreshChangedPrinting = (event: Event) => {\n      const { previousCard, nextCard } = (event as CustomEvent<{ previousCard?: DeckCard; nextCard?: DeckCard }>).detail ?? {}\n      if (!previousCard || !nextCard || previousCard.id !== nextCard.id) return\n\n      setEntries(list => {\n        const previousKey = printingKey(previousCard)\n        const nextKey = printingKey(nextCard)\n        const currentIndex = list.findIndex(entry => printingKey(entry) === previousKey)\n        if (currentIndex < 0) return list\n\n        const currentEntry = list[currentIndex]\n        const zone = entryZone(currentEntry)\n        const targetIndex = list.findIndex((entry, index) =>\n          index !== currentIndex && entryZone(entry) === zone && printingKey(entry) === nextKey\n        )\n        const entries = [...list]\n\n        if (targetIndex >= 0) {\n          entries[targetIndex] = { ...entries[targetIndex], count: entries[targetIndex].count + 1 }\n          if (currentEntry.count === 1) entries.splice(currentIndex, 1)\n          else entries[currentIndex] = { ...currentEntry, count: currentEntry.count - 1 }\n        } else if (currentEntry.count === 1) {\n          entries[currentIndex] = { ...nextCard, count: 1, zone }\n        } else {\n          entries[currentIndex] = { ...currentEntry, count: currentEntry.count - 1 }\n          entries.splice(currentIndex + 1, 0, { ...nextCard, count: 1, zone })\n        }\n\n        return entries\n      })\n    }\n\n    window.addEventListener(DECK_DRAFT_REFRESH_EVENT, refreshChangedPrinting)\n    return () => window.removeEventListener(DECK_DRAFT_REFRESH_EVENT, refreshChangedPrinting)\n  }, [])\n"""
+          if old_block not in text:
+              raise SystemExit('DeckMaker refresh block not found')
+          deck.write_text(text.replace(old_block, new_block, 1))
+
+          Path('.github/workflows/refine-targeted-printing-update.yml').unlink()
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app/makers/deck-maker/DeckMaker.tsx src/app/makers/deck-maker/template.tsx .github/workflows/refine-targeted-printing-update.yml
+          git commit -m "fix: replace only selected deck printing [skip refine workflow]"
+          git push origin HEAD:fix/deck-maker-targeted-printing-update
