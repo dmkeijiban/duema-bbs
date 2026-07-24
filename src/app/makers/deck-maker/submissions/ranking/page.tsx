@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { visibleEntriesForFormat, type DeckEntry } from '@/lib/deck-maker'
 import { DeckCardRankingGrid, type DeckCardRankingEntry } from '@/components/deck/DeckCardRankingGrid'
 
 export const dynamic = 'force-dynamic'
@@ -8,13 +9,16 @@ const STATS_DECK_LIMIT = 1000
 
 type StatsDeck = {
   deck_data: Array<{ id: string; name: string; imageUrl: string | null; count: number }>
+  format?: string
 }
 
 function buildRanking(decks: StatsDeck[]): DeckCardRankingEntry[] {
   const cards = new Map<string, Omit<DeckCardRankingEntry, 'rank'>>()
   for (const deck of decks) {
     const seen = new Set<string>()
-    for (const entry of Array.isArray(deck.deck_data) ? deck.deck_data : []) {
+    const format: 'original' | 'advance' = deck.format === 'advance' ? 'advance' : 'original'
+    const visibleDeckData = visibleEntriesForFormat((Array.isArray(deck.deck_data) ? deck.deck_data : []) as DeckEntry[], format)
+    for (const entry of visibleDeckData) {
       if (!entry?.id || seen.has(entry.id) || !Number.isInteger(entry.count) || entry.count < 1) continue
       const current = cards.get(entry.id)
       cards.set(entry.id, {
@@ -35,7 +39,7 @@ function buildRanking(decks: StatsDeck[]): DeckCardRankingEntry[] {
 export default async function DeckCardRankingPage() {
   const admin = createAdminClient()
   const { data } = await admin.from('deck_submissions')
-    .select('deck_data')
+    .select('deck_data,format')
     .eq('is_public', true)
     .order('created_at', { ascending: false })
     .limit(STATS_DECK_LIMIT)

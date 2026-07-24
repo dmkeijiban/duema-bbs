@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { shouldShowSpecialSlot } from '@/lib/deck-maker'
+import { shouldShowSpecialSlot, visibleEntriesForFormat, type DeckEntry } from '@/lib/deck-maker'
 
 type DeckCard = {
   id: string
@@ -16,6 +16,7 @@ type DeckCard = {
 }
 
 type SpecialCard = { id: string; name: string; imageUrl: string | null }
+type DeckFormat = 'original' | 'advance'
 
 // 'special' is intentionally excluded here: the special slot is a single
 // deck-level specialCardId pick, never a cards-array entry (see resolveAutoZone/
@@ -24,7 +25,7 @@ type SpecialCard = { id: string; name: string; imageUrl: string | null }
 const ZONE_ORDER = ['main', 'gr', 'hyperspatial'] as const
 const ZONE_LABELS: Record<string, string> = { main: 'メインデッキ', gr: 'GRゾーン', hyperspatial: '超次元ゾーン' }
 
-function groupByZone(cards: DeckCard[], format: string) {
+function groupByZone(cards: DeckCard[], format: DeckFormat) {
   if (format !== 'advance') return [{ label: null as string | null, cards }]
   return ZONE_ORDER
     .map(zone => ({ label: ZONE_LABELS[zone], cards: cards.filter(card => (card.zone ?? 'main') === zone) }))
@@ -74,8 +75,11 @@ function SpecialSlotSection({ specialCard, enlarged }: { specialCard: SpecialCar
   )
 }
 
-function DeckSections({ cards, format, specialCard, enlarged, onOpen }: { cards: DeckCard[]; format: string; specialCard?: SpecialCard | null; enlarged?: boolean; onOpen?: () => void }) {
-  const sections = groupByZone(cards, format)
+function DeckSections({ cards, format, specialCard, enlarged, onOpen }: { cards: DeckCard[]; format: DeckFormat; specialCard?: SpecialCard | null; enlarged?: boolean; onOpen?: () => void }) {
+  const sections = groupByZone(
+    visibleEntriesForFormat(cards as unknown as DeckEntry[], format) as unknown as DeckCard[],
+    format,
+  )
   return <>
     {sections.map((section, index) => (
       <div key={section.label ?? index}>
@@ -89,6 +93,7 @@ function DeckSections({ cards, format, specialCard, enlarged, onOpen }: { cards:
 
 export default function DeckCardGrid({ cards, format = 'original', specialCard = null }: { cards: DeckCard[]; format?: string; specialCard?: SpecialCard | null }) {
   const [isOpen, setIsOpen] = useState(false)
+  const normalizedFormat: DeckFormat = format === 'advance' ? 'advance' : 'original'
 
   useEffect(() => {
     if (!isOpen) return
@@ -100,15 +105,15 @@ export default function DeckCardGrid({ cards, format = 'original', specialCard =
   }, [isOpen])
 
   return <>
-    <DeckSections cards={cards} format={format} specialCard={specialCard} onOpen={() => setIsOpen(true)} />
+      <DeckSections cards={cards} format={normalizedFormat} specialCard={specialCard} onOpen={() => setIsOpen(true)} />
 
     {isOpen && <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2 sm:p-4" onMouseDown={event => { if (event.currentTarget === event.target) setIsOpen(false) }}>
       <section role="dialog" aria-modal="true" aria-label="デッキ全体の拡大表示" className="relative max-h-[calc(100dvh-16px)] w-full max-w-5xl overflow-auto rounded-2xl bg-white p-2 shadow-2xl sm:max-h-[calc(100dvh-32px)] sm:p-4">
         <button type="button" onClick={() => setIsOpen(false)} aria-label="拡大表示を閉じる" className="absolute right-2 top-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-xl font-bold text-slate-800 shadow">×</button>
         <div className="pr-12">
-          <p className="mb-2 text-sm font-black text-slate-900 sm:text-base">デッキ全体{format === 'original' ? '（40枚）' : ''}</p>
+          <p className="mb-2 text-sm font-black text-slate-900 sm:text-base">デッキ全体{normalizedFormat === 'original' ? '（40枚）' : ''}</p>
         </div>
-        <DeckSections cards={cards} format={format} specialCard={specialCard} enlarged />
+          <DeckSections cards={cards} format={normalizedFormat} specialCard={specialCard} enlarged />
       </section>
     </div>}
   </>

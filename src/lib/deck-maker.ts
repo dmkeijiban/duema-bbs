@@ -93,3 +93,6 @@ export function matchesCard(card: DeckCard, query: string) {
 export function deckSize(entries: DeckEntry[]) { return entries.reduce((sum, entry) => sum + entry.count, 0) }
 export function entryZone(entry: DeckEntry): DeckZone { return entry.zone ?? 'main' }
 export function zoneDeckSize(entries: DeckEntry[], zone: DeckZone) { return entries.reduce((sum, entry) => sum + (entryZone(entry) === zone ? entry.count : 0), 0) }
+export function visibleEntriesForFormat(entries: DeckEntry[], format: DeckFormat): DeckEntry[] {
+  return format === 'advance' ? entries : entries.filter(entry => entryZone(entry) === 'main')
+}

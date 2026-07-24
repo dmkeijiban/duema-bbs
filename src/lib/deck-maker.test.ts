@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { resolveAutoZone, isSpecialSlotCard, persistedSpecialCardId, shouldShowSpecialSlot, sameCardLimit, DECK_ZONE_LIMITS, entryZone, zoneDeckSize, consumeMountOnce, type DeckEntry } from './deck-maker'
+import { resolveAutoZone, isSpecialSlotCard, persistedSpecialCardId, shouldShowSpecialSlot, sameCardLimit, DECK_ZONE_LIMITS, entryZone, visibleEntriesForFormat, zoneDeckSize, consumeMountOnce, type DeckEntry } from './deck-maker'
 
 test('resolveAutoZone: outside advance format everything collapses to main', () => {
   assert.equal(resolveAutoZone('gr', 'original'), 'main')
@@ -75,6 +75,37 @@ test('zoneDeckSize: sums only the requested zone, defaulting missing zone to mai
   assert.equal(zoneDeckSize(entries, 'gr'), 2)
   assert.equal(zoneDeckSize(entries, 'hyperspatial'), 0)
   assert.equal(entryZone(entries[2]), 'main')
+})
+
+test('visibleEntriesForFormat: original keeps main only', () => {
+  const entries: DeckEntry[] = [
+    { id: 'main-1', name: 'Main', nameKana: null, imageUrl: null, officialPageUrl: null, sourceKey: null, count: 1, zone: 'main' },
+    { id: 'gr-1', name: 'GR', nameKana: null, imageUrl: null, officialPageUrl: null, sourceKey: null, count: 1, zone: 'gr' },
+    { id: 'hy-1', name: '超次元', nameKana: null, imageUrl: null, officialPageUrl: null, sourceKey: null, count: 1, zone: 'hyperspatial' },
+  ]
+  const visible = visibleEntriesForFormat(entries, 'original')
+  assert.equal(visible.length, 1)
+  assert.equal(visible[0]!.zone, 'main')
+})
+
+test('visibleEntriesForFormat: advance keeps all zones', () => {
+  const entries: DeckEntry[] = [
+    { id: 'main-1', name: 'Main', nameKana: null, imageUrl: null, officialPageUrl: null, sourceKey: null, count: 1, zone: 'main' },
+    { id: 'gr-1', name: 'GR', nameKana: null, imageUrl: null, officialPageUrl: null, sourceKey: null, count: 1, zone: 'gr' },
+    { id: 'hy-1', name: '超次元', nameKana: null, imageUrl: null, officialPageUrl: null, sourceKey: null, count: 1, zone: 'hyperspatial' },
+  ]
+  const visible = visibleEntriesForFormat(entries, 'advance')
+  assert.equal(visible.length, 3)
+})
+
+test('visibleEntriesForFormat: zone未設定はmain扱い', () => {
+  const entries: DeckEntry[] = [
+    { id: 'main-1', name: 'Main', nameKana: null, imageUrl: null, officialPageUrl: null, sourceKey: null, count: 1, zone: 'main' },
+    { id: 'legacy-1', name: 'Legacy', nameKana: null, imageUrl: null, officialPageUrl: null, sourceKey: null, count: 1 },
+  ]
+  const visible = visibleEntriesForFormat(entries, 'original')
+  assert.equal(visible.length, 2)
+  assert.equal(visible[1]!.id, 'legacy-1')
 })
 
 test('consumeMountOnce: true exactly once per ref, then always false (regression guard)', () => {
