@@ -21,6 +21,7 @@ import { CardDetailModal } from '@/components/CardDetailModal'
 import { useCardCatalogSearch } from '@/hooks/use-card-catalog-search'
 import { useCardPrintingSelector } from '@/hooks/use-card-printing-selector'
 import { deleteMyDeck, savePublishedDeck } from './actions'
+import { DECK_DRAFT_REFRESH_EVENT } from './template'
 
 const OFFICIAL_ORIGIN = 'https://dm.takaratomy.co.jp'
 const DEFAULT_DECK_NAME = 'メインデッキ'
@@ -311,6 +312,21 @@ export default function DeckMaker({ initialDeck, dbDecks = [] }: {
   useEffect(() => {
     if (ready) localStorage.setItem(SAVED_DECKS_STORAGE_KEY, JSON.stringify(savedDecks))
   }, [ready, savedDecks])
+
+  useEffect(() => {
+    const refreshChangedPrinting = () => {
+      try {
+        const stored = JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) ?? 'null') as { entries?: DeckEntry[] } | null
+        if (!stored || !Array.isArray(stored.entries)) return
+        setEntries(safeEntries(stored.entries))
+      } catch {
+        // 収録版変更後の保存データが壊れている場合は、現在の表示を維持する。
+      }
+    }
+
+    window.addEventListener(DECK_DRAFT_REFRESH_EVENT, refreshChangedPrinting)
+    return () => window.removeEventListener(DECK_DRAFT_REFRESH_EVENT, refreshChangedPrinting)
+  }, [])
 
   useEffect(() => {
     if (!notice) return
