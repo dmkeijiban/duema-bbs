@@ -28,18 +28,8 @@ function normalizedText(element: Element) {
   return (element.textContent ?? '').replace(/\s+/g, ' ').trim()
 }
 
-function findRankingRecommendAnchor() {
-  const candidates = Array.from(document.querySelectorAll<HTMLElement>('main section, main div'))
-  return candidates.find(element => {
-    const text = normalizedText(element)
-    if (!text.startsWith('おすすめ')) return false
-    if (!text.includes('ランキングはこちら')) return false
-
-    return !Array.from(element.children).some(child => {
-      const childText = normalizedText(child)
-      return childText.startsWith('おすすめ') && childText.includes('ランキングはこちら')
-    })
-  }) ?? null
+function findRankingHeaderAnchor() {
+  return document.querySelector<HTMLElement>('body > header')
 }
 
 function findRankingBottomNavAnchor() {
@@ -120,8 +110,8 @@ export function FixedAndRankingTopAd({ enableListTop, enableListMiddle }: { enab
       if (pathname === '/ranking') {
         const topReady = !enableListTop || ensureHost(
           TOP_HOST_MARKER,
-          findRankingRecommendAnchor(),
-          'before',
+          findRankingHeaderAnchor(),
+          'after',
           'my-2',
           setTopHost,
         )
